@@ -256,7 +256,7 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
             status: 'refuted',
             evidence: { kind: 'native', label: nativeCorrectnessLabel(passedCases), cases: n.cases },
             witness: n.witness ?? null,
-            note: n.detail ?? 'Generated Rust disagreed with the reference matrix product on a test vector.',
+            note: n.detail ? capitalize(n.detail) : 'Generated Rust disagreed with the reference matrix product on a test vector.',
           });
         }
         break;
