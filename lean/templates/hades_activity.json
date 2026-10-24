@@ -4,7 +4,7 @@
   "claim": "activity.outer",
   "status": "proved",
   "theorem": "CryptificateJob.hades_activity",
-  "expectedType": "∀ (mask : Finset (Fin 3)) (constants : ℕ → Fin 3 → Poseidon2.BN254.F) (x y : Fin 3 → Poseidon2.BN254.F), x ≠ y → (CryptificateJob.candFullRounds / 2 / 2 + CryptificateJob.candFullRounds / 2 / 2) * 4 + CryptificateJob.candFullRounds / 2 % 2 + CryptificateJob.candFullRounds / 2 % 2 ≤ CryptificateJob.candDesign.outerActivity mask constants x y",
+  "expectedType": "∀ (mask : Finset (Fin 3)) (constants : ℕ → Fin 3 → Poseidon2.BN254.F) (x y : Fin 3 → Poseidon2.BN254.F), x ≠ y → (CryptificateJob.candFullRounds / 2 / 2 + CryptificateJob.candFullRounds / 2 / 2) * 4 + CryptificateJob.candFullRounds / 2 % 2 + CryptificateJob.candFullRounds / 2 % 2 ≤ { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.outerActivity mask constants x y",
   "placeholders": [],
   "requires": [
     "const_external_bn254",
