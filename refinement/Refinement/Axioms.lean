@@ -48,10 +48,28 @@ info: 'Cryptificate.Refinement.gf256_xtime_field' depends on axioms: [propext, C
 #print axioms Cryptificate.Refinement.gf256_xtime_field
 
 /--
+info: 'Cryptificate.Refinement.gf256_mul_comm' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.gf256_mul_comm
+
+/--
 info: 'Cryptificate.Refinement.gf256_mul_assoc' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Cryptificate.Refinement.gf256_mul_assoc
+
+/--
+info: 'Cryptificate.Refinement.gf256_mul_add' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.gf256_mul_add
+
+/--
+info: 'Cryptificate.Refinement.gf256_mul_two' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.gf256_mul_two
 
 /--
 info: 'Cryptificate.Refinement.gf256_mul_inv' depends on axioms: [propext, Classical.choice, Quot.sound]
