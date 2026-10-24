@@ -706,14 +706,21 @@ fn diagnose_aes_like(
         ),
     };
     let sbox = analyze_sbox(source, &table);
-    let applicable = matrix.mds && offsets.distinct;
+    // The bound is stated for the width-4 state only.
+    let bound = (d.width == limits::GF256_WIDTH).then(|| aes_like_activity_bound(d.rounds));
+    let applicable = matrix.mds && offsets.distinct && bound.is_some();
     let activity = ActivityAnalysis {
         claim: claim_ids::ACTIVITY_BOUND,
         applicable,
         rounds: d.rounds,
-        bound: (d.width == limits::GF256_WIDTH).then(|| aes_like_activity_bound(d.rounds)),
+        bound,
         reason: if applicable {
             "the matrix is MDS and the offsets are distinct, so the wide trail bound applies".into()
+        } else if bound.is_none() {
+            format!(
+                "not established by this method: the bound is stated for width {} only",
+                limits::GF256_WIDTH
+            )
         } else {
             "not established by this method: the bound needs an MDS matrix and distinct offsets"
                 .into()

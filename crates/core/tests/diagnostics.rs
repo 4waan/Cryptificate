@@ -184,6 +184,23 @@ fn row_scaled_aes_is_mds() {
 }
 
 #[test]
+fn experimental_width_predicts_no_activity_bound() {
+    let (d, _) = diagnose_json(json!({"design": {
+        "model": "aes-like/gf256/v1", "field": "gf256", "width": 2,
+        "matrix": [["02", "03"], ["03", "02"]], "offsets": [0, 1], "rounds": 4,
+        "sbox": {"kind": "aes"}
+    }}));
+    let activity = d.claim(claim_ids::ACTIVITY_BOUND).unwrap();
+    assert_eq!(activity.predicted, Status::NotEstablished);
+    assert_eq!(activity.holds, None);
+    assert!(activity.note.contains("width 4 only"), "{}", activity.note);
+    assert_eq!(
+        d.claim(claim_ids::MATRIX_MDS).unwrap().predicted,
+        Status::Proved
+    );
+}
+
+#[test]
 fn repeated_offsets() {
     let (d, v) = diagnose_json(json!({"design": aes_design(json!(AES), json!([0, 1, 1, 3]))}));
     assert_eq!(
