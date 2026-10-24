@@ -69,7 +69,7 @@ export function CandidatesTable({ report, limit }: { report: ExperimentReport; l
   const field = report.candidates[0]?.program.field ?? 'gf256';
   const rows = limit ? report.candidates.slice(0, limit) : report.candidates;
   return (
-    <div className="table-wrap">
+    <div className="table-wrap" tabIndex={0} role="region" aria-label="Candidates">
       <table className="data">
         <caption className="visually-hidden">Candidates</caption>
         <thead>
@@ -145,7 +145,13 @@ function HistoryTable({ report }: { report: ExperimentReport }) {
         <span className="mono">{report.search.seed}</span>. Search output is untrusted until its equivalence is
         Lean-checked.
       </p>
-      <div className="table-wrap" style={{ maxHeight: 420, overflowY: 'auto' }}>
+      <div
+        className="table-wrap"
+        tabIndex={0}
+        role="region"
+        aria-label="Search history"
+        style={{ maxHeight: 420, overflowY: 'auto' }}
+      >
         <table className="data">
           <caption className="visually-hidden">Search history</caption>
           <thead>

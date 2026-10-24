@@ -880,8 +880,11 @@ details.proof dd {
 }
 
 .stale {
-  opacity: 0.55;
-  filter: grayscale(0.85);
+  /* Greyed but still readable: no opacity, so text keeps its contrast. */
+  filter: grayscale(1);
+  border-left: 4px solid var(--line-strong);
+  padding-left: var(--space-4);
+  background: repeating-linear-gradient(135deg, transparent 0 10px, var(--surface-2) 10px 11px);
 }
 .stale-label {
   font-size: 0.8rem;
@@ -1089,6 +1092,12 @@ table.data tbody tr:last-child td {
   .story {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
+  }
+  .story-nav {
+    position: static;
+  }
+  .header {
+    position: static;
   }
 }
 .story-nav {

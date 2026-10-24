@@ -88,7 +88,7 @@ export function MeasurementChart({ title, series }: { title: string; series: Var
         </button>
       </div>
       {table ? (
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label={`${title} samples`}>
           <table className="data">
             <caption className="visually-hidden">{title} samples</caption>
             <thead>
@@ -258,7 +258,7 @@ export function RatioChart({ title, rows, threshold = 1.02 }: { title: string; r
         </button>
       </div>
       {table ? (
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label={`${title} speedups`}>
           <table className="data">
             <caption className="visually-hidden">{title} speedups</caption>
             <thead>

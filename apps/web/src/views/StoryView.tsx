@@ -256,8 +256,8 @@ function Step2() {
   return (
     <div className="stack-lg">
       <StepHead n={2} title="One wire goes wrong">
-        In the textbook circuit the first output is y0 = x0 ⊕ t ⊕ {before}. Move one wire so that it reads {after}{' '}
-        instead. The circuit still looks reasonable. Does it still compute MixColumns?
+        In the textbook circuit the first output is <code>y0 = x0 ⊕ t ⊕ {before}</code>. Move one wire so that it reads{' '}
+        <code>{after}</code> instead. The circuit still looks reasonable. Does it still compute MixColumns?
       </StepHead>
       <div className="row">
         <button type="button" className="btn" onClick={load}>
@@ -265,7 +265,7 @@ function Step2() {
           {loaded ? 'Reset to the textbook circuit' : 'Load the textbook circuit'}
         </button>
         <button type="button" className="btn btn-primary" onClick={rewire} disabled={story.rewired && isActive(r)}>
-          Change {before} to {after}
+          Change <span className="mono">{before}</span> to <span className="mono">{after}</span>
         </button>
       </div>
       <CircuitEditor
