@@ -151,10 +151,9 @@ function checkDesign(c: Checker, value: unknown, path: string): value is Candida
     if ('experimental' in value && typeof value['experimental'] !== 'boolean') {
       ok = c.fail(`${path}/experimental`, 'type', 'expected a boolean');
     }
-    if (value['experimental'] === true && (width === 2 || width === 3)) {
+    if (width === 2 || width === 3) {
       n = width;
-    } else if (width === 2 || width === 3) {
-      ok = c.fail(`${path}/width`, 'experimental', `width ${width} is experimental and must be marked "experimental": true`);
+      if (value['experimental'] !== true) ok = c.fail(`${path}/width`, 'experimental', `width ${width} is experimental and must be marked "experimental": true`);
     } else {
       ok = c.literal(width, `${path}/width`, [4]) && ok;
     }
