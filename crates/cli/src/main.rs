@@ -26,7 +26,7 @@ use serde_json::{json, Value};
 /// Largest accepted input document.
 const MAX_INPUT_BYTES: usize = 16 * 1024 * 1024;
 
-const USAGE: &str = "\
+const USAGE_HEAD: &str = "\
 usage: cryptificate-engine [--lean-dir DIR] [--pretty] <subcommand> < input.json
 
 Reads one JSON document on stdin and writes one JSON document on stdout.
@@ -37,7 +37,16 @@ subcommands:
   validate    AnalysisRequest or ExperimentRequest -> {kind, request, inputDigest}
   diagnose    AnalysisRequest -> unchecked diagnostics (minors, witnesses, predictions)
   emit-lean   AnalysisRequest -> {source, expect, inputsEcho, fragments, skipped, inputDigest}
+";
 
+/// Help lines of the subcommands compiled in through cargo features.
+const USAGE_FEATURES: &[(bool, &str)] = &[(
+    cfg!(feature = "search"),
+    "  search      {matrix, field, width, profile, seed?, maxCandidates?, synthMs?, program?}\n\
+     \x20             -> untrusted candidates, history, shortlist, baselines\n",
+)];
+
+const USAGE_OPTIONS: &str = "
 options:
   --lean-dir DIR   Lean package (or template) directory for emit-lean;
                    default: $CRYPTIFICATE_LEAN_DIR, else the first lean/templates
@@ -46,6 +55,17 @@ options:
   -h, --help       print this help
   -V, --version    print the version
 ";
+
+fn usage() -> String {
+    let mut s = USAGE_HEAD.to_string();
+    for (enabled, text) in USAGE_FEATURES {
+        if *enabled {
+            s.push_str(text);
+        }
+    }
+    s.push_str(USAGE_OPTIONS);
+    s
+}
 
 /// A failed run, mapped to an exit status.
 enum Failure {
@@ -66,6 +86,8 @@ enum Command {
     Validate,
     Diagnose,
     EmitLean,
+    #[cfg(feature = "search")]
+    Search,
 }
 
 impl Command {
@@ -74,6 +96,8 @@ impl Command {
             "validate" => Command::Validate,
             "diagnose" => Command::Diagnose,
             "emit-lean" => Command::EmitLean,
+            #[cfg(feature = "search")]
+            "search" => Command::Search,
             _ => return None,
         })
     }
@@ -188,6 +212,8 @@ fn run(opts: &Options, input: &Value) -> Result<Value, Failure> {
             })?;
             Ok(serde_json::to_value(emission).expect("emissions serialize"))
         }
+        #[cfg(feature = "search")]
+        Command::Search => Ok(cryptificate_search::run_search_json(input)?),
     }
 }
 
@@ -208,7 +234,7 @@ fn main() -> ExitCode {
     let opts = match parse_args(std::env::args().skip(1)) {
         Ok(Parsed::Run(o)) => o,
         Ok(Parsed::Help) => {
-            print!("{USAGE}");
+            print!("{}", usage());
             return ExitCode::SUCCESS;
         }
         Ok(Parsed::Version) => {
@@ -216,7 +242,7 @@ fn main() -> ExitCode {
             return ExitCode::SUCCESS;
         }
         Err(message) => {
-            eprintln!("cryptificate-engine: {message}\n\n{USAGE}");
+            eprintln!("cryptificate-engine: {message}\n\n{}", usage());
             return ExitCode::from(64);
         }
     };

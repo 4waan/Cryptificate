@@ -9,6 +9,12 @@ license.workspace = true
 name = "cryptificate-engine"
 path = "src/main.rs"
 
+[features]
+default = ["search"]
+# The `search` subcommand (bounded search for cheaper circuits).
+search = ["dep:cryptificate-search"]
+
 [dependencies]
 cryptificate-core = { path = "../core" }
+cryptificate-search = { path = "../search", optional = true }
 serde_json = "1"
