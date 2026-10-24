@@ -387,6 +387,8 @@ export interface Comparison {
   ci95: [number, number];
   session: number;
   bytes?: number;
+  /** Set on comparisons at the primary workload (64 KiB). */
+  primary?: boolean;
 }
 
 export type MeasurementVerdict = 'locally confirmed' | 'inconclusive' | 'no improvement';
