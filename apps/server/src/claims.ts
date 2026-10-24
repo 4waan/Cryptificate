@@ -10,6 +10,7 @@ import {
   NOT_ESTABLISHED_TEXT,
   aesLikeActivityBound,
   designClaimsFor,
+  hadesOuterActivityBound,
   nativeCorrectnessLabel,
 } from '@cryptificate/schema';
 import type {
@@ -160,6 +161,10 @@ function activityTitle(req: AnalysisRequest, info: ClaimInfo): string {
   const d = req.design;
   if (info.id === 'activity.bound' && d.model === 'aes-like/gf256/v1' && d.width === 4) {
     return `At least ${aesLikeActivityBound(d.rounds)} active S-boxes over ${d.rounds} rounds`;
+  }
+  if (info.id === 'activity.outer' && d.model === 'hades/bn254/v1') {
+    // Only the full rounds are charged; the partial rounds add nothing to the bound.
+    return `At least ${hadesOuterActivityBound(d.fullRounds)} active S-boxes in the ${d.fullRounds} full rounds`;
   }
   return info.title;
 }
