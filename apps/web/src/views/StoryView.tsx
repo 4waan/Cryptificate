@@ -257,7 +257,8 @@ function Step2() {
   return (
     <div className="stack-lg">
       <StepHead n={2} title="One wire goes wrong">
-        In the textbook circuit the first output is <code>y0 = x0 ⊕ t ⊕ {before}</code>. Move one wire so that it reads{' '}
+        In the textbook circuit the first output is <code>y0 = x0 ⊕ t ⊕ {before}</code>, where{' '}
+        <code>t = x0 ⊕ x1 ⊕ x2 ⊕ x3</code> is shared by all four outputs. Move one wire so that it reads{' '}
         <code>{after}</code> instead. The circuit still looks reasonable. Does it still compute MixColumns?
       </StepHead>
       <div className="row">
@@ -301,6 +302,7 @@ function Step2() {
             ))}
           </div>
           {r ? <RunProgress run={r} compact /> : null}
+          <StaleNote runState={r} />
           <div className="row">
             <button
               type="button"
