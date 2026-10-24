@@ -1,0 +1,16 @@
+{
+  "name": "const_program_bn254",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "INSTRS",
+    "OUTPUTS"
+  ],
+  "requires": [
+    "header"
+  ],
+  "field": "bn254"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "header",
+  "kind": "header",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [],
+  "requires": [],
+  "field": "any"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "circuit_equivalence_bn254_internal",
+  "kind": "claim",
+  "claim": "circuit.equivalence",
+  "status": "proved",
+  "theorem": "CryptificateJob.circuit_equivalence",
+  "expectedType": "∀ (x : Fin 3 → Poseidon2.BN254.F), CryptificateJob.candProgram.eval x = CryptificateJob.candInternal.mulVec x",
+  "placeholders": [],
+  "requires": [
+    "const_program_bn254",
+    "const_internal_bn254"
+  ],
+  "field": "bn254"
+}
