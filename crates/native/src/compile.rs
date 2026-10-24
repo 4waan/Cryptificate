@@ -174,11 +174,11 @@ pub fn build_variant(opts: &BuildOptions, v: &VariantSource) -> Result<BuiltVari
         .output()
         .with_context(|| format!("running {}", opts.cargo.display()))?;
     if !out.status.success() {
-        bail!(
-            "building variant {} failed: {}",
-            v.id,
-            String::from_utf8_lossy(&out.stderr).trim()
-        );
+        // Keep machine paths out of reports.
+        let stderr = String::from_utf8_lossy(&out.stderr)
+            .replace(&*opts.work_dir.to_string_lossy(), "<work>")
+            .replace(&*opts.target_dir.to_string_lossy(), "<target>");
+        bail!("building variant {} failed: {}", v.id, stderr.trim());
     }
     let file = format!(
         "{}{}{}",
