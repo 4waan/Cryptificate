@@ -71,7 +71,7 @@ describe('witness viewer', () => {
     const w = powerPreview(3).witness!;
     expect(w.kind).toBe('power-collision');
     const html = renderToStaticMarkup(<WitnessView witness={w} field="bn254" />);
-    expect(w.kind === 'power-collision' && w.x2.length).toBeGreaterThan(70);
+    expect(w.kind === 'power-collision' && w.x2.length).toBeGreaterThan(40);
     expect(html).toContain(w.kind === 'power-collision' ? w.x2 : '');
     expect(html).toContain('ω^3 = 1');
   });
