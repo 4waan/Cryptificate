@@ -68,7 +68,20 @@ export interface Savings {
 }
 
 function fmtCi(c: Comparison): string {
-  return `${c.ratio.toFixed(3)}× (95% CI ${c.ci95[0].toFixed(3)} to ${c.ci95[1].toFixed(3)})`;
+  return `session ${c.session}: ${c.ratio.toFixed(3)}× (95% CI ${c.ci95[0].toFixed(3)} to ${c.ci95[1].toFixed(3)})`;
+}
+
+function referenceName(c: ExperimentCandidate): string {
+  switch (c.origin) {
+    case 'baseline-known':
+      return 'the textbook reference';
+    case 'baseline-direct':
+      return 'the direct reference';
+    case 'user':
+      return 'your circuit';
+    default:
+      return `candidate ${c.id}`;
+  }
 }
 
 /**
@@ -89,13 +102,13 @@ export function savingsSummary(report: ExperimentReport): Savings {
   if (b.otherMuls !== r.otherMuls) parts.push(`${b.otherMuls} other multiplications instead of ${r.otherMuls}`);
   const fewer = opCount(best) < opCount(ref);
   const structural = parts.length
-    ? `${candidateLabel(best)} uses ${parts.join(' and ')} (${candidateLabel(ref).toLowerCase()}), and its equivalence to the design is Lean-checked.`
-    : `${candidateLabel(best)} uses the same operation counts as the ${candidateLabel(ref).toLowerCase()}.`;
+    ? `${candidateLabel(best)} uses ${parts.join(' and ')} in ${referenceName(ref)}; its equivalence to the design is Lean-checked.`
+    : `${candidateLabel(best)} uses the same operation counts as ${referenceName(ref)}.`;
 
   const m = report.measurements;
   if (!m) return { structural, timing: 'Not timed in this run.' };
   const comps = comparisonsFor(report, best.id, ref.id);
-  const shown = comps.length ? ` Measured ${comps.map(fmtCi).join('; ')}.` : '';
+  const shown = comps.length ? ` Speedup over ${referenceName(ref)}, ${comps.map(fmtCi).join('; ')}.` : '';
   let timing: string;
   if (m.verdict === 'locally confirmed') {
     timing = `Faster on this machine: the 95% interval stays above ${THRESHOLD} in both confirmation sessions.${shown}`;
