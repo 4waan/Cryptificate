@@ -40,11 +40,21 @@ subcommands:
 ";
 
 /// Help lines of the subcommands compiled in through cargo features.
-const USAGE_FEATURES: &[(bool, &str)] = &[(
-    cfg!(feature = "search"),
-    "  search      {matrix, field, width, profile, seed?, maxCandidates?, synthMs?, program?}\n\
-     \x20             -> untrusted candidates, history, shortlist, baselines\n",
-)];
+const USAGE_FEATURES: &[(bool, &str)] = &[
+    (
+        cfg!(feature = "search"),
+        "  search      {matrix, field, width, profile, seed?, maxCandidates?, synthMs?, program?}\n\
+         \x20             -> untrusted candidates, history, shortlist, baselines\n",
+    ),
+    (
+        cfg!(feature = "native"),
+        "  codegen     {field, width, matrix?, programs: [{id, program, origin?}]}\n\
+         \x20             -> one generated Rust cdylib crate per program (exports mix_batch)\n\
+         \x20 native      {mode?, field, width, matrix, variants | programs | codegen, seed?,\n\
+         \x20              session?, extraCases?}\n\
+         \x20             -> correctness cases, timing samples, comparisons, verdict\n",
+    ),
+];
 
 const USAGE_OPTIONS: &str = "
 options:
@@ -88,6 +98,10 @@ enum Command {
     EmitLean,
     #[cfg(feature = "search")]
     Search,
+    #[cfg(feature = "native")]
+    Codegen,
+    #[cfg(feature = "native")]
+    Native,
 }
 
 impl Command {
@@ -98,6 +112,10 @@ impl Command {
             "emit-lean" => Command::EmitLean,
             #[cfg(feature = "search")]
             "search" => Command::Search,
+            #[cfg(feature = "native")]
+            "codegen" => Command::Codegen,
+            #[cfg(feature = "native")]
+            "native" => Command::Native,
             _ => return None,
         })
     }
@@ -214,6 +232,19 @@ fn run(opts: &Options, input: &Value) -> Result<Value, Failure> {
         }
         #[cfg(feature = "search")]
         Command::Search => Ok(cryptificate_search::run_search_json(input)?),
+        #[cfg(feature = "native")]
+        Command::Codegen => Ok(cryptificate_native::codegen_json(input)?),
+        #[cfg(feature = "native")]
+        Command::Native => {
+            use cryptificate_native::{run_native_json, NativeError, NativeOptions};
+            run_native_json(input, &NativeOptions::from_env()).map_err(|e| match e {
+                NativeError::Invalid(v) => Failure::Invalid(v),
+                NativeError::Failed(e) => Failure::Engine {
+                    code: "native_failed",
+                    message: format!("{e:#}"),
+                },
+            })
+        }
     }
 }
 

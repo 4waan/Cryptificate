@@ -181,6 +181,7 @@ name = "cryptificate-cli"
 version = "0.1.0"
 dependencies = [
  "cryptificate-core",
+ "cryptificate-native",
  "cryptificate-search",
  "serde_json",
 ]

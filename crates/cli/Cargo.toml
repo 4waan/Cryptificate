@@ -10,11 +10,14 @@ name = "cryptificate-engine"
 path = "src/main.rs"
 
 [features]
-default = ["search"]
+default = ["search", "native"]
 # The `search` subcommand (bounded search for cheaper circuits).
 search = ["dep:cryptificate-search"]
+# The `codegen` and `native` subcommands (generated Rust, correctness, timing).
+native = ["dep:cryptificate-native"]
 
 [dependencies]
 cryptificate-core = { path = "../core" }
 cryptificate-search = { path = "../search", optional = true }
+cryptificate-native = { path = "../native", optional = true }
 serde_json = "1"
