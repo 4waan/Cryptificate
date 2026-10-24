@@ -46,12 +46,16 @@ export function WitnessView({
   witness,
   field,
   preview = false,
+  unchecked = false,
 }: {
   witness: Witness;
   field: FieldName;
   preview?: boolean;
+  /** Found by an unchecked engine diagnostic, not by a checked certificate. */
+  unchecked?: boolean;
 }) {
-  const heading = `${witnessHeading(witness)}${preview ? ' (unchecked preview)' : ''}`;
+  const suffix = preview ? ' (unchecked preview)' : unchecked ? ' (unchecked diagnostic)' : '';
+  const heading = `${witnessHeading(witness)}${suffix}`;
   return (
     <figure className="witness" style={{ margin: 0 }} aria-label={heading}>
       <figcaption className="witness-label">{heading}</figcaption>

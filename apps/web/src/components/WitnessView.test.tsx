@@ -114,6 +114,29 @@ describe('claim cards', () => {
     expect(html).toContain('outside the allowed set');
   });
 
+  it('marks a witness from an unchecked diagnostic as unchecked', () => {
+    const w = powerPreview(3).witness!;
+    const unchecked: Claim = {
+      ...claim,
+      id: 'sbox.bijective',
+      title: 'Power S-box is a permutation',
+      evidence: { kind: 'diagnostic', label: 'Unchecked diagnostic' },
+      witness: w,
+      note: 'Lean exited with status 1; the certificate did not check.',
+    };
+    expect(renderToStaticMarkup(<ClaimCard claim={unchecked} field="bn254" />)).toContain(
+      'Power map collision (unchecked diagnostic)',
+    );
+    const checked = renderToStaticMarkup(
+      <ClaimCard
+        claim={{ ...unchecked, status: 'refuted', evidence: { kind: 'lean', label: 'Lean-checked counterexample' } }}
+        field="bn254"
+      />,
+    );
+    expect(checked).toContain('Power map collision');
+    expect(checked).not.toContain('(unchecked');
+  });
+
   it('never shows a proof status on an unchecked preview', () => {
     const html = renderToStaticMarkup(
       <PreviewCard

@@ -31,7 +31,7 @@ export function ClaimCard({ claim, field, rounds }: { claim: Claim; field: Field
       {claim.id === 'activity.bound' && rounds !== undefined && claim.status === 'proved' ? (
         <p className="small mono">Active S-boxes ≥ {activityFormula(rounds)}</p>
       ) : null}
-      {claim.witness ? <WitnessView witness={claim.witness} field={field} /> : null}
+      {claim.witness ? <WitnessView witness={claim.witness} field={field} unchecked={unchecked} /> : null}
       {hasProofDetails ? (
         <details className="proof">
           <summary>Proof details</summary>
