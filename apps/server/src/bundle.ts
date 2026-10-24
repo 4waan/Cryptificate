@@ -59,7 +59,7 @@ export function verifyMarkdown(report: Report, tc: ToolchainInfo): string {
   ];
   if (report.kind === 'experiment') {
     lines.push(
-      '- `native/`: generated Rust sources, harness results and raw measurements.',
+      '- `native/`: generated Rust sources, native correctness results and raw measurements.',
       '- `search/`: search history and seeds.',
     );
   }

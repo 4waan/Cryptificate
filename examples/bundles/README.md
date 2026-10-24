@@ -13,7 +13,7 @@ A bundle contains:
 | `report.json` | claims, witnesses, execution steps, provenance |
 | `lean/Cert.lean`, `lean/audit.txt` | the generated certificate and the checker's output (experiments: one directory per circuit) |
 | `toolchain.json` | `lean-toolchain`, Lake manifest pins, `Cargo.lock` sha256, `rustc -V` |
-| `native/` | generated Rust sources, harness results, raw measurements (when native steps ran) |
+| `native/` | generated Rust sources, correctness results, raw measurements (when native steps ran) |
 | `search/` | search history and seeds (experiments) |
 | `engine/diagnose.json` | the engine's unchecked diagnostics |
 | `VERIFY.md` | how to replay the bundle |

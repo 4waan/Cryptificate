@@ -442,7 +442,7 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
   checkpoint();
   if (stop) return finish(stop);
 
-  // native correctness for all circuits in one harness run
+  // native correctness for all circuits in one engine run
   const correctness = await runNative(env, ctx, {
     design,
     target,
