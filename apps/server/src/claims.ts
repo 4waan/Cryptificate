@@ -176,7 +176,7 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
       const title = activityTitle(request, info);
       const pre = info.id === 'activity.bound' ? ['matrix.mds', 'offsets.dispersion'] : ['external.mds'];
       const missing = pre.filter((p) => !isProved(p as ClaimId));
-      if (missing.length > 0 && !(byClaim.get(info.id)?.accepted ?? false)) {
+      if (missing.length > 0) {
         claims.push(
           notEstablished(
             { ...info, title },
