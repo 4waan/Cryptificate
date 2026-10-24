@@ -87,4 +87,8 @@ test('verdict: confirmed only when both confirmation sessions clear the threshol
   assert.equal(decideVerdict([cmp(1, 1.05), cmp(2, 1.05)], eligible), 'inconclusive');
   assert.equal(decideVerdict([cmp(1, 0.9, 0.95), cmp(2, 0.9, 0.97), cmp(3, 0.9, 0.99)], eligible), 'no improvement');
   assert.equal(decideVerdict([cmp(2, 1.5), cmp(3, 1.5)], new Set()), 'inconclusive');
+  // every baseline counts
+  const vsDirect = (session: number, lo: number) => ({ ...cmp(session, lo), baseline: 'baseline-direct' });
+  assert.equal(decideVerdict([cmp(2, 1.05), cmp(3, 1.05), vsDirect(2, 1.5), vsDirect(3, 1.01)], eligible), 'inconclusive');
+  assert.equal(decideVerdict([cmp(2, 1.05), cmp(3, 1.05), vsDirect(2, 1.5), vsDirect(3, 1.5)], eligible), 'locally confirmed');
 });

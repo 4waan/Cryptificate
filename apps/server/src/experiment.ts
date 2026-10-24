@@ -251,15 +251,18 @@ export function parseBenchmark(doc: unknown, session: number): { machine: Machin
 
 /**
  * "locally confirmed" only when some proved-equivalent candidate has a 95%
- * CI lower bound above the threshold against the baseline in BOTH
- * confirmation sessions (2 and 3); "no improvement" when no candidate was
- * ever faster; otherwise "inconclusive".
+ * CI lower bound above the threshold against every baseline it was compared
+ * with, in BOTH confirmation sessions (2 and 3); "no improvement" when no
+ * candidate was ever faster; otherwise "inconclusive".
  */
 export function decideVerdict(comparisons: readonly Comparison[], eligible: ReadonlySet<string>, primaryBytes = 65536): MeasurementVerdict {
   const relevant = comparisons.filter((c) => eligible.has(c.candidate) && (c.bytes === undefined || c.bytes === primaryBytes));
   if (relevant.length === 0) return 'inconclusive';
   for (const cand of eligible) {
-    const confirmed = [2, 3].every((s) => relevant.some((c) => c.candidate === cand && c.session === s && c.ci95[0] > CONFIRMATION_THRESHOLD));
+    const confirmed = [2, 3].every((session) => {
+      const inSession = relevant.filter((c) => c.candidate === cand && c.session === session);
+      return inSession.length > 0 && inSession.every((c) => c.ci95[0] > CONFIRMATION_THRESHOLD);
+    });
     if (confirmed) return 'locally confirmed';
   }
   if (relevant.every((c) => c.ratio <= 1)) return 'no improvement';
