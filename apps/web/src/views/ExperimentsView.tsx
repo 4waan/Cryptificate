@@ -38,7 +38,7 @@ export function VerdictLine({ report }: { report: ExperimentReport }) {
       <p className="small muted">
         Measured on {m.machine.cpu}, {m.machine.os}, {m.machine.ramMiB.toLocaleString('en-US')} MiB RAM,{' '}
         {m.machine.rustc}
-        {m.machine.flags ? `, flags ${m.machine.flags}` : ''}. Applies to this machine only.
+        {m.machine.flags ? `, flags ${m.machine.flags}` : ''}. Applies to that machine only.
       </p>
     </div>
   );

@@ -84,7 +84,16 @@ describe('experiment summary', () => {
   });
 
   it('only says faster when the verdict is locally confirmed', () => {
-    expect(savingsSummary(report('locally confirmed')).timing).toMatch(/^Faster on this machine/);
+    expect(savingsSummary(report('locally confirmed')).timing).toMatch(/^Faster on the machine that ran it/);
     expect(savingsSummary(report('no improvement')).timing).toMatch(/^No improvement/);
+  });
+
+  it('says when the timed outputs did not match', () => {
+    const r = report('inconclusive');
+    r.measurements!.sessions = [
+      { session: 1, checksumsAgree: true, samplesConsistent: true },
+      { session: 2, checksumsAgree: false, samplesConsistent: true },
+    ];
+    expect(savingsSummary(r).timing).toMatch(/did not all match in session 2, so no speed-up is claimed/);
   });
 });

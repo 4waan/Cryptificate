@@ -120,17 +120,17 @@ export function savingsSummary(report: ExperimentReport): Savings {
     .map((x) => x.session);
   let timing: string;
   if (m.verdict === 'locally confirmed') {
-    timing = `Faster on this machine: the 95% interval stays above ${THRESHOLD} in both confirmation sessions.${shown}`;
+    timing = `Faster on the machine that ran it: the 95% interval stays above ${THRESHOLD} in both confirmation sessions.${shown}`;
   } else if (m.verdict === 'inconclusive' && mismatched.length > 0) {
     timing = `Timing is inconclusive: the timed outputs did not all match in session ${mismatched.join(' and ')}, so no speed-up is claimed.${shown}`;
   } else if (m.verdict === 'inconclusive') {
-    timing = `Timing is inconclusive on this machine: the 95% interval does not clear ${THRESHOLD}.${shown}`;
+    timing = `Timing is inconclusive on the machine that ran it: the 95% interval does not clear ${THRESHOLD}.${shown}`;
     if (fewer) {
       timing +=
         ' An optimizing compiler can already share these subexpressions in the reference, so fewer operations in the circuit need not mean faster machine code.';
     }
   } else {
-    timing = `No improvement on this machine: the candidate is not faster than the reference.${shown}`;
+    timing = `No improvement on the machine that ran it: the candidate is not faster than the reference.${shown}`;
   }
   return { structural, timing };
 }
