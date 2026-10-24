@@ -3,6 +3,7 @@
 pub mod codegen;
 pub mod compile;
 pub mod correctness;
+pub mod stats;
 pub mod variant;
 pub mod word;
 
