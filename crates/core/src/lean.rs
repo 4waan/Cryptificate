@@ -384,16 +384,12 @@ fn aes_value(rounds: u32, offsets: &[usize], a: &AesLikeDiagnostics, name: &str)
         "OFFSETS" => numerals(offsets),
         "ROUNDS" => rounds.to_string(),
         "VECTOR" => lean_vector(&a.matrix.branch_witness.as_ref()?.input),
-        "VECTOR_IMAGE" => lean_vector(&a.matrix.branch_witness.as_ref()?.output),
         "SBOX_TABLE" => lean_vector(&a.sbox.table),
         "SBOX_INV" => lean_vector(a.sbox.inverse.as_ref()?),
         "X1" => lean_literal(&collision?.x1),
         "X2" => lean_literal(&collision?.x2),
-        "Y" => lean_literal(&collision?.y),
         "ROW_I" => offset_collision?.rows[0].to_string(),
         "ROW_J" => offset_collision?.rows[1].to_string(),
-        "OFFSET" => offset_collision?.offset.to_string(),
-        "BOUND" => a.activity.bound?.to_string(),
         _ => return None,
     })
 }
@@ -408,32 +404,20 @@ fn hades_value(
         Role::External => (&d.external, &h.external),
         Role::Internal => (&d.internal, &h.internal),
     };
-    let collision = h.power.collision;
     Some(match name {
         "MATRIX3" => lean_matrix(m),
         "EXTERNAL" => lean_matrix(&d.external),
         "INTERNAL" => lean_matrix(&d.internal),
-        "VECTOR" => match role {
-            // A singular internal matrix is refuted by a kernel vector.
-            Role::Internal => lean_vector(analysis.kernel_vector.as_ref()?),
-            Role::External => lean_vector(&analysis.branch_witness.as_ref()?.input),
-        },
-        "VECTOR_IMAGE" => lean_vector(&analysis.branch_witness.as_ref()?.output),
-        "KERNEL_VECTOR" => lean_vector(analysis.kernel_vector.as_ref()?),
+        // The low-weight witness of the matrix the fragment is about.
+        "VECTOR" => lean_vector(&analysis.branch_witness.as_ref()?.input),
+        // A nonzero vector the internal matrix sends to zero.
+        "KERNEL_VECTOR" => lean_vector(h.internal.kernel_vector.as_ref()?),
         "EXPONENT" => h.power.exponent.to_string(),
         "INV_EXPONENT" => h.power.inverse_exponent.as_ref()?.to_str_radix(10),
         "K" => h.power.k?.to_string(),
-        "GCD" => h.power.gcd.to_string(),
-        "OMEGA" | "X2" => lean_literal(&collision?.omega),
-        "X1" => {
-            collision?;
-            "1".into()
-        }
-        "BASE" => collision?.base.to_string(),
+        "OMEGA" => lean_literal(&h.power.collision?.omega),
         "FULL_ROUNDS" => d.full_rounds.to_string(),
         "PARTIAL_ROUNDS" => d.partial_rounds.to_string(),
-        "HALF_FULL_ROUNDS" => (d.full_rounds / 2).to_string(),
-        "ROUNDS" => d.total_rounds().to_string(),
         _ => return None,
     })
 }
@@ -522,6 +506,9 @@ fn echo_value(req: &AnalysisRequest, diag: &Diagnostics, key: &str) -> Option<Va
             "candFullRounds" => json!(d.full_rounds),
             "candPartialRounds" => json!(d.partial_rounds),
             "candPartialMask" => json!(d.partial_mask),
+            "witnessVector" => to(&h.external.branch_witness.as_ref()?.input),
+            "witnessKernel" => to(h.internal.kernel_vector.as_ref()?),
+            "witnessRoot" => to(&h.power.collision?.omega),
             "candProgram" => match &req.program {
                 Some(AnyProgram::Bn254(p)) => program_echo(p),
                 _ => return None,
@@ -610,8 +597,7 @@ fn always_constants(req: &AnalysisRequest) -> Vec<&'static str> {
                 "const_external_bn254",
                 "const_internal_bn254",
                 "const_exponent",
-                "const_full_rounds",
-                "const_partial_rounds",
+                "const_rounds_hades",
             ];
             if req.program.is_some() {
                 v.push("const_program_bn254");
