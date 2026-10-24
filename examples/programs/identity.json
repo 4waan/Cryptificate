@@ -1,0 +1,7 @@
+{
+  "field": "gf256",
+  "width": 4,
+  "name": "identity",
+  "instructions": [],
+  "outputs": [0, 1, 2, 3]
+}

@@ -1,0 +1,20 @@
+{
+  "model": "hades/bn254/v1",
+  "field": "bn254",
+  "width": 3,
+  "external": [
+    ["2", "1", "1"],
+    ["1", "2", "1"],
+    ["1", "1", "2"]
+  ],
+  "internal": [
+    ["2", "1", "1"],
+    ["1", "2", "1"],
+    ["1", "1", "3"]
+  ],
+  "fullRounds": 8,
+  "partialRounds": 56,
+  "sbox": { "kind": "power", "exponent": 5 },
+  "partialMask": [true, false, false],
+  "constants": { "kind": "reference" }
+}
