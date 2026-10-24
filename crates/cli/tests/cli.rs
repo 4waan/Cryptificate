@@ -399,6 +399,60 @@ fn templates_found_from_env_and_from_other_directories() {
     assert_eq!(nested.json, via_env.json);
 }
 
+/// Requests beyond the story cases that exercise the remaining refutation
+/// and table fragments: an explicit S-box table (bijective, and with a
+/// collision), a HADES circuit checked against the internal matrix, and a
+/// HADES design with a non-MDS external and a singular internal matrix.
+fn refutation_cases() -> Vec<(String, String)> {
+    // x -> 7x + 3 (mod 256) is a bijection of the bytes, since 7 is odd.
+    let table: Vec<String> = (0..=255u8)
+        .map(|x| format!("{:02X}", x.wrapping_mul(7).wrapping_add(3)))
+        .collect();
+    let mut table_design = example("designs/aes.json");
+    table_design["sbox"] = json!({"kind": "table", "table": table});
+    let mut collision = table_design.clone();
+    collision["sbox"]["table"][1] = collision["sbox"]["table"][0].clone();
+    // s = x0 + x1 + x2; y = (s + x0, s + x1, s + x2 + x2): the internal matrix.
+    let add = |a: usize, b: usize| json!({"op": "add", "a": a, "b": b});
+    let internal_circuit = json!({
+        "field": "bn254", "width": 3,
+        "instructions": [add(0, 1), add(3, 2), add(4, 0), add(4, 1), add(4, 2), add(7, 2)],
+        "outputs": [5, 6, 8]
+    });
+    let mut weak = example("designs/poseidon2-bn254.json");
+    weak["external"] = json!([["1", "1", "0"], ["0", "1", "1"], ["1", "0", "1"]]);
+    weak["internal"] = json!([["1", "1", "0"], ["1", "1", "0"], ["0", "0", "1"]]);
+    vec![
+        (
+            "table-sbox".into(),
+            json!({ "design": table_design }).to_string(),
+        ),
+        (
+            "table-collision".into(),
+            json!({ "design": collision }).to_string(),
+        ),
+        (
+            "hades-internal-target".into(),
+            json!({
+                "design": example("designs/poseidon2-bn254.json"),
+                "program": example("programs/poseidon2-external-shared-sum.json"),
+                "target": "internal"
+            })
+            .to_string(),
+        ),
+        ("hades-weak".into(), json!({ "design": weak }).to_string()),
+        (
+            "hades-internal-circuit".into(),
+            json!({"design": example("designs/poseidon2-bn254.json"), "program": internal_circuit.clone(), "target": "internal"})
+                .to_string(),
+        ),
+        (
+            "hades-external-mismatch".into(),
+            json!({"design": example("designs/poseidon2-bn254.json"), "program": internal_circuit}).to_string(),
+        ),
+    ]
+}
+
 /// Runs Lean on each emitted certificate and checks that every expected
 /// theorem is audited with its expected statement and allowed axioms, and
 /// that every echoed input matches.
@@ -408,8 +462,13 @@ fn lean_accepts_emitted_certificates() {
     let dir = std::env::temp_dir().join(format!("cryptificate-cli-lean-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let lake = std::env::var("LAKE").unwrap_or_else(|_| "lake".into());
-    for &(name, design, program) in CASES {
-        let e = run(&["emit-lean"], &analysis_request(design, program)).json;
+    let mut requests: Vec<(String, String)> = CASES
+        .iter()
+        .map(|&(name, design, program)| (name.to_string(), analysis_request(design, program)))
+        .collect();
+    requests.extend(refutation_cases());
+    for (name, request) in &requests {
+        let e = run(&["emit-lean"], request).json;
         let file = dir.join(format!("{name}.lean"));
         std::fs::write(&file, e["source"].as_str().unwrap()).unwrap();
         let out = Command::new(&lake)
@@ -448,10 +507,19 @@ fn lean_accepts_emitted_certificates() {
         for (k, v) in e["inputsEcho"].as_object().unwrap() {
             assert_eq!(inputs.get(k), Some(v), "{name}: echo {k}");
         }
-        eprintln!(
-            "{name}: {} theorem(s) accepted",
-            e["expect"].as_array().unwrap().len()
-        );
+        let certified: Vec<String> = e["expect"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| {
+                format!(
+                    "{} {}",
+                    x["fragment"].as_str().unwrap(),
+                    x["status"].as_str().unwrap()
+                )
+            })
+            .collect();
+        eprintln!("{name}: accepted {}", certified.join(", "));
     }
     std::fs::remove_dir_all(&dir).ok();
 }
