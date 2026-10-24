@@ -49,18 +49,16 @@ fn err(code: ErrorCode, path: impl Into<String>, msg: impl Into<String>) -> Vali
 }
 
 fn origin_at(v: &Value, path: &str) -> Result<CandidateOrigin> {
+    const EXPECTED: &str = "search, baseline-direct, baseline-known or user";
     Ok(match input::str_at(v, path)? {
         "search" => CandidateOrigin::Search,
         "baseline-direct" => CandidateOrigin::BaselineDirect,
         "baseline-known" => CandidateOrigin::BaselineKnown,
         "user" => CandidateOrigin::User,
-        s => return Err(err(
-            ErrorCode::BadType,
-            path,
-            format!(
-                "unknown origin {s:?} (expected search, baseline-direct, baseline-known or user)"
-            ),
-        )),
+        s => {
+            let msg = format!("unknown origin {s:?} (expected {EXPECTED})");
+            return Err(err(ErrorCode::BadType, path, msg));
+        }
     })
 }
 
