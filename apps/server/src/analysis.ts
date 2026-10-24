@@ -149,6 +149,23 @@ export async function runAnalysis(env: PipelineEnv, ctx: JobContext, raw: Analys
     return { state: 'completed', report };
   }
 
+  // Partial report: the Lean-backed claims are final once Lean has run.
+  if (cert?.emit) {
+    const partial = buildAnalysisClaims({
+      request,
+      expect: cert.emit.expect,
+      verdicts: cert.acceptance?.verdicts ?? [],
+      diagnostics,
+      ...(cert.problem ? { leanProblem: cert.problem } : {}),
+      native: null,
+      skipped: cert.emit.skipped,
+    });
+    for (const c of partial) {
+      if (c.id === 'native.correctness' && request.program && !env.skipNative) c.note = 'Native correctness is running.';
+    }
+    ctx.setReport(makeReport(request, inputDigest, partial, 'running', cert.leanSourceSha256 ? { leanSourceSha256: cert.leanSourceSha256 } : {}));
+  }
+
   // 5. native correctness of the submitted circuit
   let native: NativeOutcome | { unavailable: string } | null = null;
   if (request.program && env.skipNative) {
