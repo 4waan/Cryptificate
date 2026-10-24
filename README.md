@@ -127,7 +127,7 @@ Every report labels its origin: **Live**, **Cached exact result** or **Recorded 
 
 ## From Rust source to the model
 
-The native code Cryptificate measures is built on [`crates/kernels`](crates/kernels). Its GF(2⁸) arithmetic and its AES-like round are translated to Lean by [Charon and Aeneas](https://github.com/AeneasVerif/aeneas) and proved equal to the mathematical model, so for GF(2⁸) designs the field operations the timed code calls are, at the source level, the ones in the proofs. Charon, Aeneas and `rustc` are trusted; the generated circuit code is checked by tests, not refined; the BN254 arithmetic comes from arkworks and is not covered.
+The native code Cryptificate measures is built on [`crates/kernels`](crates/kernels). Its GF(2⁸) arithmetic and its AES-like round are translated to Lean by [Charon and Aeneas](https://github.com/AeneasVerif/aeneas) and proved equal to the mathematical model, so for GF(2⁸) designs the field operations the timed code calls are, at the source level, the ones in the proofs.
 
 | Rust | Lean theorem, for all inputs and with no panic | Connected to |
 |---|---|---|
