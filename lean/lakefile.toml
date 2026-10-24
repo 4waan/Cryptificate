@@ -1,0 +1,18 @@
+name = "Cryptificate"
+version = "0.1.0"
+keywords = ["math", "cryptography"]
+defaultTargets = ["Cryptificate"]
+
+[leanOptions]
+pp.unicode.fun = true
+relaxedAutoImplicit = false
+autoImplicit = false
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "WideTrail"
+git = "https://github.com/4waan/Wide-Trail-formal-verification"
+rev = "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+
+[[lean_lib]]
+name = "Cryptificate"
