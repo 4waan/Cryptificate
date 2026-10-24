@@ -135,6 +135,10 @@ function diagnosticHint(diagnostics: unknown, claim: ClaimId): boolean | null {
   return null;
 }
 
+function listText(items: readonly string[]): string {
+  return items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
 function capitalize(s: string): string {
   const t = s.trim();
   const out = t ? t[0]!.toUpperCase() + t.slice(1) : t;
@@ -185,14 +189,19 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
   for (const info of designClaimsFor(request.design.model)) {
     if (info.id === 'activity.bound' || info.id === 'activity.outer') {
       const title = activityTitle(request, info);
-      const pre = info.id === 'activity.bound' ? ['matrix.mds', 'offsets.dispersion'] : ['external.mds'];
+      // The bound counts active S-boxes of trails; it only applies to this
+      // design when its diffusion layer and S-box have been certified.
+      const pre =
+        info.id === 'activity.bound'
+          ? ['matrix.mds', 'offsets.dispersion', 'sbox.bijective']
+          : ['external.mds', 'internal.invertible', 'sbox.bijective'];
       const missing = pre.filter((p) => !isProved(p as ClaimId));
       if (missing.length > 0) {
         claims.push(
           notEstablished(
             { ...info, title },
             'precondition-failed',
-            `${NOT_ESTABLISHED_TEXT[0]!.toUpperCase()}${NOT_ESTABLISHED_TEXT.slice(1)}: the bound needs ${missing.join(' and ')} to be proved first. This is not a refutation.`,
+            `${NOT_ESTABLISHED_TEXT[0]!.toUpperCase()}${NOT_ESTABLISHED_TEXT.slice(1)}: the bound needs ${listText(missing)} to be proved first. This is not a refutation.`,
           ),
         );
         continue;
