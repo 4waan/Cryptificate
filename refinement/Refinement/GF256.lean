@@ -28,7 +28,7 @@ The `*_field` corollaries restate them with the field operations of WideTrail's 
 the Rust functions.
 
 All proofs are checked by the kernel without `native_decide`, `bv_decide` or `sorry`; the
-`#guard_msgs` blocks at the end of `Refinement.lean` pin the axioms they use.
+`#guard_msgs` blocks in `Refinement/Axioms.lean` pin the axioms they use.
 -/
 
 set_option autoImplicit false
