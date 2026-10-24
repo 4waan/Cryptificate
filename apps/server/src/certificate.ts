@@ -56,18 +56,26 @@ export function parseEmitLean(doc: unknown): EmitLeanOutput | null {
  */
 export function derivedEcho(req: AnalysisRequest): Record<string, unknown> {
   const d = req.design;
+  const out: Record<string, unknown> = {};
   if (d.model === 'aes-like/gf256/v1') {
-    const out: Record<string, unknown> = { candMatrix: d.matrix, candOffsets: d.offsets, candRounds: d.rounds };
-    if (d.sbox.kind === 'table') out['candSboxTable'] = d.sbox.table;
-    return out;
+    out['candMatrix'] = d.matrix;
+    out['candOffsets'] = d.offsets;
+    out['candRounds'] = d.rounds;
+    // the S-box is echoed as its request spec: {"kind":"aes"} or {"kind":"table","table":[...]}
+    out['candSboxTable'] = d.sbox.kind === 'aes' ? { kind: 'aes' } : { kind: 'table', table: d.sbox.table };
+  } else {
+    out['candExternal'] = d.external;
+    out['candInternal'] = d.internal;
+    out['candExponent'] = d.sbox.exponent;
+    out['candFullRounds'] = d.fullRounds;
+    out['candPartialRounds'] = d.partialRounds;
   }
-  return {
-    candExternal: d.external,
-    candInternal: d.internal,
-    candExponent: d.sbox.exponent,
-    candFullRounds: d.fullRounds,
-    candPartialRounds: d.partialRounds,
-  };
+  if (req.program) {
+    // the display name is not part of the certificate
+    const p = req.program;
+    out['candProgram'] = { field: p.field, width: p.width, instructions: p.instructions, outputs: p.outputs };
+  }
+  return out;
 }
 
 export interface CertificateCheck {
@@ -164,9 +172,11 @@ export async function checkCertificate(env: PipelineEnv, ctx: JobContext, reques
   const derived = derivedEcho(request);
   const echoed = parseLeanOutput(outcome.stdout, [leanFile]).inputs;
   const engineMismatch: string[] = [];
+  // every candidate constant the file defines must be echoed
+  const defined = new Set([...emit.source.matchAll(/^(?:noncomputable\s+)?(?:def|abbrev)\s+(cand[A-Za-z0-9_]*)\b/gm)].map((m) => m[1]!));
   for (const [k, v] of Object.entries(derived)) {
     if (k in expected && !sameEcho(expected[k], v)) engineMismatch.push(k);
-    if (k in expected || echoed.has(k)) expected[k] = v;
+    if (k in expected || echoed.has(k) || defined.has(k)) expected[k] = v;
   }
   const acceptance = acceptCertificate(emit.expect, expected, outcome, [leanFile]);
   if (engineMismatch.length > 0 && acceptance.inputsMatch) {
