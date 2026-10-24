@@ -92,18 +92,22 @@ def inputLine {α : Type} [ToCanonical α] (key : String) (value : α) : String 
 def echoInput {α : Type} [ToCanonical α] (key : String) (value : α) : IO Unit :=
   IO.println (inputLine key value)
 
-#guard inputLine "v" (gfVec4 0x1B 0x80 0 0xff) = "CRYPTIFICATE_INPUT v [\"1B\",\"80\",\"00\",\"FF\"]"
+#guard inputLine "v" (gfVec4 0x1B 0x80 0 0xff) =
+  "CRYPTIFICATE_INPUT v [\"1B\",\"80\",\"00\",\"FF\"]"
 
 #guard inputLine "m" (bnMat3 2 1 1 1 2 1 1 1 2) =
   "CRYPTIFICATE_INPUT m [[\"2\",\"1\",\"1\"],[\"1\",\"2\",\"1\"],[\"1\",\"1\",\"2\"]]"
 
-#guard inputLine "x" (bn 21888242871839275222246405745257275088548364400416034343698204186575808495618) =
+-- `p + 1` reduces to `1`.
+#guard inputLine "x"
+    (bn 21888242871839275222246405745257275088548364400416034343698204186575808495618) =
   "CRYPTIFICATE_INPUT x \"1\""
 
 #guard inputLine "o" (offsets4 0 1 2 3) = "CRYPTIFICATE_INPUT o [0,1,2,3]"
 
 #guard inputLine "p" (gfProgram4 [.add 0 1, .mul 0x02 4] 5 1 2 3) =
   "CRYPTIFICATE_INPUT p {\"field\":\"gf256\",\"width\":4,\"instructions\":" ++
-    "[{\"op\":\"add\",\"a\":0,\"b\":1},{\"op\":\"mul\",\"k\":\"02\",\"a\":4}],\"outputs\":[5,1,2,3]}"
+    "[{\"op\":\"add\",\"a\":0,\"b\":1},{\"op\":\"mul\",\"k\":\"02\",\"a\":4}]," ++
+    "\"outputs\":[5,1,2,3]}"
 
 end Cryptificate.Audit

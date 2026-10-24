@@ -80,7 +80,8 @@ theorem get_map (f : α → β) (R : Regs α) (d : α) (r : ℕ) :
   unfold get map
   split_ifs <;> simp
 
-theorem map_push (f : α → β) (R : Regs α) (v : α) : (R.push v).map f = (R.map f).push (f v) := rfl
+theorem map_push (f : α → β) (R : Regs α) (v : α) :
+    (R.push v).map f = (R.map f).push (f v) := rfl
 
 theorem map_ofFn (f : α → β) (x : Fin n → α) : (ofFn x).map f = ofFn (f ∘ x) := by
   simp [ofFn, map, List.map_reverse, List.map_ofFn]
@@ -141,7 +142,8 @@ namespace Program
 variable [Zero K] [Add K] [Mul K]
 
 /-- All registers after running `p` on the input `x`. -/
-def registers (p : Program K n) (x : Fin n → K) : Regs K := run (valueOps K) (Regs.ofFn x) p.instrs
+def registers (p : Program K n) (x : Fin n → K) : Regs K :=
+  run (valueOps K) (Regs.ofFn x) p.instrs
 
 /-- The output of `p` on the input `x`: output `j` is register `p.outputs j`. -/
 def eval (p : Program K n) (x : Fin n → K) : Fin n → K :=
@@ -166,7 +168,7 @@ structure Program.WellFormed (p : Program K n) : Prop where
   bounded : p.instrs.length ≤ maxInstrs
   outputs : ∀ j, p.outputs j < n + p.instrs.length
 
-/-- Boolean check that every instruction reads only registers below `len`, `len + 1`, … in turn. -/
+/-- Boolean check that the instructions read only registers below `len`, `len + 1`, … in turn. -/
 def operandsBelow : ℕ → List (Instr K) → Bool
   | _, [] => true
   | len, i :: is => i.operands.all (fun r => decide (r < len)) && operandsBelow (len + 1) is
