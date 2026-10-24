@@ -29,8 +29,11 @@ const STEP_TEXT: Record<string, string> = {
   'benchmark-3': 'Timing, session 3',
 };
 
+/** Human label for a pipeline step; "lean:c1" reads "Lean check (c1)". */
 export function stepLabel(name: string): string {
-  return STEP_TEXT[name] ?? name.replace(/[-_]/g, ' ');
+  const [base = name, sub] = name.split(':');
+  const label = STEP_TEXT[base] ?? base.replace(/[-_]/g, ' ');
+  return sub ? `${label} (${sub})` : label;
 }
 
 export function runStateText(run: Run): string {
@@ -65,7 +68,7 @@ export function RunProgress({ run, compact = false }: { run: Run; compact?: bool
       {!compact && run.steps.length ? (
         <ol className="progress-steps" aria-label="Steps">
           {run.steps.map((st) => (
-            <li key={st.name} data-state={st.state}>
+            <li key={st.name} data-state={st.state} title={st.detail}>
               {st.state === 'running' ? <span className="spinner" aria-hidden="true" /> : null}
               <span>{stepLabel(st.name)}</span>
               <span className="muted">

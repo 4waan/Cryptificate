@@ -946,7 +946,8 @@ table.data th.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-table.data tr[data-highlight='true'] td {
+table.data tr[data-highlight='true'] td,
+table.data tr[data-highlight='true'] th {
   background: var(--accent-soft);
 }
 table.data tbody tr:last-child td {

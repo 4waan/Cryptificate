@@ -106,7 +106,13 @@ export function savingsSummary(report: ExperimentReport): Savings {
     : `${candidateLabel(best)} uses the same operation counts as ${referenceName(ref)}.`;
 
   const m = report.measurements;
-  if (!m) return { structural, timing: 'Not timed in this run.' };
+  if (!m) {
+    const skipped = (report.execution?.steps ?? report.checkpoints ?? []).find(
+      (s) => /^bench|tim/.test(s.name) && s.detail,
+    );
+    const why = skipped?.detail ? `: ${skipped.detail.charAt(0).toLowerCase()}${skipped.detail.slice(1)}` : '.';
+    return { structural, timing: `Not timed in this run${why}` };
+  }
   const comps = comparisonsFor(report, best.id, ref.id);
   const shown = comps.length ? ` Speedup over ${referenceName(ref)}, ${comps.map(fmtCi).join('; ')}.` : '';
   let timing: string;
