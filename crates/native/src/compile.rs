@@ -206,19 +206,51 @@ pub fn build_variant(opts: &BuildOptions, v: &VariantSource) -> Result<BuiltVari
     })
 }
 
-/// Output of `<cargo> -V` run with the build environment, or `"unknown"`.
+/// Output of `<cargo> -V` run with the build environment, without the build
+/// date (see [`strip_build_date`]), or `"unknown"`.
 pub fn cargo_version(opts: &BuildOptions) -> String {
     let mut cmd = cargo_command(opts);
     cmd.arg("-V");
-    command_line(cmd)
+    strip_build_date(&command_line(cmd))
 }
 
-/// Output of `rustc -V` (or `$RUSTC -V`), or `"unknown"`.
+/// Output of `rustc -V` (or `$RUSTC -V`), without the build date (see
+/// [`strip_build_date`]), or `"unknown"`.
 pub fn rustc_version() -> String {
     let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
     let mut cmd = Command::new(rustc);
     cmd.arg("-V");
-    command_line(cmd)
+    strip_build_date(&command_line(cmd))
+}
+
+/// Drops the build date from a tool version string, keeping the commit:
+/// `"rustc 1.97.0 (2d8144b78 YYYY-MM-DD)"` becomes `"rustc 1.97.0 (2d8144b78)"`.
+/// Reports carry no dates; the commit identifies the toolchain. Other
+/// strings are returned unchanged.
+pub fn strip_build_date(version: &str) -> String {
+    let is_date = |d: &str| {
+        let b = d.as_bytes();
+        b.len() == 10
+            && b.iter().enumerate().all(|(i, c)| match i {
+                4 | 7 => *c == b'-',
+                _ => c.is_ascii_digit(),
+            })
+    };
+    let is_commit = |h: &str| {
+        (7..=40).contains(&h.len()) && h.bytes().all(|c| matches!(c, b'0'..=b'9' | b'a'..=b'f'))
+    };
+    let Some(open) = version.rfind('(') else {
+        return version.to_string();
+    };
+    let Some(inner) = version[open + 1..].strip_suffix(')') else {
+        return version.to_string();
+    };
+    match inner.split(' ').collect::<Vec<_>>()[..] {
+        [commit, date] if is_commit(commit) && is_date(date) => {
+            format!("{}({commit})", &version[..open])
+        }
+        _ => version.to_string(),
+    }
 }
 
 fn command_line(mut cmd: Command) -> String {
@@ -228,4 +260,30 @@ fn command_line(mut cmd: Command) -> String {
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "unknown".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::strip_build_date;
+
+    #[test]
+    fn version_strings_carry_no_dates() {
+        assert_eq!(
+            strip_build_date("rustc 1.97.0 (2d8144b78 0000-00-00)"),
+            "rustc 1.97.0 (2d8144b78)"
+        );
+        assert_eq!(
+            strip_build_date("cargo 1.97.0 (c980f4866 0000-00-00)"),
+            "cargo 1.97.0 (c980f4866)"
+        );
+        for unchanged in [
+            "unknown",
+            "rustc 1.97.0",
+            "rustc 1.97.0 (2d8144b78)",
+            "rustc 1.97.0 (not-a-commit 0000-00-00)",
+            "rustc 1.97.0 (2d8144b78 0000-00-00) extra",
+        ] {
+            assert_eq!(strip_build_date(unchanged), unchanged);
+        }
+    }
 }
