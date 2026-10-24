@@ -21,9 +21,9 @@ const THEME_KEY = 'cryptificate.theme';
 function readTheme(): Theme {
   try {
     const t = window.localStorage.getItem(THEME_KEY);
-    return t === 'light' || t === 'dark' ? t : 'system';
+    return t === 'light' || t === 'dark' || t === 'system' ? t : 'dark';
   } catch {
-    return 'system';
+    return 'dark';
   }
 }
 
@@ -32,7 +32,8 @@ function applyTheme(theme: Theme): void {
   if (theme === 'system') delete root.dataset.theme;
   else root.dataset.theme = theme;
   try {
-    if (theme === 'system') window.localStorage.removeItem(THEME_KEY);
+    // Dark is the default, so "system" is stored explicitly to survive a reload.
+    if (theme === 'dark') window.localStorage.removeItem(THEME_KEY);
     else window.localStorage.setItem(THEME_KEY, theme);
   } catch {
     // Storage may be unavailable; the theme still applies for this visit.
