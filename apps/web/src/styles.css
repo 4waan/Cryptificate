@@ -580,7 +580,11 @@ textarea {
   align-items: start;
 }
 @media (max-width: 1000px) {
-  .grid-inputs,
+  .grid-inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1239px) {
   .grid-story {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -660,6 +664,8 @@ textarea {
 /* ---------- matrix and byte cells ---------- */
 
 .matrix {
+  justify-self: start;
+  width: fit-content;
   display: inline-grid;
   gap: 6px;
   padding: var(--space-2);
@@ -689,6 +695,7 @@ textarea {
   background: var(--bad-bg);
 }
 .matrix-static {
+  justify-self: start;
   display: inline-grid;
   gap: 4px;
   font-family: var(--font-mono);
@@ -1102,7 +1109,7 @@ table.data tbody tr:last-child td {
 
 .story {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: clamp(200px, 18vw, 260px) minmax(0, 1fr);
   gap: var(--space-6);
   align-items: start;
 }
