@@ -72,6 +72,7 @@ test('identity matrix: MDS refuted with a witness, activity not established, cir
     const act = claim(report, 'activity.bound');
     assert.equal(act.status, 'not_established');
     assert.equal(act.reason, 'precondition-failed');
+    assert.match(act.note, /needs the MDS property of the matrix to be proved first/);
     assert.equal(claim(report, 'circuit.equivalence').status, 'proved');
     assert.equal(claim(report, 'circuit.equivalence').evidence.label, 'Lean-checked circuit equivalence');
     assert.equal(claim(report, 'native.correctness').reason, 'native-unavailable');

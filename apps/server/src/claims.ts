@@ -147,6 +147,15 @@ function capitalize(s: string): string {
   return /[.!?]$/.test(out) ? out : `${out}.`;
 }
 
+/** What each precondition of an activity bound asks for, in words. */
+const PRECONDITION_TEXT: Partial<Record<ClaimId, string>> = {
+  'matrix.mds': 'the MDS property of the matrix',
+  'offsets.dispersion': 'distinct row offsets',
+  'sbox.bijective': 'a bijective S-box',
+  'external.mds': 'the MDS property of the external matrix',
+  'internal.invertible': 'an invertible internal matrix',
+};
+
 function activityTitle(req: AnalysisRequest, info: ClaimInfo): string {
   const d = req.design;
   if (info.id === 'activity.bound' && d.model === 'aes-like/gf256/v1' && d.width === 4) {
@@ -178,7 +187,7 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
     if (verdict) {
       const hint = diagnosticHint(diagnostics, info.id);
       const suffix = hint === null ? '' : ` The unchecked diagnostic ${hint ? 'suggests it holds' : 'suggests it fails'}.`;
-      return notEstablished(named, verdict.reason ?? 'lean-failed', `${verdict.detail}${suffix}`, witness);
+      return notEstablished(named, verdict.reason ?? 'lean-failed', `${capitalize(verdict.detail)}${suffix}`, witness);
     }
     if (inp.leanProblem && e) return notEstablished(named, inp.leanProblem.reason, inp.leanProblem.detail, witness);
     const skipped = inp.skipped?.find((x) => x.claim === info.id);
@@ -197,13 +206,13 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
         info.id === 'activity.bound'
           ? ['matrix.mds', 'offsets.dispersion', 'sbox.bijective']
           : ['external.mds', 'internal.invertible', 'sbox.bijective'];
-      const missing = pre.filter((p) => !isProved(p as ClaimId));
+      const missing = (pre as ClaimId[]).filter((p) => !isProved(p));
       if (missing.length > 0) {
         claims.push(
           notEstablished(
             { ...info, title },
             'precondition-failed',
-            `${NOT_ESTABLISHED_TEXT[0]!.toUpperCase()}${NOT_ESTABLISHED_TEXT.slice(1)}: the bound needs ${listText(missing)} to be proved first. This is not a refutation.`,
+            `${NOT_ESTABLISHED_TEXT[0]!.toUpperCase()}${NOT_ESTABLISHED_TEXT.slice(1)}: the bound needs ${listText(missing.map((p) => PRECONDITION_TEXT[p] ?? p))} to be proved first. This is not a refutation.`,
           ),
         );
         continue;
