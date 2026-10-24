@@ -115,9 +115,14 @@ export function savingsSummary(report: ExperimentReport): Savings {
   }
   const comps = comparisonsFor(report, best.id, ref.id);
   const shown = comps.length ? ` Speedup over ${referenceName(ref)}, ${comps.map(fmtCi).join('; ')}.` : '';
+  const mismatched = (m.sessions ?? [])
+    .filter((x) => x.checksumsAgree === false || x.samplesConsistent === false)
+    .map((x) => x.session);
   let timing: string;
   if (m.verdict === 'locally confirmed') {
     timing = `Faster on this machine: the 95% interval stays above ${THRESHOLD} in both confirmation sessions.${shown}`;
+  } else if (m.verdict === 'inconclusive' && mismatched.length > 0) {
+    timing = `Timing is inconclusive: the timed outputs did not all match in session ${mismatched.join(' and ')}, so no speed-up is claimed.${shown}`;
   } else if (m.verdict === 'inconclusive') {
     timing = `Timing is inconclusive on this machine: the 95% interval does not clear ${THRESHOLD}.${shown}`;
     if (fewer) {
