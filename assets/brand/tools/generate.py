@@ -42,7 +42,7 @@ PITCH, CELL, PAD = 16, 12, 2  # mark units
 RX = 0.75  # byte corner radius in mark units: a paper state diagram, not an app grid
 CAP = 36  # wordmark cap height in mark units (mark 60 : cap 36 = 5 : 3)
 GAP = 24  # visible gap between the last byte column and the C, in mark units
-TAGLINE = "Prove what still holds. Measure what changed."
+TAGLINE = "The verification workbench for changes to your cipher's diffusion layer"
 SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif"
 
 
