@@ -455,3 +455,35 @@ fn lean_accepts_emitted_certificates() {
     }
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[cfg(feature = "search")]
+#[test]
+fn search_passes_through() {
+    let design = example("designs/aes.json");
+    let input = json!({
+        "matrix": design["matrix"], "field": "gf256", "width": 4,
+        "profile": "quick", "seed": "01", "maxCandidates": 2, "synthMs": 2000
+    });
+    let out = run(&["search"], &input.to_string());
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(out.json["history"]
+        .as_array()
+        .is_some_and(|h| !h.is_empty()));
+    let again = run(&["search"], &input.to_string());
+    assert_eq!(
+        out.json["history"][0]["identity"],
+        again.json["history"][0]["identity"]
+    );
+    let help = Command::new(ENGINE).arg("--help").output().unwrap();
+    assert!(String::from_utf8(help.stdout)
+        .unwrap()
+        .lines()
+        .any(|l| l.trim_start().starts_with("search ")));
+
+    let bad = run(
+        &["search"],
+        &json!({"field": "gf256", "width": 4}).to_string(),
+    );
+    assert_eq!(bad.code, 2);
+    assert_eq!(bad.json["error"]["code"], "missing_field");
+}
