@@ -31,13 +31,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Build the replay site
+        run: |
+          npm ci
+          npm run build -w packages/schema
+          npm run build:replay -w apps/web
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          # The workbench in replay mode, with the recorded runs
+          path: apps/web/dist-replay
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
