@@ -11,7 +11,8 @@ written here, in the request's own form for the `sbox` field:
 * a table S-box prints as `{"kind":"table","table":["63","7C",…]}`, the `256` entries
   evaluated from the constant `candSboxTable` itself, so a mistranscribed entry shows up as a
   difference from the request;
-* the AES S-box prints as `{"kind":"aes"}`;
+* the AES S-box prints as `{"kind":"aes"}`; the certificate then uses WideTrail's `AES.sbox`,
+  which `aes_sbox_eq_table` shows to be the table printed in FIPS 197;
 * an inverse table, which the generator supplies as part of a bijectivity certificate and
   which is not a request field, prints as the plain array of its `256` entries.
 -/
