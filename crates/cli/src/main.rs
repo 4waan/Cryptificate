@@ -9,6 +9,10 @@
 //! * exit 1: the engine could not do its work (for example, no certificate
 //!   templates were found); stdout carries the same envelope with `path` `""`;
 //! * exit 64: the command line itself is wrong (message on stderr).
+//!
+//! `--quick-test` (with the `native` feature) runs the `native` subcommand
+//! with shortened timing settings for tests and smoke runs; such a run never
+//! reports a confirmed speed-up.
 
 mod locate;
 
@@ -27,7 +31,7 @@ use serde_json::{json, Value};
 const MAX_INPUT_BYTES: usize = 16 * 1024 * 1024;
 
 const USAGE_HEAD: &str = "\
-usage: cryptificate-engine [--lean-dir DIR] [--pretty] <subcommand> < input.json
+usage: cryptificate-engine [options] <subcommand> < input.json
 
 Reads one JSON document on stdin and writes one JSON document on stdout.
 Exit status: 0 success, 2 invalid input ({\"error\":{code,message,path}} on stdout),
@@ -39,7 +43,9 @@ subcommands:
   emit-lean   AnalysisRequest -> {source, expect, inputsEcho, fragments, skipped, inputDigest}
 ";
 
-/// Help lines of the subcommands compiled in through cargo features.
+/// Help lines of the subcommands compiled in through cargo features. The
+/// service detects the available subcommands from these lines, so a
+/// subcommand name appears in the help only when it is compiled in.
 const USAGE_FEATURES: &[(bool, &str)] = &[
     (
         cfg!(feature = "search"),
@@ -62,7 +68,16 @@ options:
                    default: $CRYPTIFICATE_LEAN_DIR, else the first lean/templates
                    above the current directory or the executable
   --pretty         indent the output
-  -h, --help       print this help
+";
+
+/// Help lines of options that only some builds accept.
+const USAGE_FEATURE_OPTIONS: &[(bool, &str)] = &[(
+    cfg!(feature = "native"),
+    "  --quick-test     shortened timing settings for the native subcommand\n\
+     \x20                  (tests and smoke runs; never confirms a speed-up)\n",
+)];
+
+const USAGE_TAIL: &str = "  -h, --help       print this help
   -V, --version    print the version
 ";
 
@@ -74,6 +89,12 @@ fn usage() -> String {
         }
     }
     s.push_str(USAGE_OPTIONS);
+    for (enabled, text) in USAGE_FEATURE_OPTIONS {
+        if *enabled {
+            s.push_str(text);
+        }
+    }
+    s.push_str(USAGE_TAIL);
     s
 }
 
@@ -125,6 +146,9 @@ struct Options {
     command: Command,
     lean_dir: Option<PathBuf>,
     pretty: bool,
+    /// Shortened timing settings for `native`.
+    #[cfg(feature = "native")]
+    quick_test: bool,
 }
 
 enum Parsed {
@@ -137,12 +161,16 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Parsed, String> 
     let mut command = None;
     let mut lean_dir = None;
     let mut pretty = false;
+    #[cfg(feature = "native")]
+    let mut quick_test = false;
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "-h" | "--help" | "help" => return Ok(Parsed::Help),
             "-V" | "--version" => return Ok(Parsed::Version),
             "--pretty" => pretty = true,
+            #[cfg(feature = "native")]
+            "--quick-test" => quick_test = true,
             "--lean-dir" => {
                 let dir = args.next().ok_or("--lean-dir needs a directory")?;
                 lean_dir = Some(PathBuf::from(dir));
@@ -160,10 +188,16 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Parsed, String> 
         }
     }
     let command = command.ok_or("missing subcommand")?;
+    #[cfg(feature = "native")]
+    if quick_test && command != Command::Native {
+        return Err("--quick-test applies to the native subcommand only".into());
+    }
     Ok(Parsed::Run(Options {
         command,
         lean_dir,
         pretty,
+        #[cfg(feature = "native")]
+        quick_test,
     }))
 }
 
@@ -237,7 +271,11 @@ fn run(opts: &Options, input: &Value) -> Result<Value, Failure> {
         #[cfg(feature = "native")]
         Command::Native => {
             use cryptificate_native::{run_native_json, NativeError, NativeOptions};
-            run_native_json(input, &NativeOptions::from_env()).map_err(|e| match e {
+            let mut native = NativeOptions::from_env();
+            if opts.quick_test {
+                native = native.quick_test();
+            }
+            run_native_json(input, &native).map_err(|e| match e {
                 NativeError::Invalid(v) => Failure::Invalid(v),
                 NativeError::Failed(e) => Failure::Engine {
                     code: "native_failed",
@@ -325,5 +363,21 @@ mod tests {
         assert!(parse_args(args("validate diagnose")).is_err());
         assert!(parse_args(args("validate --lean-dir")).is_err());
         assert!(parse_args(args("validate --fast")).is_err());
+    }
+
+    #[cfg(feature = "native")]
+    #[test]
+    fn quick_test_only_for_native() {
+        let Ok(Parsed::Run(o)) = parse_args(args("--quick-test native")) else {
+            panic!("expected a run")
+        };
+        assert_eq!(o.command, Command::Native);
+        assert!(o.quick_test);
+        let Ok(Parsed::Run(o)) = parse_args(args("native")) else {
+            panic!("expected a run")
+        };
+        assert!(!o.quick_test);
+        assert!(parse_args(args("diagnose --quick-test")).is_err());
+        assert!(usage().contains("--quick-test"));
     }
 }
