@@ -221,7 +221,10 @@ function sessionSeed(seed: string, session: number): string {
   return createHash('sha256').update(`${seed}:session:${session}`).digest('hex').slice(0, 16);
 }
 
-/** Collect workloads and comparisons from a native benchmark document. */
+/**
+ * Collect workloads and comparisons from a native benchmark document: either
+ * one session ({workloads, comparisons}) or several ({sessions: [...]}).
+ */
 export function parseBenchmark(doc: unknown, session: number): { machine: MachineInfo | null; workloads: Workload[]; comparisons: Comparison[] } {
   const root = asRecord(doc) ?? {};
   const m = asRecord(root['machine']);
@@ -231,20 +234,24 @@ export function parseBenchmark(doc: unknown, session: number): { machine: Machin
         os: String(m['os'] ?? 'unknown'),
         ramMiB: Number(m['ramMiB'] ?? 0),
         rustc: String(m['rustc'] ?? 'unknown'),
-        flags: String(m['flags'] ?? ''),
+        flags: Array.isArray(m['flags']) ? (m['flags'] as unknown[]).join(' ') : String(m['flags'] ?? ''),
       }
     : null;
   const workloads: Workload[] = [];
-  for (const w of Array.isArray(root['workloads']) ? (root['workloads'] as unknown[]) : []) {
-    const o = asRecord(w);
-    if (!o || typeof o['bytes'] !== 'number') continue;
-    workloads.push({ ...(o as unknown as Workload), session });
-  }
   const comparisons: Comparison[] = [];
-  for (const c of Array.isArray(root['comparisons']) ? (root['comparisons'] as unknown[]) : []) {
-    const o = asRecord(c);
-    if (!o || typeof o['candidate'] !== 'string' || typeof o['ratio'] !== 'number' || !Array.isArray(o['ci95'])) continue;
-    comparisons.push({ ...(o as unknown as Comparison), session });
+  const sessions = Array.isArray(root['sessions']) ? (root['sessions'] as unknown[]).map(asRecord).filter((x): x is Record<string, unknown> => x !== null) : [root];
+  for (const sess of sessions) {
+    const n = typeof sess['session'] === 'number' ? sess['session'] : session;
+    for (const w of Array.isArray(sess['workloads']) ? (sess['workloads'] as unknown[]) : []) {
+      const o = asRecord(w);
+      if (!o || typeof o['bytes'] !== 'number') continue;
+      workloads.push({ ...(o as unknown as Workload), session: typeof o['session'] === 'number' ? o['session'] : n });
+    }
+    for (const c of Array.isArray(sess['comparisons']) ? (sess['comparisons'] as unknown[]) : []) {
+      const o = asRecord(c);
+      if (!o || typeof o['candidate'] !== 'string' || typeof o['ratio'] !== 'number' || !Array.isArray(o['ci95'])) continue;
+      comparisons.push({ ...(o as unknown as Comparison), session: typeof o['session'] === 'number' ? o['session'] : n });
+    }
   }
   return { machine, workloads, comparisons };
 }
@@ -256,7 +263,8 @@ export function parseBenchmark(doc: unknown, session: number): { machine: Machin
  * candidate was ever faster; otherwise "inconclusive".
  */
 export function decideVerdict(comparisons: readonly Comparison[], eligible: ReadonlySet<string>, primaryBytes = 65536): MeasurementVerdict {
-  const relevant = comparisons.filter((c) => eligible.has(c.candidate) && (c.bytes === undefined || c.bytes === primaryBytes));
+  const isPrimary = (c: Comparison): boolean => c.primary ?? (c.bytes === undefined || c.bytes === primaryBytes);
+  const relevant = comparisons.filter((c) => eligible.has(c.candidate) && isPrimary(c));
   if (relevant.length === 0) return 'inconclusive';
   for (const cand of eligible) {
     const confirmed = [2, 3].every((session) => {
