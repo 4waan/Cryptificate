@@ -135,3 +135,35 @@ test('accepts CRYPTIFICATE_INPUTS objects as well as single input lines', () => 
   const r = acceptCertificate(expect, inputs, outcome(stdout));
   assert.equal(r.inputsMatch, true);
 });
+
+test('real Lean output: echoes match values derived from the request', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { derivedEcho } = await import('../src/certificate.js');
+  // output of `lake env lean` on lean/Cryptificate/Examples/DiffusionWeak.lean
+  const stdout = readFileSync(fileURLToPath(new URL('../../test/fixtures/lean-weak-design.out', import.meta.url)), 'utf8');
+  const parsed = parseLeanOutput(stdout);
+  const table = (parsed.inputs.get('candSboxTable') as { table: string[] }).table;
+  const derived = derivedEcho({
+    design: {
+      model: 'aes-like/gf256/v1',
+      field: 'gf256',
+      width: 4,
+      matrix: [['01', '00', '00', '00'], ['00', '01', '00', '00'], ['00', '00', '01', '00'], ['00', '00', '00', '01']],
+      offsets: [0, 1, 1, 3],
+      rounds: 10,
+      sbox: { kind: 'table', table },
+    },
+  });
+  const weak: ExpectedTheorem[] = [
+    { claim: 'matrix.mds', theorem: 'CryptificateJob.matrix_not_mds', status: 'refuted', expectedType: '¬IsMDS CryptificateJob.candMatrix' },
+    { claim: 'offsets.dispersion', theorem: 'CryptificateJob.offsets_not_optimal', status: 'refuted', expectedType: '¬DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 CryptificateJob.candOffsets)' },
+    { claim: 'sbox.bijective', theorem: 'CryptificateJob.sbox_not_injective', status: 'refuted', expectedType: '¬Function.Injective CryptificateJob.candSboxTable' },
+  ];
+  const r = acceptCertificate(weak, derived, outcome(stdout));
+  assert.equal(r.inputsMatch, true, r.inputProblems.join('; '));
+  assert.deepEqual(r.verdicts.map((v) => v.status), ['refuted', 'refuted', 'refuted']);
+  // one changed offset in the request is caught by the echo
+  const other = derivedEcho({ design: { model: 'aes-like/gf256/v1', field: 'gf256', width: 4, matrix: derived['candMatrix'] as string[][], offsets: [0, 1, 2, 3], rounds: 10, sbox: { kind: 'table', table } } });
+  assert.equal(acceptCertificate(weak, other, outcome(stdout)).inputsMatch, false);
+});
