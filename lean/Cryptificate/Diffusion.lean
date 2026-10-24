@@ -3,6 +3,7 @@ import Cryptificate.Diffusion.Branch
 import Cryptificate.Diffusion.Offsets
 import Cryptificate.Diffusion.Activity
 import Cryptificate.Bridge
+import Cryptificate.Sbox
 
 /-!
 # Diffusion certificates for AES-like designs
@@ -20,4 +21,6 @@ small concrete computation:
   active-S-box bound for every trail of the candidate's specification.
 * `Bridge`: an AES-like execution on the 16-byte state; two executions under the same round
   keys with an injective S-box produce such a trail, so the bound holds for executions.
+* `Sbox`: byte S-boxes given as tables; an inverse table certifies bijectivity and a
+  collision refutes injectivity.
 -/
