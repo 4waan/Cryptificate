@@ -108,7 +108,18 @@ setup_refinement() {
       return 0
     fi
   fi
-  lake build
+  if lake build; then
+    # Record the check for the service: it reports the refinement claim only
+    # while the kernel source keeps this digest.
+    local state="${CRYPTIFICATE_HOME:-$ROOT/.cryptificate}"
+    mkdir -p "$state"
+    printf '{"checked": true, "kernelsSha256": "%s", "toolchain": "%s"}\n' \
+      "$(sha256sum "$ROOT/crates/kernels/src/gf256.rs" | cut -d' ' -f1)" "$toolchain" > "$state/refinement.json"
+    note "refinement proofs checked"
+  else
+    note "refinement proofs did not build"
+    MISSING+=("refinement proofs")
+  fi
   cd "$ROOT"
 }
 

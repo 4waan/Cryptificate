@@ -14,6 +14,8 @@ export interface EmitLeanOutput {
   source: string;
   expect: ExpectedTheorem[];
   inputsEcho: Record<string, unknown>;
+  /** Claims the generator did not include, with its reason. */
+  skipped: Array<{ claim: string; reason: string }>;
 }
 
 export function parseEmitLean(doc: unknown): EmitLeanOutput | null {
@@ -43,10 +45,18 @@ export function parseEmitLean(doc: unknown): EmitLeanOutput | null {
     expect.push(entry);
   }
   const echo = d['inputsEcho'];
+  const skipped: Array<{ claim: string; reason: string }> = [];
+  if (Array.isArray(d['skipped'])) {
+    for (const x of d['skipped'] as unknown[]) {
+      const o = x as Record<string, unknown> | null;
+      if (o && typeof o['claim'] === 'string' && typeof o['reason'] === 'string') skipped.push({ claim: o['claim'], reason: o['reason'] });
+    }
+  }
   return {
     source: d['source'],
     expect,
     inputsEcho: echo && typeof echo === 'object' && !Array.isArray(echo) ? (echo as Record<string, unknown>) : {},
+    skipped,
   };
 }
 

@@ -21,6 +21,7 @@ import type {
   Witness,
 } from '@cryptificate/schema';
 import type { ClaimVerdict, ExpectedTheorem } from './acceptance.js';
+import type { RefinementStatus } from './refinement.js';
 
 export interface NativeOutcome {
   /** Correctness cases executed. */
@@ -40,7 +41,9 @@ export interface ClaimInputs {
   /** Set when Lean did not run to completion for every claim. */
   leanProblem?: { reason: NotEstablishedReason; detail: string };
   native?: NativeOutcome | { unavailable: string } | null;
-  refinement?: { status: 'proved'; note: string } | null;
+  refinement?: RefinementStatus | null;
+  /** Claims the certificate generator left out, with its reason. */
+  skipped?: ReadonlyArray<{ claim: string; reason: string }>;
 }
 
 function notEstablished(info: ClaimInfo, reason: NotEstablishedReason, note: string, witness: Witness | null = null): Claim {
@@ -132,6 +135,12 @@ function diagnosticHint(diagnostics: unknown, claim: ClaimId): boolean | null {
   return null;
 }
 
+function capitalize(s: string): string {
+  const t = s.trim();
+  const out = t ? t[0]!.toUpperCase() + t.slice(1) : t;
+  return /[.!?]$/.test(out) ? out : `${out}.`;
+}
+
 function activityTitle(req: AnalysisRequest, info: ClaimInfo): string {
   const d = req.design;
   if (info.id === 'activity.bound' && d.model === 'aes-like/gf256/v1' && d.width === 4) {
@@ -166,6 +175,8 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
       return notEstablished(named, verdict.reason ?? 'lean-failed', `${verdict.detail}${suffix}`, witness);
     }
     if (inp.leanProblem && e) return notEstablished(named, inp.leanProblem.reason, inp.leanProblem.detail, witness);
+    const skipped = inp.skipped?.find((x) => x.claim === info.id);
+    if (skipped) return notEstablished(named, 'out-of-scope', capitalize(skipped.reason), witness);
     return notEstablished(named, 'out-of-scope', `No certificate template covers this case; ${NOT_ESTABLISHED_TEXT}.`, witness);
   };
 
@@ -229,24 +240,27 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
         }
         break;
       }
-      case 'rust.refinement':
-        if (inp.refinement) {
+      case 'rust.refinement': {
+        const r = inp.refinement;
+        if (!request.program) {
+          claims.push(notEstablished(info, 'not-run', 'No circuit was submitted.'));
+        } else if (r && r.status === 'proved') {
           claims.push({
             id: info.id,
             chain: info.chain,
             title: info.title,
             status: 'proved',
-            evidence: { kind: 'refinement', label: EVIDENCE_LABELS.rustRefinement },
+            evidence: { kind: 'refinement', label: EVIDENCE_LABELS.rustRefinement, theorem: r.theorem },
             witness: null,
-            note: inp.refinement.note,
+            note: r.note,
           });
+        } else if (r) {
+          claims.push({ ...notEstablished(info, 'out-of-scope', r.note), status: r.status });
         } else {
-          claims.push({
-            ...notEstablished(info, 'out-of-scope', 'Refinement proofs cover the reference kernels in crates/kernels, not circuits generated for this run.'),
-            status: 'unsupported',
-          });
+          claims.push({ ...notEstablished(info, 'out-of-scope', 'No refinement proof covers this run.'), status: 'unsupported' });
         }
         break;
+      }
       case 'native.timing':
         claims.push(notEstablished(info, 'not-run', 'Timing is measured by experiments, not by an analysis.'));
         break;

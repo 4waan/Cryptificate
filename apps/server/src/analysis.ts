@@ -12,6 +12,7 @@ import type { NativeOutcome } from './claims.js';
 import type { JobContext, PipelineEnv, PipelineResult } from './context.js';
 import { toolchainDocument } from './bundle.js';
 import { runNative } from './native.js';
+import { refinementStatus } from './refinement.js';
 import { sha256Hex, templatesDigest } from './toolchain.js';
 
 export const ANALYSIS_STEPS = ['validate', 'diagnose', 'emit-lean', 'lean', 'native', 'report'] as const;
@@ -184,6 +185,8 @@ export async function runAnalysis(env: PipelineEnv, ctx: JobContext, raw: Analys
     diagnostics,
     ...(leanProblem ? { leanProblem } : {}),
     native,
+    skipped: cert?.emit?.skipped ?? [],
+    refinement: request.program ? refinementStatus(env.paths, request.design.field) : null,
   });
   if (!cert?.emit && leanProblem) {
     // Without a certificate no design or circuit claim was checked.

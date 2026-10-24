@@ -54,7 +54,7 @@ test('AES design: Lean-accepted claims are proved, with provenance', async () =>
     assert.equal(claim(report, 'activity.bound').title, 'At least 25 active S-boxes over 4 rounds');
     assert.equal(claim(report, 'circuit.equivalence').status, 'not_established');
     assert.equal(claim(report, 'native.timing').status, 'not_established');
-    assert.equal(claim(report, 'rust.refinement').status, 'unsupported');
+    assert.equal(claim(report, 'rust.refinement').status, 'not_established');
     assert.ok(report.execution.steps.some((s) => s.name === 'lean' && s.state === 'completed'));
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -189,6 +189,35 @@ test('verify re-derives the claims of a bundle and detects tampering', async () 
     const bad = await verifyBundle(env, forgedPath);
     assert.equal(bad.ok, false);
     assert.ok(bad.rows.some((r) => r.claim === 'matrix.mds' && r.result === 'mismatch'));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('refinement is reported only when checked for the current kernel source', async () => {
+  const { mkdirSync } = await import('node:fs');
+  const { createHash } = await import('node:crypto');
+  const { refinementStatus } = await import('../src/refinement.js');
+  const { root, env } = makeFixture();
+  try {
+    assert.equal(refinementStatus(env.paths, 'bn254').status, 'unsupported');
+    assert.equal(refinementStatus(env.paths, 'gf256').status, 'unsupported');
+    mkdirSync(join(root, 'crates', 'kernels', 'src'), { recursive: true });
+    mkdirSync(join(root, 'refinement'), { recursive: true });
+    const kernel = 'pub fn xtime(a: u8) -> u8 { a }\n';
+    writeFileSync(join(root, 'crates', 'kernels', 'src', 'gf256.rs'), kernel);
+    const digest = createHash('sha256').update(kernel).digest('hex');
+    writeFileSync(join(root, 'refinement', 'extract.sha256'), `${digest}  crates/kernels/src/gf256.rs\n`);
+    assert.equal(refinementStatus(env.paths, 'gf256').status, 'not_established');
+    mkdirSync(env.paths.home, { recursive: true });
+    writeFileSync(join(env.paths.home, 'refinement.json'), JSON.stringify({ checked: true, kernelsSha256: digest }));
+    assert.equal(refinementStatus(env.paths, 'gf256').status, 'proved');
+    const { report } = await analyze(env, { design: IDENTITY_DESIGN, program: IDENTITY_PROGRAM });
+    assert.equal(claim(report, 'rust.refinement').status, 'proved');
+    assert.equal(claim(report, 'rust.refinement').evidence.label, 'Rust-source refinement (Aeneas)');
+    // a changed kernel no longer counts
+    writeFileSync(join(root, 'crates', 'kernels', 'src', 'gf256.rs'), `${kernel}// edited\n`);
+    assert.equal(refinementStatus(env.paths, 'gf256').status, 'not_established');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
