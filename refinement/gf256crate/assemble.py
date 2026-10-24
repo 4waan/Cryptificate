@@ -17,7 +17,9 @@ resolves inside one crate. The edits, all listed here, change no executable code
 3. the crate's own field types (module `gf`: 0x11D and wider fields) are
    dropped; nothing in the type refers to them;
 4. imports of macros (`gf256_macros::p`, `cfg_if`) are dropped: after expansion
-   they are unused, and they name crates the expansion does not depend on.
+   they are unused, and they name crates the expansion does not depend on;
+5. documentation is dropped (`#[doc = "..."]` and `#![doc = "..."]` attributes, `///` and
+   `//!` comments): it does not reach the compiled code, and it is the crate's prose.
 """
 
 import sys
@@ -40,6 +42,26 @@ MACRO_IMPORTS = {
 }
 
 
+def strip_docs(lines):
+    out = []
+    i = 0
+    while i < len(lines):
+        s = lines[i].strip()
+        if s.startswith('///') or s.startswith('//!'):
+            i += 1
+        elif s.startswith('#[doc =') or s.startswith('#![doc ='):
+            if s.endswith('"]'):
+                i += 1
+            elif s in ('#[doc =', '#![doc =') and lines[i + 1].strip().endswith('"]'):
+                i += 2
+            else:
+                sys.exit('assemble.py: unexpected documentation attribute at line %d' % (i + 1))
+        else:
+            out.append(lines[i])
+            i += 1
+    return out
+
+
 def main(crate_path, user_path, out_path):
     crate = open(crate_path, encoding='utf-8').read().split('\n')
     user = open(user_path, encoding='utf-8').read().split('\n')
@@ -55,7 +77,7 @@ def main(crate_path, user_path, out_path):
     body.insert(body.index('extern crate core;') + 1, 'extern crate self as gf256;')
 
     first = user.index('pub use __gf256_aes_gen::gf256_aes;')
-    lines = [l for l in body + user[first:] if l.strip() not in MACRO_IMPORTS]
+    lines = [l for l in strip_docs(body + user[first:]) if l.strip() not in MACRO_IMPORTS]
     while lines and lines[-1] == '':
         lines.pop()
     with open(out_path, 'w', encoding='utf-8', newline='\n') as out:

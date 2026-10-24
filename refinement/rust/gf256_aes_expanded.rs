@@ -4,8 +4,6 @@
 // Produced by `refinement/gf256crate/expand.sh`; do not edit.
 #![feature(prelude_import, coverage_attribute, derive_clone_copy_internals, derive_eq_internals, panic_internals, structural_match, trivial_clone)]
 #![allow(unconditional_panic, overflowing_literals)]
-#![doc =
-"## gf256\n\nA Rust library containing Galois-field types and utilities, leveraging hardware\ninstructions when available.\n\nThis project started as a learning project to learn more about these\n\"Galois-field thingies\" after seeing them pop up in far too many subjects.\nSo this crate may be more educational than practical.\n\n``` rust\nuse ::gf256::*;\n\nlet a = gf256(0xfd);\nlet b = gf256(0xfe);\nlet c = gf256(0xff);\nassert_eq!(a*(b+c), a*b + a*c);\n```\n\nIf you, like me, are interested in learning more about the fascinating utility\nof Galois-fields, take a look at the documentation of gf256\'s modules. I\'ve\ntried to comprehensively capture what I\'ve learned, hopefully provided a decent\nentry point into learning more about this useful field of math.\n\nI also want to point out that the Rust examples in each module are completely\nfunctional and tested in CI thanks to Rust\'s [doctest runner][doctest-runner].\nFeel free to copy and tweak them to see what happens.\n\n- [p - Polynomial types][p]\n- [gf - Galois-field types][gf]\n- [lfsr - LFSR structs][lfsr]\n- [crc - CRC functions][crc]\n- [shamir - Shamir secret-sharing functions][shamir]\n- [raid - RAID-parity functions][raid]\n- [rs - Reed-Solomon error-correction functions][rs]\n\n## Reed-Solomon error-correction using gf256\n\n``` text\n                      ..:::::::::::...                  .:::....:::.:.:.\'\':.\'.:.\'::: :   :\' \'\'  \'\'\'\n                   .:::::::::::::::::::..               ::::::::::::  .:....\'.. \'.:...  :\' :\'\':\': .\'\n                 .::::::::::::::::::::::::.             ::::::::::\' . :..:..:\' : \'.\':::  :.\':\'\' \'  :\n               .:::::::::::::::::::::::::::.         . ::::::::::   :: \'::\' .: \'\' \'\'. : :: .:..::. \'\n              .::::::::::::::::::::::::::::::    ... :: :\'::::::\'   ::\':. \':\' .: \'.:\'::\'::: \': \'...:\n              :::::::::::::::::::::::::::::\'\' .. \'::: \'     \'\'\'     \'\'..:.:\'.\'\'::.   .:.\' .\'\': \'. .:\n             :::::::::::::::::::::::::::\'\'..::::: \'                  : .: .\'. :  :::.\'.:\':.:\':: .. :\n             :::::::::::::::::::::::\'\' ..:::::\'\'                    \' :... .\': ::.\'\'\':\' .\'\'. . \'  ..\n             :::::::::::::::::::\'\' ..:::::\'\' .                       : :..\':::.:. : .:\' :.   .\':\'.\':\n         ..: ::::::::::::::\'\'\' ..:::::\'\' ..:::                      :\' . :.\' .\'.\'::. \' ::\' \':  .:.\n      ..:::\'  :::::::::\'\' ..::::::\'\' ..:::::::                      :\' .  \'.\'::\'.:  : .:\'\' .:.\'.:::\'\n     :::\'     \':::\'\' ...::::::\'\'...::::::::::                        \'\' \' .\'::...\' :\':...\':.. . .\' :\n    ::\'         ...::::::\'\' ..:::::::::::::\'                        . .. \' .:::.\'\':::.  .\':\'\'\':::...\n         ....:::::::\'\' ..:::::::::::::::::\'                         : \'.\'  .\': :. .:.\': . .\'  .  ::\'\n    \'::::::::\'\'\'    :::::::::::::::::::\'\'                            \'.. .: ::: \': ::\'::. \' \'.\': : \'\n                      \'\':::::::::::\'\'\'                              .:.\':.. \'\'\'.  : : \':\'\':.\': \'.:\':\n```\n\n## What are Galois-fields?\n\n[Galois-fields][finite-field], also called finite-fields, are a finite set of\n\"numbers\" (for some definition of number), that you can do \"math\" on (for some\ndefinition of math).\n\nMore specifically, Galois-fields support addition, subtraction, multiplication,\nand division, which follow a set of rules called \"[field axioms][field-axioms]\":\n\n1. Subtraction is the inverse of addition, and division is the inverse of\n   multiplication:\n \n   ``` rust\n   # use ::gf256::*;\n   #\n   # let a = gf256(1);\n   # let b = gf256(2);\n   assert_eq!((a+b)-b, a);\n   assert_eq!((a*b)/b, a);\n   ```\n \n   Except for `0`, over which division is undefined:\n \n   ``` rust\n   # use ::gf256::*;\n   #\n   # let a = gf256(1);\n   assert_eq!(a.checked_div(gf256(0)), None);\n   ```\n \n1. There exists an element `0` that is the identity of addition, and an element\n   `1` that is the identity of multiplication:\n \n   ``` rust\n   # use ::gf256::*;\n   #\n   # let a = gf256(1);\n   assert_eq!(a + gf256(0), a);\n   assert_eq!(a * gf256(1), a);\n   ```\n \n1. Addition and multiplication are associative:\n \n   ``` rust\n   # use ::gf256::*;\n   #\n   # let a = gf256(1);\n   # let b = gf256(2);\n   # let c = gf256(3);\n   assert_eq!(a+(b+c), (a+b)+c);\n   assert_eq!(a*(b*c), (a*b)*c);\n   ```\n \n1. Addition and multiplication are commutative:\n \n   ``` rust\n   # use ::gf256::*;\n   #\n   # let a = gf256(1);\n   # let b = gf256(2);\n   assert_eq!(a+b, b+a);\n   assert_eq!(a*b, b*a);\n   ```\n \n1. Multiplication is distributive over addition:\n \n   ``` rust\n   # use ::gf256::*;\n   #\n   # let a = gf256(1);\n   # let b = gf256(2);\n   # let c = gf256(3);\n   assert_eq!(a*(b+c), a*b + a*c);\n   ```\n\nKeep in mind these aren\'t your normal integer operations! The operations\ndefined in a Galois-field types satisfy the above rules, but they may have\nunintuitive results:\n\n``` rust\n# use ::gf256::*;\n#\nassert_eq!(gf256(1) + gf256(1), gf256(0));\n```\n\nThis also means not all of math works in a Galois-field:\n\n``` rust\n# use ::gf256::*;\n#\n# let a = gf256(1);\nassert_ne!(a + a, gf256(2)*a);\n```\n\nFinite-fields can be very useful for applying high-level math onto machine\nwords, since machine words (`u8`, `u16`, `u32`, etc) are inherently finite.\nNormally we just ignore this until an integer overflow occurs and then we just\nwave our hands around wailing that math has failed us.\n\nIn Rust this has the fun side-effect that the Galois-field types are incapable\nof overflowing, so Galois-field types don\'t need the set of overflowing\noperations normally found in other Rust types:\n\n``` rust\n# use ::gf256::*;\n#\nlet a = (u8::MAX).checked_add(1);  // overflows          :(\nlet b = gf256(u8::MAX) + gf256(1); // does not overflow  :)\n```\n\nFor more information on Galois-fields and how we construct them, see the\nrelevant documentation in [`gf`\'s module-level documentation][gf].\n\n## Included in gf256\n\ngf256 contains a bit more than the Galois-field types. It also contains a\nnumber of other utilities that rely on the math around finite-fields:\n\n- [**Polynomial types**][p]\n\n  ``` rust\n  use ::gf256::*;\n  \n  let a = p32(0x1234);\n  let b = p32(0x5678);\n  assert_eq!(a+b, p32(0x444c));\n  assert_eq!(a*b, p32(0x05c58160));\n  ```\n\n- [**Galois-field types**][gf]\n\n  ``` rust\n  use ::gf256::*;\n  \n  let a = gf256(0xfd);\n  let b = gf256(0xfe);\n  let c = gf256(0xff);\n  assert_eq!(a*(b+c), a*b + a*c);\n  ```\n\n- [**LFSR structs**][lfsr] (requires feature `lfsr`)\n\n  ``` rust\n  use gf256::lfsr::Lfsr16;\n\n  let mut lfsr = Lfsr16::new(1);\n  assert_eq!(lfsr.next(16), 0x0001);\n  assert_eq!(lfsr.next(16), 0x002d);\n  assert_eq!(lfsr.next(16), 0x0451);\n  assert_eq!(lfsr.next(16), 0xbdad);\n  assert_eq!(lfsr.prev(16), 0xbdad);\n  assert_eq!(lfsr.prev(16), 0x0451);\n  assert_eq!(lfsr.prev(16), 0x002d);\n  assert_eq!(lfsr.prev(16), 0x0001);\n  ```\n\n- [**CRC functions**][crc] (requires feature `crc`)\n\n  ``` rust\n  use gf256::crc::crc32c;\n\n  assert_eq!(crc32c(b\"Hello World!\", 0), 0xfe6cf1dc);\n  ```\n\n- [**Shamir secret-sharing functions**][shamir] (requires features `shamir` and `thread-rng`)\n\n  ``` rust\n  use gf256::shamir::shamir;\n\n  // generate shares\n  let shares = shamir::generate(b\"secret secret secret!\", 5, 4);\n\n  // <4 can\'t reconstruct secret\n  assert_ne!(shamir::reconstruct(&shares[..1]), b\"secret secret secret!\");\n  assert_ne!(shamir::reconstruct(&shares[..2]), b\"secret secret secret!\");\n  assert_ne!(shamir::reconstruct(&shares[..3]), b\"secret secret secret!\");\n\n  // >=4 can reconstruct secret\n  assert_eq!(shamir::reconstruct(&shares[..4]), b\"secret secret secret!\");\n  assert_eq!(shamir::reconstruct(&shares[..5]), b\"secret secret secret!\");\n  ```\n\n- [**RAID-parity functions**][raid] (requires feature `raid`)\n\n  ``` rust\n  use gf256::raid::raid7;\n\n  // format\n  let mut buf = b\"Hello World!\".to_vec();\n  let mut parity1 = vec![0u8; 4];\n  let mut parity2 = vec![0u8; 4];\n  let mut parity3 = vec![0u8; 4];\n  let slices = buf.chunks(4).collect::<Vec<_>>();\n  raid7::format(&slices, &mut parity1, &mut parity2, &mut parity3);\n\n  // corrupt\n  buf[0..8].fill(b\'x\');\n\n  // repair\n  let mut slices = buf.chunks_mut(4).collect::<Vec<_>>();\n  raid7::repair(&mut slices, &mut parity1, &mut parity2, &mut parity3, &[0, 1]);\n  assert_eq!(&buf, b\"Hello World!\");\n  ```\n\n- [**Reed-Solomon error-correction functions**][rs] (requires feature `rs`)\n\n  ``` rust\n  use gf256::rs::rs255w223;\n\n  // encode\n  let mut buf = b\"Hello World!\".to_vec();\n  buf.resize(buf.len()+32, 0u8);\n  rs255w223::encode(&mut buf);\n\n  // corrupt\n  buf[0..16].fill(b\'x\');\n\n  // correct\n  rs255w223::correct_errors(&mut buf)?;\n  assert_eq!(&buf[0..12], b\"Hello World!\");\n  # Ok::<(), rs255w223::Error>(())\n  ```\n\nSince this math depends on some rather arbitrary constants, each of these\nutilities is available as both a normal Rust API, defined using reasonable\ndefaults, and as a highly configurable [`proc_macro`][proc-macros]:\n\n``` rust\n# pub use ::gf256::*;\nuse gf256::gf::gf;\n\n#[gf(polynomial=0x11b, generator=0x3)]\ntype gf256_rijndael;\n\n# fn main() {\nlet a = gf256_rijndael(0xfd);\nlet b = gf256_rijndael(0xfe);\nlet c = gf256_rijndael(0xff);\nassert_eq!(a*(b+c), a*b + a*c);\n# }\n```\n\n## Hardware support\n\nMost modern 64-bit hardware contains instructions for accelerating this sort\nof math. This usually comes in the form of a [carry-less multiplication][xmul]\ninstruction.\n\nCarry-less multiplication, also called polynomial multiplication and xor\nmultiplication, is the multiplication analog for xor. Where traditional\nmultiplication can be implemented as a series of shifts and adds, carry-less\nmultiplication can be implemented as a series of shifts and xors:\n\n``` text\nMultiplication:\n\n1011 * 1101 =  1011\n            +   1011\n            +     1011\n            ----------\n            = 10001111\n\nCarry-less multiplication:\n\n1011 * 1101 =  1011\n            ^   1011\n            ^     1011\n            ----------\n            = 01111111\n```\n\n64-bit carry-less multiplication is available on x86_64 with the\n[`pclmulqdq`][pclmulqdq], and on aarch64 with the slightly less wordy\n[`pmull`][pmull] instruction.\n\ngf256 takes advantage of these instructions when possible. However, at the time\nof writing, `pmull` support in Rust is only available on [nightly][nightly].\n\n``` rust\n# use ::gf256::*;\n#\n// uses carry-less multiplication instructions if available\nlet a = p32(0b1011);\nlet b = p32(0b1101);\nassert_eq!(a * b, p32(0b01111111));\n```\n\ngf256 also exposes the flag [`HAS_XMUL`], which can be used to choose\nalgorithms based on whether or not hardware accelerated carry-less\nmultiplication is available:\n\n``` rust\n# use gf256::p::p32;\n#\nlet a = p32(0b1011);\nlet b = if gf256::HAS_XMUL {\n    a * p32(0b11)\n} else {\n    (a << 1) ^ a\n};\n```\n\ngf256 also leverages the hardware accelerated [carry-less addition][xor]\ninstructions, sometimes called polynomial addition, or simply xor. But this\nis much less notable.\n\n## `const fn` support\n\nDue to the use of traits and intrinsics, it\'s not possible to use the\npolynomial/Galois-field operators in [`const fns`][const-fn].\n\nAs an alternative, gf256 provides a set of \"naive\" functions, which\nprovide less efficient, well, naive, implementations that can be used\nin const fns.\n\nThese are very useful for calculating complex constants at compile-time,\nwhich is common in these sort of algorithms:\n\n``` rust\n# use ::gf256::*;\n#\nconst POLYNOMIAL: p64 = p64(0x104c11db7);\nconst CRC_TABLE: [u32; 256] = {\n    let mut table = [0; 256];\n    let mut i = 0;\n    while i < table.len() {\n        let x = (i as u32).reverse_bits();\n        let x = p64((x as u64) << 8).naive_rem(POLYNOMIAL).0 as u32;\n        table[i] = x.reverse_bits();\n        i += 1;\n    }\n    table\n};\n```\n\n## `no_std` support\n\ngf256 is just a pile of math, so it is mostly [`no_std`][no-std] compatible.\n\nThe exceptions are the extra utilities `rs` and `shamir`, which\ncurrently require `alloc`.\n\n## Constant-time\n\ngf256 provides \"best-effort\" constant-time implementations for certain\nuseful operations. Though it should be emphasized this was primarily an\neducational project, so the constant-time properties should be externally\nevaluated before use, and you use this library at your own risk.\n\n- Polynomial multiplication\n\n  Polynomial multiplication in gf256 should always be constant-time.\n\n  The assumption is that any hardware accelerated carry-less multiplication\n  instructions complete in a fixed number of cycles, which is generally true.\n\n  If carry-less multiplication instructions are not available, a branch-less\n  loop implementation of carry-less multiplication is used.\n\n- Galois-field operations\n\n  Galois-field types in `barret` mode rely only on carry-less multiplication\n  and xors, and should always execute in constant time.\n\n  The other Galois-field implementations are NOT constant-time due to the use\n  of lookup tables, which may be susceptible to cache-timing attacks. Note that\n  the default Galois-field types likely use a table-based implementation.\n\n  You will need to declare a custom Galois-field type using `barret` mode if you\n  want constant-time finite-field operations:\n\n  ``` rust\n  # pub use ::gf256::*;\n  use gf256::gf::gf;\n\n  #[gf(polynomial=0x11b, generator=0x3, barret)]\n  type gf256_rijndael;\n  #\n  # fn main() {}\n  ```\n\n- Shamir secret-sharing\n\n  The default Shamir secret-sharing implementation internally uses a custom\n  Galois-field type in `barret` mode and should (keyword _should_) be\n  constant-time.\n\n## Features\n\n- `no-xmul` - Disables carry-less multiplication instructions, forcing the use\n  of naive bitwise implementations\n\n  This is mostly available for testing/benchmarking purposes.\n\n- `no-tables` - Disables lookup tables, relying only on hardware instructions\n  or naive implementations\n\n  This may be useful on memory constrained devices\n\n- `small-tables` - Limits lookup tables to \"small tables\", tables with <=16\n  elements\n\n  This provides a compromise between full 256-byte tables and no-tables,\n  which may be useful on memory constrained devices\n\n- `thread-rng` - Enables features that depend on ThreadRng\n\n  Note this requires `std`\n\n  This is used to provide a default Rng implementation for Shamir\'s\n  secret-sharing implementations\n\n- `lfsr` - Makes LFSR structs and macros available\n\n- `crc` - Makes CRC functions and macros available\n\n- `shamir` - Makes Shamir secret-sharing functions and macros available\n\n  Note this requires `alloc` and `rand`\n\n  You may also want to enable the `thread-rng` feature, which is required for\n  a default rng\n\n- `raid` - Makes RAID-parity functions and macros available\n\n- `rs` - Makes Reed-Solomon functions and macros available\n\n  Note this requires `alloc`\n\n## Testing\n\ngf256 comes with a number of tests implemented in Rust\'s [test runner][test-runner],\nthese can be run with make:\n\n``` bash\nmake test\n```\n\nAdditionally all of the code samples in these docs can be ran with Rust\'s\n[doctest runner][doctest-runner]:\n\n``` bash\nmake docs\n```\n\n## Benchmarking\n\ngf256 also has a number of benchmarks implemented in [Criterion][criterion].\nThese were used to determine the best default implementations, and can be ran\nwith make:\n\n``` bash\nmake bench\n```\n\nA full summary of the benchmark results can be found in [BENCHMARKS.md][benchmarks].\n\n\n[p]: https://docs.rs/gf256/latest/gf256/p\n[gf]: https://docs.rs/gf256/latest/gf256/gf\n[lfsr]: https://docs.rs/gf256/latest/gf256/lfsr\n[crc]: https://docs.rs/gf256/latest/gf256/crc\n[shamir]: https://docs.rs/gf256/latest/gf256/shamir\n[raid]: https://docs.rs/gf256/latest/gf256/raid\n[rs]: https://docs.rs/gf256/latest/gf256/rs\n[finite-field]: https://en.wikipedia.org/wiki/Finite_field\n[field-axioms]: https://en.wikipedia.org/wiki/Field_(mathematics)\n[proc-macros]: https://doc.rust-lang.org/reference/procedural-macros.html\n[xmul]: https://en.wikipedia.org/wiki/Carry-less_product\n[xor]: https://en.wikipedia.org/wiki/Bitwise_operation#XOR\n[pclmulqdq]: https://www.felixcloutier.com/x86/pclmulqdq\n[pmull]: https://developer.arm.com/documentation/ddi0596/2021-06/SIMD-FP-Instructions/PMULL--PMULL2--Polynomial-Multiply-Long-\n[nightly]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html\n[no-std]: https://docs.rust-embedded.org/book/intro/no-std.html\n[const-fn]: https://doc.rust-lang.org/reference/const_eval.html\n[test-runner]: https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html\n[doctest-runner]: https://doc.rust-lang.org/rustdoc/documentation-tests.html\n[criterion]: https://docs.rs/criterion/latest/criterion\n[benchmarks]: https://github.com/geky/gf256/blob/master/BENCHMARKS.md\n\n"]
 
 
 // We don't really need std
@@ -19,7 +17,6 @@ extern crate self as gf256;
 use core::prelude::rust_2021::*;
 
 
-/// Extra traits
 pub mod traits {
 
 
@@ -32,30 +29,13 @@ pub mod traits {
 
 
 
-    //! Common traits
-    //!
-    //! Currently just a workaround for FromLossy/IntoLossy traits
-    //!
     pub use core::convert::TryFrom;
     pub use core::convert::TryInto;
-    /// A From trait for conversions which may lose precision
-    ///
-    /// Note this is just a temporary solution. Once [RFC2484] is implemented
-    /// these traits should go away.
-    ///
-    /// [RFC2484]: https://github.com/rust-lang/rfcs/pull/2484
-    ///
     pub trait FromLossy<T> {
-        /// Convert to this type lossily
         fn from_lossy(t: T)
         -> Self;
     }
-    /// An Into trait for conversions which may lose precision
-    ///
-    /// This is similar to Into, but for FromLossy
-    ///
     pub trait IntoLossy<T> {
-        /// Convert this type lossily
         fn into_lossy(self)
         -> T;
     }
@@ -68,232 +48,9 @@ pub mod traits {
         fn from_lossy(t: T) -> Self { Self::from(t) }
     }
 }
-/// Polynomial types
 pub mod p {
-    //! ## Polynomial types
-    //!
-    //! Types representing a binary polynomial.
-    //!
-    //! These types act as a building block for most of the math in gf256.
-    //!
-    //! ``` rust
-    //! use ::gf256::*;
-    //!
-    //! let a = p32(0x1234);
-    //! let b = p32(0x5678);
-    //! assert_eq!(a+b, p32(0x444c));
-    //! assert_eq!(a*b, p32(0x05c58160));
-    //! ```
-    //!
-    //! ## What are binary polynomials?
-    //!
-    //! Consider a binary number:
-    //!
-    //! ``` text
-    //! a = 0b1011
-    //! ```
-    //!
-    //! Normally we would view this as the binary representation of the decimal
-    //! number `11` (that's `11 = 1*10^1 + 1*10^0`, ok maybe a bad choice for an
-    //! example number).
-    //!
-    //! Instead, lets view it as a polynomial for some made-up variable `x`, where
-    //! each coefficient is a binary `1` or `0`:
-    //!
-    //! ``` text
-    //! a = 0b1011 = 1*x^3 + 0*x^2 + 1*x^1 + 1*x^0
-    //! ```
-    //!
-    //! We can add polynomials together, as long as we mod each coefficient by `2`
-    //! so they remain binary:
-    //!
-    //! ``` text
-    //! a   = 0b1011 = 1*x^3 + 0*x^2 + 1*x^1 + 1*x^0
-    //! b   = 0b1101 = 1*x^3 + 1*x^2 + 0*x^1 + 1*x^0
-    //!
-    //! a+b = ((1+1)%2)*x^3 + ((0+1)%2)*x^2 + ((1+0)%2)*x^1 + ((1+1)%2)*x^0
-    //!     = 0*x^3 + 1*x^2 + 1*x^1 + 0*x^0
-    //!     = 0b0110
-    //! ```
-    //!
-    //! You may recognize that this is actually xor!
-    //!
-    //! But there's more, we can also multiply polynomials together:
-    //!
-    //! ``` text
-    //! a   = 0b1011 = 1*x^3 + 0*x^2 + 1*x^1 + 1*x^0
-    //! b   = 0b1101 = 1*x^3 + 1*x^2 + 0*x^1 + 1*x^0
-    //!
-    //! a*b = 1*x^6 + 0*x^5 + 1*x^4 + 1*x^3
-    //!             + 1*x^5 + 0*x^4 + 1*x^3 + 1*x^2
-    //!                             + 1*x^3 + 0*x^2 + 1*x^1 + 1*x^0
-    //!     = 1*x^6 + ((0+1)%2)*x^5 + ((1+0)%2)*x^4 + ((1+1+1)%2)*x^3 + ((1+0)%2)*x^2 + 1*x^1 + 1*x^0
-    //!     = 1*x^6 + 1*x^5 + 1*x^4 + 1*x^3 + 1*x^2 + 1*x^1 + 1*x^0
-    //!     = 0b1111111
-    //! ```
-    //!
-    //! It's worth emphasizing that the `x` in these polynomials is a variable that we
-    //! never actually evaluate. We just use it to create a view of the underlying
-    //! binary numbers that we can do polynomial operations on.
-    //!
-    //! These operations, on bits viewed as binary polynomials, are available in gf256's
-    //! polynomial types:
-    //!
-    //! ``` rust
-    //! use ::gf256::*;
-    //!
-    //! assert_eq!(p8(0b1011) + p8(0b1101), p8(0b0110));
-    //! assert_eq!(p8(0b1011) * p8(0b1101), p8(0b1111111));
-    //! ```
-    //!
-    //! These polynomial types also provide division and remainder on binary polynomials,
-    //! using similar algorithms. However these are more expensive than polynomial
-    //! multiplication and rarely have hardware support. Still, they are quite useful
-    //! for certain calculations:
-    //!
-    //! ``` rust
-    //! use ::gf256::*;
-    //!
-    //! assert_eq!(p8(0b1111111) / p8(0b1011), p8(0b1101));
-    //! assert_eq!(p8(0b1111111) % p8(0b1011), p8(0b0000));
-    //!
-    //! assert_eq!(p8(0b1111110) / p8(0b1011), p8(0b1101));
-    //! assert_eq!(p8(0b1111110) % p8(0b1011), p8(0b0001));
-    //! ```
-    //!
-    //! ## Hardware support
-    //!
-    //! The polynomial types leverage [carry-less multiplication][xmul] instructions
-    //! when available, otherwise falling back to a more expensive, branch-less naive
-    //! implementation.
-    //!
-    //! Note that at the time of writing, aarch64 [`pmull`][pmull] support is only
-    //! available on a [nightly][nightly] compiler.
-    //!
-    //! gf256 also exposes the flag [`HAS_XMUL`], which can be used to choose
-    //! algorithms based on whether or not hardware accelerated carry-less
-    //! multiplication is available:
-    //!
-    //! ``` rust
-    //! # use gf256::p::p32;
-    //! #
-    //! let a = p32(0b1011);
-    //! let b = if gf256::HAS_XMUL {
-    //!     a * p32(0b11)
-    //! } else {
-    //!     (a << 1) ^ a
-    //! };
-    //! ```
-    //!
-    //! Note, there currently is no hardware support for polynomial division and
-    //! remainder. These are expensive, branching, loop-based implementations and
-    //! should generally be avoided in performance-sensitive code.
-    //!
-    //! ## `const fn` support
-    //!
-    //! Due to the use of traits and intrinsics, it's not possible to use the
-    //! polynomial operators in [`const fns`][const-fn].
-    //!
-    //! As an alternative, the polynomial types preovide a set of "naive"
-    //! functions, which provide less efficient, well, naive, implementations,
-    //! that can be used in const fns.
-    //!
-    //! These are very useful for calculating complex constants at compile-time:
-    //!
-    //! ``` rust
-    //! # use ::gf256::*;
-    //! #
-    //! const POLYNOMIAL: p64 = p64(0x104c11db7);
-    //! const CRC_TABLE: [u32; 256] = {
-    //!     let mut table = [0; 256];
-    //!     let mut i = 0;
-    //!     while i < table.len() {
-    //!         let x = (i as u32).reverse_bits();
-    //!         let x = p64((x as u64) << 8).naive_rem(POLYNOMIAL).0 as u32;
-    //!         table[i] = x.reverse_bits();
-    //!         i += 1;
-    //!     }
-    //!     table
-    //! };
-    //! ```
-    //!
-    //! ## Constant-time
-    //!
-    //! gf256 provides "best-effort" constant-time implementations for certain
-    //! useful operations.
-    //!
-    //! For polynomial types, addition (xor), subtraction (xor), and multiplication
-    //! should always be constant-time.
-    //!
-    //! Note that division and remainder are NOT constant-time. These are expensive,
-    //! branching, loop-based implementations, which should generally be avoided for
-    //! performance reasons anyway (outside of constant generation).
-    //!
-    //!
-    //! [xmul]: https://en.wikipedia.org/wiki/Carry-less_product
-    //! [xor]: https://en.wikipedia.org/wiki/Bitwise_operation#XOR
-    //! [pclmulqdq]: https://www.felixcloutier.com/x86/pclmulqdq
-    //! [pmull]: https://developer.arm.com/documentation/ddi0596/2021-06/SIMD-FP-Instructions/PMULL--PMULL2--Polynomial-Multiply-Long-
-    //! [nightly]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
-    //! [const-fn]: https://doc.rust-lang.org/reference/const_eval.html
-    /// A macro for generating custom polynomial types.
-    ///
-    /// ``` rust,ignore
-    /// # use ::gf256::*;
-    /// # use ::gf256::p::p;
-    /// #[p(u=u32)] pub type my_p32;
-    ///
-    /// # fn main() {
-    /// let a = my_p32(0x1234);
-    /// let b = my_p32(0x5678);
-    /// assert_eq!(a+b, my_p32(0x444c));
-    /// assert_eq!(a*b, my_p32(0x05c58160));
-    /// # }
-    /// ```
-    ///
-    /// The `p` macro accepts a number of configuration options:
-    ///
-    ///
-    /// - `width` - Width of the polynomial type in bits, defaults to the
-    ///   width of the `u` type.
-    /// - `usize` - Indicate if the width is dependent on the usize width,
-    ///   defaults to true if the `u` type is `usize`.
-    /// - `u` - The underlying unsigned type.
-    /// - `i` - The underlying signed type, defaults to the signed version
-    ///   of the `u` type.
-    /// - `naive` - Use a naive bitwise implementation.
-    /// - `xmul` - Optionally provide a custom implementation of polynomial
-    ///   multiplication.
-    ///
-    /// ``` rust
-    /// # use ::gf256::*;
-    /// # use ::gf256::p::p;
-    /// fn custom_xmul(a: u32, b: u32) -> (u32, u32) {
-    ///     let (lo, hi) = p32(a).widening_mul(p32(b));
-    ///     (u32::from(lo), u32::from(hi))
-    /// }
-    ///
-    /// #[p(
-    ///     width=32,
-    ///     usize=false,
-    ///     u=u32,
-    ///     i=i32,
-    ///     // naive,
-    ///     xmul=custom_xmul,
-    /// )]
-    /// type my_p32;
-    ///
-    /// # fn main() {
-    /// let a = my_p32(0x1234);
-    /// let b = my_p32(0x5678);
-    /// assert_eq!(a+b, my_p32(0x444c));
-    /// assert_eq!(a*b, my_p32(0x05c58160));
-    /// # }
-    /// ```
-    ///
     pub use __p8_gen::p8;
     mod __p8_gen {
-        #[doc = "! Template for polynomial types"]
         use core::mem::size_of;
         use core::ops::*;
         use core::iter::*;
@@ -304,19 +61,6 @@ pub mod p {
         use core::slice;
         use crate::traits::TryFrom;
         use crate::traits::FromLossy;
-        #[doc = " A type representing a gf(2) polynomial."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " use ::gf256::*;"]
-        #[doc = ""]
-        #[doc = " let a = p32(0x1234);"]
-        #[doc = " let b = p32(0x5678);"]
-        #[doc = " assert_eq!(a+b, p32(0x444c));"]
-        #[doc = " assert_eq!(a*b, p32(0x05c58160));"]
-        #[doc = " ```"]
-        #[doc = ""]
-        #[doc = " See the [module-level documentation](../p) for more info."]
-        #[doc = ""]
         #[allow(non_camel_case_types)]
         #[repr(transparent)]
         pub struct p8(pub super::__p8_u);
@@ -388,84 +132,22 @@ pub mod p {
             }
         }
         impl p8 {
-            #[doc = " Create a gf(2) polynomial."]
             #[inline]
             pub const fn new(x: super::__p8_u) -> p8 { p8(x) }
-            #[doc = " Get the underlying primitive type."]
             #[inline]
             pub const fn get(self) -> super::__p8_u { self.0 }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_add(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_add(self, other: p8) -> p8 {
                 p8(self.0 ^ other.0)
             }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) + p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn add(self, other: p8) -> p8 { p8(self.0 ^ other.0) }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_sub(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_sub(self, other: p8) -> p8 {
                 p8(self.0 ^ other.0)
             }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) - p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn sub(self, other: p8) -> p8 { p8(self.0 ^ other.0) }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " This returns a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, p8) = p8(0x02).naive_widening_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, p8) = p8(0x12).naive_widening_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), p8(0x00)));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_widening_mul(self, other: p8) -> (p8, p8) {
                 let a = self.0;
@@ -483,52 +165,12 @@ pub mod p {
                 }
                 (p8(lo), p8(hi >> 1))
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_mul(self, other: p8)
                 -> (p8, bool) {
                 let (lo, hi) = self.naive_widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x02).naive_checked_mul(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x12).naive_checked_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, Some(p8(0x68)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_mul(self, other: p8) -> Option<p8> {
                 match self.naive_overflowing_mul(other) {
@@ -536,23 +178,6 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " assert_eq!(Y, p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_mul(self, other: p8) -> p8 {
                 let a = self.0;
@@ -568,23 +193,6 @@ pub mod p {
                 }
                 p8(x)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_mul(self, other: p8) -> p8 {
                 match self.naive_checked_mul(other) {
@@ -592,71 +200,15 @@ pub mod p {
                     None => p8(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " This return a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).widening_mul(p8(0x34)), (p8(0x68), p8(0x00)));"]
-            #[doc =
-            " assert_eq!(p8(0x12).widening_mul(p8(0x34)), (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn widening_mul(self, other: p8) -> (p8, p8) {
                 self.naive_widening_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_mul(p8(0x34)), (p8(0x68), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_mul(p8(0x34)), (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_mul(self, other: p8) -> (p8, bool) {
                 let (lo, hi) = self.widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_mul(p8(0x34)), Some(p8(0x68)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_mul(p8(0x34)), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_mul(self, other: p8) -> Option<p8> {
                 match self.overflowing_mul(other) {
@@ -664,73 +216,14 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_mul(p8(0x34)), p8(0x68));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_mul(p8(0x34)), p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_mul(self, other: p8) -> p8 {
                 self.naive_wrapping_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02) * p8(0x34), p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn mul(self, other: p8) -> p8 {
                 self.checked_mul(other).expect("overflow in polynomial multiply")
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_pow(3);"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_pow(3);"]
-            #[doc = " assert_eq!(X, (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc = " assert_eq!(X, (p8(0x08), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_pow(self, exp: u32) -> (p8, bool) {
                 let mut a = self;
@@ -750,28 +243,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: Option<p8> = p8(0x02).naive_checked_pow(3);"]
-            #[doc = " const Y: Option<p8> = p8(0x12).naive_checked_pow(3);"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(X, Some(p8(0x08)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_pow(self, exp: u32) -> Option<p8> {
                 let mut a = self;
@@ -794,28 +265,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_pow(3);"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " assert_eq!(Y, p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_pow(self, exp: u32) -> p8 {
                 let mut a = self;
@@ -828,28 +277,6 @@ pub mod p {
                     a = a.naive_wrapping_mul(a);
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_pow(self, exp: u32) -> p8 {
                 let mut a = self;
@@ -862,26 +289,6 @@ pub mod p {
                     a = a.naive_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x08), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_pow(3), (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_pow(self, exp: u32) -> (p8, bool) {
                 let mut a = self;
@@ -901,22 +308,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x08)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_pow(3), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_pow(self, exp: u32) -> Option<p8> {
                 let mut a = self;
@@ -939,22 +330,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x08));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_pow(3), p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_pow(self, exp: u32) -> p8 {
                 let mut a = self;
@@ -967,23 +342,6 @@ pub mod p {
                     a = a.wrapping_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).pow(3), p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn pow(self, exp: u32) -> p8 {
                 let mut a = self;
@@ -996,30 +354,6 @@ pub mod p {
                     a = a.mul(a);
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x68).naive_checked_div(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x68).naive_checked_div(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_div(self, other: p8) -> Option<p8> {
                 if other.0 == 0 {
@@ -1035,26 +369,6 @@ pub mod p {
                     Some(p8(x))
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x68).naive_div(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x02));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_div(self, other: p8) -> p8 {
                 match self.naive_checked_div(other) {
@@ -1062,30 +376,6 @@ pub mod p {
                     None => p8(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x69).naive_checked_rem(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x69).naive_checked_rem(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x01)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_rem(self, other: p8) -> Option<p8> {
                 if other.0 == 0 {
@@ -1099,26 +389,6 @@ pub mod p {
                     Some(p8(a))
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`"]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x69).naive_rem(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x01));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_rem(self, other: p8) -> p8 {
                 match self.naive_checked_rem(other) {
@@ -1126,23 +396,6 @@ pub mod p {
                     None => p8(self.0 / 0),
                 }
             }
-            #[doc =
-            " Cast slice of unsigned-types to slice of polynomial-types."]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " let x: &[u8] = &[0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &[p8] = p8::slice_from_slice(x);"]
-            #[doc =
-            " assert_eq!(y, &[p8(0x01), p8(0x02), p8(0x03), p8(0x04), p8(0x05)]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice(slice: &[super::__p8_u]) -> &[p8] {
                 unsafe {
@@ -1150,26 +403,6 @@ pub mod p {
                         slice.len())
                 }
             }
-            #[doc =
-            " Cast mut slice of unsigned-types to mut slice of polynomial-types"]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " let x: &mut [u8] = &mut [0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &mut [p8] = p8::slice_from_slice_mut(x);"]
-            #[doc = " for i in 0..y.len() {"]
-            #[doc = "     y[i] *= p8(0x05);"]
-            #[doc = " }"]
-            #[doc = " assert_eq!(x, &[0x05, 0x0a, 0x0f, 0x14, 0x11]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice_mut(slice: &mut [super::__p8_u])
                 -> &mut [p8] {
@@ -2637,18 +1870,12 @@ pub mod p {
             }
         }
         impl fmt::Debug for p8 {
-            #[doc =
-            " We use LowerHex for Debug, since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("{0}(0x{1:x})", "p8", self.0))
             }
         }
         impl fmt::Display for p8 {
-            #[doc =
-            " We use LowerHex for Display since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("0x{0:x}", self.0))
@@ -2680,11 +1907,6 @@ pub mod p {
         }
         impl FromStr for p8 {
             type Err = ParseIntError;
-            #[doc =
-            " In order to match Display, this `from_str` takes and only takes"]
-            #[doc =
-            " hexadecimal strings starting with `0x`. If you need a different radix"]
-            #[doc = " there is [`from_str_radix`](#method.from_str_radix)."]
             fn from_str(s: &str) -> Result<p8, ParseIntError> {
                 if s.starts_with("0x") {
                     Ok(p8(super::__p8_u::from_str_radix(&s[2..], 16)?))
@@ -2705,7 +1927,6 @@ pub mod p {
     use i8 as __p8_i;
     pub use __p16_gen::p16;
     mod __p16_gen {
-        #[doc = "! Template for polynomial types"]
         use core::mem::size_of;
         use core::ops::*;
         use core::iter::*;
@@ -2716,19 +1937,6 @@ pub mod p {
         use core::slice;
         use crate::traits::TryFrom;
         use crate::traits::FromLossy;
-        #[doc = " A type representing a gf(2) polynomial."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " use ::gf256::*;"]
-        #[doc = ""]
-        #[doc = " let a = p32(0x1234);"]
-        #[doc = " let b = p32(0x5678);"]
-        #[doc = " assert_eq!(a+b, p32(0x444c));"]
-        #[doc = " assert_eq!(a*b, p32(0x05c58160));"]
-        #[doc = " ```"]
-        #[doc = ""]
-        #[doc = " See the [module-level documentation](../p) for more info."]
-        #[doc = ""]
         #[allow(non_camel_case_types)]
         #[repr(transparent)]
         pub struct p16(pub super::__p16_u);
@@ -2800,84 +2008,22 @@ pub mod p {
             }
         }
         impl p16 {
-            #[doc = " Create a gf(2) polynomial."]
             #[inline]
             pub const fn new(x: super::__p16_u) -> p16 { p16(x) }
-            #[doc = " Get the underlying primitive type."]
             #[inline]
             pub const fn get(self) -> super::__p16_u { self.0 }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_add(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_add(self, other: p16) -> p16 {
                 p16(self.0 ^ other.0)
             }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) + p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn add(self, other: p16) -> p16 { p16(self.0 ^ other.0) }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_sub(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_sub(self, other: p16) -> p16 {
                 p16(self.0 ^ other.0)
             }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) - p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn sub(self, other: p16) -> p16 { p16(self.0 ^ other.0) }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " This returns a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, p8) = p8(0x02).naive_widening_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, p8) = p8(0x12).naive_widening_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), p8(0x00)));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_widening_mul(self, other: p16) -> (p16, p16) {
                 let a = self.0;
@@ -2895,52 +2041,12 @@ pub mod p {
                 }
                 (p16(lo), p16(hi >> 1))
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_mul(self, other: p16)
                 -> (p16, bool) {
                 let (lo, hi) = self.naive_widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x02).naive_checked_mul(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x12).naive_checked_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, Some(p8(0x68)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_mul(self, other: p16) -> Option<p16> {
                 match self.naive_overflowing_mul(other) {
@@ -2948,23 +2054,6 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " assert_eq!(Y, p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_mul(self, other: p16) -> p16 {
                 let a = self.0;
@@ -2980,23 +2069,6 @@ pub mod p {
                 }
                 p16(x)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_mul(self, other: p16) -> p16 {
                 match self.naive_checked_mul(other) {
@@ -3004,71 +2076,15 @@ pub mod p {
                     None => p16(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " This return a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).widening_mul(p8(0x34)), (p8(0x68), p8(0x00)));"]
-            #[doc =
-            " assert_eq!(p8(0x12).widening_mul(p8(0x34)), (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn widening_mul(self, other: p16) -> (p16, p16) {
                 self.naive_widening_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_mul(p8(0x34)), (p8(0x68), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_mul(p8(0x34)), (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_mul(self, other: p16) -> (p16, bool) {
                 let (lo, hi) = self.widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_mul(p8(0x34)), Some(p8(0x68)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_mul(p8(0x34)), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_mul(self, other: p16) -> Option<p16> {
                 match self.overflowing_mul(other) {
@@ -3076,73 +2092,14 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_mul(p8(0x34)), p8(0x68));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_mul(p8(0x34)), p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_mul(self, other: p16) -> p16 {
                 self.naive_wrapping_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02) * p8(0x34), p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn mul(self, other: p16) -> p16 {
                 self.checked_mul(other).expect("overflow in polynomial multiply")
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_pow(3);"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_pow(3);"]
-            #[doc = " assert_eq!(X, (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc = " assert_eq!(X, (p8(0x08), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_pow(self, exp: u32)
                 -> (p16, bool) {
@@ -3163,28 +2120,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: Option<p8> = p8(0x02).naive_checked_pow(3);"]
-            #[doc = " const Y: Option<p8> = p8(0x12).naive_checked_pow(3);"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(X, Some(p8(0x08)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_pow(self, exp: u32) -> Option<p16> {
                 let mut a = self;
@@ -3207,28 +2142,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_pow(3);"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " assert_eq!(Y, p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_pow(self, exp: u32) -> p16 {
                 let mut a = self;
@@ -3241,28 +2154,6 @@ pub mod p {
                     a = a.naive_wrapping_mul(a);
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_pow(self, exp: u32) -> p16 {
                 let mut a = self;
@@ -3275,26 +2166,6 @@ pub mod p {
                     a = a.naive_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x08), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_pow(3), (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_pow(self, exp: u32) -> (p16, bool) {
                 let mut a = self;
@@ -3314,22 +2185,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x08)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_pow(3), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_pow(self, exp: u32) -> Option<p16> {
                 let mut a = self;
@@ -3352,22 +2207,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x08));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_pow(3), p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_pow(self, exp: u32) -> p16 {
                 let mut a = self;
@@ -3380,23 +2219,6 @@ pub mod p {
                     a = a.wrapping_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).pow(3), p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn pow(self, exp: u32) -> p16 {
                 let mut a = self;
@@ -3409,30 +2231,6 @@ pub mod p {
                     a = a.mul(a);
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x68).naive_checked_div(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x68).naive_checked_div(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_div(self, other: p16) -> Option<p16> {
                 if other.0 == 0 {
@@ -3448,26 +2246,6 @@ pub mod p {
                     Some(p16(x))
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x68).naive_div(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x02));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_div(self, other: p16) -> p16 {
                 match self.naive_checked_div(other) {
@@ -3475,30 +2253,6 @@ pub mod p {
                     None => p16(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x69).naive_checked_rem(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x69).naive_checked_rem(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x01)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_rem(self, other: p16) -> Option<p16> {
                 if other.0 == 0 {
@@ -3512,26 +2266,6 @@ pub mod p {
                     Some(p16(a))
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`"]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x69).naive_rem(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x01));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_rem(self, other: p16) -> p16 {
                 match self.naive_checked_rem(other) {
@@ -3539,23 +2273,6 @@ pub mod p {
                     None => p16(self.0 / 0),
                 }
             }
-            #[doc =
-            " Cast slice of unsigned-types to slice of polynomial-types."]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " let x: &[u8] = &[0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &[p8] = p8::slice_from_slice(x);"]
-            #[doc =
-            " assert_eq!(y, &[p8(0x01), p8(0x02), p8(0x03), p8(0x04), p8(0x05)]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice(slice: &[super::__p16_u]) -> &[p16] {
                 unsafe {
@@ -3563,26 +2280,6 @@ pub mod p {
                         slice.len())
                 }
             }
-            #[doc =
-            " Cast mut slice of unsigned-types to mut slice of polynomial-types"]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " let x: &mut [u8] = &mut [0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &mut [p8] = p8::slice_from_slice_mut(x);"]
-            #[doc = " for i in 0..y.len() {"]
-            #[doc = "     y[i] *= p8(0x05);"]
-            #[doc = " }"]
-            #[doc = " assert_eq!(x, &[0x05, 0x0a, 0x0f, 0x14, 0x11]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice_mut(slice: &mut [super::__p16_u])
                 -> &mut [p16] {
@@ -5079,18 +3776,12 @@ pub mod p {
             }
         }
         impl fmt::Debug for p16 {
-            #[doc =
-            " We use LowerHex for Debug, since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("{0}(0x{1:x})", "p16", self.0))
             }
         }
         impl fmt::Display for p16 {
-            #[doc =
-            " We use LowerHex for Display since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("0x{0:x}", self.0))
@@ -5122,11 +3813,6 @@ pub mod p {
         }
         impl FromStr for p16 {
             type Err = ParseIntError;
-            #[doc =
-            " In order to match Display, this `from_str` takes and only takes"]
-            #[doc =
-            " hexadecimal strings starting with `0x`. If you need a different radix"]
-            #[doc = " there is [`from_str_radix`](#method.from_str_radix)."]
             fn from_str(s: &str) -> Result<p16, ParseIntError> {
                 if s.starts_with("0x") {
                     Ok(p16(super::__p16_u::from_str_radix(&s[2..], 16)?))
@@ -5147,7 +3833,6 @@ pub mod p {
     use i16 as __p16_i;
     pub use __p32_gen::p32;
     mod __p32_gen {
-        #[doc = "! Template for polynomial types"]
         use core::mem::size_of;
         use core::ops::*;
         use core::iter::*;
@@ -5158,19 +3843,6 @@ pub mod p {
         use core::slice;
         use crate::traits::TryFrom;
         use crate::traits::FromLossy;
-        #[doc = " A type representing a gf(2) polynomial."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " use ::gf256::*;"]
-        #[doc = ""]
-        #[doc = " let a = p32(0x1234);"]
-        #[doc = " let b = p32(0x5678);"]
-        #[doc = " assert_eq!(a+b, p32(0x444c));"]
-        #[doc = " assert_eq!(a*b, p32(0x05c58160));"]
-        #[doc = " ```"]
-        #[doc = ""]
-        #[doc = " See the [module-level documentation](../p) for more info."]
-        #[doc = ""]
         #[allow(non_camel_case_types)]
         #[repr(transparent)]
         pub struct p32(pub super::__p32_u);
@@ -5242,84 +3914,22 @@ pub mod p {
             }
         }
         impl p32 {
-            #[doc = " Create a gf(2) polynomial."]
             #[inline]
             pub const fn new(x: super::__p32_u) -> p32 { p32(x) }
-            #[doc = " Get the underlying primitive type."]
             #[inline]
             pub const fn get(self) -> super::__p32_u { self.0 }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_add(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_add(self, other: p32) -> p32 {
                 p32(self.0 ^ other.0)
             }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) + p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn add(self, other: p32) -> p32 { p32(self.0 ^ other.0) }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_sub(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_sub(self, other: p32) -> p32 {
                 p32(self.0 ^ other.0)
             }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) - p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn sub(self, other: p32) -> p32 { p32(self.0 ^ other.0) }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " This returns a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, p8) = p8(0x02).naive_widening_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, p8) = p8(0x12).naive_widening_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), p8(0x00)));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_widening_mul(self, other: p32) -> (p32, p32) {
                 let a = self.0;
@@ -5337,52 +3947,12 @@ pub mod p {
                 }
                 (p32(lo), p32(hi >> 1))
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_mul(self, other: p32)
                 -> (p32, bool) {
                 let (lo, hi) = self.naive_widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x02).naive_checked_mul(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x12).naive_checked_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, Some(p8(0x68)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_mul(self, other: p32) -> Option<p32> {
                 match self.naive_overflowing_mul(other) {
@@ -5390,23 +3960,6 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " assert_eq!(Y, p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_mul(self, other: p32) -> p32 {
                 let a = self.0;
@@ -5422,23 +3975,6 @@ pub mod p {
                 }
                 p32(x)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_mul(self, other: p32) -> p32 {
                 match self.naive_checked_mul(other) {
@@ -5446,71 +3982,15 @@ pub mod p {
                     None => p32(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " This return a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).widening_mul(p8(0x34)), (p8(0x68), p8(0x00)));"]
-            #[doc =
-            " assert_eq!(p8(0x12).widening_mul(p8(0x34)), (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn widening_mul(self, other: p32) -> (p32, p32) {
                 self.naive_widening_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_mul(p8(0x34)), (p8(0x68), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_mul(p8(0x34)), (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_mul(self, other: p32) -> (p32, bool) {
                 let (lo, hi) = self.widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_mul(p8(0x34)), Some(p8(0x68)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_mul(p8(0x34)), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_mul(self, other: p32) -> Option<p32> {
                 match self.overflowing_mul(other) {
@@ -5518,73 +3998,14 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_mul(p8(0x34)), p8(0x68));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_mul(p8(0x34)), p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_mul(self, other: p32) -> p32 {
                 self.naive_wrapping_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02) * p8(0x34), p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn mul(self, other: p32) -> p32 {
                 self.checked_mul(other).expect("overflow in polynomial multiply")
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_pow(3);"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_pow(3);"]
-            #[doc = " assert_eq!(X, (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc = " assert_eq!(X, (p8(0x08), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_pow(self, exp: u32)
                 -> (p32, bool) {
@@ -5605,28 +4026,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: Option<p8> = p8(0x02).naive_checked_pow(3);"]
-            #[doc = " const Y: Option<p8> = p8(0x12).naive_checked_pow(3);"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(X, Some(p8(0x08)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_pow(self, exp: u32) -> Option<p32> {
                 let mut a = self;
@@ -5649,28 +4048,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_pow(3);"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " assert_eq!(Y, p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_pow(self, exp: u32) -> p32 {
                 let mut a = self;
@@ -5683,28 +4060,6 @@ pub mod p {
                     a = a.naive_wrapping_mul(a);
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_pow(self, exp: u32) -> p32 {
                 let mut a = self;
@@ -5717,26 +4072,6 @@ pub mod p {
                     a = a.naive_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x08), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_pow(3), (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_pow(self, exp: u32) -> (p32, bool) {
                 let mut a = self;
@@ -5756,22 +4091,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x08)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_pow(3), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_pow(self, exp: u32) -> Option<p32> {
                 let mut a = self;
@@ -5794,22 +4113,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x08));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_pow(3), p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_pow(self, exp: u32) -> p32 {
                 let mut a = self;
@@ -5822,23 +4125,6 @@ pub mod p {
                     a = a.wrapping_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).pow(3), p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn pow(self, exp: u32) -> p32 {
                 let mut a = self;
@@ -5851,30 +4137,6 @@ pub mod p {
                     a = a.mul(a);
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x68).naive_checked_div(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x68).naive_checked_div(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_div(self, other: p32) -> Option<p32> {
                 if other.0 == 0 {
@@ -5890,26 +4152,6 @@ pub mod p {
                     Some(p32(x))
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x68).naive_div(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x02));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_div(self, other: p32) -> p32 {
                 match self.naive_checked_div(other) {
@@ -5917,30 +4159,6 @@ pub mod p {
                     None => p32(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x69).naive_checked_rem(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x69).naive_checked_rem(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x01)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_rem(self, other: p32) -> Option<p32> {
                 if other.0 == 0 {
@@ -5954,26 +4172,6 @@ pub mod p {
                     Some(p32(a))
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`"]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x69).naive_rem(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x01));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_rem(self, other: p32) -> p32 {
                 match self.naive_checked_rem(other) {
@@ -5981,23 +4179,6 @@ pub mod p {
                     None => p32(self.0 / 0),
                 }
             }
-            #[doc =
-            " Cast slice of unsigned-types to slice of polynomial-types."]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " let x: &[u8] = &[0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &[p8] = p8::slice_from_slice(x);"]
-            #[doc =
-            " assert_eq!(y, &[p8(0x01), p8(0x02), p8(0x03), p8(0x04), p8(0x05)]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice(slice: &[super::__p32_u]) -> &[p32] {
                 unsafe {
@@ -6005,26 +4186,6 @@ pub mod p {
                         slice.len())
                 }
             }
-            #[doc =
-            " Cast mut slice of unsigned-types to mut slice of polynomial-types"]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " let x: &mut [u8] = &mut [0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &mut [p8] = p8::slice_from_slice_mut(x);"]
-            #[doc = " for i in 0..y.len() {"]
-            #[doc = "     y[i] *= p8(0x05);"]
-            #[doc = " }"]
-            #[doc = " assert_eq!(x, &[0x05, 0x0a, 0x0f, 0x14, 0x11]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice_mut(slice: &mut [super::__p32_u])
                 -> &mut [p32] {
@@ -7532,18 +5693,12 @@ pub mod p {
             }
         }
         impl fmt::Debug for p32 {
-            #[doc =
-            " We use LowerHex for Debug, since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("{0}(0x{1:x})", "p32", self.0))
             }
         }
         impl fmt::Display for p32 {
-            #[doc =
-            " We use LowerHex for Display since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("0x{0:x}", self.0))
@@ -7575,11 +5730,6 @@ pub mod p {
         }
         impl FromStr for p32 {
             type Err = ParseIntError;
-            #[doc =
-            " In order to match Display, this `from_str` takes and only takes"]
-            #[doc =
-            " hexadecimal strings starting with `0x`. If you need a different radix"]
-            #[doc = " there is [`from_str_radix`](#method.from_str_radix)."]
             fn from_str(s: &str) -> Result<p32, ParseIntError> {
                 if s.starts_with("0x") {
                     Ok(p32(super::__p32_u::from_str_radix(&s[2..], 16)?))
@@ -7600,7 +5750,6 @@ pub mod p {
     use i32 as __p32_i;
     pub use __p64_gen::p64;
     mod __p64_gen {
-        #[doc = "! Template for polynomial types"]
         use core::mem::size_of;
         use core::ops::*;
         use core::iter::*;
@@ -7611,19 +5760,6 @@ pub mod p {
         use core::slice;
         use crate::traits::TryFrom;
         use crate::traits::FromLossy;
-        #[doc = " A type representing a gf(2) polynomial."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " use ::gf256::*;"]
-        #[doc = ""]
-        #[doc = " let a = p32(0x1234);"]
-        #[doc = " let b = p32(0x5678);"]
-        #[doc = " assert_eq!(a+b, p32(0x444c));"]
-        #[doc = " assert_eq!(a*b, p32(0x05c58160));"]
-        #[doc = " ```"]
-        #[doc = ""]
-        #[doc = " See the [module-level documentation](../p) for more info."]
-        #[doc = ""]
         #[allow(non_camel_case_types)]
         #[repr(transparent)]
         pub struct p64(pub super::__p64_u);
@@ -7695,84 +5831,22 @@ pub mod p {
             }
         }
         impl p64 {
-            #[doc = " Create a gf(2) polynomial."]
             #[inline]
             pub const fn new(x: super::__p64_u) -> p64 { p64(x) }
-            #[doc = " Get the underlying primitive type."]
             #[inline]
             pub const fn get(self) -> super::__p64_u { self.0 }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_add(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_add(self, other: p64) -> p64 {
                 p64(self.0 ^ other.0)
             }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) + p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn add(self, other: p64) -> p64 { p64(self.0 ^ other.0) }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_sub(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_sub(self, other: p64) -> p64 {
                 p64(self.0 ^ other.0)
             }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) - p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn sub(self, other: p64) -> p64 { p64(self.0 ^ other.0) }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " This returns a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, p8) = p8(0x02).naive_widening_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, p8) = p8(0x12).naive_widening_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), p8(0x00)));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_widening_mul(self, other: p64) -> (p64, p64) {
                 let a = self.0;
@@ -7790,52 +5864,12 @@ pub mod p {
                 }
                 (p64(lo), p64(hi >> 1))
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_mul(self, other: p64)
                 -> (p64, bool) {
                 let (lo, hi) = self.naive_widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x02).naive_checked_mul(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x12).naive_checked_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, Some(p8(0x68)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_mul(self, other: p64) -> Option<p64> {
                 match self.naive_overflowing_mul(other) {
@@ -7843,23 +5877,6 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " assert_eq!(Y, p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_mul(self, other: p64) -> p64 {
                 let a = self.0;
@@ -7875,23 +5892,6 @@ pub mod p {
                 }
                 p64(x)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_mul(self, other: p64) -> p64 {
                 match self.naive_checked_mul(other) {
@@ -7899,71 +5899,15 @@ pub mod p {
                     None => p64(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " This return a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).widening_mul(p8(0x34)), (p8(0x68), p8(0x00)));"]
-            #[doc =
-            " assert_eq!(p8(0x12).widening_mul(p8(0x34)), (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn widening_mul(self, other: p64) -> (p64, p64) {
                 self.naive_widening_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_mul(p8(0x34)), (p8(0x68), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_mul(p8(0x34)), (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_mul(self, other: p64) -> (p64, bool) {
                 let (lo, hi) = self.widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_mul(p8(0x34)), Some(p8(0x68)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_mul(p8(0x34)), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_mul(self, other: p64) -> Option<p64> {
                 match self.overflowing_mul(other) {
@@ -7971,73 +5915,14 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_mul(p8(0x34)), p8(0x68));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_mul(p8(0x34)), p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_mul(self, other: p64) -> p64 {
                 self.naive_wrapping_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02) * p8(0x34), p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn mul(self, other: p64) -> p64 {
                 self.checked_mul(other).expect("overflow in polynomial multiply")
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_pow(3);"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_pow(3);"]
-            #[doc = " assert_eq!(X, (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc = " assert_eq!(X, (p8(0x08), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_pow(self, exp: u32)
                 -> (p64, bool) {
@@ -8058,28 +5943,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: Option<p8> = p8(0x02).naive_checked_pow(3);"]
-            #[doc = " const Y: Option<p8> = p8(0x12).naive_checked_pow(3);"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(X, Some(p8(0x08)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_pow(self, exp: u32) -> Option<p64> {
                 let mut a = self;
@@ -8102,28 +5965,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_pow(3);"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " assert_eq!(Y, p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_pow(self, exp: u32) -> p64 {
                 let mut a = self;
@@ -8136,28 +5977,6 @@ pub mod p {
                     a = a.naive_wrapping_mul(a);
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_pow(self, exp: u32) -> p64 {
                 let mut a = self;
@@ -8170,26 +5989,6 @@ pub mod p {
                     a = a.naive_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x08), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_pow(3), (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_pow(self, exp: u32) -> (p64, bool) {
                 let mut a = self;
@@ -8209,22 +6008,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x08)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_pow(3), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_pow(self, exp: u32) -> Option<p64> {
                 let mut a = self;
@@ -8247,22 +6030,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x08));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_pow(3), p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_pow(self, exp: u32) -> p64 {
                 let mut a = self;
@@ -8275,23 +6042,6 @@ pub mod p {
                     a = a.wrapping_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).pow(3), p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn pow(self, exp: u32) -> p64 {
                 let mut a = self;
@@ -8304,30 +6054,6 @@ pub mod p {
                     a = a.mul(a);
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x68).naive_checked_div(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x68).naive_checked_div(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_div(self, other: p64) -> Option<p64> {
                 if other.0 == 0 {
@@ -8343,26 +6069,6 @@ pub mod p {
                     Some(p64(x))
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x68).naive_div(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x02));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_div(self, other: p64) -> p64 {
                 match self.naive_checked_div(other) {
@@ -8370,30 +6076,6 @@ pub mod p {
                     None => p64(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x69).naive_checked_rem(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x69).naive_checked_rem(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x01)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_rem(self, other: p64) -> Option<p64> {
                 if other.0 == 0 {
@@ -8407,26 +6089,6 @@ pub mod p {
                     Some(p64(a))
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`"]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x69).naive_rem(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x01));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_rem(self, other: p64) -> p64 {
                 match self.naive_checked_rem(other) {
@@ -8434,23 +6096,6 @@ pub mod p {
                     None => p64(self.0 / 0),
                 }
             }
-            #[doc =
-            " Cast slice of unsigned-types to slice of polynomial-types."]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " let x: &[u8] = &[0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &[p8] = p8::slice_from_slice(x);"]
-            #[doc =
-            " assert_eq!(y, &[p8(0x01), p8(0x02), p8(0x03), p8(0x04), p8(0x05)]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice(slice: &[super::__p64_u]) -> &[p64] {
                 unsafe {
@@ -8458,26 +6103,6 @@ pub mod p {
                         slice.len())
                 }
             }
-            #[doc =
-            " Cast mut slice of unsigned-types to mut slice of polynomial-types"]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " let x: &mut [u8] = &mut [0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &mut [p8] = p8::slice_from_slice_mut(x);"]
-            #[doc = " for i in 0..y.len() {"]
-            #[doc = "     y[i] *= p8(0x05);"]
-            #[doc = " }"]
-            #[doc = " assert_eq!(x, &[0x05, 0x0a, 0x0f, 0x14, 0x11]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice_mut(slice: &mut [super::__p64_u])
                 -> &mut [p64] {
@@ -9985,18 +7610,12 @@ pub mod p {
             }
         }
         impl fmt::Debug for p64 {
-            #[doc =
-            " We use LowerHex for Debug, since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("{0}(0x{1:x})", "p64", self.0))
             }
         }
         impl fmt::Display for p64 {
-            #[doc =
-            " We use LowerHex for Display since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("0x{0:x}", self.0))
@@ -10028,11 +7647,6 @@ pub mod p {
         }
         impl FromStr for p64 {
             type Err = ParseIntError;
-            #[doc =
-            " In order to match Display, this `from_str` takes and only takes"]
-            #[doc =
-            " hexadecimal strings starting with `0x`. If you need a different radix"]
-            #[doc = " there is [`from_str_radix`](#method.from_str_radix)."]
             fn from_str(s: &str) -> Result<p64, ParseIntError> {
                 if s.starts_with("0x") {
                     Ok(p64(super::__p64_u::from_str_radix(&s[2..], 16)?))
@@ -10053,7 +7667,6 @@ pub mod p {
     use i64 as __p64_i;
     pub use __p128_gen::p128;
     mod __p128_gen {
-        #[doc = "! Template for polynomial types"]
         use core::mem::size_of;
         use core::ops::*;
         use core::iter::*;
@@ -10064,19 +7677,6 @@ pub mod p {
         use core::slice;
         use crate::traits::TryFrom;
         use crate::traits::FromLossy;
-        #[doc = " A type representing a gf(2) polynomial."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " use ::gf256::*;"]
-        #[doc = ""]
-        #[doc = " let a = p32(0x1234);"]
-        #[doc = " let b = p32(0x5678);"]
-        #[doc = " assert_eq!(a+b, p32(0x444c));"]
-        #[doc = " assert_eq!(a*b, p32(0x05c58160));"]
-        #[doc = " ```"]
-        #[doc = ""]
-        #[doc = " See the [module-level documentation](../p) for more info."]
-        #[doc = ""]
         #[allow(non_camel_case_types)]
         #[repr(transparent)]
         pub struct p128(pub super::__p128_u);
@@ -10148,84 +7748,22 @@ pub mod p {
             }
         }
         impl p128 {
-            #[doc = " Create a gf(2) polynomial."]
             #[inline]
             pub const fn new(x: super::__p128_u) -> p128 { p128(x) }
-            #[doc = " Get the underlying primitive type."]
             #[inline]
             pub const fn get(self) -> super::__p128_u { self.0 }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_add(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_add(self, other: p128) -> p128 {
                 p128(self.0 ^ other.0)
             }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) + p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn add(self, other: p128) -> p128 { p128(self.0 ^ other.0) }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_sub(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_sub(self, other: p128) -> p128 {
                 p128(self.0 ^ other.0)
             }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) - p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn sub(self, other: p128) -> p128 { p128(self.0 ^ other.0) }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " This returns a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, p8) = p8(0x02).naive_widening_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, p8) = p8(0x12).naive_widening_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), p8(0x00)));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_widening_mul(self, other: p128)
                 -> (p128, p128) {
@@ -10244,52 +7782,12 @@ pub mod p {
                 }
                 (p128(lo), p128(hi >> 1))
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_mul(self, other: p128)
                 -> (p128, bool) {
                 let (lo, hi) = self.naive_widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x02).naive_checked_mul(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x12).naive_checked_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, Some(p8(0x68)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_mul(self, other: p128)
                 -> Option<p128> {
@@ -10298,23 +7796,6 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " assert_eq!(Y, p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_mul(self, other: p128) -> p128 {
                 let a = self.0;
@@ -10330,23 +7811,6 @@ pub mod p {
                 }
                 p128(x)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_mul(self, other: p128) -> p128 {
                 match self.naive_checked_mul(other) {
@@ -10354,71 +7818,15 @@ pub mod p {
                     None => p128(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " This return a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).widening_mul(p8(0x34)), (p8(0x68), p8(0x00)));"]
-            #[doc =
-            " assert_eq!(p8(0x12).widening_mul(p8(0x34)), (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn widening_mul(self, other: p128) -> (p128, p128) {
                 self.naive_widening_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_mul(p8(0x34)), (p8(0x68), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_mul(p8(0x34)), (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_mul(self, other: p128) -> (p128, bool) {
                 let (lo, hi) = self.widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_mul(p8(0x34)), Some(p8(0x68)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_mul(p8(0x34)), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_mul(self, other: p128) -> Option<p128> {
                 match self.overflowing_mul(other) {
@@ -10426,73 +7834,14 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_mul(p8(0x34)), p8(0x68));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_mul(p8(0x34)), p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_mul(self, other: p128) -> p128 {
                 self.naive_wrapping_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02) * p8(0x34), p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn mul(self, other: p128) -> p128 {
                 self.checked_mul(other).expect("overflow in polynomial multiply")
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_pow(3);"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_pow(3);"]
-            #[doc = " assert_eq!(X, (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc = " assert_eq!(X, (p8(0x08), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_pow(self, exp: u32)
                 -> (p128, bool) {
@@ -10513,28 +7862,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: Option<p8> = p8(0x02).naive_checked_pow(3);"]
-            #[doc = " const Y: Option<p8> = p8(0x12).naive_checked_pow(3);"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(X, Some(p8(0x08)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_pow(self, exp: u32) -> Option<p128> {
                 let mut a = self;
@@ -10557,28 +7884,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_pow(3);"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " assert_eq!(Y, p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_pow(self, exp: u32) -> p128 {
                 let mut a = self;
@@ -10591,28 +7896,6 @@ pub mod p {
                     a = a.naive_wrapping_mul(a);
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_pow(self, exp: u32) -> p128 {
                 let mut a = self;
@@ -10625,26 +7908,6 @@ pub mod p {
                     a = a.naive_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x08), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_pow(3), (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_pow(self, exp: u32) -> (p128, bool) {
                 let mut a = self;
@@ -10664,22 +7927,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x08)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_pow(3), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_pow(self, exp: u32) -> Option<p128> {
                 let mut a = self;
@@ -10702,22 +7949,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x08));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_pow(3), p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_pow(self, exp: u32) -> p128 {
                 let mut a = self;
@@ -10730,23 +7961,6 @@ pub mod p {
                     a = a.wrapping_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).pow(3), p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn pow(self, exp: u32) -> p128 {
                 let mut a = self;
@@ -10759,30 +7973,6 @@ pub mod p {
                     a = a.mul(a);
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x68).naive_checked_div(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x68).naive_checked_div(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_div(self, other: p128)
                 -> Option<p128> {
@@ -10799,26 +7989,6 @@ pub mod p {
                     Some(p128(x))
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x68).naive_div(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x02));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_div(self, other: p128) -> p128 {
                 match self.naive_checked_div(other) {
@@ -10826,30 +7996,6 @@ pub mod p {
                     None => p128(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x69).naive_checked_rem(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x69).naive_checked_rem(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x01)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_rem(self, other: p128)
                 -> Option<p128> {
@@ -10864,26 +8010,6 @@ pub mod p {
                     Some(p128(a))
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`"]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x69).naive_rem(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x01));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_rem(self, other: p128) -> p128 {
                 match self.naive_checked_rem(other) {
@@ -10891,23 +8017,6 @@ pub mod p {
                     None => p128(self.0 / 0),
                 }
             }
-            #[doc =
-            " Cast slice of unsigned-types to slice of polynomial-types."]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " let x: &[u8] = &[0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &[p8] = p8::slice_from_slice(x);"]
-            #[doc =
-            " assert_eq!(y, &[p8(0x01), p8(0x02), p8(0x03), p8(0x04), p8(0x05)]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice(slice: &[super::__p128_u]) -> &[p128] {
                 unsafe {
@@ -10915,26 +8024,6 @@ pub mod p {
                         slice.len())
                 }
             }
-            #[doc =
-            " Cast mut slice of unsigned-types to mut slice of polynomial-types"]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " let x: &mut [u8] = &mut [0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &mut [p8] = p8::slice_from_slice_mut(x);"]
-            #[doc = " for i in 0..y.len() {"]
-            #[doc = "     y[i] *= p8(0x05);"]
-            #[doc = " }"]
-            #[doc = " assert_eq!(x, &[0x05, 0x0a, 0x0f, 0x14, 0x11]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice_mut(slice: &mut [super::__p128_u])
                 -> &mut [p128] {
@@ -12475,18 +9564,12 @@ pub mod p {
             }
         }
         impl fmt::Debug for p128 {
-            #[doc =
-            " We use LowerHex for Debug, since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("{0}(0x{1:x})", "p128", self.0))
             }
         }
         impl fmt::Display for p128 {
-            #[doc =
-            " We use LowerHex for Display since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("0x{0:x}", self.0))
@@ -12518,11 +9601,6 @@ pub mod p {
         }
         impl FromStr for p128 {
             type Err = ParseIntError;
-            #[doc =
-            " In order to match Display, this `from_str` takes and only takes"]
-            #[doc =
-            " hexadecimal strings starting with `0x`. If you need a different radix"]
-            #[doc = " there is [`from_str_radix`](#method.from_str_radix)."]
             fn from_str(s: &str) -> Result<p128, ParseIntError> {
                 if s.starts_with("0x") {
                     Ok(p128(super::__p128_u::from_str_radix(&s[2..], 16)?))
@@ -12543,7 +9621,6 @@ pub mod p {
     use i128 as __p128_i;
     pub use __psize_gen::psize;
     mod __psize_gen {
-        #[doc = "! Template for polynomial types"]
         use core::mem::size_of;
         use core::ops::*;
         use core::iter::*;
@@ -12554,19 +9631,6 @@ pub mod p {
         use core::slice;
         use crate::traits::TryFrom;
         use crate::traits::FromLossy;
-        #[doc = " A type representing a gf(2) polynomial."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " use ::gf256::*;"]
-        #[doc = ""]
-        #[doc = " let a = p32(0x1234);"]
-        #[doc = " let b = p32(0x5678);"]
-        #[doc = " assert_eq!(a+b, p32(0x444c));"]
-        #[doc = " assert_eq!(a*b, p32(0x05c58160));"]
-        #[doc = " ```"]
-        #[doc = ""]
-        #[doc = " See the [module-level documentation](../p) for more info."]
-        #[doc = ""]
         #[allow(non_camel_case_types)]
         #[repr(transparent)]
         pub struct psize(pub super::__psize_u);
@@ -12640,88 +9704,26 @@ pub mod p {
             }
         }
         impl psize {
-            #[doc = " Create a gf(2) polynomial."]
             #[inline]
             pub const fn new(x: super::__psize_u) -> psize { psize(x) }
-            #[doc = " Get the underlying primitive type."]
             #[inline]
             pub const fn get(self) -> super::__psize_u { self.0 }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_add(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_add(self, other: psize) -> psize {
                 psize(self.0 ^ other.0)
             }
-            #[doc = " Polynomial addition, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) + p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn add(self, other: psize) -> psize {
                 psize(self.0 ^ other.0)
             }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x12).naive_sub(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_sub(self, other: psize) -> psize {
                 psize(self.0 ^ other.0)
             }
-            #[doc = " Polynomial subtraction, aka xor."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x12) - p8(0x34), p8(0x26));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn sub(self, other: psize) -> psize {
                 psize(self.0 ^ other.0)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " This returns a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, p8) = p8(0x02).naive_widening_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, p8) = p8(0x12).naive_widening_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), p8(0x00)));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_widening_mul(self, other: psize)
                 -> (psize, psize) {
@@ -12740,52 +9742,12 @@ pub mod p {
                 }
                 (psize(lo), psize(hi >> 1))
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_mul(p8(0x34));"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, (p8(0x68), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_mul(self, other: psize)
                 -> (psize, bool) {
                 let (lo, hi) = self.naive_widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x02).naive_checked_mul(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x12).naive_checked_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, Some(p8(0x68)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_mul(self, other: psize)
                 -> Option<psize> {
@@ -12794,23 +9756,6 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " assert_eq!(Y, p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_mul(self, other: psize) -> psize {
                 let a = self.0;
@@ -12826,23 +9771,6 @@ pub mod p {
                 }
                 psize(x)
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_mul(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_mul(self, other: psize) -> psize {
                 match self.naive_checked_mul(other) {
@@ -12850,71 +9778,15 @@ pub mod p {
                     None => psize(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " This return a tuple containing the low and high parts in that order."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).widening_mul(p8(0x34)), (p8(0x68), p8(0x00)));"]
-            #[doc =
-            " assert_eq!(p8(0x12).widening_mul(p8(0x34)), (p8(0x28), p8(0x03)));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn widening_mul(self, other: psize) -> (psize, psize) {
                 self.naive_widening_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_mul(p8(0x34)), (p8(0x68), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_mul(p8(0x34)), (p8(0x28), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_mul(self, other: psize) -> (psize, bool) {
                 let (lo, hi) = self.widening_mul(other);
                 (lo, hi.0 != 0)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_mul(p8(0x34)), Some(p8(0x68)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_mul(p8(0x34)), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_mul(self, other: psize) -> Option<psize> {
                 match self.overflowing_mul(other) {
@@ -12922,73 +9794,14 @@ pub mod p {
                     (x, false) => Some(x),
                 }
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_mul(p8(0x34)), p8(0x68));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_mul(p8(0x34)), p8(0x28));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_mul(self, other: psize) -> psize {
                 self.naive_wrapping_mul(other)
             }
-            #[doc = " Polynomial multiplication."]
-            #[doc = ""]
-            #[doc =
-            " This attempts to use carry-less multiplication instructions when"]
-            #[doc =
-            " available (`pclmulqdq` on x86_64, `pmull` on aarch64), otherwise falls"]
-            #[doc = " back to the expensive naive implementation."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " assert_eq!(p8(0x02) * p8(0x34), p8(0x68));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn mul(self, other: psize) -> psize {
                 self.checked_mul(other).expect("overflow in polynomial multiply")
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: (p8, bool) = p8(0x02).naive_overflowing_pow(3);"]
-            #[doc =
-            " const Y: (p8, bool) = p8(0x12).naive_overflowing_pow(3);"]
-            #[doc = " assert_eq!(X, (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc = " assert_eq!(X, (p8(0x08), false));"]
-            #[doc = " assert_eq!(Y, (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_overflowing_pow(self, exp: u32)
                 -> (psize, bool) {
@@ -13009,28 +9822,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: Option<p8> = p8(0x02).naive_checked_pow(3);"]
-            #[doc = " const Y: Option<p8> = p8(0x12).naive_checked_pow(3);"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(X, Some(p8(0x08)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_pow(self, exp: u32) -> Option<psize> {
                 let mut a = self;
@@ -13053,28 +9844,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_wrapping_pow(3);"]
-            #[doc = " const Y: p8 = p8(0x12).naive_wrapping_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " assert_eq!(Y, p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_wrapping_pow(self, exp: u32) -> psize {
                 let mut a = self;
@@ -13087,28 +9856,6 @@ pub mod p {
                     a = a.naive_wrapping_mul(a);
                 }
             }
-            #[doc = " Naive polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x02).naive_pow(3);"]
-            #[doc = " assert_eq!(X, p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(X, p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_pow(self, exp: u32) -> psize {
                 let mut a = self;
@@ -13121,26 +9868,6 @@ pub mod p {
                     a = a.naive_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this wraps around the boundary of the type, and returns"]
-            #[doc = " a flag indicating of overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x02)*p8(0x02)*p8(0x02), false));"]
-            #[doc =
-            " assert_eq!(p8(0x02).overflowing_pow(3), (p8(0x08), false));"]
-            #[doc =
-            " assert_eq!(p8(0x12).overflowing_pow(3), (p8(0x48), true));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn overflowing_pow(self, exp: u32) -> (psize, bool) {
                 let mut a = self;
@@ -13160,22 +9887,6 @@ pub mod p {
                     o = o || o_;
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this returns [`None`] if an overflow occured."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x02)*p8(0x02)*p8(0x02)));"]
-            #[doc = " assert_eq!(p8(0x02).checked_pow(3), Some(p8(0x08)));"]
-            #[doc = " assert_eq!(p8(0x12).checked_pow(3), None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn checked_pow(self, exp: u32) -> Option<psize> {
                 let mut a = self;
@@ -13198,22 +9909,6 @@ pub mod p {
                         }
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc = " Note this wraps around the boundary of the type."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).wrapping_pow(3), p8(0x08));"]
-            #[doc = " assert_eq!(p8(0x12).wrapping_pow(3), p8(0x48));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn wrapping_pow(self, exp: u32) -> psize {
                 let mut a = self;
@@ -13226,23 +9921,6 @@ pub mod p {
                     a = a.wrapping_mul(a);
                 }
             }
-            #[doc = " Polynomial exponentiation."]
-            #[doc = ""]
-            #[doc =
-            " Performs exponentiation by squaring, where polynomial exponentiation"]
-            #[doc = " is the same as repeated multiplication."]
-            #[doc = ""]
-            #[doc =
-            " Note this panics if an overflow occured and debug_assertions"]
-            #[doc = " are enabled."]
-            #[doc = " "]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " assert_eq!(p8(0x02).pow(3), p8(0x02)*p8(0x02)*p8(0x02));"]
-            #[doc = " assert_eq!(p8(0x02).pow(3), p8(0x08));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn pow(self, exp: u32) -> psize {
                 let mut a = self;
@@ -13255,30 +9933,6 @@ pub mod p {
                     a = a.mul(a);
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x68).naive_checked_div(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x68).naive_checked_div(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x02)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_div(self, other: psize)
                 -> Option<psize> {
@@ -13295,26 +9949,6 @@ pub mod p {
                     Some(psize(x))
                 }
             }
-            #[doc = " Naive polynomial division."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial division,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x68).naive_div(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x02));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_div(self, other: psize) -> psize {
                 match self.naive_checked_div(other) {
@@ -13322,30 +9956,6 @@ pub mod p {
                     None => psize(self.0 / 0),
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " Returns [`None`] if `other == 0`."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " const X: Option<p8> = p8(0x69).naive_checked_rem(p8(0x34));"]
-            #[doc =
-            " const Y: Option<p8> = p8(0x69).naive_checked_rem(p8(0x00));"]
-            #[doc = " assert_eq!(X, Some(p8(0x01)));"]
-            #[doc = " assert_eq!(Y, None);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_checked_rem(self, other: psize)
                 -> Option<psize> {
@@ -13360,26 +9970,6 @@ pub mod p {
                     Some(psize(a))
                 }
             }
-            #[doc = " Naive polynomial remainder."]
-            #[doc = ""]
-            #[doc =
-            " Note there is rarely hardware support for polynomial remainder,"]
-            #[doc =
-            " so these always use relatively expensive bitwise operations."]
-            #[doc = ""]
-            #[doc =
-            " Naive versions are built out of simple bitwise operations,"]
-            #[doc =
-            " these are more expensive, but also allowed in const contexts."]
-            #[doc = ""]
-            #[doc = " This will panic if `other == 0`"]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " const X: p8 = p8(0x69).naive_rem(p8(0x34));"]
-            #[doc = " assert_eq!(X, p8(0x01));"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub const fn naive_rem(self, other: psize) -> psize {
                 match self.naive_checked_rem(other) {
@@ -13387,23 +9977,6 @@ pub mod p {
                     None => psize(self.0 / 0),
                 }
             }
-            #[doc =
-            " Cast slice of unsigned-types to slice of polynomial-types."]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc = " let x: &[u8] = &[0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &[p8] = p8::slice_from_slice(x);"]
-            #[doc =
-            " assert_eq!(y, &[p8(0x01), p8(0x02), p8(0x03), p8(0x04), p8(0x05)]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice(slice: &[super::__psize_u]) -> &[psize] {
                 unsafe {
@@ -13411,26 +9984,6 @@ pub mod p {
                         slice.len())
                 }
             }
-            #[doc =
-            " Cast mut slice of unsigned-types to mut slice of polynomial-types"]
-            #[doc = ""]
-            #[doc =
-            " This is useful for when you want to view an array of bytes"]
-            #[doc =
-            " as an array of polynomials without an additional memory allocation"]
-            #[doc = " or unsafe code."]
-            #[doc = ""]
-            #[doc = " ``` rust"]
-            #[doc = " # use ::gf256::*;"]
-            #[doc =
-            " let x: &mut [u8] = &mut [0x01, 0x02, 0x03, 0x04, 0x05];"]
-            #[doc = " let y: &mut [p8] = p8::slice_from_slice_mut(x);"]
-            #[doc = " for i in 0..y.len() {"]
-            #[doc = "     y[i] *= p8(0x05);"]
-            #[doc = " }"]
-            #[doc = " assert_eq!(x, &[0x05, 0x0a, 0x0f, 0x14, 0x11]);"]
-            #[doc = " ```"]
-            #[doc = ""]
             #[inline]
             pub fn slice_from_slice_mut(slice: &mut [super::__psize_u])
                 -> &mut [psize] {
@@ -15000,18 +11553,12 @@ pub mod p {
             }
         }
         impl fmt::Debug for psize {
-            #[doc =
-            " We use LowerHex for Debug, since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("{0}(0x{1:x})", "psize", self.0))
             }
         }
         impl fmt::Display for psize {
-            #[doc =
-            " We use LowerHex for Display since this is a more useful representation"]
-            #[doc = " of binary polynomials."]
             fn fmt(&self, f: &mut fmt::Formatter<'_>)
                 -> Result<(), fmt::Error> {
                 f.write_fmt(format_args!("0x{0:x}", self.0))
@@ -15043,11 +11590,6 @@ pub mod p {
         }
         impl FromStr for psize {
             type Err = ParseIntError;
-            #[doc =
-            " In order to match Display, this `from_str` takes and only takes"]
-            #[doc =
-            " hexadecimal strings starting with `0x`. If you need a different radix"]
-            #[doc = " there is [`from_str_radix`](#method.from_str_radix)."]
             fn from_str(s: &str) -> Result<psize, ParseIntError> {
                 if s.starts_with("0x") {
                     Ok(psize(super::__psize_u::from_str_radix(&s[2..], 16)?))
@@ -15068,46 +11610,16 @@ pub mod p {
     use i64 as __psize_i;
 }
 pub use p::*;
-/// Galois-field types
-/// Re-exports for proc_macros
-///
-/// Don't use these!
 #[path = "."]
 pub mod internal {
     pub mod xmul {
-        //! Hardware xmul implementations if available
-        //!
-        //! These are declared here in order to be able to leverage unstable
-        //! features on nightly (if the feature nightly-features is provided).
-        //! Most of gf256 is provided as proc_macros, and those can't use unstable
-        //! features unless the feature is enabled with `#[feature!]` at the crate
-        //! level.
-        //!
-        //! These functions are intended to only be used by gf256's proc_macros,
-        //! these funcitons may or may not be available depending on target_features,
-        //! and may change behavior, so they shouldn't be used directly.
-        //!
-        /// A flag indicating if hardware carry-less multiplication
-        /// instructions are available.
-        ///
-        /// If this is false, any carry-less multiplication operations
-        /// will use a more expensive bitwise implementation.
-        ///
-        /// Some algorithms trade expensive division/remainder operations for
-        /// multiple multiplication operations, but this can backfire if
-        /// multiplication is also expensive. This flag allows algorithms
-        /// to choose the best strategy based on what's available.
-        ///
         pub const HAS_XMUL: bool = { false };
     }
 }
-/// A flag indicating if hardware carry-less multiplication
-/// instructions are available
 pub use internal::xmul::HAS_XMUL;
 
 pub use __gf256_aes_gen::gf256_aes;
 mod __gf256_aes_gen {
-    #[doc = "! Template for polynomial types"]
     use core::ops::*;
     use core::iter::*;
     use core::fmt;
@@ -15118,19 +11630,6 @@ mod __gf256_aes_gen {
     use core::slice;
     use ::gf256::traits::TryFrom;
     use ::gf256::traits::FromLossy;
-    #[doc = " A binary-extension finite-field type."]
-    #[doc = ""]
-    #[doc = " ``` rust"]
-    #[doc = " use ::gf256::*;"]
-    #[doc = ""]
-    #[doc = " let a = gf256(0xfd);"]
-    #[doc = " let b = gf256(0xfe);"]
-    #[doc = " let c = gf256(0xff);"]
-    #[doc = " assert_eq!(a*(b+c), a*b + a*c);"]
-    #[doc = " ```"]
-    #[doc = ""]
-    #[doc = " See the [module-level documentation](../gf) for more info."]
-    #[doc = ""]
     #[allow(non_camel_case_types)]
     #[repr(transparent)]
     pub struct gf256_aes(pub super::__gf256_aes_u);
@@ -15186,22 +11685,9 @@ mod __gf256_aes_gen {
         }
     }
     impl gf256_aes {
-        #[doc = " The irreducible polynomial that defines the field."]
-        #[doc = ""]
-        #[doc = " In order to keep polynomial multiplication closed over a"]
-        #[doc =
-        " finite-field, all multiplications are performed modulo this"]
-        #[doc = " polynomial."]
-        #[doc = ""]
         pub const POLYNOMIAL: super::__gf256_aes_p2 =
             super::__gf256_aes_p2(283);
-        #[doc = " A generator, aka primitive element, in the field."]
-        #[doc = ""]
-        #[doc = " Repeated multiplications of the generator will eventually"]
-        #[doc = " iterate through ever non-zero element of the field."]
-        #[doc = ""]
         pub const GENERATOR: gf256_aes = gf256_aes(3);
-        #[doc = " Number of non-zero elements in the field."]
         pub const NONZEROS: super::__gf256_aes_u = 255;
         const BARRET_CONSTANT: super::__gf256_aes_p =
             {
@@ -15212,122 +11698,33 @@ mod __gf256_aes_gen {
                                         << (8 * size_of::<super::__gf256_aes_u>() - 8))).0 as
                         super::__gf256_aes_u)
             };
-        #[doc =
-        " Create a finite-field element, panicking if the argument can\'t be"]
-        #[doc = " represented in the field."]
         #[inline]
         pub const fn new(x: super::__gf256_aes_u) -> gf256_aes {
             gf256_aes(x)
         }
-        #[doc = " Create a finite-field element."]
         #[inline]
         pub const unsafe fn new_unchecked(x: super::__gf256_aes_u)
             -> gf256_aes {
             gf256_aes(x)
         }
-        #[doc = " Get the underlying primitive type."]
         #[inline]
         pub const fn get(self) -> super::__gf256_aes_u { self.0 }
-        #[doc = " Addition over the finite-field, aka xor."]
-        #[doc = ""]
-        #[doc =
-        " Note that since this is defined over a finite-field, it\'s not actually"]
-        #[doc = " possible for this operation to overflow."]
-        #[doc = ""]
-        #[doc = " Naive versions are built out of simple bitwise operations,"]
-        #[doc =
-        " these are more expensive, but also allowed in const contexts."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " const X: gf256 = gf256(0x12).naive_add(gf256(0x34));"]
-        #[doc = " assert_eq!(X, gf256(0x26));"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub const fn naive_add(self, other: gf256_aes) -> gf256_aes {
             gf256_aes(self.0 ^ other.0)
         }
-        #[doc = " Addition over the finite-field, aka xor."]
-        #[doc = ""]
-        #[doc =
-        " Note that since this is defined over a finite-field, it\'s not actually"]
-        #[doc = " possible for this operation to overflow."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " assert_eq!(gf256(0x12) + gf256(0x34), gf256(0x26));"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub fn add(self, other: gf256_aes) -> gf256_aes {
             gf256_aes(self.0 ^ other.0)
         }
-        #[doc = " Subtraction over the finite-field, aka xor."]
-        #[doc = ""]
-        #[doc =
-        " Note that since this is defined over a finite-field, it\'s not actually"]
-        #[doc = " possible for this operation to overflow."]
-        #[doc = ""]
-        #[doc = " Naive versions are built out of simple bitwise operations,"]
-        #[doc =
-        " these are more expensive, but also allowed in const contexts."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " const X: gf256 = gf256(0x12).naive_sub(gf256(0x34));"]
-        #[doc = " assert_eq!(X, gf256(0x26));"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub const fn naive_sub(self, other: gf256_aes) -> gf256_aes {
             gf256_aes(self.0 ^ other.0)
         }
-        #[doc = " Subtraction over the finite-field, aka xor."]
-        #[doc = ""]
-        #[doc =
-        " Note that since this is defined over a finite-field, it\'s not actually"]
-        #[doc = " possible for this operation to overflow."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " assert_eq!(gf256(0x12) - gf256(0x34), gf256(0x26));"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub fn sub(self, other: gf256_aes) -> gf256_aes {
             gf256_aes(self.0 ^ other.0)
         }
-        #[doc = " Naive multiplication over the finite-field."]
-        #[doc = ""]
-        #[doc =
-        " Note that since this is defined over a finite-field, it\'s not actually"]
-        #[doc = " possible for this operation to overflow."]
-        #[doc = ""]
-        #[doc = " Naive versions are built out of simple bitwise operations,"]
-        #[doc =
-        " these are more expensive, but also allowed in const contexts."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " const X: gf256 = gf256(0x12).naive_mul(gf256(0x34));"]
-        #[doc = " assert_eq!(X, gf256(0x0f));"]
-        #[doc = " ```"]
-        #[doc = ""]
-        #[doc =
-        " One important property of finite-fields, multiplication is distributive"]
-        #[doc = " over addition:"]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " const A: gf256 = gf256(0x12);"]
-        #[doc = " const B: gf256 = gf256(0x34);"]
-        #[doc = " const C: gf256 = gf256(0x56);"]
-        #[doc = " const X: gf256 = A.naive_mul(B.naive_add(C));"]
-        #[doc = " const Y: gf256 = A.naive_mul(B).naive_add(A.naive_mul(C));"]
-        #[doc = " assert_eq!(X, Y);"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub const fn naive_mul(self, other: gf256_aes) -> gf256_aes {
             gf256_aes(super::__gf256_aes_p2(self.0 as
@@ -15335,29 +11732,6 @@ mod __gf256_aes_gen {
                                         _)).naive_rem(super::__gf256_aes_p2(283)).0 as
                     super::__gf256_aes_u)
         }
-        #[doc = " Naive exponentiation over the finite-field."]
-        #[doc = ""]
-        #[doc =
-        " Performs exponentiation by squaring, where exponentiation in a"]
-        #[doc =
-        " finite-field is defined as repeated multiplication. Note that this"]
-        #[doc = " is not constant-time even when used in Barret mode!"]
-        #[doc = ""]
-        #[doc =
-        " Note that since this is defined over a finite-field, it\'s not actually"]
-        #[doc = " possible for this operation to overflow."]
-        #[doc = ""]
-        #[doc = " Naive versions are built out of simple bitwise operations,"]
-        #[doc =
-        " these are more expensive, but also allowed in const contexts."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " const X: gf256 = gf256(0x12).naive_pow(3);"]
-        #[doc = " assert_eq!(X, gf256(0x12)*gf256(0x12)*gf256(0x12));"]
-        #[doc = " assert_eq!(X, gf256(0xbf));"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub const fn naive_pow(self, exp: super::__gf256_aes_u) -> gf256_aes {
             let mut a = self;
@@ -15370,45 +11744,11 @@ mod __gf256_aes_gen {
                 a = a.naive_mul(a);
             }
         }
-        #[doc = " Naive multiplicative inverse over the finite-field."]
-        #[doc = ""]
-        #[doc = " Naive versions are built out of simple bitwise operations,"]
-        #[doc =
-        " these are more expensive, but also allowed in const contexts."]
-        #[doc = ""]
-        #[doc = " Returns [`None`] if `other == 0`."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc =
-        " const X: Option<gf256> = gf256(0x12).naive_checked_recip();"]
-        #[doc =
-        " const Y: Option<gf256> = gf256(0x00).naive_checked_recip();"]
-        #[doc = " assert_eq!(X, Some(gf256(0xc0)));"]
-        #[doc = " assert_eq!(X.unwrap()*gf256(0x12), gf256(0x01));"]
-        #[doc = " assert_eq!(Y, None);"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub const fn naive_checked_recip(self) -> Option<gf256_aes> {
             if self.0 == 0 { return None; }
             Some(self.naive_pow(255 - 1))
         }
-        #[doc = " Naive multiplicative inverse over the finite-field."]
-        #[doc = ""]
-        #[doc = " Naive versions are built out of simple bitwise operations,"]
-        #[doc =
-        " these are more expensive, but also allowed in const contexts."]
-        #[doc = ""]
-        #[doc = " This will panic if `other == 0`."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " const X: gf256 = gf256(0x12).naive_recip();"]
-        #[doc = " assert_eq!(X, gf256(0xc0));"]
-        #[doc = " assert_eq!(X*gf256(0x12), gf256(0x01));"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub const fn naive_recip(self) -> gf256_aes {
             match self.naive_checked_recip() {
@@ -15416,25 +11756,6 @@ mod __gf256_aes_gen {
                 None => gf256_aes(1 / 0),
             }
         }
-        #[doc = " Naive division over the finite-field."]
-        #[doc = ""]
-        #[doc = " Naive versions are built out of simple bitwise operations,"]
-        #[doc =
-        " these are more expensive, but also allowed in const contexts."]
-        #[doc = ""]
-        #[doc = " Returns [`None`] if `other == 0`."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc =
-        " const X: Option<gf256> = gf256(0x0f).naive_checked_div(gf256(0x34));"]
-        #[doc =
-        " const Y: Option<gf256> = gf256(0x0f).naive_checked_div(gf256(0x00));"]
-        #[doc = " assert_eq!(X, Some(gf256(0x12)));"]
-        #[doc = " assert_eq!(X.unwrap()*gf256(0x34), gf256(0x0f));"]
-        #[doc = " assert_eq!(Y, None);"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub const fn naive_checked_div(self, other: gf256_aes)
             -> Option<gf256_aes> {
@@ -15443,21 +11764,6 @@ mod __gf256_aes_gen {
                 None => None,
             }
         }
-        #[doc = " Naive division over the finite-field."]
-        #[doc = ""]
-        #[doc = " Naive versions are built out of simple bitwise operations,"]
-        #[doc =
-        " these are more expensive, but also allowed in const contexts."]
-        #[doc = ""]
-        #[doc = " This will panic if `other == 0`."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " const X: gf256 = gf256(0x0f).naive_div(gf256(0x34));"]
-        #[doc = " assert_eq!(X, gf256(0x12));"]
-        #[doc = " assert_eq!(X*gf256(0x34), gf256(0x0f));"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub const fn naive_div(self, other: gf256_aes) -> gf256_aes {
             match self.naive_checked_div(other) {
@@ -15465,29 +11771,6 @@ mod __gf256_aes_gen {
                 None => gf256_aes(self.0 / 0),
             }
         }
-        #[doc = " Multiplication over the finite-field."]
-        #[doc = ""]
-        #[doc =
-        " Note that since this is defined over a finite-field, it\'s not actually"]
-        #[doc = " possible for this operation to overflow."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " assert_eq!(gf256(0x12) * gf256(0x34), gf256(0x0f));"]
-        #[doc = " ```"]
-        #[doc = ""]
-        #[doc =
-        " One important property of finite-fields, multiplication is distributive"]
-        #[doc = " over addition:"]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " let a = gf256(0x12);"]
-        #[doc = " let b = gf256(0x34);"]
-        #[doc = " let c = gf256(0x56);"]
-        #[doc = " assert_eq!(a*(b+c), a*b + a*c);"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub fn mul(self, other: gf256_aes) -> gf256_aes {
             let (lo, hi) =
@@ -15501,25 +11784,6 @@ mod __gf256_aes_gen {
                                 (8 * size_of::<super::__gf256_aes_u>() - 8)));
             gf256_aes(x.0 >> (8 * size_of::<super::__gf256_aes_u>() - 8))
         }
-        #[doc = " Exponentiation over the finite-field."]
-        #[doc = ""]
-        #[doc =
-        " Performs exponentiation by squaring, where exponentiation in a"]
-        #[doc =
-        " finite-field is defined as repeated multiplication. Note that this"]
-        #[doc = " is not constant-time even when used in Barret mode!"]
-        #[doc = ""]
-        #[doc =
-        " Note that since this is defined over a finite-field, it\'s not actually"]
-        #[doc = " possible for this operation to overflow."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc =
-        " assert_eq!(gf256(0x12).pow(3), gf256(0x12)*gf256(0x12)*gf256(0x12));"]
-        #[doc = " assert_eq!(gf256(0x12).pow(3), gf256(0xbf));"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub fn pow(self, exp: super::__gf256_aes_u) -> gf256_aes {
             let mut a = self;
@@ -15532,87 +11796,24 @@ mod __gf256_aes_gen {
                 a = a.mul(a);
             }
         }
-        #[doc = " Multiplicative inverse over the finite-field."]
-        #[doc = ""]
-        #[doc = " Returns [`None`] if `other == 0`."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc =
-        " assert_eq!(gf256(0x12).checked_recip(), Some(gf256(0xc0)));"]
-        #[doc =
-        " assert_eq!(gf256(0x12).checked_recip().unwrap()*gf256(0x12), gf256(0x01));"]
-        #[doc = " assert_eq!(gf256(0x00).checked_recip(), None);"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub fn checked_recip(self) -> Option<gf256_aes> {
             if self.0 == 0 { return None; }
             Some(self.pow(255 - 1))
         }
-        #[doc = " Naive multiplicative inverse over the finite-field."]
-        #[doc = ""]
-        #[doc = " This will panic if `other == 0`."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " assert_eq!(gf256(0x12).recip(), gf256(0xc0));"]
-        #[doc = " assert_eq!(gf256(0x12).recip()*gf256(0x12), gf256(0x01));"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub fn recip(self) -> gf256_aes {
             self.checked_recip().expect("gf division by zero")
         }
-        #[doc = " Division over the finite-field."]
-        #[doc = ""]
-        #[doc = " Returns [`None`] if `other == 0`."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc =
-        " assert_eq!(gf256(0x0f).checked_div(gf256(0x34)), Some(gf256(0x12)));"]
-        #[doc =
-        " assert_eq!(gf256(0x0f).checked_div(gf256(0x34)).unwrap()*gf256(0x34), gf256(0x0f));"]
-        #[doc = " assert_eq!(gf256(0x0f).checked_div(gf256(0x00)), None);"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub fn checked_div(self, other: gf256_aes) -> Option<gf256_aes> {
             if other.0 == 0 { return None; }
             Some(self * other.recip())
         }
-        #[doc = " Division over the finite-field."]
-        #[doc = ""]
-        #[doc = " This will panic if `other == 0`."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " assert_eq!(gf256(0x0f) / gf256(0x34), gf256(0x12));"]
-        #[doc =
-        " assert_eq!((gf256(0x0f) / gf256(0x34))*gf256(0x34), gf256(0x0f));"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub fn div(self, other: gf256_aes) -> gf256_aes {
             self.checked_div(other).expect("gf division by zero")
         }
-        #[doc =
-        " Cast slice of unsigned-types to slice of finite-field types."]
-        #[doc = ""]
-        #[doc = " This is useful for when you want to view an array of bytes"]
-        #[doc =
-        " as an array of finite-field elements without an additional memory"]
-        #[doc = " allocation or unsafe code."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " let x: &[u8] = &[0x01, 0x02, 0x03, 0x04, 0x05];"]
-        #[doc = " let y: &[gf256] = gf256::slice_from_slice(x);"]
-        #[doc =
-        " assert_eq!(y, &[gf256(0x01), gf256(0x02), gf256(0x03), gf256(0x04), gf256(0x05)]);"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub fn slice_from_slice(slice: &[super::__gf256_aes_u])
             -> &[gf256_aes] {
@@ -15621,24 +11822,6 @@ mod __gf256_aes_gen {
                     slice.len())
             }
         }
-        #[doc =
-        " Cast mut slice of unsigned-types to mut slice of finite-field types."]
-        #[doc = ""]
-        #[doc = " This is useful for when you want to view an array of bytes"]
-        #[doc =
-        " as an array of finite-field elements without an additional memory"]
-        #[doc = " allocation or unsafe code."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " let x: &mut [u8] = &mut [0x01, 0x02, 0x03, 0x04, 0x05];"]
-        #[doc = " let y: &mut [gf256] = gf256::slice_from_slice_mut(x);"]
-        #[doc = " for i in 0..y.len() {"]
-        #[doc = "     y[i] *= gf256(0x05);"]
-        #[doc = " }"]
-        #[doc = " assert_eq!(x, &[0x05, 0x0a, 0x0f, 0x14, 0x11]);"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub fn slice_from_slice_mut(slice: &mut [super::__gf256_aes_u])
             -> &mut [gf256_aes] {
@@ -15647,28 +11830,6 @@ mod __gf256_aes_gen {
                         *mut gf256_aes, slice.len())
             }
         }
-        #[doc =
-        " Cast slice of unsigned-types to slice of finite-field types unsafely."]
-        #[doc = ""]
-        #[doc = " This is useful for when you want to view an array of bytes"]
-        #[doc =
-        " as an array of finite-field elements without an additional memory"]
-        #[doc = " allocation or unsafe code."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " #[gf(polynomial=0x13, generator=0x2)]"]
-        #[doc = " type gf16;"]
-        #[doc = ""]
-        #[doc = " # fn main() {"]
-        #[doc = " let x: &[u8] = &[0x01, 0x02, 0x03, 0x04, 0x05];"]
-        #[doc =
-        " let y: &[gf16] = unsafe { gf16::slice_from_slice_unchecked(x) };"]
-        #[doc =
-        " assert_eq!(y, &[gf16::new(0x1), gf16::new(0x2), gf16::new(0x3), gf16::new(0x4), gf16::new(0x5)]);"]
-        #[doc = " # }"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub unsafe fn slice_from_slice_unchecked(slice:
                 &[super::__gf256_aes_u]) -> &[gf256_aes] {
@@ -15677,31 +11838,6 @@ mod __gf256_aes_gen {
                     slice.len())
             }
         }
-        #[doc =
-        " Cast mut slice of unsigned-types to mut slice of finite-field types unsafely."]
-        #[doc = ""]
-        #[doc = " This is useful for when you want to view an array of bytes"]
-        #[doc =
-        " as an array of finite-field elements without an additional memory"]
-        #[doc = " allocation or unsafe code."]
-        #[doc = ""]
-        #[doc = " ``` rust"]
-        #[doc = " # use ::gf256::*;"]
-        #[doc = " # use ::gf256::gf::gf;"]
-        #[doc = " #[gf(polynomial=0x13, generator=0x2)]"]
-        #[doc = " type gf16;"]
-        #[doc = ""]
-        #[doc = " # fn main() {"]
-        #[doc = " let x: &mut [u8] = &mut [0x01, 0x02, 0x03, 0x04, 0x05];"]
-        #[doc =
-        " let y: &mut [gf16] = unsafe { gf16::slice_from_slice_mut_unchecked(x) };"]
-        #[doc = " for i in 0..y.len() {"]
-        #[doc = "     y[i] *= gf16::new(0x5);"]
-        #[doc = " }"]
-        #[doc = " assert_eq!(x, &[0x05, 0x0a, 0x0f, 0x07, 0x02]);"]
-        #[doc = " # }"]
-        #[doc = " ```"]
-        #[doc = ""]
         #[inline]
         pub unsafe fn slice_from_slice_mut_unchecked(slice:
                 &mut [super::__gf256_aes_u]) -> &mut [gf256_aes] {
@@ -17344,18 +13480,12 @@ mod __gf256_aes_gen {
         fn shr_assign(&mut self, other: &isize) { *self = *self >> other; }
     }
     impl fmt::Debug for gf256_aes {
-        #[doc =
-        " We use LowerHex for Debug, since this is a more useful representation"]
-        #[doc = " of binary polynomials."]
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
             f.write_fmt(format_args!("{0}(0x{1:02$x})", "gf256_aes", self.0,
                     8 / 4))
         }
     }
     impl fmt::Display for gf256_aes {
-        #[doc =
-        " We use LowerHex for Display since this is a more useful representation"]
-        #[doc = " of binary polynomials."]
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
             f.write_fmt(format_args!("0x{0:01$x}", self.0, 8 / 4))
         }
@@ -17382,11 +13512,6 @@ mod __gf256_aes_gen {
     }
     impl FromStr for gf256_aes {
         type Err = ParseIntError;
-        #[doc =
-        " In order to match Display, this `from_str` takes and only takes"]
-        #[doc =
-        " hexadecimal strings starting with `0x`. If you need a different radix"]
-        #[doc = " there is [`from_str_radix`](#method.from_str_radix)."]
         fn from_str(s: &str) -> Result<gf256_aes, ParseIntError> {
             if s.starts_with("0x") {
                 Ok(gf256_aes(super::__gf256_aes_u::from_str_radix(&s[2..],

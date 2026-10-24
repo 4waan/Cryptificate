@@ -31,13 +31,13 @@ namespace gf256_aes
 axiom core.mem.size_of (T : Type _) : Result Std.Usize
 
 /-- [gf256_aes::p::__p8_gen::p8]
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 322:8-322:41
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 66:8-66:41
     Visibility: public -/
 @[reducible]
 def p.__p8_gen.p8 := Std.U8
 
 /-- [gf256_aes::p::__p8_gen::{gf256_aes::p::__p8_gen::p8}::add]:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 422:12-422:70
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 144:12-144:70
     Visibility: public -/
 def p.__p8_gen.p8.add
   (self : gf256_aes.p.__p8_gen.p8) (other : gf256_aes.p.__p8_gen.p8) : Result gf256_aes.p.__p8_gen.p8 := do
@@ -45,7 +45,7 @@ def p.__p8_gen.p8.add
   ok i
 
 /-- [gf256_aes::p::__p8_gen::{gf256_aes::p::__p8_gen::p8}::naive_widening_mul]: loop body 0:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 476:16-483:17
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 158:16-165:17
     Visibility: public -/
 @[rust_loop_body]
 def p.__p8_gen.p8.naive_widening_mul_loop.body
@@ -72,7 +72,7 @@ def p.__p8_gen.p8.naive_widening_mul_loop.body
   else ok (done (lo, hi))
 
 /-- [gf256_aes::p::__p8_gen::{gf256_aes::p::__p8_gen::p8}::naive_widening_mul]: loop 0:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 476:16-483:17
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 158:16-165:17
     Visibility: public -/
 @[rust_loop]
 def p.__p8_gen.p8.naive_widening_mul_loop
@@ -85,7 +85,7 @@ def p.__p8_gen.p8.naive_widening_mul_loop
     (lo, hi, i)
 
 /-- [gf256_aes::p::__p8_gen::{gf256_aes::p::__p8_gen::p8}::naive_widening_mul]:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 470:12-485:13
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 152:12-167:13
     Visibility: public -/
 def p.__p8_gen.p8.naive_widening_mul
   (self : gf256_aes.p.__p8_gen.p8) (other : gf256_aes.p.__p8_gen.p8) :
@@ -97,7 +97,7 @@ def p.__p8_gen.p8.naive_widening_mul
   ok (lo, i)
 
 /-- [gf256_aes::p::__p8_gen::{gf256_aes::p::__p8_gen::p8}::naive_wrapping_mul]: loop body 0:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 562:16-568:17
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 187:16-193:17
     Visibility: public -/
 @[rust_loop_body]
 def p.__p8_gen.p8.naive_wrapping_mul_loop.body
@@ -120,7 +120,7 @@ def p.__p8_gen.p8.naive_wrapping_mul_loop.body
   else ok (done x)
 
 /-- [gf256_aes::p::__p8_gen::{gf256_aes::p::__p8_gen::p8}::naive_wrapping_mul]: loop 0:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 562:16-568:17
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 187:16-193:17
     Visibility: public -/
 @[rust_loop]
 def p.__p8_gen.p8.naive_wrapping_mul_loop
@@ -130,7 +130,7 @@ def p.__p8_gen.p8.naive_wrapping_mul_loop
     (x, i)
 
 /-- [gf256_aes::p::__p8_gen::{gf256_aes::p::__p8_gen::p8}::naive_wrapping_mul]:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 557:12-570:13
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 182:12-195:13
     Visibility: public -/
 def p.__p8_gen.p8.naive_wrapping_mul
   (self : gf256_aes.p.__p8_gen.p8) (other : gf256_aes.p.__p8_gen.p8) : Result gf256_aes.p.__p8_gen.p8 := do
@@ -138,7 +138,7 @@ def p.__p8_gen.p8.naive_wrapping_mul
   ok x
 
 /-- [gf256_aes::p::__p8_gen::{gf256_aes::p::__p8_gen::p8}::widening_mul]:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 615:12-617:13
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 204:12-206:13
     Visibility: public -/
 def p.__p8_gen.p8.widening_mul
   (self : gf256_aes.p.__p8_gen.p8) (other : gf256_aes.p.__p8_gen.p8) :
@@ -147,27 +147,27 @@ def p.__p8_gen.p8.widening_mul
   gf256_aes.p.__p8_gen.p8.naive_widening_mul self other
 
 /-- [gf256_aes::p::__p8_gen::{gf256_aes::p::__p8_gen::p8}::wrapping_mul]:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 684:12-686:13
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 220:12-222:13
     Visibility: public -/
 def p.__p8_gen.p8.wrapping_mul
   (self : gf256_aes.p.__p8_gen.p8) (other : gf256_aes.p.__p8_gen.p8) : Result gf256_aes.p.__p8_gen.p8 := do
   gf256_aes.p.__p8_gen.p8.naive_wrapping_mul self other
 
 /-- [gf256_aes::p::__p8_gen::{impl core::ops::arith::Add<gf256_aes::p::__p8_gen::p8, gf256_aes::p::__p8_gen::p8> for gf256_aes::p::__p8_gen::p8}::add]:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 1434:12-1434:66
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 667:12-667:66
     Visibility: public -/
 def p.__p8_gen.p8.Insts.CoreOpsArithAddp8p8.add
   (self : gf256_aes.p.__p8_gen.p8) (other : gf256_aes.p.__p8_gen.p8) : Result gf256_aes.p.__p8_gen.p8 := do
   gf256_aes.p.__p8_gen.p8.add self other
 
 /-- [gf256_aes::p::__p16_gen::p16]
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 2734:8-2734:43
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 1942:8-1942:43
     Visibility: public -/
 @[reducible]
 def p.__p16_gen.p16 := Std.U16
 
 /-- [gf256_aes::p::__p16_gen::{gf256_aes::p::__p16_gen::p16}::naive_checked_div]: loop body 0:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 3444:20-3447:21
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 2242:20-2245:21
     Visibility: public -/
 @[rust_loop_body]
 def p.__p16_gen.p16.naive_checked_div_loop.body
@@ -192,7 +192,7 @@ def p.__p16_gen.p16.naive_checked_div_loop.body
   else ok (done x)
 
 /-- [gf256_aes::p::__p16_gen::{gf256_aes::p::__p16_gen::p16}::naive_checked_div]: loop 0:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 3444:20-3447:21
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 2242:20-2245:21
     Visibility: public -/
 @[rust_loop]
 def p.__p16_gen.p16.naive_checked_div_loop
@@ -202,7 +202,7 @@ def p.__p16_gen.p16.naive_checked_div_loop
     (a, x)
 
 /-- [gf256_aes::p::__p16_gen::{gf256_aes::p::__p16_gen::p16}::naive_checked_div]:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 3437:12-3450:13
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 2235:12-2248:13
     Visibility: public -/
 def p.__p16_gen.p16.naive_checked_div
   (self : gf256_aes.p.__p16_gen.p16) (other : gf256_aes.p.__p16_gen.p16) :
@@ -215,7 +215,7 @@ def p.__p16_gen.p16.naive_checked_div
     ok (some x)
 
 /-- [gf256_aes::p::__p16_gen::{gf256_aes::p::__p16_gen::p16}::naive_div]:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 3472:12-3477:13
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 2250:12-2255:13
     Visibility: public -/
 def p.__p16_gen.p16.naive_div
   (self : gf256_aes.p.__p16_gen.p16) (other : gf256_aes.p.__p16_gen.p16) :
@@ -228,13 +228,13 @@ def p.__p16_gen.p16.naive_div
   | some x => ok x
 
 /-- [gf256_aes::__gf256_aes_gen::gf256_aes]
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 15136:4-15136:51
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 11635:4-11635:51
     Visibility: public -/
 @[reducible]
 def __gf256_aes_gen.gf256_aes := Std.U8
 
 /-- [gf256_aes::__gf256_aes_gen::{gf256_aes::__gf256_aes_gen::gf256_aes}::BARRET_CONSTANT]
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 15206:8-15214:14 -/
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 11692:8-11700:14 -/
 @[global_simps, irreducible]
 def __gf256_aes_gen.gf256_aes.BARRET_CONSTANT : Result p.__p8_gen.p8 := do
   let i ← lift (283#u16 &&& 255#u16)
@@ -252,7 +252,7 @@ def __gf256_aes_gen.gf256_aes.BARRET_CONSTANT : Result p.__p8_gen.p8 := do
   ok i10
 
 /-- [gf256_aes::__gf256_aes_gen::{gf256_aes::__gf256_aes_gen::gf256_aes}::mul]:
-    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 15492:8-15503:9
+    Source: 'refinement/rust/gf256_aes_expanded.rs', lines 11775:8-11786:9
     Visibility: public -/
 def __gf256_aes_gen.gf256_aes.mul
   (self : __gf256_aes_gen.gf256_aes) (other : __gf256_aes_gen.gf256_aes) :
