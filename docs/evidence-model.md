@@ -44,7 +44,6 @@ A failed MDS check or a repeated row offset makes the activity bound **not estab
 |---|---|
 | **Live** | Computed now, on this machine, for the inputs on screen. |
 | **Cached exact result** | Reused from an earlier check whose canonical inputs, toolchain pins, checker version and templates all match. |
-| **Recorded run** | Loaded from a recorded bundle. The public site only shows recorded runs; it does not run Lean or benchmarks in your browser. |
 
 Editing any input marks every result as belonging to an earlier version until it is checked again.
 

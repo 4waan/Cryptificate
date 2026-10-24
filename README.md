@@ -35,7 +35,7 @@ You change a cipher component: the MixColumns matrix, the circuit that computes 
 1. **Describe the change.** Edit the matrix, offsets, rounds, S-box and circuit in the workbench, or write them as JSON. Bytes are two hex digits; BN254 field elements are decimal strings.
 2. **Check it.** Cryptificate generates a Lean certificate for your exact values and checks it. A fresh 4×4 MDS certificate takes about three seconds.
 3. **Read the evidence.** The report shows two chains side by side: *design guarantees* (MDS, offsets, S-box, activity bound) and *implementation correspondence* (circuit equivalence, Rust-source refinement, native correctness, timing). Every refutation comes with concrete bytes you can check by hand.
-4. **Search and measure.** A bounded search proposes cheaper circuits. Each candidate is proved equivalent in Lean and run against 9,214 recorded inputs before it is timed against the textbook circuit and the direct implementation.
+4. **Search and measure.** A bounded search proposes cheaper circuits. Each candidate is proved equivalent in Lean and run against 9,214 test inputs before it is timed against the textbook circuit and the direct implementation.
 5. **Share it.** Download the evidence bundle. `cryptificate verify` regenerates every claim from the bundle's inputs with the installed checker.
 
 ## Demo
@@ -53,7 +53,7 @@ The workbench opens on a guided story of four real experiments. Each button load
 | **3. Perfect implementation, weak diffusion** | Replace both the matrix and the circuit with the identity | Circuit equivalence holds, and the design check catches the weak matrix: `[01,00,00,00]` has 1 + 1 = 2 nonzero bytes, below the branch number 5 |
 | **4. Prime field** | Poseidon2's width-3 matrix over BN254 with a shared-sum circuit, S-box exponent 5, then 3 | Equivalence and MDS for the BN254 layer; `x⁵` certified bijective by an inverse exponent; `x³` caught by a checked collision between 1 and a cube root of unity |
 
-The same story runs from recorded bundles on the [replay site](https://4waan.github.io/Cryptificate/).
+Open the guided story online: **[4waan.github.io/Cryptificate](https://4waan.github.io/Cryptificate/)**.
 
 ## Install
 
@@ -100,10 +100,10 @@ The [adopter guide](docs/adopter-guide.md) walks through a first design end to e
 | The S-box is a permutation | An inverse table for byte S-boxes, an inverse exponent for BN254 power maps | `x³` over BN254 caught by a collision |
 | HADES outer rounds | WideTrail's outer-round bound for your external and internal matrices | 16 active S-boxes over 8 full rounds |
 | The Rust source computes the model | Charon and Aeneas translate the Rust kernels to Lean, where they are proved equal to the model | GF(2⁸) arithmetic and the full AES-like round, for every design |
-| The generated Rust is correct | 9,214 recorded inputs per GF(2⁸) variant (8,278 for BN254) before any timing | a fast but wrong circuit is kept off the leaderboard |
+| The generated Rust is correct | 9,214 test inputs per GF(2⁸) variant (8,278 for BN254) before any timing | a fast but wrong circuit is kept off the leaderboard |
 | It is faster on your machine | 15 paired rounds per workload, 95% bootstrap intervals, two fresh confirmation sessions | ratios with intervals for every candidate and baseline |
 
-Every report labels its origin: **Live**, **Cached exact result** or **Recorded run**. Editing any input marks earlier results as belonging to an earlier version until you check again. The full vocabulary of statuses and evidence labels is in [docs/evidence-model.md](docs/evidence-model.md).
+Every report labels its origin: **Live** or **Cached exact result**. Editing any input marks earlier results as belonging to an earlier version until you check again. The full vocabulary of statuses and evidence labels is in [docs/evidence-model.md](docs/evidence-model.md).
 
 ## Why you can trust a result
 
@@ -138,23 +138,23 @@ The native code Cryptificate measures is built on [`crates/kernels`](crates/kern
 | `aes_like::round`, `aes_like::encrypt` | equal to `aesLikeRound` and `aesLikeExec` of [`Bridge.lean`](lean/Cryptificate/Bridge.lean) for every matrix, offsets, S-box table and key schedule (`encrypt` given at least `rounds` keys) | the active-S-box bound, assuming an MDS matrix, distinct offsets and an injective S-box table |
 | gf256 crate 0.3.1 (`0x11B`, table-free), expanded source | its `mul` equals WideTrail's multiplier, assuming `size_of::<u8>() = 1` | WideTrail's field `GF256` |
 
-Because the round kernel takes the design as runtime data, one proof covers every AES-like design you submit. The extraction script reproduces the Lean translation byte for byte from the recorded source; pins and hashes are in [refinement/](refinement/STATUS.md).
+Because the round kernel takes the design as runtime data, one proof covers every AES-like design you submit. The extraction script reproduces the Lean translation byte for byte from the pinned source; pins and hashes are in [refinement/](refinement/STATUS.md).
 
 ## Search and measurement
 
-The search builds a primitive circuit from polynomial-basis multiples, extracts shared pairs, factors `xtime(a) ⊕ xtime(b) = xtime(a ⊕ b)`, cancels repeated XORs, hash-conses and removes dead code, with tie choices driven by recorded seeds. For AES MixColumns it finds a 12-XOR, 4-xtime circuit, three XORs fewer than the textbook circuit.
+The search builds a primitive circuit from polynomial-basis multiples, extracts shared pairs, factors `xtime(a) ⊕ xtime(b) = xtime(a ⊕ b)`, cancels repeated XORs, hash-conses and removes dead code, with tie choices driven by fixed seeds. For AES MixColumns it finds a 12-XOR, 4-xtime circuit, three XORs fewer than the textbook circuit.
 
 Every compared variant uses the same arithmetic, compiler and flags, is built as its own shared library, and is timed by one harness over 4 KiB, 64 KiB and 1 MiB workloads: samples of at least 50 ms, 3 warmups, 15 paired rounds in randomized order, 95% paired bootstrap intervals over 10,000 resamples, then two confirmation sessions with fresh seeds. A speed-up is reported as **locally confirmed** when the interval's lower bound clears 1.02 in both sessions against every baseline. On the BN254 internal layer `[[2,1,1],[1,2,1],[1,1,3]]` the searched circuit replaces three multiplications with additions and runs about 7.2× faster than the direct implementation, with the lowest 95% lower bound at 7.05 across both confirmation sessions ([raw data](examples/measurements/bn254-internal)). On AES the compiler already vectorizes every variant, and the harness shows the three circuits within each other's intervals.
 
 The measurement ABI, `mix_batch(input, output, column_count)`, is plain C, so an implementation in any language can join the comparison: see [docs/batch-interface.md](docs/batch-interface.md).
 
-## Replay a bundle
+## Re-check a bundle
 
 ```sh
 npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 ```
 
-`verify` reads the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It runs no code from the bundle. Recorded timings stay attached to the machine that produced them. The [recorded bundles](examples/bundles) from the demo are in the repository.
+`verify` reads the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It runs no code from the bundle. Timings stay attached to the machine that produced them. The [recorded bundles](examples/bundles) from the demo are in the repository.
 
 ## Architecture
 
@@ -178,9 +178,9 @@ npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 | [`refinement/`](refinement) | Charon/Aeneas translations of `crates/kernels` and the gf256 crate, with their Lean proofs |
 | [`crates/`](crates) | `core` (validation, diagnostics, certificate emission), `cli` (`cryptificate-engine`), `search`, `native` (code generation and timing harness), `kernels` |
 | [`apps/server`](apps/server) | HTTP API, job queue, proof acceptance, bundles and the `cryptificate` CLI |
-| [`apps/web`](apps/web) | The workbench and the replay site |
+| [`apps/web`](apps/web) | The workbench, also published online |
 | [`python/`](python) | Python client |
-| [`examples/`](examples) | Designs, circuits and recorded bundles |
+| [`examples/`](examples) | Designs, circuits, evidence bundles and measurements |
 | [`docs/`](docs) | [Evidence model](docs/evidence-model.md), [architecture](docs/architecture.md), [batch interface](docs/batch-interface.md), [adopter guide](docs/adopter-guide.md), [research directions](docs/research-directions.md) |
 
 ## Built on WideTrail
