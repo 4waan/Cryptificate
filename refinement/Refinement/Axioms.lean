@@ -2,6 +2,7 @@
 Copyright (c) Cryptificate contributors. Released under the MIT license.
 -/
 import Refinement.GF256
+import Refinement.AesLike
 
 /-!
 # Axiom audit
@@ -51,3 +52,33 @@ info: 'Cryptificate.Refinement.gf256_mul_inv' depends on axioms: [propext, Class
 -/
 #guard_msgs in
 #print axioms Cryptificate.Refinement.gf256_mul_inv
+
+/--
+info: 'Cryptificate.Refinement.aes_like_round_refines' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_round_refines
+
+/--
+info: 'Cryptificate.Refinement.aes_like_encrypt_refines' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_encrypt_refines
+
+/--
+info: 'Cryptificate.Refinement.aes_like_round_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_round_eq
+
+/--
+info: 'Cryptificate.Refinement.aes_like_encrypt_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_encrypt_eq
+
+/--
+info: 'Cryptificate.Refinement.aes_like_encrypt_activity_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_encrypt_activity_bound
