@@ -37,10 +37,12 @@ export class Engine {
   constructor(
     readonly path: string | null,
     private readonly cwd: string,
+    /** Extra environment for engine runs (e.g. where native variants are built). */
+    private readonly extraEnv: Record<string, string> = {},
   ) {}
 
-  static locate(root: string): Engine {
-    return new Engine(findEngine(root), root);
+  static locate(root: string, extraEnv: Record<string, string> = {}): Engine {
+    return new Engine(findEngine(root), root, extraEnv);
   }
 
   get available(): boolean {
@@ -88,6 +90,7 @@ export class Engine {
     }
     const r = await run(this.path, [sub], {
       cwd: opts.cwd ?? this.cwd,
+      env: { ...process.env, ...this.extraEnv },
       input: JSON.stringify(input),
       timeoutMs: opts.timeoutMs ?? 120000,
       maxOutputBytes: opts.maxOutputBytes ?? 32 * 1024 * 1024,
