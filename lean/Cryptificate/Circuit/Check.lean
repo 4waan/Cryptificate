@@ -80,6 +80,13 @@ theorem not_implements_of_ne {p : Program K n} {M : Matrix (Fin n) (Fin n) K} (v
     (h : p.eval v ≠ M.mulVec v) : ¬ ∀ x, p.eval x = M.mulVec x :=
   fun hall => h (hall v)
 
+/-- The same refutation with the disagreement checked by `vecEqb`, the form a certificate
+decides when it does not need to record the two outputs. -/
+theorem not_implements_of_vecEqb {p : Program K n} {M : Matrix (Fin n) (Fin n) K}
+    (v : Fin n → K) (h : vecEqb (p.eval v) (M.mulVec v) = false) :
+    ¬ ∀ x, p.eval x = M.mulVec x :=
+  not_implements_of_ne v fun heq => by simp [heq, vecEqb] at h
+
 /-- The refutation check: on input `v`, the reference product is `expected`, the circuit
 outputs `actual`, and the two differ. -/
 def mismatchCheck (p : Program K n) (M : Matrix (Fin n) (Fin n) K)
