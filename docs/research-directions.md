@@ -23,11 +23,11 @@ The exact GF(2⁸) polynomial and prime modulus are part of every claim's meanin
 
 ### Implementation assurance is part of the scope
 
-The release requires a formal connection from Rust source to the mathematical model:
+The release includes a formal connection from Rust source to the mathematical model:
 
 `recorded Rust source → Aeneas model → executable mathematical model → named properties`
 
-It covers arithmetic, S-box evaluation, state layout, constants, linear layers and complete bounded round execution, with successful execution and equality to the specification for valid inputs. Charon, Aeneas and the Rust compiler remain trusted. This does not establish machine-code correctness or constant-time execution. [refinement/STATUS.md](../refinement/STATUS.md) records which links are proved today.
+For the GF(2⁸) kernels and the AES-like round it covers field arithmetic, S-box table lookup, state layout, round keys, linear layers and complete bounded round execution, with successful execution and equality to the specification for every input (for multi-round execution, given enough round keys). BN254 arithmetic and HADES rounds are not covered. Charon, Aeneas and the Rust compiler remain trusted. This does not establish machine-code correctness or constant-time execution. [refinement/STATUS.md](../refinement/STATUS.md) records which links are proved today.
 
 ## What the underlying library establishes
 
