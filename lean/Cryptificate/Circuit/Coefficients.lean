@@ -11,10 +11,12 @@ elements, and the rows are produced by the same left-to-right interpreter that e
 circuit (`Cryptificate.Circuit.run`), with row addition and row scaling as the operations.
 
 Because the rows are materialized one register at a time, a register that is read by many later
-instructions is computed once and then referred to; the work is linear in the number of
+instructions is computed once and then referred to. The work is one row operation per
+instruction plus a walk of the register file per read, at most quadratic in the number of
 instructions. Unfolding the circuit as an expression tree instead would duplicate every shared
 subterm at each use, which is exponential for circuits that reuse intermediate sums (a chain in
-which each register adds the previous two already doubles at every step).
+which each register adds the previous two already doubles at every step); the `256`-instruction
+example in `Cryptificate.Examples.CircuitSharedDag` would unfold to about `4 · 10¹¹` nodes.
 
 `Program.eval_eq_mulVec` is the single generic theorem that justifies the computation: for every
 program and every input `x`, the circuit's output is `coeffMatrix p` applied to `x`. It holds
