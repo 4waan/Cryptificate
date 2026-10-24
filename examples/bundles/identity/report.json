@@ -1,6 +1,6 @@
 {
   "kind": "analysis",
-  "id": "6101d58f105fa71d2e1d0416ddd3ea28",
+  "id": "9421acab267bd47776b29d832356e9f9",
   "inputDigest": "sha256:e55f3e07cf131691b0cd8aca16972ba3ea957bb50d043f3bd76de552b5171616",
   "inputs": {
     "design": {
@@ -182,14 +182,14 @@
       "id": "rust.refinement",
       "chain": "implementation",
       "title": "Rust kernel refines the Lean model",
-      "status": "not_established",
+      "status": "proved",
       "evidence": {
-        "kind": "diagnostic",
-        "label": "Unchecked diagnostic"
+        "kind": "refinement",
+        "label": "Rust-source refinement (Aeneas)",
+        "theorem": "Cryptificate.Refinement.gf256_mul_refines"
       },
       "witness": null,
-      "note": "The refinement proofs have not been checked on this machine (scripts/setup.sh --with-refinement).",
-      "reason": "out-of-scope"
+      "note": "The GF(2^8) primitives add, xtime and mul of crates/kernels, extracted with Charon and Aeneas, refine the Lean field operations; Lean checked these proofs on this machine. They cover the arithmetic primitives the generated code calls, not the generated circuit code itself, which native correctness tests."
     },
     {
       "id": "native.timing",
@@ -216,7 +216,7 @@
       {
         "name": "diagnose",
         "state": "completed",
-        "ms": 4
+        "ms": 5
       },
       {
         "name": "emit-lean",
@@ -228,12 +228,12 @@
         "name": "lean",
         "state": "completed",
         "detail": "4/4 theorem(s) accepted",
-        "ms": 2908
+        "ms": 3097
       },
       {
         "name": "native",
         "state": "completed",
-        "ms": 291
+        "ms": 313
       },
       {
         "name": "report",
@@ -244,7 +244,7 @@
   },
   "provenance": {
     "origin": "live",
-    "checker": "cryptificate 0.1.0 (e74b8e6)",
+    "checker": "cryptificate 0.1.0 (58e2000)",
     "toolchain": {
       "lean": "v4.33.1",
       "mathlib": "v4.33.1",
@@ -252,6 +252,6 @@
       "rustc": "rustc 1.97.0 (2d8144b78)"
     },
     "leanSourceSha256": "c2d02752e82088256f070a9efee18daf3eea271ff5c9bf2d42d1829791fcb533",
-    "cacheKey": "3e71258a45fac11f72ce7fb02491e01ce0b71ff95be95bf853a447ac2c9aea72"
+    "cacheKey": "42b2a8ac4e3d739c4900eea8e4cc0e4d876f6e7ffb4f3ca519d2a35b429dc54b"
   }
 }

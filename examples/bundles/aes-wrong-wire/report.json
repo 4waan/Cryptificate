@@ -1,6 +1,6 @@
 {
   "kind": "analysis",
-  "id": "556ced13638ec7fe6c220ea85ac1d823",
+  "id": "e6e133abbac74ceb24a3f12851c7ab33",
   "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
   "inputs": {
     "design": {
@@ -313,14 +313,14 @@
       "id": "rust.refinement",
       "chain": "implementation",
       "title": "Rust kernel refines the Lean model",
-      "status": "not_established",
+      "status": "proved",
       "evidence": {
-        "kind": "diagnostic",
-        "label": "Unchecked diagnostic"
+        "kind": "refinement",
+        "label": "Rust-source refinement (Aeneas)",
+        "theorem": "Cryptificate.Refinement.gf256_mul_refines"
       },
       "witness": null,
-      "note": "The refinement proofs have not been checked on this machine (scripts/setup.sh --with-refinement).",
-      "reason": "out-of-scope"
+      "note": "The GF(2^8) primitives add, xtime and mul of crates/kernels, extracted with Charon and Aeneas, refine the Lean field operations; Lean checked these proofs on this machine. They cover the arithmetic primitives the generated code calls, not the generated circuit code itself, which native correctness tests."
     },
     {
       "id": "native.timing",
@@ -342,29 +342,29 @@
       {
         "name": "validate",
         "state": "completed",
-        "ms": 6
+        "ms": 5
       },
       {
         "name": "diagnose",
         "state": "completed",
-        "ms": 6
+        "ms": 5
       },
       {
         "name": "emit-lean",
         "state": "completed",
-        "ms": 6,
+        "ms": 5,
         "detail": "5 theorem(s)"
       },
       {
         "name": "lean",
         "state": "completed",
         "detail": "5/5 theorem(s) accepted",
-        "ms": 4506
+        "ms": 4123
       },
       {
         "name": "native",
         "state": "completed",
-        "ms": 271
+        "ms": 283
       },
       {
         "name": "report",
@@ -375,7 +375,7 @@
   },
   "provenance": {
     "origin": "live",
-    "checker": "cryptificate 0.1.0 (e74b8e6)",
+    "checker": "cryptificate 0.1.0 (58e2000)",
     "toolchain": {
       "lean": "v4.33.1",
       "mathlib": "v4.33.1",
@@ -383,6 +383,6 @@
       "rustc": "rustc 1.97.0 (2d8144b78)"
     },
     "leanSourceSha256": "cd40d3bf3407a7c13554c6be4d9b1a17f8d03e69aa4f5dca6bee8fb5ffb9fa86",
-    "cacheKey": "d7cd5c096787c4d67959ee6316fcfa2e893f9de25462afaf2762652f04d163c0"
+    "cacheKey": "85f38a61ce2042db58c8656e4f6566f17d215f4db3bab0e1b9d09d978ef98e3f"
   }
 }
