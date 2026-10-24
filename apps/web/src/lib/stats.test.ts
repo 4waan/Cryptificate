@@ -21,6 +21,13 @@ describe('measurement helpers', () => {
     expect(samplesPerColumn(totals).map((x) => +x.toFixed(6))).toEqual([1.1, 1.0, 1.2]);
   });
 
+  it('prefers the per-column samples and call counts the harness reports', () => {
+    const base = { bytes: 4096, columns: 1024, medianNsPerColumn: 1.5, iqr: 0.1, mibPerSec: 1 };
+    const samples = [1024 * 100 * 1.4, 1024 * 100 * 1.6];
+    expect(samplesPerColumn({ ...base, samples, nsPerColumn: [1.4, 1.6] })).toEqual([1.4, 1.6]);
+    expect(samplesPerColumn({ ...base, samples, iterations: 100 }).map((x) => +x.toFixed(6))).toEqual([1.4, 1.6]);
+  });
+
   it('produces round ticks', () => {
     expect(niceTicks(0.95, 1.1, 4)).toEqual([0.95, 1, 1.05, 1.1]);
     expect(niceTicks(0, 10, 5)).toEqual([0, 2, 4, 6, 8, 10]);

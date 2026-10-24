@@ -16,12 +16,14 @@ export function median(values: readonly number[]): number {
 }
 
 /**
- * Raw samples expressed in nanoseconds per column. The harness times a fixed,
- * calibrated number of batch calls per sample, so a sample and the reported
- * median per column differ by one constant factor per workload; samples that
- * are already per column (factor near 1) are returned unchanged.
+ * Raw samples expressed in nanoseconds per column. The harness reports them
+ * directly (`nsPerColumn`) together with the calls per sample; older records
+ * without either are rescaled by one factor per workload, the ratio of the
+ * sample median to the reported median per column.
  */
 export function samplesPerColumn(w: Workload): number[] {
+  if (w.nsPerColumn && w.nsPerColumn.length === w.samples.length) return [...w.nsPerColumn];
+  if (w.iterations && w.iterations > 0 && w.columns > 0) return w.samples.map((s) => s / (w.iterations! * w.columns));
   if (!w.samples.length || !(w.medianNsPerColumn > 0)) return [...w.samples];
   const factor = median(w.samples) / w.medianNsPerColumn;
   if (!(factor > 0) || (factor > 0.5 && factor < 2)) return [...w.samples];
