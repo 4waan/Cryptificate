@@ -18,6 +18,7 @@ import { JobManager } from './jobs.js';
 import { makeEnv } from './env.js';
 import { resolvePaths } from './paths.js';
 import { killAll } from './proc.js';
+import { runLean } from './leanrun.js';
 import { createApp } from './server.js';
 import { readToolchain } from './toolchain.js';
 import { verifyBundle } from './verify.js';
@@ -276,6 +277,7 @@ async function cmdServe(argv: string[]): Promise<number> {
       '',
     ].join('\n'),
   );
+  if (env.lake) warmLean(env);
   const shutdown = (): void => {
     jobs.stopAll();
     killAll();
@@ -285,6 +287,23 @@ async function cmdServe(argv: string[]): Promise<number> {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
   return new Promise(() => {});
+}
+
+/**
+ * Loads the certificate library once in the background, so that the first
+ * job after the machine starts does not spend its Lean time limit reading the
+ * library from a cold disk. The result is not used.
+ */
+function warmLean(env: PipelineEnv): void {
+  const dir = join(env.paths.home, 'warmup');
+  const file = join(dir, 'Warm.lean');
+  try {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(file, 'import Cryptificate\n');
+  } catch {
+    return;
+  }
+  void runLean({ lake: env.lake, leanDir: env.paths.leanDir, file, timeoutMs: 600_000, replacements: env.replacements }).catch(() => undefined);
 }
 
 export async function main(argv: string[]): Promise<number> {
