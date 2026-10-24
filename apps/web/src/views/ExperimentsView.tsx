@@ -44,10 +44,16 @@ export function VerdictLine({ report }: { report: ExperimentReport }) {
   );
 }
 
-export function SavingsCallout({ report }: { report: ExperimentReport }) {
+export function SavingsCallout({ report, active = false }: { report: ExperimentReport; active?: boolean }) {
   const s = savingsSummary(report);
   if (!s.structural) {
-    return <p className="muted">No verified search candidate to compare with the reference in this run.</p>;
+    return (
+      <p className="muted">
+        {active
+          ? 'Checking the candidates: savings are stated only after Lean proves a candidate equivalent to the design.'
+          : 'No verified search candidate to compare with the reference in this run.'}
+      </p>
+    );
   }
   return (
     <div className="stack" style={{ gap: 6 }}>
@@ -63,7 +69,16 @@ export function SavingsCallout({ report }: { report: ExperimentReport }) {
   );
 }
 
-export function CandidatesTable({ report, limit }: { report: ExperimentReport; limit?: number }) {
+export function CandidatesTable({
+  report,
+  limit,
+  active = false,
+}: {
+  report: ExperimentReport;
+  limit?: number;
+  /** The run is still going: checks that have not run yet read "Pending". */
+  active?: boolean;
+}) {
   const best = bestCandidate(report);
   const shortlist = new Set(report.search?.shortlist ?? []);
   const field = report.candidates[0]?.program.field ?? 'gf256';
@@ -108,7 +123,11 @@ export function CandidatesTable({ report, limit }: { report: ExperimentReport; l
                 <td className="num">{s.otherMuls}</td>
                 <td className="num">{s.depth}</td>
                 <td>
-                  <StatusPill status={c.equivalence.status} short />
+                  {active && c.equivalence.status === 'not_established' && c.equivalence.reason === 'not-run' ? (
+                    <span className="status status-none">Pending</span>
+                  ) : (
+                    <StatusPill status={c.equivalence.status} short />
+                  )}
                 </td>
                 <td>
                   {c.native ? (
@@ -120,7 +139,7 @@ export function CandidatesTable({ report, limit }: { report: ExperimentReport; l
                       <span className="error-text">Failed (not timed)</span>
                     )
                   ) : (
-                    <span className="muted">Not run</span>
+                    <span className="muted">{active ? 'Pending' : 'Not run'}</span>
                   )}
                 </td>
               </tr>
@@ -199,7 +218,14 @@ function HistoryTable({ report }: { report: ExperimentReport }) {
   );
 }
 
-export function MeasurementSection({ report }: { report: ExperimentReport }) {
+export function MeasurementSection({
+  report,
+  active = false,
+}: {
+  report: ExperimentReport;
+  /** The run is still going: missing measurements have not run yet. */
+  active?: boolean;
+}) {
   const m = report.measurements;
   const best = bestCandidate(report);
   const charts = useMemo(() => {
@@ -230,7 +256,15 @@ export function MeasurementSection({ report }: { report: ExperimentReport }) {
     });
     return [...groups.entries()];
   }, [m, report, best]);
-  if (!m) return <p className="muted">No measurements in this run.</p>;
+  if (!m) {
+    return (
+      <p className="muted">
+        {active
+          ? 'Timing has not run yet: only circuits that Lean proved equivalent and that pass native correctness are timed.'
+          : 'No measurements in this run.'}
+      </p>
+    );
+  }
   return (
     <div className="stack-lg">
       <VerdictLine report={report} />
@@ -270,21 +304,21 @@ function ExperimentBody({ run, report }: { run: Run; report: ExperimentReport })
             ) : null}
           </span>
         </div>
-        <SavingsCallout report={report} />
+        <SavingsCallout report={report} active={isActive(run)} />
       </section>
       <section className="panel" aria-labelledby="exp-candidates">
         <div className="panel-head">
           <h2 id="exp-candidates">Candidates</h2>
           <span className="panel-sub">Operation counts are read from each circuit</span>
         </div>
-        <CandidatesTable report={report} />
+        <CandidatesTable report={report} active={isActive(run)} />
       </section>
       <section className="panel" aria-labelledby="exp-measure">
         <div className="panel-head">
           <h2 id="exp-measure">Measurements</h2>
           <span className="panel-sub">Raw samples, medians, interquartile ranges and paired speedups</span>
         </div>
-        <MeasurementSection report={report} />
+        <MeasurementSection report={report} active={isActive(run)} />
       </section>
       <section className="panel" aria-labelledby="exp-history">
         <div className="panel-head">

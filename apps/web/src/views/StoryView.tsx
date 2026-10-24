@@ -185,7 +185,7 @@ function Step1() {
           report.kind === 'experiment' ? (
             <div className="stack-lg">
               <section className="panel" aria-label="What changed">
-                <SavingsCallout report={report} />
+                <SavingsCallout report={report} active={isActive(r)} />
               </section>
               <section className="panel" aria-labelledby="s1-cands">
                 <div className="panel-head">
@@ -194,10 +194,10 @@ function Step1() {
                     Open in Experiments
                   </button>
                 </div>
-                <CandidatesTable report={report} limit={8} />
+                <CandidatesTable report={report} limit={8} active={isActive(r)} />
               </section>
               <section className="panel" aria-label="Measurements">
-                <MeasurementSection report={report} />
+                <MeasurementSection report={report} active={isActive(r)} />
               </section>
             </div>
           ) : null
