@@ -6,8 +6,8 @@ import Cryptificate
 Design certificates cite a few generic theorems from the diffusion modules, and their axioms
 are part of every design claim. The first block prints the audit line of each, in the form the
 service parses. The second block checks every declaration of `Cryptificate.Diffusion`, its
-submodules (other than `Diffusion.Minors3`, which is audited with the certificates that use
-it), `Cryptificate.Bridge` and `Cryptificate.Sbox`, and fails unless all of them depend only on
+submodules (including `Diffusion.Minors3`, which the HADES certificates use),
+`Cryptificate.Bridge` and `Cryptificate.Sbox`, and fails unless all of them depend only on
 `propext`, `Classical.choice` and `Quot.sound`.
 -/
 
@@ -22,6 +22,7 @@ it), `Cryptificate.Bridge` and `Cryptificate.Sbox`, and fails unless all of them
 #cryptificate_audit Cryptificate.bijective_of_leftInverse
 #cryptificate_audit Cryptificate.not_injective_of_collision
 #cryptificate_audit Cryptificate.aes_sbox_bijective
+#cryptificate_audit Cryptificate.aes_sbox_eq_table
 
 open Lean Elab Command in
 run_cmd do
@@ -29,9 +30,8 @@ run_cmd do
   let allowed : Array Name := #[``propext, ``Classical.choice, ``Quot.sound]
   let mut checked : Nat := 0
   let ours (m : Name) :=
-    m != `Cryptificate.Diffusion.Minors3 &&
-      ((`Cryptificate.Diffusion).isPrefixOf m || m == `Cryptificate.Bridge ||
-        m == `Cryptificate.Sbox)
+    (`Cryptificate.Diffusion).isPrefixOf m || m == `Cryptificate.Bridge ||
+      m == `Cryptificate.Sbox
   for modName in env.header.moduleNames, data in env.header.moduleData do
     unless ours modName do
       continue
