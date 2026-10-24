@@ -26,7 +26,7 @@ const DESIGN_CLAIMS: Record<FieldName, { id: ClaimId; title: string }[]> = {
 
 const IMPLEMENTATION_CLAIMS: { id: ClaimId; title: string }[] = [
   { id: 'circuit.equivalence', title: 'Circuit computes the design matrix' },
-  { id: 'rust.refinement', title: 'Rust source refines the circuit' },
+  { id: 'rust.refinement', title: 'Rust kernel refines the Lean model' },
   { id: 'native.correctness', title: 'Generated Rust is correct on test cases' },
   { id: 'native.timing', title: 'Native timing' },
 ];
