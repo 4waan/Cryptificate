@@ -56,13 +56,10 @@ export function verifyMarkdown(report: Report, tc: ToolchainInfo): string {
     '- `report.json`: claims, witnesses, execution steps and provenance as reported.',
     '- `lean/`: the generated Lean certificate(s) and the checker output (`audit.txt`).',
     '- `toolchain.json`: Lean toolchain, Lake manifest pins, Cargo.lock digest and `rustc -V`.',
+    '- `native/` (when a circuit ran natively): generated Rust, the shared kernels, the harness source, native correctness',
+    '  results and raw measurements; `native/SOURCES.md` describes the layout.',
   ];
-  if (report.kind === 'experiment') {
-    lines.push(
-      '- `native/`: generated Rust sources, native correctness results and raw measurements.',
-      '- `search/`: search history and seeds.',
-    );
-  }
+  if (report.kind === 'experiment') lines.push('- `search/`: search history and seeds.');
   lines.push(
     '',
     '## Verify',
@@ -130,7 +127,7 @@ export function bundleEntries(src: BundleSource): TarEntry[] {
   }
   const nativeDir = join(jobDir, 'native');
   if (existsSync(nativeDir)) {
-    for (const rel of listFiles(nativeDir, ['.rs', '.json', '.toml', '.txt', '.csv'])) {
+    for (const rel of listFiles(nativeDir, ['.rs', '.json', '.toml', '.txt', '.csv', '.md'])) {
       const data = readIf(join(nativeDir, rel));
       if (data) entries.push({ path: `native/${rel}`, data: scrub(data.toString('utf8'), paths) });
     }

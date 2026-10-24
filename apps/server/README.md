@@ -67,7 +67,9 @@ confirmation sessions, for a candidate whose equivalence Lean proved.
 ## Bundles and `verify`
 
 A bundle holds `inputs.json`, `report.json`, `lean/`, `toolchain.json`, `native/`, `search/`,
-`engine/diagnose.json` and `VERIFY.md`, with sorted entries, zero mtimes and no timestamps.
+`engine/diagnose.json` and `VERIFY.md`, with sorted entries, zero mtimes and no timestamps. `native/` keeps the
+generated variant crates, the kernels they link against (checked against the digest of the copy embedded in the
+engine), the harness source and the raw correctness and timing records, described in `native/SOURCES.md`.
 `cryptificate verify` extracts it to a fresh temporary directory, reads only `inputs.json` and
 `report.json`, regenerates and checks the certificate with the installed engine and Lean, and prints
 a per-claim table (`match`, `mismatch`, `not re-checked`, `historical`). It never runs Lean, Rust or

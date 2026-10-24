@@ -2,9 +2,12 @@
  * Native code generation, correctness and benchmarks through the engine's
  * `codegen` and `native` subcommands.
  */
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import type { CandidateDesign, CandidateOrigin, Program, ProgramTarget, Witness } from '@cryptificate/schema';
 import type { JobContext, PipelineEnv } from './context.js';
 import type { EngineError } from './engine.js';
+import { listFiles, sha256Hex } from './toolchain.js';
 
 export interface VariantInput {
   id: string;
@@ -59,6 +62,74 @@ export function codegenFiles(doc: unknown): Record<string, string> {
   const ws = asRecord(root['workspace']);
   if (ws && typeof ws['manifest'] === 'string') files['workspace/Cargo.toml'] = ws['manifest'];
   return files;
+}
+
+/** Order paths component by component, as Rust's `Path` ordering does. */
+function comparePaths(a: string, b: string): number {
+  const pa = a.split('/');
+  const pb = b.split('/');
+  for (let i = 0; i < Math.min(pa.length, pb.length); i++) {
+    if (pa[i] !== pb[i]) return pa[i]! < pb[i]! ? -1 : 1;
+  }
+  return pa.length - pb.length;
+}
+
+/**
+ * Files of a crate in the order the engine embeds them: `Cargo.toml`, then
+ * everything under `src/`, then `build.rs` when present.
+ */
+export function crateFiles(dir: string): string[] {
+  const files = existsSync(join(dir, 'Cargo.toml')) ? ['Cargo.toml'] : [];
+  const src = listFiles(join(dir, 'src'), ['']).map((f) => `src/${f.split('\\').join('/')}`);
+  files.push(...src.sort(comparePaths));
+  if (existsSync(join(dir, 'build.rs')) && statSync(join(dir, 'build.rs')).isFile()) files.push('build.rs');
+  return files;
+}
+
+/** The engine's digest of a crate: sha256 over "<path>\0<sha256 of contents>\0" for each file in order. */
+export function crateDigest(dir: string, files: readonly string[]): string {
+  let all = '';
+  for (const rel of files) all += `${rel}\0${sha256Hex(readFileSync(join(dir, rel)))}\0`;
+  return `sha256:${sha256Hex(all)}`;
+}
+
+/**
+ * Keep the sources behind native results with the job: the arithmetic
+ * kernels every variant links against and the harness that checks and times
+ * them. The kernels are compared with the digest of the copy embedded in the
+ * engine; the harness is the checkout's `crates/native`.
+ */
+export function writeNativeSources(env: PipelineEnv, ctx: JobContext, codegenDoc: unknown): void {
+  const crates = join(env.paths.root, 'crates');
+  const kernelsDir = join(crates, 'kernels');
+  const harnessDir = join(crates, 'native');
+  if (!existsSync(kernelsDir) || !existsSync(harnessDir)) return;
+  const kernelFiles = crateFiles(kernelsDir);
+  for (const rel of kernelFiles) ctx.write(`native/kernels/${rel}`, readFileSync(join(kernelsDir, rel)));
+  const harnessFiles = crateFiles(harnessDir);
+  for (const rel of harnessFiles) ctx.write(`native/harness/${rel}`, readFileSync(join(harnessDir, rel)));
+  const ws = asRecord(asRecord(codegenDoc)?.['workspace']);
+  const embedded = typeof ws?.['kernelsSha256'] === 'string' ? ws['kernelsSha256'] : null;
+  const local = crateDigest(kernelsDir, kernelFiles);
+  const kernelsLine =
+    embedded === null
+      ? `The engine did not report a digest of its kernels; \`kernels/\` is the checkout's copy (${local}).`
+      : embedded === local
+        ? `\`kernels/\` matches the kernels the engine compiled into every variant (${embedded}).`
+        : `\`kernels/\` is the checkout's copy (${local}); it differs from the kernels the engine compiled (${embedded}), so the engine was built from other sources.`;
+  ctx.write(
+    'native/SOURCES.md',
+    [
+      '# Native sources',
+      '',
+      '- `variants/<id>/`: the generated crate of each circuit (`src/lib.rs` is the crate root named `lib.rs` in its manifest).',
+      '- `workspace/Cargo.toml`: the build workspace; its members are `kernels` and `variants/<package>`.',
+      `- \`kernels/\`: the arithmetic primitives shared by every variant. ${kernelsLine}`,
+      `- \`harness/\`: the correctness and benchmark harness (\`crates/native\` of the checkout; its revision is the checker revision in \`toolchain.json\`).`,
+      '- `correctness.json`, `measurements/`: raw results as the engine reported them.',
+      '',
+    ].join('\n'),
+  );
 }
 
 /** The codegen document restricted to some variant ids. */
@@ -158,6 +229,11 @@ export async function runNative(env: PipelineEnv, ctx: JobContext, opts: NativeO
     }
     codegen = { raw: cg.value, files: codegenFiles(cg.value) };
     for (const [name, text] of Object.entries(codegen.files)) ctx.write(`native/${name}`, text);
+    try {
+      writeNativeSources(env, ctx, cg.value);
+    } catch (err) {
+      ctx.logger(`native sources not kept: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
   const input: Record<string, unknown> = {
     mode: opts.mode,
