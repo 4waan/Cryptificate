@@ -133,7 +133,10 @@ pub fn write_variant(work_dir: &Path, v: &VariantSource) -> Result<PathBuf> {
 }
 
 /// A cargo command with a clean environment: no inherited `RUSTFLAGS`,
-/// profile or build overrides, incremental compilation off.
+/// profile or build overrides, incremental compilation off. An empty
+/// `CARGO_ENCODED_RUSTFLAGS` takes precedence over `rustflags` from cargo
+/// configuration files (found from the current directory and `CARGO_HOME`),
+/// so no extra compiler flags reach the variants.
 fn cargo_command(opts: &BuildOptions) -> Command {
     let mut cmd = Command::new(&opts.cargo);
     for (key, _) in std::env::vars_os() {
@@ -149,7 +152,8 @@ fn cargo_command(opts: &BuildOptions) -> Command {
         }
     }
     cmd.env("CARGO_TARGET_DIR", &opts.target_dir)
-        .env("CARGO_INCREMENTAL", "0");
+        .env("CARGO_INCREMENTAL", "0")
+        .env("CARGO_ENCODED_RUSTFLAGS", "");
     cmd
 }
 

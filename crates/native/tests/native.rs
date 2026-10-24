@@ -243,6 +243,50 @@ fn invalid_requests_are_reported_as_such() {
     assert_eq!(e.to_envelope()["error"]["path"], "/matrix/0/0");
 }
 
+/// Compiler flags from a cargo configuration file in the caller's directory
+/// do not reach the variants (the report says `rustflags=none`).
+#[test]
+fn configured_rustflags_do_not_reach_variants() {
+    let tmp = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
+    let cwd = tmp.join("native-config-cwd");
+    std::fs::create_dir_all(cwd.join(".cargo")).unwrap();
+    std::fs::write(
+        cwd.join(".cargo").join("config.toml"),
+        "[build]\nrustflags = [\"-C\", \"no-such-flag\"]\n\n\
+         [target.'cfg(all())']\nrustflags = [\"-C\", \"no-such-flag\"]\n",
+    )
+    .unwrap();
+    let input = json!({
+        "mode": "correctness", "field": "gf256", "width": 4, "matrix": aes_matrix(),
+        "variants": [{"id": "baseline-known", "program": AnyProgram::from(aes_shared_sum())}]
+    });
+    let mut child = Command::new(env!("CARGO_BIN_EXE_cryptificate-bench"))
+        .args(["--quick-test", "--work-dir"])
+        .arg(tmp.join("native-work-config"))
+        .arg("--target-dir")
+        .arg(tmp.join("native-target"))
+        .current_dir(&cwd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.to_string().as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    let report: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(out.status.code(), Some(0), "{report}");
+    assert_eq!(report["excluded"], json!([]), "{report}");
+    assert_eq!(report["correctness"][0]["passed"], true);
+    assert!(report["build"]["flags"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("rustflags=none")));
+}
+
 #[test]
 fn bench_binary_reads_stdin_and_sets_exit_codes() {
     let tmp = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
