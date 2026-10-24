@@ -20,10 +20,146 @@ set_option maxRecDepth 2048
 
 namespace cryptificate_kernels
 
-/-- [cryptificate_kernels::gf256::POLY]
-    Source: 'refinement/rust/../../crates/kernels/src/gf256.rs', lines 10:0-10:28
+/-- [cryptificate_kernels::gf256::add]:
+    Source: 'refinement/rust/../../crates/kernels/src/gf256.rs', lines 21:0-23:1
     Visibility: public -/
-@[global_simps, irreducible] def gf256.POLY : Std.U16 := 283#u16
+def gf256.add (a : Std.U8) (b : Std.U8) : Result Std.U8 := do
+  ok (a ^^^ b)
+
+/-- [cryptificate_kernels::aes_like::add_round_key]: loop body 0:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 30:4-33:5
+    Visibility: public -/
+@[rust_loop_body]
+def aes_like.add_round_key_loop.body
+  (round_key : Array Std.U8 16#usize) (state : Array Std.U8 16#usize)
+  (i : Std.Usize) :
+  Result (ControlFlow ((Array Std.U8 16#usize) × Std.Usize) (Array Std.U8
+    16#usize))
+  := do
+  if i < 16#usize
+  then
+    let i1 ← Array.index_usize state i
+    let i2 ← Array.index_usize round_key i
+    let i3 ← gf256.add i1 i2
+    let a ← Array.update state i i3
+    let i4 ← i + 1#usize
+    ok (cont (a, i4))
+  else ok (done state)
+
+/-- [cryptificate_kernels::aes_like::add_round_key]: loop 0:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 30:4-33:5
+    Visibility: public -/
+@[rust_loop]
+def aes_like.add_round_key_loop
+  (state : Array Std.U8 16#usize) (round_key : Array Std.U8 16#usize)
+  (i : Std.Usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  loop
+    (fun (state1, i1) => aes_like.add_round_key_loop.body round_key state1 i1)
+    (state, i)
+
+/-- [cryptificate_kernels::aes_like::add_round_key]:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 28:0-34:1
+    Visibility: public -/
+@[reducible]
+def aes_like.add_round_key
+  (state : Array Std.U8 16#usize) (round_key : Array Std.U8 16#usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  aes_like.add_round_key_loop state round_key 0#usize
+
+/-- [cryptificate_kernels::aes_like::sub_bytes]: loop body 0:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 39:4-42:5
+    Visibility: public -/
+@[rust_loop_body]
+def aes_like.sub_bytes_loop.body
+  (sbox : Array Std.U8 256#usize) (state : Array Std.U8 16#usize)
+  (i : Std.Usize) :
+  Result (ControlFlow ((Array Std.U8 16#usize) × Std.Usize) (Array Std.U8
+    16#usize))
+  := do
+  if i < 16#usize
+  then
+    let i1 ← Array.index_usize state i
+    let i2 ← lift (UScalar.cast .Usize i1)
+    let i3 ← Array.index_usize sbox i2
+    let a ← Array.update state i i3
+    let i4 ← i + 1#usize
+    ok (cont (a, i4))
+  else ok (done state)
+
+/-- [cryptificate_kernels::aes_like::sub_bytes]: loop 0:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 39:4-42:5
+    Visibility: public -/
+@[rust_loop]
+def aes_like.sub_bytes_loop
+  (state : Array Std.U8 16#usize) (sbox : Array Std.U8 256#usize)
+  (i : Std.Usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  loop
+    (fun (state1, i1) => aes_like.sub_bytes_loop.body sbox state1 i1)
+    (state, i)
+
+/-- [cryptificate_kernels::aes_like::sub_bytes]:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 37:0-43:1
+    Visibility: public -/
+@[reducible]
+def aes_like.sub_bytes
+  (state : Array Std.U8 16#usize) (sbox : Array Std.U8 256#usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  aes_like.sub_bytes_loop state sbox 0#usize
+
+/-- [cryptificate_kernels::aes_like::shift_rows]: loop body 0:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 51:4-56:5
+    Visibility: public -/
+@[rust_loop_body]
+def aes_like.shift_rows_loop.body
+  (offsets : Array Std.U8 4#usize) (input : Array Std.U8 16#usize)
+  (state : Array Std.U8 16#usize) (i : Std.Usize) :
+  Result (ControlFlow ((Array Std.U8 16#usize) × Std.Usize) (Array Std.U8
+    16#usize))
+  := do
+  if i < 16#usize
+  then
+    let r ← i % 4#usize
+    let c ← i / 4#usize
+    let i1 ← Array.index_usize offsets r
+    let i2 ← lift (UScalar.cast .Usize i1)
+    let i3 ← c + i2
+    let i4 ← i3 % 4#usize
+    let i5 ← 4#usize * i4
+    let i6 ← i5 + r
+    let i7 ← Array.index_usize input i6
+    let a ← Array.update state i i7
+    let i8 ← i + 1#usize
+    ok (cont (a, i8))
+  else ok (done state)
+
+/-- [cryptificate_kernels::aes_like::shift_rows]: loop 0:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 51:4-56:5
+    Visibility: public -/
+@[rust_loop]
+def aes_like.shift_rows_loop
+  (state : Array Std.U8 16#usize) (offsets : Array Std.U8 4#usize)
+  (input : Array Std.U8 16#usize) (i : Std.Usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  loop
+    (fun (state1, i1) => aes_like.shift_rows_loop.body offsets input state1 i1)
+    (state, i)
+
+/-- [cryptificate_kernels::aes_like::shift_rows]:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 48:0-57:1
+    Visibility: public -/
+@[reducible]
+def aes_like.shift_rows
+  (state : Array Std.U8 16#usize) (offsets : Array Std.U8 4#usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  aes_like.shift_rows_loop state offsets state 0#usize
 
 /-- [cryptificate_kernels::gf256::xtime]:
     Source: 'refinement/rust/../../crates/kernels/src/gf256.rs', lines 15:0-17:1
@@ -34,12 +170,6 @@ def gf256.xtime (a : Std.U8) : Result Std.U8 := do
   let i2 ← lift (i1 &&& 1#u8)
   let i3 ← lift (core.num.U8.wrapping_mul i2 27#u8)
   ok (i ^^^ i3)
-
-/-- [cryptificate_kernels::gf256::add]:
-    Source: 'refinement/rust/../../crates/kernels/src/gf256.rs', lines 21:0-23:1
-    Visibility: public -/
-def gf256.add (a : Std.U8) (b : Std.U8) : Result Std.U8 := do
-  ok (a ^^^ b)
 
 /-- [cryptificate_kernels::gf256::mul]: loop body 0:
     Source: 'refinement/rust/../../crates/kernels/src/gf256.rs', lines 32:4-37:5
@@ -77,5 +207,145 @@ def gf256.mul_loop
 @[reducible]
 def gf256.mul (a : Std.U8) (b : Std.U8) : Result Std.U8 := do
   gf256.mul_loop 0#u8 a b 0#i32
+
+/-- [cryptificate_kernels::aes_like::mix_byte]:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 60:0-66:1 -/
+def aes_like.mix_byte
+  (matrix : Array Std.U8 16#usize) (input : Array Std.U8 16#usize)
+  (r : Std.Usize) (c : Std.Usize) :
+  Result Std.U8
+  := do
+  let i ← 4#usize * r
+  let i1 ← Array.index_usize matrix i
+  let i2 ← 4#usize * c
+  let i3 ← Array.index_usize input i2
+  let t0 ← gf256.mul i1 i3
+  let i4 ← i + 1#usize
+  let i5 ← Array.index_usize matrix i4
+  let i6 ← i2 + 1#usize
+  let i7 ← Array.index_usize input i6
+  let t1 ← gf256.mul i5 i7
+  let i8 ← i + 2#usize
+  let i9 ← Array.index_usize matrix i8
+  let i10 ← i2 + 2#usize
+  let i11 ← Array.index_usize input i10
+  let t2 ← gf256.mul i9 i11
+  let i12 ← i + 3#usize
+  let i13 ← Array.index_usize matrix i12
+  let i14 ← i2 + 3#usize
+  let i15 ← Array.index_usize input i14
+  let t3 ← gf256.mul i13 i15
+  let i16 ← gf256.add t0 t1
+  let i17 ← gf256.add i16 t2
+  gf256.add i17 t3
+
+/-- [cryptificate_kernels::aes_like::mix_columns]: loop body 0:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 72:4-75:5
+    Visibility: public -/
+@[rust_loop_body]
+def aes_like.mix_columns_loop.body
+  (matrix : Array Std.U8 16#usize) (input : Array Std.U8 16#usize)
+  (state : Array Std.U8 16#usize) (i : Std.Usize) :
+  Result (ControlFlow ((Array Std.U8 16#usize) × Std.Usize) (Array Std.U8
+    16#usize))
+  := do
+  if i < 16#usize
+  then
+    let i1 ← i % 4#usize
+    let i2 ← i / 4#usize
+    let i3 ← aes_like.mix_byte matrix input i1 i2
+    let a ← Array.update state i i3
+    let i4 ← i + 1#usize
+    ok (cont (a, i4))
+  else ok (done state)
+
+/-- [cryptificate_kernels::aes_like::mix_columns]: loop 0:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 72:4-75:5
+    Visibility: public -/
+@[rust_loop]
+def aes_like.mix_columns_loop
+  (state : Array Std.U8 16#usize) (matrix : Array Std.U8 16#usize)
+  (input : Array Std.U8 16#usize) (i : Std.Usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  loop
+    (fun (state1, i1) => aes_like.mix_columns_loop.body matrix input state1 i1)
+    (state, i)
+
+/-- [cryptificate_kernels::aes_like::mix_columns]:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 69:0-76:1
+    Visibility: public -/
+@[reducible]
+def aes_like.mix_columns
+  (state : Array Std.U8 16#usize) (matrix : Array Std.U8 16#usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  aes_like.mix_columns_loop state matrix state 0#usize
+
+/-- [cryptificate_kernels::aes_like::round]:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 79:0-90:1
+    Visibility: public -/
+def aes_like.round
+  (state : Array Std.U8 16#usize) (matrix : Array Std.U8 16#usize)
+  (offsets : Array Std.U8 4#usize) (sbox : Array Std.U8 256#usize)
+  (round_key : Array Std.U8 16#usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  let state1 ← aes_like.add_round_key state round_key
+  let state2 ← aes_like.sub_bytes state1 sbox
+  let state3 ← aes_like.shift_rows state2 offsets
+  aes_like.mix_columns state3 matrix
+
+/-- [cryptificate_kernels::aes_like::encrypt]: loop body 0:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 104:4-107:5
+    Visibility: public -/
+@[rust_loop_body]
+def aes_like.encrypt_loop.body
+  (matrix : Array Std.U8 16#usize) (offsets : Array Std.U8 4#usize)
+  (sbox : Array Std.U8 256#usize) (round_keys : Slice (Array Std.U8 16#usize))
+  (rounds : Std.Usize) (state : Array Std.U8 16#usize) (n : Std.Usize) :
+  Result (ControlFlow ((Array Std.U8 16#usize) × Std.Usize) (Array Std.U8
+    16#usize))
+  := do
+  if n < rounds
+  then
+    let a ← Slice.index_usize round_keys n
+    let state1 ← aes_like.round state matrix offsets sbox a
+    let n1 ← n + 1#usize
+    ok (cont (state1, n1))
+  else ok (done state)
+
+/-- [cryptificate_kernels::aes_like::encrypt]: loop 0:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 104:4-107:5
+    Visibility: public -/
+@[rust_loop]
+def aes_like.encrypt_loop
+  (state : Array Std.U8 16#usize) (matrix : Array Std.U8 16#usize)
+  (offsets : Array Std.U8 4#usize) (sbox : Array Std.U8 256#usize)
+  (round_keys : Slice (Array Std.U8 16#usize)) (rounds : Std.Usize)
+  (n : Std.Usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  loop
+    (fun (state1, n1) => aes_like.encrypt_loop.body matrix offsets sbox
+      round_keys rounds state1 n1)
+    (state, n)
+
+/-- [cryptificate_kernels::aes_like::encrypt]:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 95:0-108:1
+    Visibility: public -/
+@[reducible]
+def aes_like.encrypt
+  (state : Array Std.U8 16#usize) (matrix : Array Std.U8 16#usize)
+  (offsets : Array Std.U8 4#usize) (sbox : Array Std.U8 256#usize)
+  (round_keys : Slice (Array Std.U8 16#usize)) (rounds : Std.Usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  aes_like.encrypt_loop state matrix offsets sbox round_keys rounds 0#usize
+
+/-- [cryptificate_kernels::gf256::POLY]
+    Source: 'refinement/rust/../../crates/kernels/src/gf256.rs', lines 10:0-10:28
+    Visibility: public -/
+@[global_simps, irreducible] def gf256.POLY : Std.U16 := 283#u16
 
 end cryptificate_kernels

@@ -27,10 +27,18 @@ name = "WideTrail"
 git = "https://github.com/4waan/Wide-Trail-formal-verification"
 rev = "162c0f8a9e59841032ec5d66874fee31cf3b6298"
 
-# Lean translation of the recorded Rust source, produced by Aeneas (see extract.sh).
+# Lean translations of the recorded Rust sources, produced by Aeneas (see extract.sh).
 [[lean_lib]]
 name = "Extracted"
-roots = ["Extracted.CryptificateKernels"]
+roots = ["Extracted.CryptificateKernels", "Extracted.Gf256Aes"]
+
+# The execution model of the main Lean package (`lean/Cryptificate/Bridge.lean`), compiled
+# here from the same source files so that the AES-like refinement is stated against those
+# definitions rather than a copy of them.
+[[lean_lib]]
+name = "CryptificateBridge"
+srcDir = "../lean"
+roots = ["Cryptificate.Bridge", "Cryptificate.Diffusion.Activity"]
 
 # Refinement proofs relating the generated code to the WideTrail specification.
 [[lean_lib]]
