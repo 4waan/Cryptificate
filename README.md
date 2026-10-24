@@ -9,7 +9,7 @@
 
 You change a cipher component: the MixColumns matrix, the circuit that computes it, the row offsets, the S-box, or the linear layer of a Poseidon2-style permutation. Cryptificate proves in Lean whether your circuit computes the matrix for every input, proves which diffusion guarantees your design keeps, and shows the exact input wherever one fails. It then measures your native Rust code against the original and packs all of it into one bundle that anyone can re-check.
 
-**[Who it is for](#who-it-is-for)** · **[How you use it](#how-you-use-it)** · **[Demo](#demo)** · **[Install](#install)** · **[What it proves](#what-it-proves)** · **[Why you can trust a result](#why-you-can-trust-a-result)** · **[Rust source to model](#from-rust-source-to-the-model)** · **[Architecture](#architecture)**
+**[Start](#start-in-one-step)** · **[Who it is for](#who-it-is-for)** · **[How you use it](#how-you-use-it)** · **[Demo](#demo)** · **[Install](#install)** · **[What it proves](#what-it-proves)** · **[Why you can trust a result](#why-you-can-trust-a-result)** · **[Rust source to model](#from-rust-source-to-the-model)** · **[Architecture](#architecture)**
 
 [![Lean 4](https://img.shields.io/badge/Lean-v4.33.1-0a0b0a?style=flat-square)](lean/lean-toolchain)
 [![Mathlib](https://img.shields.io/badge/Mathlib-v4.33.1-0a0b0a?style=flat-square)](lean/lakefile.toml)
@@ -21,6 +21,18 @@ You change a cipher component: the MixColumns matrix, the circuit that computes 
 <img src="assets/brand/banner.svg" width="900" alt="Your change goes to Lean-checked claims and native Rust measurements, and comes back as a replayable bundle">
 
 </div>
+
+## Start in one step
+
+**In your browser, with nothing to install:** open the guided story at **[4waan.github.io/Cryptificate](https://4waan.github.io/Cryptificate/)** and click through the four steps.
+
+**On your own machine:**
+
+```sh
+git clone https://github.com/4waan/Cryptificate && cd Cryptificate && npm start
+```
+
+`npm start` installs anything missing on the first run (the pinned Lean toolchain, the Mathlib cache, the Rust engine and the workbench), starts the local service and opens the workbench at `http://127.0.0.1:4173`. Every later `npm start` opens it in seconds. Then pick a step of the guided story, or open **Workspace**, type a matrix and press **Check design and circuit**.
 
 ## Who it is for
 
@@ -61,9 +73,10 @@ Linux with 8 GB of RAM is enough. You need git, curl, a C toolchain, Rust stable
 
 ```sh
 git clone https://github.com/4waan/Cryptificate && cd Cryptificate
-scripts/setup.sh            # pinned Lean toolchain, Mathlib cache, engine, workbench
-npx cryptificate serve      # http://127.0.0.1:4173
+npm start                   # first run: pinned Lean toolchain, Mathlib cache, engine, workbench
 ```
+
+`npm start` runs `scripts/setup.sh` when something is missing and then `npx cryptificate serve`; both can also be run on their own.
 
 From the terminal:
 

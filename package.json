@@ -6,6 +6,7 @@
     "apps/*"
   ],
   "scripts": {
+    "start": "scripts/start.sh",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "dev": "npm run dev -w apps/server"
