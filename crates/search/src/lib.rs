@@ -1,5 +1,6 @@
 //! Bounded search for cheaper linear circuits (cryptificate-search).
 
+pub mod expr;
 pub mod input;
 pub mod request;
 
