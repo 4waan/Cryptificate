@@ -171,6 +171,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cryptificate-cli"
+version = "0.1.0"
+dependencies = [
+ "cryptificate-core",
+ "serde_json",
+]
+
+[[package]]
 name = "cryptificate-core"
 version = "0.1.0"
 dependencies = [
