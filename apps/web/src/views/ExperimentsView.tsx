@@ -14,7 +14,7 @@ import { ExecutionProblems, UnverifiedPreview } from '../components/ResultsPanel
 import { RunProgress, isActive } from '../components/RunProgress';
 import { isStale } from '../lib/canonical';
 import { circuitStats } from '../lib/circuit';
-import { bestCandidate, candidateLabel, labelForId, savingsSummary, THRESHOLD } from '../lib/experiment';
+import { bestCandidate, candidateLabel, labelForId, PRIMARY_BYTES, savingsSummary, THRESHOLD } from '../lib/experiment';
 import { formatBytes } from '../lib/stats';
 import type { ExperimentProfile, ExperimentReport, MeasurementVerdict } from '../lib/types';
 import { inputProblems, startRun } from '../state/actions';
@@ -221,10 +221,13 @@ function HistoryTable({ report }: { report: ExperimentReport }) {
 export function MeasurementSection({
   report,
   active = false,
+  primaryOnly = false,
 }: {
   report: ExperimentReport;
   /** The run is still going: missing measurements have not run yet. */
   active?: boolean;
+  /** Show only the primary (64 KiB) workload, the one the verdict is based on. */
+  primaryOnly?: boolean;
 }) {
   const m = report.measurements;
   const best = bestCandidate(report);
@@ -232,6 +235,7 @@ export function MeasurementSection({
     if (!m) return [];
     const byBytes = new Map<number, VariantSeries[]>();
     m.workloads.forEach((w, i) => {
+      if (primaryOnly && w.bytes !== PRIMARY_BYTES) return;
       const id = w.candidate ?? `variant-${i}`;
       const label = `${labelForId(report, id)}${w.session !== undefined ? ` · s${w.session}` : ''}`;
       const list = byBytes.get(w.bytes) ?? [];
@@ -239,11 +243,12 @@ export function MeasurementSection({
       byBytes.set(w.bytes, list);
     });
     return [...byBytes.entries()].sort((a, b) => a[0] - b[0]);
-  }, [m, report, best]);
+  }, [m, report, best, primaryOnly]);
   const ratioGroups = useMemo(() => {
     if (!m) return [];
     const groups = new Map<string, RatioRow[]>();
     m.comparisons.forEach((c, i) => {
+      if (primaryOnly && !(c.primary ?? (c.bytes === undefined || c.bytes === PRIMARY_BYTES))) return;
       const key = c.bytes !== undefined ? formatBytes(c.bytes) : 'All workloads';
       const list = groups.get(key) ?? [];
       list.push({
@@ -255,7 +260,7 @@ export function MeasurementSection({
       groups.set(key, list);
     });
     return [...groups.entries()];
-  }, [m, report, best]);
+  }, [m, report, best, primaryOnly]);
   if (!m) {
     return (
       <p className="muted">
@@ -268,6 +273,12 @@ export function MeasurementSection({
   return (
     <div className="stack-lg">
       <VerdictLine report={report} />
+      <p className="small muted">
+        s1 is the first timing session; s2 and s3 are confirmation sessions with fresh seeds. The verdict uses the{' '}
+        {formatBytes(PRIMARY_BYTES)} workload: a candidate counts as faster only if its 95% interval lies above{' '}
+        {THRESHOLD} against every reference in both confirmation sessions.
+        {primaryOnly ? ' The other workloads are in the Experiments view.' : ''}
+      </p>
       {ratioGroups.map(([key, rows]) => (
         <RatioChart key={key} title={key} rows={rows} threshold={THRESHOLD} />
       ))}

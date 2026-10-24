@@ -197,7 +197,7 @@ function Step1() {
                 <CandidatesTable report={report} limit={8} active={isActive(r)} />
               </section>
               <section className="panel" aria-label="Measurements">
-                <MeasurementSection report={report} active={isActive(r)} />
+                <MeasurementSection report={report} active={isActive(r)} primaryOnly />
               </section>
             </div>
           ) : null
