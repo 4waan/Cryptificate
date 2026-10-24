@@ -101,12 +101,15 @@ function Connection({ connection }: { connection: AppState['connection'] }) {
 export function Header({
   view,
   origin,
+  stale = false,
   connection,
   theme,
   onTheme,
 }: {
   view: View;
   origin: DisplayOrigin;
+  /** The displayed result describes an earlier version of the inputs. */
+  stale?: boolean;
   connection: AppState['connection'];
   theme: Theme;
   onTheme: (t: Theme) => void;
@@ -139,10 +142,11 @@ export function Header({
           ))}
         </nav>
         <div className="header-status">
-          <span className={o.cls} title={o.title}>
+          <span className={stale && origin !== 'preview' ? 'badge badge-warn' : o.cls} title={o.title}>
             {o.icon}
             <span className="visually-hidden">Result origin: </span>
             {o.text}
+            {stale && origin !== 'preview' ? <span> · earlier version</span> : null}
           </span>
           <Connection connection={connection} />
           <button

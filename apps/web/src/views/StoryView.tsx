@@ -149,11 +149,15 @@ function Step1() {
         <button type="button" className="btn btn-primary" onClick={go} disabled={isActive(r)}>
           <IconPlay size={12} /> {source === 'live' ? 'Run quick search' : 'Replay the recorded search'}
         </button>
-        <span className="small muted">
-          {source === 'live'
-            ? 'Quick profile: a short search, Lean equivalence proofs, native correctness and timing on this machine.'
-            : 'Shows a recorded run; nothing is searched, proved or timed in your browser.'}
-        </span>
+        {r && isActive(r) ? (
+          <RunProgress run={r} compact />
+        ) : (
+          <span className="small muted">
+            {source === 'live'
+              ? 'Quick profile: a short search, Lean equivalence proofs, native correctness and timing on this machine.'
+              : 'Shows a recorded run; nothing is searched, proved or timed in your browser.'}
+          </span>
+        )}
       </div>
       <div className="grid-story">
         <section className="panel" aria-label="Design matrix">

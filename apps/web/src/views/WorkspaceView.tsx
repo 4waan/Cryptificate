@@ -50,6 +50,15 @@ export function WorkspaceView() {
         >
           {source === 'live' ? 'Run quick experiment' : 'Show recorded experiment'}
         </button>
+        {analysis?.report && !isActive(analysis) ? (
+          <button
+            type="button"
+            className="btn btn-quiet"
+            onClick={() => document.getElementById('results-heading')?.scrollIntoView({ block: 'start' })}
+          >
+            Jump to results
+          </button>
+        ) : null}
         <div className="actionbar-status">
           {problems.length ? (
             <span className="error-text">

@@ -6,11 +6,13 @@ interface CellsProps {
   values: readonly string[];
   highlight?: readonly number[];
   highlightLabel?: string;
+  /** "bad" marks a disagreement; "accent" marks entries that count, such as nonzero ones. */
+  tone?: 'bad' | 'accent';
   prefix: string;
 }
 
 /** A vector of field elements: uppercase hex bytes or decimals, with optional highlighted coordinates. */
-export function Cells({ field, values, highlight = [], highlightLabel = 'differs', prefix }: CellsProps) {
+export function Cells({ field, values, highlight = [], highlightLabel = 'differs', tone = 'bad', prefix }: CellsProps) {
   return (
     <span className="bytes" role="list">
       {values.map((v, i) => {
@@ -19,7 +21,7 @@ export function Cells({ field, values, highlight = [], highlightLabel = 'differs
           <span
             key={i}
             role="listitem"
-            className={`byte${field === 'bn254' ? ' decimal' : ''}${hl ? ' byte-hl' : ''}`}
+            className={`byte${field === 'bn254' ? ' decimal' : ''}${hl ? (tone === 'bad' ? ' byte-hl' : ' byte-nz') : ''}`}
             data-highlight={hl ? 'true' : undefined}
           >
             <span className="byte-index" aria-hidden="true">
@@ -76,9 +78,23 @@ function WitnessBody({ witness: w, field }: { witness: Witness; field: FieldName
       return (
         <div className="witness-rows">
           <span className="witness-label">Input x (weight {w.inputWeight})</span>
-          <Cells field={field} values={w.input} highlight={nonzero(w.input)} highlightLabel="nonzero" prefix="x" />
+          <Cells
+            field={field}
+            values={w.input}
+            highlight={nonzero(w.input)}
+            highlightLabel="nonzero"
+            tone="accent"
+            prefix="x"
+          />
           <span className="witness-label">Image M·x (weight {w.outputWeight})</span>
-          <Cells field={field} values={w.output} highlight={nonzero(w.output)} highlightLabel="nonzero" prefix="y" />
+          <Cells
+            field={field}
+            values={w.output}
+            highlight={nonzero(w.output)}
+            highlightLabel="nonzero"
+            tone="accent"
+            prefix="y"
+          />
           <span className="witness-label">Total</span>
           <span className="mono">
             {w.inputWeight} + {w.outputWeight} = {w.inputWeight + w.outputWeight} &lt; {w.bound}

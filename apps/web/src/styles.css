@@ -514,10 +514,18 @@ textarea {
 .stack {
   display: grid;
   gap: var(--space-4);
+  min-width: 0;
+  align-content: start;
+}
+.stack > .btn,
+.stack-lg > .btn {
+  justify-self: start;
 }
 .stack-lg {
   display: grid;
   gap: var(--space-5);
+  min-width: 0;
+  align-content: start;
 }
 .row {
   display: flex;
@@ -550,7 +558,7 @@ textarea {
 }
 .grid-story {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   gap: var(--space-5);
   align-items: start;
 }
@@ -707,6 +715,12 @@ textarea {
   color: var(--bad);
   font-weight: 700;
 }
+.byte-nz {
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+}
 .byte-index {
   font-size: 0.68rem;
   color: var(--text-muted);
@@ -716,6 +730,7 @@ textarea {
 /* ---------- claims ---------- */
 
 .chain {
+  min-width: 0;
   display: grid;
   gap: var(--space-3);
   align-content: start;
@@ -729,6 +744,8 @@ textarea {
   border-bottom: 1px solid var(--line);
 }
 .claim {
+  min-width: 0;
+  overflow-wrap: anywhere;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: var(--space-4);
@@ -817,6 +834,7 @@ details.proof dd {
 }
 
 .witness {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
@@ -897,6 +915,12 @@ table.data th {
   position: sticky;
   top: 0;
 }
+table.data tbody th {
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+  position: static;
+}
 table.data td.num,
 table.data th.num {
   text-align: right;
@@ -917,9 +941,10 @@ table.data tbody tr:last-child td {
   padding: 0;
   display: grid;
   gap: 2px;
-  counter-reset: none;
+  overflow-x: auto;
 }
 .instr {
+  min-width: 500px;
   display: grid;
   grid-template-columns: 40px 84px auto minmax(0, 1fr) auto;
   gap: var(--space-2);

@@ -113,9 +113,11 @@ export function CandidatesTable({ report, limit }: { report: ExperimentReport; l
                 <td>
                   {c.native ? (
                     c.native.passed ? (
-                      <span>Generated Rust passed {c.native.cases} correctness cases</span>
+                      <span title={`Generated Rust passed ${c.native.cases} correctness cases`}>
+                        Passed {c.native.cases.toLocaleString('en-US')} cases
+                      </span>
                     ) : (
-                      <span className="error-text">Failed correctness (excluded from timing)</span>
+                      <span className="error-text">Failed (not timed)</span>
                     )
                   ) : (
                     <span className="muted">Not run</span>

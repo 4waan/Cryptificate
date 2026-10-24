@@ -78,6 +78,11 @@ export function App() {
   const connection = useAppState((s) => s.connection);
   const origin = useAppState((s) => originOf(s, displayedRun(s)));
   const quiet = useAppState((s) => Object.values(s.runs).some(isTimingStep));
+  const stale = useAppState((s) => {
+    const run = displayedRun(s);
+    if (!run?.report || s.view === 'story') return false;
+    return isStale({ design: s.design, program: s.program, target: s.program ? s.target : undefined }, run.inputs);
+  });
 
   useEffect(() => {
     const t = readTheme();
@@ -134,6 +139,7 @@ export function App() {
       <Header
         view={view}
         origin={origin}
+        stale={stale}
         connection={connection}
         theme={theme}
         onTheme={(t) => {

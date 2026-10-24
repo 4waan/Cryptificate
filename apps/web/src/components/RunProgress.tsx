@@ -19,14 +19,14 @@ const STEP_TEXT: Record<string, string> = {
   diagnose: 'Diagnose',
   'emit-lean': 'Generate Lean',
   lean: 'Lean check',
-  audit: 'Audit axioms',
+  native: 'Native correctness',
+  report: 'Report',
   search: 'Search',
   equivalence: 'Equivalence proofs',
-  codegen: 'Generate Rust',
-  compile: 'Compile',
-  correctness: 'Native correctness',
-  timing: 'Native timing',
-  confirm: 'Confirmation sessions',
+  'native-correctness': 'Native correctness',
+  'benchmark-1': 'Timing, session 1',
+  'benchmark-2': 'Timing, session 2',
+  'benchmark-3': 'Timing, session 3',
 };
 
 export function stepLabel(name: string): string {
