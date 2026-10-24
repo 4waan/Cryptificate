@@ -1,9 +1,15 @@
--- A certificate instantiated from lean/templates by hand, compiled to check the templates.
--- AES itself: the AES MixColumns matrix, offsets 0, 1, 2, 3, ten rounds and the AES S-box.
--- Fragments: header, const_matrix_gf256, const_offsets, const_rounds, const_sbox_aes, matrix_mds,
--- offsets_optimal, activity_bound, sbox_bijective_aes, footer.
-
 import Cryptificate
+
+/-!
+# Example: AES
+
+AES itself: the MixColumns matrix, the offsets `0 1 2 3`, ten rounds and the AES S-box. All
+four design claims hold, and the activity bound at ten rounds is `2 · 25 + 5 = 55`.
+
+Instantiated by `scripts/instantiate.py` from the fragments `header`, `const_matrix_gf256`,
+`const_offsets`, `const_rounds`, `const_sbox_aes`, `matrix_mds`, `offsets_optimal`,
+`activity_bound`, `sbox_bijective_aes` and `footer`.
+-/
 
 set_option autoImplicit false
 set_option maxRecDepth 16000

@@ -1,10 +1,17 @@
--- A certificate instantiated from lean/templates by hand, compiled to check the templates.
--- The row-scaled AES matrix with first row 04 06 02 02 (twice the first row of AES, the other
--- rows unchanged), offsets 0, 1, 2, 3, four rounds, and the AES S-box given as a table with its
--- inverse. Fragments: header, const_matrix_gf256, const_offsets, const_rounds, const_sbox_table,
--- const_sbox_inv, matrix_mds, offsets_optimal, activity_bound, sbox_bijective, footer.
-
 import Cryptificate
+
+/-!
+# Example: a fresh MDS matrix
+
+The AES matrix with its first row doubled, `04 06 02 02` (the other rows are those of AES),
+the offsets `0 1 2 3`, four rounds, and the AES S-box submitted as a table, with its inverse
+table for the bijectivity certificate. Doubling a row keeps every minor nonzero, and the
+kernel confirms it from the matrix alone; the activity bound at four rounds is `25`.
+
+Instantiated by `scripts/instantiate.py` from the fragments `header`, `const_matrix_gf256`,
+`const_offsets`, `const_rounds`, `const_sbox_table`, `const_sbox_inv`, `matrix_mds`,
+`offsets_optimal`, `activity_bound`, `sbox_bijective` and `footer`.
+-/
 
 set_option autoImplicit false
 set_option maxRecDepth 16000

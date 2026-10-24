@@ -1,8 +1,15 @@
--- A certificate instantiated from lean/templates by hand, compiled to check the templates.
--- The row-scaled AES matrix with offsets 0, 3, 2, 1, thirty-two rounds and the AES S-box.
--- Fragments as in DiffusionAES.
-
 import Cryptificate
+
+/-!
+# Example: thirty-two rounds
+
+The row-scaled matrix of `DiffusionFresh` with the offsets `0 3 2 1`, thirty-two rounds and the
+AES S-box: eight four-round blocks, `8 · 25 = 200` active S-boxes.
+
+Instantiated by `scripts/instantiate.py` from the fragments `header`, `const_matrix_gf256`,
+`const_offsets`, `const_rounds`, `const_sbox_aes`, `matrix_mds`, `offsets_optimal`,
+`activity_bound`, `sbox_bijective_aes` and `footer`.
+-/
 
 set_option autoImplicit false
 set_option maxRecDepth 16000

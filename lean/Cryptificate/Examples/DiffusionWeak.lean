@@ -1,11 +1,17 @@
--- A certificate instantiated from lean/templates by hand, compiled to check the templates.
--- Three refutations. The identity matrix, refuted by the column 01 00 00 00 (weight 1 + 1 = 2,
--- below 5); offsets 0, 1, 1, 3, refuted by rows 1 and 2; and the AES table with entry 01 changed
--- to 63, refuted by the collision of 00 and 01. Fragments: header, const_matrix_gf256,
--- const_witness_vector_gf256, const_offsets, const_rounds, const_sbox_table, matrix_not_mds,
--- offsets_not_optimal, sbox_not_injective, footer.
-
 import Cryptificate
+
+/-!
+# Example: three refutations
+
+Three design claims, each refuted by a witness. The identity matrix with the column `01 00 00 00`:
+weight `1 + 1 = 2`, below the `5` of an MDS matrix. The offsets `0 1 1 3`, where rows `1` and `2`
+share an offset. The AES table with entry `01` changed to `63`, so that `00` and `01` collide.
+No activity bound is stated: the method establishes none for this design.
+
+Instantiated by `scripts/instantiate.py` from the fragments `header`, `const_matrix_gf256`,
+`const_witness_vector_gf256`, `const_offsets`, `const_rounds`, `const_sbox_table`,
+`matrix_not_mds`, `offsets_not_optimal`, `sbox_not_injective` and `footer`.
+-/
 
 set_option autoImplicit false
 set_option maxRecDepth 16000

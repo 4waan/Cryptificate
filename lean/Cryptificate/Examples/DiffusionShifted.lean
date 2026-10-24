@@ -1,8 +1,17 @@
--- A certificate instantiated from lean/templates by hand, compiled to check the templates.
--- The AES matrix with offsets 1, 2, 3, 0, six rounds, and the S-box table x -> x + 1 (mod 256)
--- with its inverse. Fragments as in DiffusionFresh.
-
 import Cryptificate
+
+/-!
+# Example: other offsets
+
+The AES matrix with the offsets `1 2 3 0`, six rounds, and the S-box table `x ↦ x + 1 mod 256`
+with its inverse. Any four distinct offsets are diffusion-optimal, so the bound is the same as
+for AES: `25 + 5 = 30` at six rounds. (The S-box is a poor one, but the activity bound only
+asks for injectivity.)
+
+Instantiated by `scripts/instantiate.py` from the fragments `header`, `const_matrix_gf256`,
+`const_offsets`, `const_rounds`, `const_sbox_table`, `const_sbox_inv`, `matrix_mds`,
+`offsets_optimal`, `activity_bound`, `sbox_bijective` and `footer`.
+-/
 
 set_option autoImplicit false
 set_option maxRecDepth 16000
