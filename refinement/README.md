@@ -1,95 +1,54 @@
 # Rust-source refinement
 
-This Lean package connects the Rust arithmetic kernels that every native variant uses
-(`crates/kernels`) to the WideTrail specification of `GF(2⁸)`. The chain is
+This Lean package connects Rust code to WideTrail's mathematics through the chain
 
-1. **Recorded Rust source.** `crates/kernels/src/gf256.rs` (`xtime`, `add`, `mul`), with its
-   SHA-256 recorded in `extract.sha256`. `rust/kernels_gf256.rs` is a two-line crate root that
-   includes that file unchanged as module `gf256`, so the extracted items keep their real paths
-   `cryptificate_kernels::gf256::{xtime, add, mul}`.
-2. **Aeneas model.** Charon translates the crate to LLBC and Aeneas translates LLBC to the pure
-   Lean program `Extracted/CryptificateKernels.lean` (also hashed in `extract.sha256`). Every
-   function returns a `Result`; a Rust panic (overflow, out-of-range shift) becomes a failure.
-3. **Executable mathematical model.** WideTrail's `GF256.xtime` and shift-and-add multiplier
-   `GF256.rawMul` on `BitVec 8`, the same functions WideTrail uses to build the field `GF256`.
-4. **Named properties.** WideTrail's `Field GF256` instance (field laws, inverses), carried back
-   to the Rust functions.
+1. **Recorded Rust source**, identified by SHA-256 (`extract.sha256`);
+2. **Aeneas model**: Charon translates the Rust crate to LLBC and Aeneas translates LLBC to a
+   pure Lean program (`Extracted/`). Every function returns a `Result`; a Rust panic
+   (overflow, out-of-range shift or index) becomes a failure;
+3. **Executable mathematical model**: WideTrail's `GF256.xtime` and `GF256.rawMul` on
+   `BitVec 8`, and the AES-like execution model `aesLikeRound` / `aesLikeExec` of the main Lean
+   package (`lean/Cryptificate/Bridge.lean`) over WideTrail's field `GF256`;
+4. **Named properties**: WideTrail's field laws for `GF256`, and the wide-trail active-S-box bound.
 
-`extract.sh` reproduces step 2 from step 1 and checks the hashes; `lake build` checks steps 2 to
-4.
+`STATUS.md` lists, link by link, what is proved, what is trusted and what is not established,
+with the exact theorem statements. `claims.json` is the machine-readable list of the proved
+theorems (statement, axioms, toolchain pins, SHA-256 of the Rust sources they cover).
 
-## What is proved
+## What is covered
 
-All theorems are in `Refinement/GF256.lean`, namespace `Cryptificate.Refinement`, and hold for
-every input. `U8` is the Aeneas model of `u8` (a structure around `bv : BitVec 8`), `ok` the
-successful `Result`, and `toField a = GF256.mk a.bv`, `ofField x = ⟨x.val⟩` convert between a
-byte and WideTrail's field element.
+| Rust code | Extraction | Proofs | Main theorems |
+| --- | --- | --- | --- |
+| `crates/kernels/src/gf256.rs`: `xtime`, `add`, `mul` | `Extracted/CryptificateKernels.lean` | `Refinement/GF256.lean` | `gf256_mul_refines`, `gf256_xtime_refines`, `gf256_add_refines`, `*_field`, field laws |
+| `crates/kernels/src/aes_like.rs`: `round`, `encrypt` (design as runtime data) | `Extracted/CryptificateKernels.lean` | `Refinement/AesLike.lean` | `aes_like_round_refines`, `aes_like_encrypt_refines`, `aes_like_encrypt_activity_bound` |
+| gf256 crate 0.3.1, `0x11B`, `no-tables`, `no-xmul`: `mul` (expanded source) | `Extracted/Gf256Aes.lean` | `Refinement/Gf256Crate.lean` | `gf256crate_mul_refines`, `gf256crate_mul_eq_kernels` |
+| BN254 `Fr` (arkworks) | fails in Aeneas (`bn254-probe/`) | none | not established |
 
-Refinement of each kernel (no panic, and the result is the specification):
+All theorems are in namespace `Cryptificate.Refinement` and hold for every input. They use the
+axioms `propext`, `Classical.choice`, `Quot.sound` only, except the gf256-crate theorems, which
+also mention `gf256_aes.core.mem.size_of`, the uninterpreted function the extraction declares for
+`core::mem::size_of`; they assume `size_of::<u8>() = 1`. `Refinement/Axioms.lean` pins every
+theorem's axioms with `#guard_msgs`, so the build fails if one changes. The proofs use the
+kernel only: no `native_decide`, `bv_decide` or `sorry`.
 
-```lean
-theorem gf256_xtime_refines (a : U8) : gf256.xtime a = ok ⟨GF256.xtime a.bv⟩
-theorem gf256_add_refines (a b : U8) : gf256.add a b = ok ⟨a.bv ^^^ b.bv⟩
-theorem gf256_mul_refines (a b : U8) : gf256.mul a b = ok ⟨GF256.rawMul a.bv b.bv⟩
-```
+## Layout
 
-The loop of `mul` is handled by an invariant on the translated loop `gf256.mul_loop`, where
-`loopIndex n` is the `i32` loop counter when `n` iterations remain:
+| Path | Content |
+| --- | --- |
+| `rust/kernels.rs` | Extraction root: includes the unmodified `crates/kernels/src/{gf256,aes_like}.rs` as crate `cryptificate_kernels` |
+| `rust/gf256_aes_expanded.rs` | Expanded gf256 crate configuration, the input of the second extraction |
+| `gf256crate/` | Configuration of the gf256 crate, `expand.sh`, the assembly script and a 65,536-product cross-check |
+| `extract.sh`, `extract.sha256` | Reproduce both extractions and check every hash |
+| `Extracted/` | Aeneas output |
+| `Refinement/` | Proofs, the axiom pins (`Axioms.lean`) and the WideTrail modules re-checked here |
+| `scripts/` | `PrintClaims.lean` and `claims.py`, which write and check `claims.json` |
+| `bn254-probe/` | The attempt to extract arkworks' BN254 multiplication |
 
-```lean
-theorem gf256_mul_loop_refines (n : Nat) (hn : n ≤ 8) (acc x y : U8) :
-    gf256.mul_loop acc x y (loopIndex n) = ok ⟨GF256.mulAux n x.bv y.bv acc.bv⟩
-```
-
-The same facts in WideTrail's field (`GF256.mk 0x02#8` is the element `x`, the byte `02`):
-
-```lean
-theorem gf256_mul_field (a b : U8) : gf256.mul a b = ok (ofField (toField a * toField b))
-theorem gf256_add_field (a b : U8) : gf256.add a b = ok (ofField (toField a + toField b))
-theorem gf256_xtime_field (a : U8) : gf256.xtime a = ok (ofField (GF256.mk 0x02#8 * toField a))
-```
-
-Field laws carried to the Rust functions:
-
-```lean
-theorem gf256_mul_comm (a b : U8) : gf256.mul a b = gf256.mul b a
-theorem gf256_mul_assoc (a b c : U8) :
-    (do let ab ← gf256.mul a b; gf256.mul ab c) = (do let bc ← gf256.mul b c; gf256.mul a bc)
-theorem gf256_mul_add (a b c : U8) :
-    (do let s ← gf256.add b c; gf256.mul a s) =
-      (do let p ← gf256.mul a b; let q ← gf256.mul a c; gf256.add p q)
-theorem gf256_mul_two (a : U8) : gf256.mul 0x02#u8 a = gf256.xtime a
-theorem gf256_mul_inv (a : U8) (ha : a ≠ 0#u8) : gf256.mul a (ofField (toField a)⁻¹) = ok 0x01#u8
-```
-
-and, as a check of the reduction, `gf256.mul 0x02#u8 0x80#u8 = ok 0x1B#u8`.
-
-The proofs use the kernel only: closed facts over the 256 bytes are checked with `decide`, the
-loop by induction; there is no `native_decide`, `bv_decide` or `sorry`.
-
-## Axioms
-
-`Refinement/Axioms.lean` pins, with `#guard_msgs`, the output of `#print axioms` for the main
-theorems, so the build fails if it changes:
-
-* `gf256_add_refines`: `propext`, `Quot.sound`;
-* all others listed there: `propext`, `Classical.choice`, `Quot.sound`.
-
-The Aeneas Lean library declares axioms of its own for parts of the Rust standard library it
-does not model: `Aeneas.Std.get_target`, `get_target.spec` and `target_feature_enabled`
-(`Std/Target.lean`), the opaque types `core.sync.atomic.AtomicBool`, `AtomicU32`,
-`core.panic.panic_info.PanicInfo`, `core.pin.Pin` and `core.pin.helper.PinHelper`, and
-`core.slice.Slice.get_unchecked_SliceIndexUsizeSlice_spec` (`Std/Slice.lean`). None of the
-theorems above depends on any of them, as `#print axioms` confirms.
-
-## What is trusted
-
-The theorems are about the Lean program that Aeneas generates. That this program has the
-behaviour of the Rust source is the job of Charon (Rust MIR to LLBC) and Aeneas (LLBC to Lean),
-which are trusted here, as are the Aeneas library's models of `u8`/`i32` arithmetic, shifts and
-`wrapping_*` operations. Compilation of the Rust source to machine code by `rustc` is outside the
-chain. The extraction covers `crates/kernels/src/gf256.rs` only; the BN254 module (arkworks) is
-not extracted.
+The `CryptificateBridge` library in `lakefile.toml` compiles `lean/Cryptificate/Bridge.lean`
+and `lean/Cryptificate/Diffusion/Activity.lean` of the main package from their source files, so
+the AES-like theorems are stated against the main package's own definitions. The main package
+itself builds on Lean `v4.33.1`; here the same files are compiled with Lean and Mathlib
+`v4.35.0`, into this package's build directory.
 
 ## WideTrail on Lean and Mathlib v4.35.0
 
@@ -109,20 +68,33 @@ The build reports warnings only:
   hypothesis in its type;
 * notes in 17 files that the imported Mathlib modules are designed for Lean's module system.
 
+## What is trusted
+
+The theorems are about the Lean programs that Aeneas generates. That these programs have the
+behaviour of the Rust source is the job of Charon (Rust MIR to LLBC) and Aeneas (LLBC to Lean),
+which are trusted here, as are the Aeneas library's models of integers, shifts, casts, arrays
+and slices. Compilation by `rustc` and the hardware are outside the chain, and nothing is
+claimed about timing or other side channels. `STATUS.md` has the full list, including the
+axioms the Aeneas library declares for parts of the standard library it does not model (none
+of the theorems depends on them).
+
 ## Reproducing
 
 Toolchain versions and how to obtain them are in `TOOLCHAIN.md`.
 
 ```sh
-# from the repository root: re-extract and compare with the recorded files
-CHARON=/path/to/charon AENEAS=/path/to/aeneas refinement/extract.sh
+# from the repository root
+refinement/gf256crate/expand.sh                  # re-expand the gf256 crate, compare, check its hash
+CHARON=/path/to/charon AENEAS=/path/to/aeneas refinement/extract.sh   # re-extract and compare
 
 # check the proofs
 cd refinement
 CI=1 lake exe cache get
 CI=1 lake build
+python3 -I scripts/claims.py --check
 ```
 
-After a change to `gf256.rs`, `refinement/extract.sh --write` regenerates
-`Extracted/CryptificateKernels.lean` and `extract.sha256`; the proofs must then build again
-before the refinement claim holds for the new source.
+After a change to a Rust input, `refinement/extract.sh --write` regenerates `Extracted/` and
+`extract.sha256` (for the gf256 crate, run `gf256crate/expand.sh --write` first); the proofs must
+then build again, and `scripts/claims.py --write` must record the new hashes, before the
+refinement claims hold for the new source.

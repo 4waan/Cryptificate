@@ -47,17 +47,56 @@ for the host target `x86_64-unknown-linux-gnu` only. The file also lists cross-c
 targets (macOS, Windows, aarch64, riscv, ...) that Charon's own test suite uses; they are not
 needed to extract this crate and were not installed.
 
-**Invocation.** `refinement/extract.sh` checks both version strings before running and calls
+**Invocation.** `refinement/extract.sh` checks both version strings before running and, from
+the repository root, extracts two crates:
 
 ```sh
 charon rustc --preset=aeneas --sysroot default --dest-file <tmp>/cryptificate_kernels.llbc \
-  -- --crate-name cryptificate_kernels --crate-type lib --edition 2021 refinement/rust/kernels_gf256.rs
-aeneas -backend lean -dest <tmp>/lean <tmp>/cryptificate_kernels.llbc
+  -- --crate-name cryptificate_kernels --crate-type lib --edition 2021 refinement/rust/kernels.rs
+charon rustc --preset=aeneas --sysroot default \
+  --start-from 'gf256_aes::__gf256_aes_gen::gf256_aes::mul' --dest-file <tmp>/gf256_aes.llbc \
+  -- --crate-name gf256_aes --crate-type lib --edition 2021 refinement/rust/gf256_aes_expanded.rs
+aeneas -backend lean -dest <tmp>/lean <tmp>/<crate>.llbc
 ```
 
-from the repository root. `--sysroot default` uses the distributed standard library instead of
-building a full-MIR sysroot: the only standard-library functions the kernels call,
-`u8::wrapping_mul` and `u8::wrapping_sub`, are modelled directly by the Aeneas Lean library.
+`--sysroot default` uses the distributed standard library instead of building a full-MIR
+sysroot: the standard-library functions the extracted code calls (`u8::wrapping_mul`,
+`u8::wrapping_sub`, `u16::leading_zeros`) are modelled directly by the Aeneas Lean library;
+`core::mem::size_of`, which the gf256 crate calls, is not, and Aeneas declares it as an
+uninterpreted function (see `STATUS.md`). For `Gf256Aes.lean`, `extract.sh` then writes
+references to the crate module `p` with their full names (`gf256_aes.p.…`), because the Lean
+that Aeneas emits otherwise reads them as fields of a local variable named `p`; the reason and
+the exact `sed` expression are in the script.
+
+## The gf256 crate expansion
+
+`gf256crate/expand.sh` expands the gf256 crate configuration with the same nightly toolchain
+(`gf256crate/rust-toolchain.toml` names it):
+
+```sh
+cargo +nightly-2026-09-17 rustc --locked --lib -- -Zunpretty=expanded           # the gf256_aes type
+cargo +nightly-2026-09-17 rustc --locked -p gf256 --lib -- -Zunpretty=expanded  # the gf256 crate
+python3 -I gf256crate/assemble.py <crate> <type> rust/gf256_aes_expanded.rs
+```
+
+| Input | Version |
+| --- | --- |
+| `gf256` (crates.io) | 0.3.1, features `no-tables`, `no-xmul`, default features off |
+| `gf256-macros` (crates.io) | 0.3.0 |
+| other build dependencies of the macros | locked in `gf256crate/Cargo.lock` |
+
+The result, `rust/gf256_aes_expanded.rs`, has SHA-256
+`53c324b9d62d448aaedf38c7741c8eba6bc4a2448dc888fa255529c859ddf824`
+(`gf256crate/expanded.sha256`); `expand.sh` without options re-expands and compares byte for
+byte. `cargo test` in `gf256crate/` (same toolchain) compares the expansion with the crate and
+with `crates/kernels` on all 65,536 products.
+
+## The BN254 probe
+
+`bn254-probe/probe.sh` runs the same Charon and Aeneas on arkworks' `Fr` multiplication
+(ark-bn254 and ark-ff 0.6.0, locked in `bn254-probe/Cargo.lock`) with
+`charon cargo --preset=aeneas --start-from 'bn254_probe::fr_mul'`. Charon succeeds with two
+warnings; Aeneas exits with status 2 (`STATUS.md`, section 4).
 
 ## Lean side
 
@@ -88,6 +127,9 @@ WideTrail, whose own lakefile asks for Mathlib `v4.33.1` (see the compatibility 
   (SHA-256 `1f62806794b86033386ef051594b12a83bf71b6501dcf1f61d8638ef4d5e1a3f`) from the same
   release instead of compiling the library.
 * WideTrail is compiled locally (about 2.5 minutes on two cores for the whole library).
+* `lean/Cryptificate/Bridge.lean` and `lean/Cryptificate/Diffusion/Activity.lean` of the main
+  package are compiled locally by the `CryptificateBridge` library (a few seconds), from the
+  repository's own sources.
 
 Builds were run with the environment variable `CI=1`. The Aeneas lakefile turns
 `precompileModules` off for `AeneasMeta` when `CI` is set, which is how the release archive
@@ -97,4 +139,9 @@ was built; without it Lake recompiles `AeneasMeta` into a shared library locally
 cd refinement
 CI=1 lake exe cache get
 CI=1 lake build
+python3 -I scripts/claims.py --check
 ```
+
+`scripts/claims.py` runs `lake env lean scripts/PrintClaims.lean` to read each theorem's
+statement and axioms from Lean and compares them, with the source hashes, against
+`claims.json`.
