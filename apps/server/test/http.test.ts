@@ -211,3 +211,36 @@ test('HTTP: one worker, two queued, 429 beyond; stop keeps checkpoints; bundles'
     await s.close();
   }
 });
+
+test('HTTP: serves the built web UI with an SPA fallback and no traversal', async () => {
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { root, env } = makeFixture();
+  const dist = join(root, 'web-dist');
+  mkdirSync(join(dist, 'assets'), { recursive: true });
+  writeFileSync(join(dist, 'index.html'), '<!doctype html><title>ui</title>');
+  writeFileSync(join(dist, 'assets', 'app.js'), 'console.log(1)');
+  writeFileSync(join(root, 'secret.txt'), 'secret');
+  const jobs = new JobManager({ env });
+  const server = createApp({ env, jobs, host: '127.0.0.1', port: 0, webDist: dist });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+  const port = (server.address() as AddressInfo).port;
+  try {
+    const index = await call(port, 'GET', '/');
+    assert.equal(index.status, 200);
+    assert.match(String(index.headers['content-type']), /text\/html/);
+    assert.equal((await call(port, 'GET', '/story/beat-the-reference')).body.toString(), '<!doctype html><title>ui</title>');
+    const js = await call(port, 'GET', '/assets/app.js');
+    assert.match(String(js.headers['content-type']), /javascript/);
+    assert.match(String(js.headers['cache-control']), /immutable/);
+    assert.equal((await call(port, 'GET', '/assets/missing.js')).status, 404);
+    for (const p of ['/../secret.txt', '/%2e%2e/secret.txt', '/assets/..%2f..%2fsecret.txt']) {
+      const r = await call(port, 'GET', p);
+      assert.ok(!r.body.toString().includes('secret'), p);
+    }
+    assert.equal((await call(port, 'POST', '/', { body: '{}' })).status, 405);
+  } finally {
+    await new Promise<void>((r) => server.close(() => r()));
+    rmSync(root, { recursive: true, force: true });
+  }
+});
