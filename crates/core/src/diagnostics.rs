@@ -117,6 +117,14 @@ impl<F: Field> BranchWitness<F> {
 /// not MDS. Among all candidates the one with the smallest combined weight is
 /// returned; ties go to the first one found.
 ///
+/// That weight is the branch number of `M`, the least combined weight over
+/// all nonzero vectors. Take a lightest vector, with support `S` and image
+/// zero on `Z`. If `M` is not MDS its weight is at most `n`, so
+/// `|Z| >= |S|`. Some `Z' ⊆ Z` with `|Z'| = |S|` contains a row basis of
+/// `M[Z, S]`, so `M[Z', S]` has the same kernel; every nonzero vector of that
+/// kernel, placed on `S`, has image zero on `Z` and weighs at most
+/// `|S| + n - |Z|`, the lightest weight.
+///
 /// This uses Gaussian elimination only and does not consult the minors list.
 pub fn branch_witness<F: Field>(m: &Matrix<F>) -> Option<BranchWitness<F>> {
     let n = m.len();

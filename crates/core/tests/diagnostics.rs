@@ -5,7 +5,7 @@ use cryptificate_core::design::aes_sbox;
 use cryptificate_core::diagnostics::{
     all_minors, analyze_matrix, analyze_power, branch_witness, diagnose, ModelDiagnostics,
 };
-use cryptificate_core::linalg::{mat_vec, weight, Matrix};
+use cryptificate_core::linalg::{combinations, mat_vec, weight, Matrix};
 use cryptificate_core::report::{claim_ids, Status, Witness};
 use cryptificate_core::{validate_analysis_request, Bn254, Field, Gf256};
 use rand::{Rng, SeedableRng};
@@ -323,6 +323,91 @@ fn cross_check<F: Field>(m: &Matrix<F>) {
     if let Some(k) = &a.kernel_vector {
         assert!(weight(k) > 0);
         assert!(mat_vec(m, k).iter().all(Field::is_zero));
+    }
+}
+
+/// The branch number `min weight(x) + weight(M x)` over nonzero `x`, from
+/// the minors list alone: an `x` supported on `S` with `M x` vanishing on
+/// `Z` exists exactly when `M[Z, S]` has rank below `|S|`, that is, when
+/// every `|S| x |S|` minor with columns `S` and rows inside `Z` is zero.
+/// Such a vector has weight at most `|S| + n - |Z|`, and the vector of
+/// least weight reaches that bound for its own support and zero set.
+fn branch_number_from_minors<F: Field>(m: &Matrix<F>) -> usize {
+    let n = m.len();
+    let minors = all_minors(m);
+    let zero = |rows: &[usize], cols: &[usize]| {
+        minors
+            .iter()
+            .find(|x| x.rows == rows && x.cols == cols)
+            .is_some_and(|x| x.value.is_zero())
+    };
+    let mut best = 2 * n;
+    for s in 1..=n {
+        for cols in combinations(n, s) {
+            for z in s..=n {
+                for rows in combinations(n, z) {
+                    let deficient = combinations(z, s).iter().all(|pick| {
+                        let r: Vec<usize> = pick.iter().map(|&i| rows[i]).collect();
+                        zero(&r, &cols)
+                    });
+                    if deficient {
+                        best = best.min(s + n - z);
+                    }
+                }
+            }
+        }
+    }
+    best
+}
+
+/// The Gaussian-elimination witness has the least combined weight of all
+/// nonzero vectors, not only of the vectors it tries.
+#[test]
+fn branch_witness_has_least_weight() {
+    let mut rng = ChaCha20Rng::seed_from_u64(0xb7a9);
+    let mut refuted = 0;
+    for i in 0..300 {
+        let alphabet = [0x00u8, 0x01, 0x02, 0x03, 0x8D][..2 + i % 4].to_vec();
+        let m = random_matrix(&mut rng, 4, |r| {
+            Gf256(alphabet[r.gen_range(0..alphabet.len())])
+        });
+        let exact = branch_number_from_minors(&m);
+        match branch_witness(&m) {
+            Some(w) => {
+                refuted += 1;
+                assert_eq!(w.combined_weight(), exact, "{m:?}");
+            }
+            None => assert_eq!(exact, 5, "{m:?}"),
+        }
+        let b = random_matrix(&mut rng, 3, |r| Bn254::from_u64(r.gen_range(0..3)));
+        let exact = branch_number_from_minors(&b);
+        assert_eq!(
+            branch_witness(&b).map_or(4, |w| w.combined_weight()),
+            exact,
+            "{b:?}"
+        );
+    }
+    assert!(
+        refuted > 100,
+        "the sample must contain many non-MDS matrices"
+    );
+    // Width 2, against every nonzero input.
+    for _ in 0..20 {
+        let m = random_matrix(&mut rng, 2, |r| {
+            Gf256([0x00, 0x01, 0x02][r.gen_range(0..3)])
+        });
+        let exhaustive = (1..=0xFFFFu16)
+            .map(|v| {
+                let x = [Gf256((v >> 8) as u8), Gf256(v as u8)];
+                weight(&x) + weight(&mat_vec(&m, &x))
+            })
+            .min()
+            .unwrap();
+        assert_eq!(
+            branch_witness(&m).map_or(3, |w| w.combined_weight()),
+            exhaustive,
+            "{m:?}"
+        );
     }
 }
 
