@@ -1876,3 +1876,9 @@ table.data th.num {
     border: 1px solid CanvasText;
   }
 }
+
+/* Native checkboxes and radios take the one accent instead of the browser's blue. */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
+}
