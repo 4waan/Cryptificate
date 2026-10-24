@@ -2,13 +2,15 @@
  * Native code generation, correctness and benchmarks through the engine's
  * `codegen` and `native` subcommands.
  */
-import type { CandidateDesign, Program, ProgramTarget, Witness } from '@cryptificate/schema';
+import type { CandidateDesign, CandidateOrigin, Program, ProgramTarget, Witness } from '@cryptificate/schema';
 import type { JobContext, PipelineEnv } from './context.js';
 import type { EngineError } from './engine.js';
 
 export interface VariantInput {
   id: string;
   program: Program;
+  /** References (baselines) are compared against; others are contenders. */
+  origin?: CandidateOrigin;
 }
 
 export interface VariantCorrectness {
@@ -36,31 +38,32 @@ function asRecord(v: unknown): Record<string, unknown> | null {
   return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
 }
 
-/** Collect `{path or id: source}` pairs from a codegen document. */
+/** Files to keep from a codegen document: each variant's crate (lib.rs, Cargo.toml) and the workspace manifest. */
 export function codegenFiles(doc: unknown): Record<string, string> {
   const files: Record<string, string> = {};
   const root = asRecord(doc);
   if (!root) return files;
-  const variants = root['variants'] ?? root['programs'] ?? root['sources'];
-  const add = (name: string, text: unknown): void => {
-    if (typeof text !== 'string') return;
-    const safe = name.replace(/[^A-Za-z0-9._-]/g, '_') || 'variant';
-    files[safe.endsWith('.rs') ? safe : `${safe}.rs`] = text;
-  };
+  const safe = (name: string): string => name.replace(/[^A-Za-z0-9._-]/g, '_') || 'variant';
+  const variants = root['variants'];
   if (Array.isArray(variants)) {
     for (const v of variants) {
       const o = asRecord(v);
       if (!o) continue;
-      const id = typeof o['id'] === 'string' ? o['id'] : 'variant';
-      add(id, o['source'] ?? o['rust'] ?? o['code']);
-      const extra = asRecord(o['files']);
-      if (extra) for (const [k, t] of Object.entries(extra)) add(`${id}-${k}`, t);
+      const id = safe(typeof o['id'] === 'string' ? o['id'] : 'variant');
+      if (typeof o['source'] === 'string') files[`${id}/src/lib.rs`] = o['source'];
+      if (typeof o['manifest'] === 'string') files[`${id}/Cargo.toml`] = o['manifest'];
     }
-  } else {
-    const o = asRecord(variants);
-    if (o) for (const [k, t] of Object.entries(o)) add(k, typeof t === 'string' ? t : asRecord(t)?.['source']);
   }
+  const ws = asRecord(root['workspace']);
+  if (ws && typeof ws['manifest'] === 'string') files['workspace/Cargo.toml'] = ws['manifest'];
   return files;
+}
+
+/** The codegen document restricted to some variant ids. */
+export function restrictCodegen(doc: unknown, ids: ReadonlySet<string>): unknown {
+  const root = asRecord(doc);
+  if (!root || !Array.isArray(root['variants'])) return doc;
+  return { ...root, variants: (root['variants'] as unknown[]).filter((v) => ids.has(String(asRecord(v)?.['id'] ?? ''))) };
 }
 
 /** Find per-variant correctness results in a native document. */
@@ -108,7 +111,7 @@ export interface NativeOptions {
   design: CandidateDesign;
   target?: ProgramTarget;
   variants: VariantInput[];
-  /** "correctness" only, or a benchmark session with a seed. */
+  /** "correctness" only, or one benchmark session (master seed + session number). */
   mode: 'correctness' | 'benchmark';
   session?: number;
   seed?: string;
@@ -141,7 +144,7 @@ export async function runNative(env: PipelineEnv, ctx: JobContext, opts: NativeO
   if (!codegen) {
     const cg = await env.engine.call<unknown>(
       'codegen',
-      { field, width, matrix, programs: opts.variants.map((v) => ({ id: v.id, program: v.program })) },
+      { field, width, matrix, programs: opts.variants.map((v) => ({ id: v.id, program: v.program, ...(v.origin ? { origin: v.origin } : {}) })) },
       { signal: ctx.signal, timeoutMs: Math.min(120_000, Math.max(1000, ctx.remainingMs())), replacements: env.replacements, log: ctx.logger },
     );
     if (!cg.ok) {
@@ -149,14 +152,14 @@ export async function runNative(env: PipelineEnv, ctx: JobContext, opts: NativeO
       return { ok: false, correctness: [], raw: null, codegen: null, error: { ...cg.error, kind: cg.kind } };
     }
     codegen = { raw: cg.value, files: codegenFiles(cg.value) };
-    for (const [name, text] of Object.entries(codegen.files)) ctx.write(`native/src/${name}`, text);
+    for (const [name, text] of Object.entries(codegen.files)) ctx.write(`native/variants/${name}`, text);
   }
   const input: Record<string, unknown> = {
     mode: opts.mode,
     field,
     width,
     matrix,
-    codegen: codegen.raw,
+    codegen: restrictCodegen(codegen.raw, new Set(opts.variants.map((v) => v.id))),
   };
   if (opts.seed !== undefined) input['seed'] = opts.seed;
   if (opts.session !== undefined) input['session'] = opts.session;

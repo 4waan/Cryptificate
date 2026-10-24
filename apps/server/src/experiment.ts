@@ -32,7 +32,7 @@ import type { JobContext, PipelineEnv, PipelineResult } from './context.js';
 import { toolchainDocument } from './bundle.js';
 import { runNative, targetMatrix } from './native.js';
 import type { CodegenResult } from './native.js';
-import { sha256Hex } from './toolchain.js';
+import { sha256Hex, stripBuildDate } from './toolchain.js';
 
 export const EXPERIMENT_STEPS = [
   'validate',
@@ -217,10 +217,6 @@ export function parseSearch(doc: unknown): { candidates: SearchCandidate[]; hist
   return { candidates, history, shortlist, generated, baselines: bl };
 }
 
-function sessionSeed(seed: string, session: number): string {
-  return createHash('sha256').update(`${seed}:session:${session}`).digest('hex').slice(0, 16);
-}
-
 /**
  * Collect workloads and comparisons from a native benchmark document: either
  * one session ({workloads, comparisons}) or several ({sessions: [...]}).
@@ -233,7 +229,7 @@ export function parseBenchmark(doc: unknown, session: number): { machine: Machin
         cpu: String(m['cpu'] ?? 'unknown'),
         os: String(m['os'] ?? 'unknown'),
         ramMiB: Number(m['ramMiB'] ?? 0),
-        rustc: String(m['rustc'] ?? 'unknown'),
+        rustc: stripBuildDate(String(m['rustc'] ?? 'unknown')),
         flags: Array.isArray(m['flags']) ? (m['flags'] as unknown[]).join(' ') : String(m['flags'] ?? ''),
       }
     : null;
@@ -381,7 +377,9 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
   if (s.ok && parsed) {
     const rawHistory = (s.value as Record<string, unknown>)['history'];
     ctx.writeJson('search/history.json', Array.isArray(rawHistory) ? rawHistory : parsed.history);
-    ctx.writeJson('search/seeds.json', { seed, sessions: [1, 2, 3].map((n) => ({ session: n, seed: sessionSeed(seed, n) })) });
+    // One master seed: the engine derives the correctness, input, order and
+    // bootstrap seeds of every session from it and records them.
+    ctx.writeJson('search/seeds.json', { master: seed, given: Boolean(request.seed) });
     ctx.writeJson('search/search.json', s.value);
     const passing = parsed.candidates.filter((c) => c.symbolic === 'pass');
     const shortlist = (parsed.shortlist ?? [...passing].sort((a, b) => a.cost - b.cost || (a.id < b.id ? -1 : 1)).map((c) => c.id)).slice(0, budget.shortlist);
@@ -458,8 +456,9 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
   const correctness = await runNative(env, ctx, {
     design,
     target,
-    variants: candidates.map((c) => ({ id: c.id, program: c.program })),
+    variants: candidates.map((c) => ({ id: c.id, program: c.program, origin: c.origin })),
     mode: 'correctness',
+    seed,
     timeoutMs: 600_000,
     subdir: 'native',
     stepName: 'native-correctness',
@@ -475,27 +474,51 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
   stop = stopState();
   if (stop) return finish(stop);
 
-  // benchmark sessions: initial + two confirmations with fresh seeds
-  const timed = candidates.filter((c) => c.native?.passed);
-  const eligible = new Set(candidates.filter((c) => c.origin !== 'baseline-direct' && c.origin !== 'baseline-known' && c.equivalence.status === 'proved' && c.native?.passed).map((c) => c.id));
+  // Benchmark sessions. Only circuits that Lean proved equivalent and that
+  // passed native correctness are timed. Session 1 compares every contender
+  // with its baselines; the best contender is then frozen and timed again in
+  // two confirmation sessions with fresh seeds.
+  const isReference = (c: ExperimentCandidate): boolean => c.origin === 'baseline-direct' || c.origin === 'baseline-known';
+  const timed = candidates.filter((c) => c.native?.passed && c.equivalence.status === 'proved');
+  const contenders = timed.filter((c) => !isReference(c));
+  const references = timed.filter(isReference);
+  const baselinesOf = (c: ExperimentCandidate): ExperimentCandidate[] =>
+    c.origin === 'search' ? [...references, ...timed.filter((x) => x.origin === 'user')] : references;
   const allWorkloads: Workload[] = [];
   const allComparisons: Comparison[] = [];
   let machine: MachineInfo | null = null;
-  if (!correctness.ok || timed.length < 2) {
-    for (const n of [1, 2, 3]) {
-      ctx.finish(`benchmark-${n}`, 'skipped', correctness.unavailable ?? (correctness.ok ? 'fewer than two correct circuits to compare' : 'native correctness did not complete'));
-    }
+  let frozen: ExperimentCandidate | null = null;
+  const skipReason = correctness.unavailable
+    ? correctness.unavailable
+    : !correctness.ok
+      ? 'native correctness did not complete'
+      : contenders.length === 0
+        ? 'no proved, correct candidate circuit to time'
+        : references.length === 0 && !contenders.some((c) => baselinesOf(c).length > 0)
+          ? 'no proved, correct baseline to compare with'
+          : null;
+  if (skipReason) {
+    for (const n of [1, 2, 3]) ctx.finish(`benchmark-${n}`, 'skipped', skipReason);
   } else {
     for (const n of [1, 2, 3]) {
       stop = stopState();
       if (stop) return finish(stop);
+      let variants: ExperimentCandidate[];
+      if (n === 1) variants = timed;
+      else {
+        if (!frozen) {
+          ctx.finish(`benchmark-${n}`, 'skipped', 'no contender to confirm');
+          continue;
+        }
+        variants = [frozen, ...baselinesOf(frozen)];
+      }
       const b = await runNative(env, ctx, {
         design,
         target,
-        variants: timed.map((c) => ({ id: c.id, program: c.program })),
+        variants: variants.map((c) => ({ id: c.id, program: c.program, origin: c.origin })),
         mode: 'benchmark',
         session: n,
-        seed: sessionSeed(seed, n),
+        seed,
         timeoutMs: Math.max(1000, ctx.remainingMs()),
         subdir: 'native/measurements',
         stepName: `benchmark-${n}`,
@@ -507,12 +530,14 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
       machine = parsedBench.machine ?? machine;
       allWorkloads.push(...parsedBench.workloads);
       allComparisons.push(...parsedBench.comparisons);
+      if (n === 1) frozen = freezeContender(contenders, baselinesOf, allComparisons);
       measurements = {
         machine: machine ?? { cpu: 'unknown', os: 'unknown', ramMiB: 0, rustc: tc.pins.rustc, flags: '' },
         workloads: [...allWorkloads],
         comparisons: [...allComparisons],
-        verdict: decideVerdict(allComparisons, eligible),
+        verdict: frozen ? decideVerdict(allComparisons, new Set([frozen.id])) : 'inconclusive',
       };
+      if (frozen) ctx.finish(`benchmark-${n}`, 'completed', n === 1 ? `frozen ${frozen.id}` : `confirming ${frozen.id}`);
       checkpoint();
     }
   }
@@ -521,4 +546,28 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
   ctx.start('report');
   ctx.finish('report', 'completed');
   return finish('completed');
+}
+
+/**
+ * The contender with the best worst-case primary-workload speed-up over its
+ * baselines in session 1; search circuits are preferred over the user's.
+ */
+export function freezeContender(
+  contenders: readonly ExperimentCandidate[],
+  baselinesOf: (c: ExperimentCandidate) => readonly ExperimentCandidate[],
+  comparisons: readonly Comparison[],
+): ExperimentCandidate | null {
+  const search = contenders.filter((c) => c.origin === 'search');
+  const pool = search.length > 0 ? search : contenders;
+  let best: { c: ExperimentCandidate; worst: number } | null = null;
+  for (const c of pool) {
+    const ratios = baselinesOf(c)
+      .map((b) => comparisons.find((x) => x.session === 1 && x.candidate === c.id && x.baseline === b.id && (x.primary ?? x.bytes === 65536)))
+      .filter((x): x is Comparison => x !== undefined)
+      .map((x) => x.ratio);
+    if (ratios.length === 0) continue;
+    const worst = Math.min(...ratios);
+    if (!best || worst > best.worst || (worst === best.worst && c.id < best.c.id)) best = { c, worst };
+  }
+  return best?.c ?? null;
 }
