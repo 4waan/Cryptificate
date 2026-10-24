@@ -254,15 +254,24 @@ const NO_UI_PAGE = `<!doctype html><meta charset="utf-8"><title>Cryptificate</ti
 
 export function createApp(opts: ServerOptions): Server {
   const { env, jobs } = opts;
-  const policy = makeOriginPolicy(opts.host, opts.port, opts.allowedOrigins ?? []);
   const webDist = opts.webDist ?? null;
+  let policy: OriginPolicy | null = opts.port === 0 ? null : makeOriginPolicy(opts.host, opts.port, opts.allowedOrigins ?? []);
+  // With port 0 the policy is fixed once the listening port is known.
+  const currentPolicy = (): OriginPolicy => {
+    if (!policy) {
+      const addr = server.address();
+      const port = addr && typeof addr === 'object' ? addr.port : 0;
+      policy = makeOriginPolicy(opts.host, port, opts.allowedOrigins ?? []);
+    }
+    return policy;
+  };
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     res.setHeader('x-content-type-options', 'nosniff');
     res.setHeader('x-frame-options', 'DENY');
     res.setHeader('referrer-policy', 'no-referrer');
     res.setHeader('cross-origin-resource-policy', 'same-origin');
-    const rejected = checkRequestOrigin(req, policy);
+    const rejected = checkRequestOrigin(req, currentPolicy());
     if (rejected) {
       sendError(res, 403, 'forbidden', rejected);
       req.resume();
@@ -352,7 +361,7 @@ export function createApp(opts: ServerOptions): Server {
     sendError(res, 404, 'not-found', 'not found');
   };
 
-  return createServer((req, res) => {
+  const server = createServer((req, res) => {
     handle(req, res).catch((e: unknown) => {
       if (res.headersSent) {
         res.destroy();
@@ -365,6 +374,7 @@ export function createApp(opts: ServerOptions): Server {
       }
     });
   });
+  return server;
 }
 
 function readInputs(dir: string): unknown {
