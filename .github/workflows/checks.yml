@@ -41,6 +41,10 @@ jobs:
       - name: Check the refinement theorems and their axioms
         working-directory: refinement
         run: lake build
+      - name: Check that the proofs cover the recorded sources and claims.json
+        run: |
+          sha256sum --check --strict refinement/extract.sha256
+          python3 -I refinement/scripts/claims.py --check
 
   rust:
     name: Rust engine
