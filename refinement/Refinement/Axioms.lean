@@ -3,12 +3,18 @@ Copyright (c) Cryptificate contributors. Released under the MIT license.
 -/
 import Refinement.GF256
 import Refinement.AesLike
+import Refinement.Gf256Crate
 
 /-!
 # Axiom audit
 
 The build fails if any main theorem starts depending on an axiom other than the three standard
 ones (`propext`, `Classical.choice`, `Quot.sound`), e.g. `sorryAx` or `Lean.ofReduceBool`.
+
+The one exception is listed explicitly: the theorems about the gf256 crate mention
+`gf256_aes.core.mem.size_of`, the uninterpreted function that the Aeneas translation of that
+crate declares for `core::mem::size_of` (not modelled by the Aeneas library at the pinned
+commit). They assume, as a hypothesis, that it returns `1` for `u8`.
 -/
 
 /--
@@ -82,3 +88,36 @@ info: 'Cryptificate.Refinement.aes_like_encrypt_activity_bound' depends on axiom
 -/
 #guard_msgs in
 #print axioms Cryptificate.Refinement.aes_like_encrypt_activity_bound
+
+/--
+info: 'Cryptificate.Refinement.Gf256Crate.crateMul_eq_rawMul' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.Gf256Crate.crateMul_eq_rawMul
+
+/--
+info: 'Cryptificate.Refinement.Gf256Crate.gf256crate_mul_refines' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ gf256_aes.core.mem.size_of]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.Gf256Crate.gf256crate_mul_refines
+
+/--
+info: 'Cryptificate.Refinement.Gf256Crate.gf256crate_mul_field' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ gf256_aes.core.mem.size_of]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.Gf256Crate.gf256crate_mul_field
+
+/--
+info: 'Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ gf256_aes.core.mem.size_of]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels
