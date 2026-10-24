@@ -62,10 +62,16 @@ export class Engine {
     return (await this.subcommands()).includes(sub);
   }
 
-  async version(): Promise<string | undefined> {
-    if (!this.path) return undefined;
-    const r = await run(this.path, ['--version'], { cwd: this.cwd, timeoutMs: 15000 });
-    return r.code === 0 ? r.stdout.trim() || undefined : undefined;
+  private versionCache: Promise<string | undefined> | null = null;
+
+  version(): Promise<string | undefined> {
+    if (!this.path) return Promise.resolve(undefined);
+    if (!this.versionCache) {
+      this.versionCache = run(this.path, ['--version'], { cwd: this.cwd, timeoutMs: 15000 }).then((r) =>
+        r.code === 0 ? r.stdout.trim().split('\n')[0] || undefined : undefined,
+      );
+    }
+    return this.versionCache;
   }
 
   async call<T>(sub: EngineSubcommand, input: unknown, opts: EngineCallOptions = {}): Promise<EngineResult<T>> {

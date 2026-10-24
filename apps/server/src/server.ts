@@ -186,8 +186,9 @@ export async function capabilities(env: PipelineEnv): Promise<Capabilities> {
     : { available: false, detail: 'lake was not found (scripts/setup.sh installs it)' };
   const rust: Capabilities['toolchain']['rust'] =
     tc.pins.rustc === 'unavailable' ? { available: false, detail: 'rustc was not found' } : { available: true, version: tc.pins.rustc };
+  const engineVersion = env.engine.available ? await env.engine.version() : undefined;
   const engine: Capabilities['toolchain']['engine'] = env.engine.available
-    ? { available: true, subcommands }
+    ? { available: true, subcommands, ...(engineVersion ? { version: engineVersion } : {}) }
     : { available: false, subcommands: [], detail: 'cryptificate-engine is not built (cargo build --release)' };
   return {
     name: 'cryptificate',
