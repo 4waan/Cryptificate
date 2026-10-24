@@ -142,7 +142,7 @@ export async function runNative(env: PipelineEnv, ctx: JobContext, opts: NativeO
     const cg = await env.engine.call<unknown>(
       'codegen',
       { field, width, matrix, programs: opts.variants.map((v) => ({ id: v.id, program: v.program })) },
-      { signal: ctx.signal, timeoutMs: Math.min(120_000, Math.max(1000, ctx.remainingMs())), replacements: env.replacements },
+      { signal: ctx.signal, timeoutMs: Math.min(120_000, Math.max(1000, ctx.remainingMs())), replacements: env.replacements, log: ctx.logger },
     );
     if (!cg.ok) {
       ctx.finish(opts.stepName, cg.kind === 'cancelled' ? 'cancelled' : cg.kind === 'timeout' ? 'timeout' : 'failed', cg.error.message);
@@ -164,6 +164,7 @@ export async function runNative(env: PipelineEnv, ctx: JobContext, opts: NativeO
     signal: ctx.signal,
     timeoutMs: Math.max(1000, Math.min(opts.timeoutMs, ctx.remainingMs())),
     replacements: env.replacements,
+    log: ctx.logger,
     maxOutputBytes: 64 * 1024 * 1024,
   });
   if (!r.ok) {

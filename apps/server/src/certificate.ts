@@ -116,6 +116,7 @@ export async function checkCertificate(env: PipelineEnv, ctx: JobContext, reques
     signal: ctx.signal,
     timeoutMs: Math.min(60_000, Math.max(1000, ctx.remainingMs())),
     replacements: env.replacements,
+    log: ctx.logger,
   });
   if (!emitted.ok) {
     ctx.finish(opts.emitStep, emitted.kind === 'cancelled' ? 'cancelled' : emitted.kind === 'timeout' ? 'timeout' : emitted.kind === 'invalid' ? 'invalid' : 'failed', emitted.error.message);

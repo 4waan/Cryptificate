@@ -27,6 +27,8 @@ export interface EngineCallOptions {
   maxOutputBytes?: number;
   replacements?: Array<[string, string]>;
   cwd?: string;
+  /** Receives the sanitized stderr of the call, when there is any. */
+  log?: (text: string) => void;
 }
 
 export class Engine {
@@ -91,7 +93,9 @@ export class Engine {
       maxOutputBytes: opts.maxOutputBytes ?? 32 * 1024 * 1024,
       ...(opts.signal ? { signal: opts.signal } : {}),
     });
-    return interpret<T>(sub, r, opts.replacements ?? []);
+    const result = interpret<T>(sub, r, opts.replacements ?? []);
+    if (opts.log && result.stderr.trim()) opts.log(`engine ${sub}: ${result.stderr.trimEnd()}`);
+    return result;
   }
 }
 

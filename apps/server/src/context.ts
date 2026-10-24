@@ -2,7 +2,7 @@
  * What a pipeline (analysis or experiment) sees of the job running it.
  * The same pipelines run inside the HTTP service and directly from the CLI.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Origin, Report, Step, StepState } from '@cryptificate/schema';
 import type { Engine } from './engine.js';
@@ -75,6 +75,7 @@ export class JobContext {
     else delete s.detail;
     delete s.ms;
     this.startedAt.set(name, performance.now());
+    this.logger(`step ${name}: running${detail ? ` (${detail})` : ''}`);
     this.onChange();
   }
 
@@ -84,6 +85,7 @@ export class JobContext {
     const t0 = this.startedAt.get(name);
     if (t0 !== undefined) s.ms = Math.round(performance.now() - t0);
     if (detail !== undefined) s.detail = detail;
+    this.logger(`step ${name}: ${state}${s.ms !== undefined ? ` ${s.ms} ms` : ''}${detail ? ` (${detail})` : ''}`);
     this.onChange();
   }
 
@@ -102,6 +104,15 @@ export class JobContext {
     }
     this.onChange();
   }
+
+  /** Append a line to the job's log.txt (callers pass sanitized text). */
+  readonly logger = (text: string): void => {
+    try {
+      appendFileSync(join(this.dir, 'log.txt'), text.endsWith('\n') ? text : `${text}\n`);
+    } catch {
+      // logging never fails a job
+    }
+  };
 
   setReport(report: Report): void {
     this.report = report;

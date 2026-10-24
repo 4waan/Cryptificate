@@ -330,7 +330,7 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
 
   // validate
   ctx.start('validate');
-  const v = await env.engine.call<unknown>('validate', raw, { signal: ctx.signal, timeoutMs: 30_000, replacements: env.replacements });
+  const v = await env.engine.call<unknown>('validate', raw, { signal: ctx.signal, timeoutMs: 30_000, replacements: env.replacements, log: ctx.logger });
   if (!v.ok) {
     ctx.finish('validate', v.kind === 'invalid' ? 'invalid' : v.kind === 'cancelled' ? 'cancelled' : 'failed', v.error.message);
     if (v.kind === 'invalid') {
@@ -366,6 +366,7 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
     signal: ctx.signal,
     timeoutMs: Math.min(searchInput.synthMs + 60_000, Math.max(1000, ctx.remainingMs())),
     replacements: env.replacements,
+    log: ctx.logger,
     maxOutputBytes: 64 * 1024 * 1024,
   });
   const parsed = s.ok ? parseSearch(s.value) : null;

@@ -70,7 +70,7 @@ export async function runAnalysis(env: PipelineEnv, ctx: JobContext, raw: Analys
 
   // 1. validate
   ctx.start('validate');
-  const validated = await env.engine.call<unknown>('validate', raw, { signal: ctx.signal, timeoutMs: 30_000, replacements: env.replacements });
+  const validated = await env.engine.call<unknown>('validate', raw, { signal: ctx.signal, timeoutMs: 30_000, replacements: env.replacements, log: ctx.logger });
   if (!validated.ok) {
     if (validated.kind === 'invalid') {
       ctx.finish('validate', 'invalid', validated.error.message);
@@ -98,7 +98,7 @@ export async function runAnalysis(env: PipelineEnv, ctx: JobContext, raw: Analys
 
   // 2. diagnose (unchecked)
   ctx.start('diagnose');
-  const diag = await env.engine.call<unknown>('diagnose', request, { signal: ctx.signal, timeoutMs: 60_000, replacements: env.replacements });
+  const diag = await env.engine.call<unknown>('diagnose', request, { signal: ctx.signal, timeoutMs: 60_000, replacements: env.replacements, log: ctx.logger });
   let diagnostics: unknown = null;
   if (diag.ok) {
     diagnostics = diag.value;
