@@ -588,34 +588,45 @@ export function StoryView() {
     window.setTimeout(() => document.getElementById('story-step-title')?.focus(), 0);
   };
   return (
-    <div className="story">
-      <nav className="story-nav" aria-label="Story steps">
-        <h1 style={{ fontSize: '1.15rem' }}>Save operations. Keep the promise.</h1>
-        <ol>
-          {STEPS.map((s) => (
-            <li key={s.n}>
-              <button type="button" aria-current={step === s.n ? 'step' : undefined} onClick={() => go(s.n)}>
-                <span className="story-num">{s.n <= 4 ? s.n : '✓'}</span>
-                <span>{s.title}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-        <div className="row" style={{ marginTop: 16 }}>
-          <button type="button" className="btn btn-sm" disabled={step <= 1} onClick={() => go(step - 1)}>
-            Previous
-          </button>
-          <button type="button" className="btn btn-sm" disabled={step >= 5} onClick={() => go(step + 1)}>
-            Next
-          </button>
+    <div className="stack-lg">
+      <header className="hero">
+        <h1>The verification workbench for changes to your cipher's diffusion layer</h1>
+        <p className="lead">
+          Edit an AES-style MixColumns matrix, the circuit that computes it, the row offsets or the S-box, or a
+          Poseidon2-style layer over BN254. Cryptificate proves in Lean whether the circuit computes the matrix and
+          which diffusion guarantees the design keeps, shows the exact input wherever a guarantee fails, and times the
+          native Rust code against the original. Each step below runs one of these checks on real inputs.
+        </p>
+      </header>
+      <div className="story">
+        <nav className="story-nav" aria-label="Story steps">
+          <h2 style={{ fontSize: '1.05rem' }}>Guided story</h2>
+          <ol>
+            {STEPS.map((s) => (
+              <li key={s.n}>
+                <button type="button" aria-current={step === s.n ? 'step' : undefined} onClick={() => go(s.n)}>
+                  <span className="story-num">{s.n <= 4 ? s.n : '✓'}</span>
+                  <span>{s.title}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <div className="row" style={{ marginTop: 16 }}>
+            <button type="button" className="btn btn-sm" disabled={step <= 1} onClick={() => go(step - 1)}>
+              Previous
+            </button>
+            <button type="button" className="btn btn-sm" disabled={step >= 5} onClick={() => go(step + 1)}>
+              Next
+            </button>
+          </div>
+        </nav>
+        <div>
+          {step === 1 ? <Step1 /> : null}
+          {step === 2 ? <Step2 /> : null}
+          {step === 3 ? <Step3 /> : null}
+          {step === 4 ? <Step4 /> : null}
+          {step === 5 ? <Finish /> : null}
         </div>
-      </nav>
-      <div>
-        {step === 1 ? <Step1 /> : null}
-        {step === 2 ? <Step2 /> : null}
-        {step === 3 ? <Step3 /> : null}
-        {step === 4 ? <Step4 /> : null}
-        {step === 5 ? <Finish /> : null}
       </div>
     </div>
   );
