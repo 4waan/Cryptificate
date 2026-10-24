@@ -1,4 +1,67 @@
 {
   "version": 1,
-  "entries": []
+  "entries": [
+    {
+      "id": "beat-the-reference",
+      "kind": "experiment",
+      "title": "Quick experiment: AES MixColumns against the textbook shared-sum circuit",
+      "report": "beat-the-reference/report.json",
+      "bundle": "beat-the-reference/beat-the-reference.tar.gz",
+      "story": 1
+    },
+    {
+      "id": "aes-shared-sum",
+      "kind": "analysis",
+      "title": "AES MixColumns with the textbook shared-sum circuit",
+      "report": "aes-shared-sum/report.json",
+      "bundle": "aes-shared-sum/aes-shared-sum.tar.gz",
+      "story": 2
+    },
+    {
+      "id": "aes-wrong-wire",
+      "kind": "analysis",
+      "title": "AES MixColumns with one wire of the shared-sum circuit moved",
+      "report": "aes-wrong-wire/report.json",
+      "bundle": "aes-wrong-wire/aes-wrong-wire.tar.gz",
+      "story": 2
+    },
+    {
+      "id": "identity",
+      "kind": "analysis",
+      "title": "Identity matrix with the identity circuit",
+      "report": "identity/report.json",
+      "bundle": "identity/identity.tar.gz",
+      "story": 3
+    },
+    {
+      "id": "poseidon2-exponent5",
+      "kind": "analysis",
+      "title": "Poseidon2-style BN254 design, S-box x^5, external shared-sum circuit",
+      "report": "poseidon2-exponent5/report.json",
+      "bundle": "poseidon2-exponent5/poseidon2-exponent5.tar.gz",
+      "story": 4
+    },
+    {
+      "id": "poseidon2-exponent3",
+      "kind": "analysis",
+      "title": "Poseidon2-style BN254 design, S-box x^3, external shared-sum circuit",
+      "report": "poseidon2-exponent3/report.json",
+      "bundle": "poseidon2-exponent3/poseidon2-exponent3.tar.gz",
+      "story": 4
+    },
+    {
+      "id": "aes-row-scaled",
+      "kind": "analysis",
+      "title": "AES with its first row doubled, [04 06 02 02]",
+      "report": "aes-row-scaled/report.json",
+      "bundle": "aes-row-scaled/aes-row-scaled.tar.gz"
+    },
+    {
+      "id": "repeated-offsets",
+      "kind": "analysis",
+      "title": "AES MixColumns with a repeated row offset",
+      "report": "repeated-offsets/report.json",
+      "bundle": "repeated-offsets/repeated-offsets.tar.gz"
+    }
+  ]
 }

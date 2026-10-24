@@ -1,0 +1,342 @@
+{
+  "kind": "analysis",
+  "id": "ed131d976dd6a00d5e006c63dddd64d6",
+  "inputDigest": "sha256:3b901035c88235e7808a4cff554cc441ba05a7d3e59aa4f432d89107fc9f12f4",
+  "inputs": {
+    "design": {
+      "field": "gf256",
+      "matrix": [
+        [
+          "02",
+          "03",
+          "01",
+          "01"
+        ],
+        [
+          "01",
+          "02",
+          "03",
+          "01"
+        ],
+        [
+          "01",
+          "01",
+          "02",
+          "03"
+        ],
+        [
+          "03",
+          "01",
+          "01",
+          "02"
+        ]
+      ],
+      "model": "aes-like/gf256/v1",
+      "offsets": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "rounds": 4,
+      "sbox": {
+        "kind": "aes"
+      },
+      "width": 4
+    },
+    "program": {
+      "field": "gf256",
+      "instructions": [
+        {
+          "a": 0,
+          "b": 1,
+          "op": "add"
+        },
+        {
+          "a": 4,
+          "b": 2,
+          "op": "add"
+        },
+        {
+          "a": 5,
+          "b": 3,
+          "op": "add"
+        },
+        {
+          "a": 0,
+          "b": 1,
+          "op": "add"
+        },
+        {
+          "a": 7,
+          "k": "02",
+          "op": "mul"
+        },
+        {
+          "a": 0,
+          "b": 8,
+          "op": "add"
+        },
+        {
+          "a": 9,
+          "b": 6,
+          "op": "add"
+        },
+        {
+          "a": 1,
+          "b": 2,
+          "op": "add"
+        },
+        {
+          "a": 11,
+          "k": "02",
+          "op": "mul"
+        },
+        {
+          "a": 1,
+          "b": 12,
+          "op": "add"
+        },
+        {
+          "a": 13,
+          "b": 6,
+          "op": "add"
+        },
+        {
+          "a": 2,
+          "b": 3,
+          "op": "add"
+        },
+        {
+          "a": 15,
+          "k": "02",
+          "op": "mul"
+        },
+        {
+          "a": 2,
+          "b": 16,
+          "op": "add"
+        },
+        {
+          "a": 17,
+          "b": 6,
+          "op": "add"
+        },
+        {
+          "a": 3,
+          "b": 0,
+          "op": "add"
+        },
+        {
+          "a": 19,
+          "k": "02",
+          "op": "mul"
+        },
+        {
+          "a": 3,
+          "b": 20,
+          "op": "add"
+        },
+        {
+          "a": 21,
+          "b": 6,
+          "op": "add"
+        }
+      ],
+      "name": "aes-shared-sum",
+      "outputs": [
+        10,
+        14,
+        18,
+        22
+      ],
+      "width": 4
+    },
+    "target": "matrix"
+  },
+  "claims": [
+    {
+      "id": "matrix.mds",
+      "chain": "design",
+      "title": "Matrix is MDS (branch number 5)",
+      "status": "proved",
+      "evidence": {
+        "kind": "lean",
+        "label": "Lean-checked proof",
+        "theorem": "CryptificateJob.matrix_mds",
+        "type": "IsMDS CryptificateJob.candMatrix",
+        "axioms": [
+          "propext",
+          "Classical.choice",
+          "Quot.sound"
+        ]
+      },
+      "witness": null,
+      "note": "Lean checked CryptificateJob.matrix_mds using only the standard axioms."
+    },
+    {
+      "id": "offsets.dispersion",
+      "chain": "design",
+      "title": "Row offsets are pairwise distinct",
+      "status": "proved",
+      "evidence": {
+        "kind": "lean",
+        "label": "Lean-checked proof",
+        "theorem": "CryptificateJob.offsets_optimal",
+        "type": "DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 CryptificateJob.candOffsets)",
+        "axioms": [
+          "propext",
+          "Classical.choice",
+          "Quot.sound"
+        ]
+      },
+      "witness": null,
+      "note": "Lean checked CryptificateJob.offsets_optimal using only the standard axioms."
+    },
+    {
+      "id": "sbox.bijective",
+      "chain": "design",
+      "title": "S-box is a permutation",
+      "status": "proved",
+      "evidence": {
+        "kind": "lean",
+        "label": "Lean-checked proof",
+        "theorem": "CryptificateJob.sbox_bijective",
+        "type": "Function.Bijective CryptificateJob.candSboxTable",
+        "axioms": [
+          "propext",
+          "Classical.choice",
+          "Quot.sound"
+        ]
+      },
+      "witness": null,
+      "note": "Lean checked CryptificateJob.sbox_bijective using only the standard axioms."
+    },
+    {
+      "id": "activity.bound",
+      "chain": "design",
+      "title": "At least 25 active S-boxes over 4 rounds",
+      "status": "proved",
+      "evidence": {
+        "kind": "lean",
+        "label": "Lean-checked proof",
+        "theorem": "CryptificateJob.activity_bound",
+        "type": "∀ (sbox : GF256 → GF256), Function.Injective sbox → ∀ (keys : ℕ → Fin 16 → GF256) (x y : Fin 16 → GF256), x ≠ y → (CryptificateJob.candRounds / 4 * 25 + if 2 ≤ CryptificateJob.candRounds % 4 then 5 else 0) ≤ Cryptificate.activeSboxes CryptificateJob.candMatrix CryptificateJob.candOffsets sbox keys x y CryptificateJob.candRounds",
+        "axioms": [
+          "propext",
+          "Classical.choice",
+          "Quot.sound"
+        ]
+      },
+      "witness": null,
+      "note": "Lean checked CryptificateJob.activity_bound using only the standard axioms."
+    },
+    {
+      "id": "circuit.equivalence",
+      "chain": "implementation",
+      "title": "Circuit computes the design matrix",
+      "status": "proved",
+      "evidence": {
+        "kind": "lean",
+        "label": "Lean-checked circuit equivalence",
+        "theorem": "CryptificateJob.circuit_equivalence",
+        "type": "CryptificateJob.candProgram.WellFormed ∧ ∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x",
+        "axioms": [
+          "propext",
+          "Classical.choice",
+          "Quot.sound"
+        ]
+      },
+      "witness": null,
+      "note": "Lean checked CryptificateJob.circuit_equivalence using only the standard axioms."
+    },
+    {
+      "id": "native.correctness",
+      "chain": "implementation",
+      "title": "Generated Rust matches the reference",
+      "status": "proved",
+      "evidence": {
+        "kind": "native",
+        "label": "Generated Rust passed 9214 correctness cases",
+        "cases": 9214
+      },
+      "witness": null,
+      "note": "Generated Rust matched the independently computed matrix product on all 9214 test vectors. This is testing, not a proof."
+    },
+    {
+      "id": "rust.refinement",
+      "chain": "implementation",
+      "title": "Rust kernel refines the Lean model",
+      "status": "not_established",
+      "evidence": {
+        "kind": "diagnostic",
+        "label": "Unchecked diagnostic"
+      },
+      "witness": null,
+      "note": "The refinement proofs have not been checked on this machine (scripts/setup.sh --with-refinement).",
+      "reason": "out-of-scope"
+    },
+    {
+      "id": "native.timing",
+      "chain": "implementation",
+      "title": "Native speed on this machine",
+      "status": "not_established",
+      "evidence": {
+        "kind": "diagnostic",
+        "label": "Unchecked diagnostic"
+      },
+      "witness": null,
+      "note": "Timing is measured by experiments, not by an analysis.",
+      "reason": "not-run"
+    }
+  ],
+  "execution": {
+    "state": "completed",
+    "steps": [
+      {
+        "name": "validate",
+        "state": "completed",
+        "ms": 5
+      },
+      {
+        "name": "diagnose",
+        "state": "completed",
+        "ms": 5
+      },
+      {
+        "name": "emit-lean",
+        "state": "completed",
+        "ms": 5,
+        "detail": "5 theorem(s)"
+      },
+      {
+        "name": "lean",
+        "state": "completed",
+        "detail": "5/5 theorem(s) accepted",
+        "ms": 5266
+      },
+      {
+        "name": "native",
+        "state": "completed",
+        "ms": 310
+      },
+      {
+        "name": "report",
+        "state": "completed",
+        "ms": 1
+      }
+    ]
+  },
+  "provenance": {
+    "origin": "live",
+    "checker": "cryptificate 0.1.0 (e74b8e6)",
+    "toolchain": {
+      "lean": "v4.33.1",
+      "mathlib": "v4.33.1",
+      "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298",
+      "rustc": "rustc 1.97.0 (2d8144b78)"
+    },
+    "leanSourceSha256": "8817afe59946b3c0ada41522fd50f98b9e46629c5c7dcc5d6474cb175f447f03",
+    "cacheKey": "b88a52e76b8e3ae0e64b375a1f10972bdac5288e563f7c113ced42eb9c0b5277"
+  }
+}
