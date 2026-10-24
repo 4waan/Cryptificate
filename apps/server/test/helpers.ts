@@ -22,7 +22,8 @@ export const EQ_TYPE = 'Cryptificate.Circuit.implements CryptificateJob.candProg
  */
 const FAKE_ENGINE = String.raw`#!/usr/bin/env node
 const sub = process.argv[2];
-if (sub === '--help') { console.log('subcommands:\n  validate\n  diagnose\n  emit-lean\n  search'); process.exit(0); }
+const NATIVE = __NATIVE__;
+if (sub === '--help') { console.log('subcommands:\n  validate\n  diagnose\n  emit-lean\n  search' + (NATIVE ? '\n  codegen\n  native' : '')); process.exit(0); }
 let input = '';
 process.stdin.on('data', (c) => (input += c));
 process.stdin.on('end', () => {
@@ -91,6 +92,27 @@ process.stdin.on('end', () => {
     }));
     return;
   }
+  if (sub === 'codegen' && NATIVE) {
+    console.log(JSON.stringify({ kind: 'codegen', field: req.field, width: req.width, workspace: { manifest: '[workspace]\n' },
+      variants: req.programs.map((p) => ({ id: p.id, origin: p.origin, program: p.program, manifest: '[package]\nname = "v"\n', source: '// variant ' + p.id + '\n', sourceSha256: 'sha256:00' })) }));
+    return;
+  }
+  if (sub === 'native' && NATIVE) {
+    const ids = req.codegen.variants.map((v) => v.id);
+    const origins = Object.fromEntries(req.codegen.variants.map((v) => [v.id, v.origin]));
+    const correctness = ids.map((id) => ({ id, origin: origins[id], cases: 9214, passed: true, checksum: 'abc' }));
+    const out = { kind: 'native', mode: req.mode, correctness, machine: { cpu: 'Test CPU', os: 'Linux', ramMiB: 16000, rustc: 'rustc 1.97.0 (2d8144b78 2026-07-07)', flags: ['opt-level=3'] }, sessions: [] };
+    if (req.mode === 'benchmark') {
+      const refs = ids.filter((id) => origins[id] === 'baseline-direct' || origins[id] === 'baseline-known');
+      const conts = ids.filter((id) => !refs.includes(id));
+      const comparisons = [];
+      for (const c of conts) for (const b of refs) comparisons.push({ candidate: c, baseline: b, bytes: 65536, primary: true, session: req.session, ratio: 1.2, ci95: [1.1, 1.3], rounds: 15 });
+      const workloads = ids.map((id) => ({ candidate: id, session: req.session, bytes: 65536, columns: 16384, samples: [1, 2, 3], medianNsPerColumn: 1.5, iqr: 0.1, mibPerSec: 900 }));
+      out.sessions.push({ session: req.session, workloads, comparisons });
+    }
+    console.log(JSON.stringify(out));
+    return;
+  }
   console.error('unknown subcommand ' + sub);
   process.exit(1);
 });
@@ -119,7 +141,7 @@ export interface Fixture {
   env: PipelineEnv;
 }
 
-export function makeFixture(opts: { leanTimeoutMs?: number; noLake?: boolean; noEngine?: boolean } = {}): Fixture {
+export function makeFixture(opts: { leanTimeoutMs?: number; noLake?: boolean; noEngine?: boolean; native?: boolean } = {}): Fixture {
   const root = mkdtempSync(join(tmpdir(), 'cryptificate-test-'));
   mkdirSync(join(root, 'lean', 'templates'), { recursive: true });
   mkdirSync(join(root, 'bin'), { recursive: true });
@@ -131,7 +153,7 @@ export function makeFixture(opts: { leanTimeoutMs?: number; noLake?: boolean; no
   );
   writeFileSync(join(root, 'lean', 'templates', 'header.lean'), 'import Cryptificate\n');
   const engine = join(root, 'bin', 'cryptificate-engine');
-  writeFileSync(engine, FAKE_ENGINE);
+  writeFileSync(engine, FAKE_ENGINE.replace('__NATIVE__', opts.native ? 'true' : 'false'));
   chmodSync(engine, 0o755);
   const lake = join(root, 'bin', 'lake');
   writeFileSync(lake, FAKE_LAKE);

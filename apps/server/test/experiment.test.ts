@@ -92,3 +92,42 @@ test('verdict: confirmed only when both confirmation sessions clear the threshol
   assert.equal(decideVerdict([cmp(2, 1.05), cmp(3, 1.05), vsDirect(2, 1.5), vsDirect(3, 1.01)], eligible), 'inconclusive');
   assert.equal(decideVerdict([cmp(2, 1.05), cmp(3, 1.05), vsDirect(2, 1.5), vsDirect(3, 1.5)], eligible), 'locally confirmed');
 });
+
+test('experiment with a native backend: correctness, three sessions, frozen contender, verdict', async () => {
+  const { readTarGz } = await import('../src/tar.js');
+  const { buildBundle } = await import('../src/bundle.js');
+  const { root, env } = makeFixture({ native: true });
+  try {
+    const { result, report, dir } = await experiment(env, { design: AES_DESIGN, profile: 'quick', seed: 'c0ffee' });
+    assert.equal(result.state, 'completed');
+    assert.ok(report.candidates.every((c) => c.native?.passed && c.native.cases === 9214));
+    const m = report.measurements!;
+    assert.equal(m.machine.rustc, 'rustc 1.97.0 (2d8144b78)');
+    assert.deepEqual([...new Set(m.comparisons.map((c) => c.session))], [1, 2, 3]);
+    assert.ok(m.comparisons.filter((c) => c.session > 1).every((c) => c.candidate === 'c1'));
+    assert.equal(m.verdict, 'locally confirmed');
+    const steps = report.checkpoints.map((c) => `${c.name}:${c.state}`);
+    for (const n of [1, 2, 3]) assert.ok(steps.includes(`benchmark-${n}:completed`), steps.join(' '));
+    const tc = await env.toolchain();
+    const files = readTarGz(buildBundle({ jobDir: dir, report, toolchain: tc, paths: env.paths }));
+    assert.ok(files.has('native/variants/c1/src/lib.rs') && files.has('native/correctness.json') && files.has('native/measurements/benchmark-3.json'));
+    for (const [name, data] of files) assert.ok(!/\d{4}-\d{2}-\d{2}/.test(data.toString('utf8')), `${name} has a date`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('analysis with a native backend reports native correctness as tested, not proved by Lean', async () => {
+  const { runAnalysis, ANALYSIS_STEPS } = await import('../src/analysis.js');
+  const { root, env } = makeFixture({ native: true });
+  try {
+    const ctx = new JobContext('a'.repeat(32), join(env.paths.jobsDir, 'a'.repeat(32)), new AbortController().signal, 60_000, ANALYSIS_STEPS);
+    const r = await runAnalysis(env, ctx, { design: AES_DESIGN, program: IDENTITY_PROGRAM });
+    const native = (r.report as import('@cryptificate/schema').AnalysisReport).claims.find((c) => c.id === 'native.correctness')!;
+    assert.equal(native.status, 'proved');
+    assert.equal(native.evidence.kind, 'native');
+    assert.equal(native.evidence.label, 'Generated Rust passed 9214 correctness cases');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
