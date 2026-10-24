@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cryptificate"
+version = "0.1.0"
+description = "Python client for the local Cryptificate service"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = []
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Security :: Cryptography",
+]
+
+[project.scripts]
+cryptificate-client = "cryptificate.__main__:main"
+
+[tool.setuptools]
+packages = ["cryptificate"]
