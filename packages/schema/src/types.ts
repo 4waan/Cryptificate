@@ -382,6 +382,8 @@ export interface Workload {
   iqr: number;
   mibPerSec: number;
   session?: number;
+  /** Whether every timed sample of this workload left the same output. */
+  samplesConsistent?: boolean;
 }
 
 export interface Comparison {
@@ -397,10 +399,21 @@ export interface Comparison {
 
 export type MeasurementVerdict = 'locally confirmed' | 'inconclusive' | 'no improvement';
 
+/** Output checks of one timing session, as reported by the native harness. */
+export interface SessionIntegrity {
+  session: number;
+  /** All variants produced the same output on every workload; null when not reported. */
+  checksumsAgree: boolean | null;
+  /** Every timed sample of every workload left the same output; null when not reported. */
+  samplesConsistent: boolean | null;
+}
+
 export interface Measurements {
   machine: MachineInfo;
   workloads: Workload[];
   comparisons: Comparison[];
+  /** Per-session output checks; a speed-up is confirmed only when all of them hold. */
+  sessions?: SessionIntegrity[];
   verdict: MeasurementVerdict;
 }
 

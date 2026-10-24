@@ -19,6 +19,7 @@ import type {
   MachineInfo,
   Measurements,
   MeasurementVerdict,
+  SessionIntegrity,
   Program,
   ProgramTarget,
   SearchHistoryEntry,
@@ -221,7 +222,10 @@ export function parseSearch(doc: unknown): { candidates: SearchCandidate[]; hist
  * Collect workloads and comparisons from a native benchmark document: either
  * one session ({workloads, comparisons}) or several ({sessions: [...]}).
  */
-export function parseBenchmark(doc: unknown, session: number): { machine: MachineInfo | null; workloads: Workload[]; comparisons: Comparison[] } {
+export function parseBenchmark(
+  doc: unknown,
+  session: number,
+): { machine: MachineInfo | null; workloads: Workload[]; comparisons: Comparison[]; sessions: SessionIntegrity[] } {
   const root = asRecord(doc) ?? {};
   const m = asRecord(root['machine']);
   const machine: MachineInfo | null = m
@@ -235,34 +239,60 @@ export function parseBenchmark(doc: unknown, session: number): { machine: Machin
     : null;
   const workloads: Workload[] = [];
   const comparisons: Comparison[] = [];
+  const integrity: SessionIntegrity[] = [];
   const sessions = Array.isArray(root['sessions']) ? (root['sessions'] as unknown[]).map(asRecord).filter((x): x is Record<string, unknown> => x !== null) : [root];
   for (const sess of sessions) {
     const n = typeof sess['session'] === 'number' ? sess['session'] : session;
+    const flags: Array<boolean | null> = [];
     for (const w of Array.isArray(sess['workloads']) ? (sess['workloads'] as unknown[]) : []) {
       const o = asRecord(w);
       if (!o || typeof o['bytes'] !== 'number') continue;
+      flags.push(typeof o['samplesConsistent'] === 'boolean' ? o['samplesConsistent'] : null);
       workloads.push({ ...(o as unknown as Workload), session: typeof o['session'] === 'number' ? o['session'] : n });
     }
+    integrity.push({
+      session: n,
+      checksumsAgree: typeof sess['checksumsAgree'] === 'boolean' ? sess['checksumsAgree'] : null,
+      samplesConsistent: flags.includes(false) ? false : flags.length > 0 && !flags.includes(null) ? true : null,
+    });
     for (const c of Array.isArray(sess['comparisons']) ? (sess['comparisons'] as unknown[]) : []) {
       const o = asRecord(c);
       if (!o || typeof o['candidate'] !== 'string' || typeof o['ratio'] !== 'number' || !Array.isArray(o['ci95'])) continue;
       comparisons.push({ ...(o as unknown as Comparison), session: typeof o['session'] === 'number' ? o['session'] : n });
     }
   }
-  return { machine, workloads, comparisons };
+  return { machine, workloads, comparisons, sessions: integrity };
 }
 
 /**
- * "locally confirmed" only when some proved-equivalent candidate has a 95%
- * CI lower bound above the threshold against every baseline it was compared
- * with, in BOTH confirmation sessions (2 and 3); "no improvement" when no
+ * Whether the harness reported matching outputs in every session timed so
+ * far: all variants produced the same output and every timed sample left the
+ * same output. A session that does not report these checks does not pass.
+ */
+export function outputsAgree(sessions: readonly SessionIntegrity[]): boolean {
+  return sessions.every((s) => s.checksumsAgree === true && s.samplesConsistent === true);
+}
+
+/**
+ * "locally confirmed" only when the harness reported matching outputs in
+ * every session and both confirmation sessions (2 and 3), and some
+ * proved-equivalent candidate has a 95% CI lower bound above the threshold
+ * against every baseline it was compared with, in both of those sessions;
+ * "inconclusive" whenever outputs did not match; "no improvement" when no
  * candidate was ever faster; otherwise "inconclusive".
  */
-export function decideVerdict(comparisons: readonly Comparison[], eligible: ReadonlySet<string>, primaryBytes = 65536): MeasurementVerdict {
+export function decideVerdict(
+  comparisons: readonly Comparison[],
+  eligible: ReadonlySet<string>,
+  sessions: readonly SessionIntegrity[],
+  primaryBytes = 65536,
+): MeasurementVerdict {
   const isPrimary = (c: Comparison): boolean => c.primary ?? (c.bytes === undefined || c.bytes === primaryBytes);
   const relevant = comparisons.filter((c) => eligible.has(c.candidate) && isPrimary(c));
-  if (relevant.length === 0) return 'inconclusive';
+  if (relevant.length === 0 || !outputsAgree(sessions)) return 'inconclusive';
+  const reported = new Set(sessions.map((s) => s.session));
   for (const cand of eligible) {
+    if (!reported.has(2) || !reported.has(3)) break;
     const confirmed = [2, 3].every((session) => {
       const inSession = relevant.filter((c) => c.candidate === cand && c.session === session);
       return inSession.length > 0 && inSession.every((c) => c.ci95[0] > CONFIRMATION_THRESHOLD);
@@ -487,6 +517,7 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
     c.origin === 'search' ? [...references, ...timed.filter((x) => x.origin === 'user')] : references;
   const allWorkloads: Workload[] = [];
   const allComparisons: Comparison[] = [];
+  const allSessions: SessionIntegrity[] = [];
   let machine: MachineInfo | null = null;
   let frozen: ExperimentCandidate | null = null;
   const skipReason = correctness.unavailable
@@ -531,12 +562,14 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
       machine = parsedBench.machine ?? machine;
       allWorkloads.push(...parsedBench.workloads);
       allComparisons.push(...parsedBench.comparisons);
+      allSessions.push(...parsedBench.sessions);
       if (n === 1) frozen = freezeContender(contenders, baselinesOf, allComparisons);
       measurements = {
         machine: machine ?? { cpu: 'unknown', os: 'unknown', ramMiB: 0, rustc: tc.pins.rustc, flags: '' },
         workloads: [...allWorkloads],
         comparisons: [...allComparisons],
-        verdict: frozen ? decideVerdict(allComparisons, new Set([frozen.id])) : 'inconclusive',
+        sessions: allSessions.map((x) => ({ ...x })),
+        verdict: frozen ? decideVerdict(allComparisons, new Set([frozen.id]), allSessions) : 'inconclusive',
       };
       if (frozen) ctx.finish(`benchmark-${n}`, 'completed', n === 1 ? `frozen ${frozen.id}` : `confirming ${frozen.id}`);
       checkpoint();

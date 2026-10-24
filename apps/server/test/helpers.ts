@@ -107,8 +107,8 @@ process.stdin.on('end', () => {
       const conts = ids.filter((id) => !refs.includes(id));
       const comparisons = [];
       for (const c of conts) for (const b of refs) comparisons.push({ candidate: c, baseline: b, bytes: 65536, primary: true, session: req.session, ratio: 1.2, ci95: [1.1, 1.3], rounds: 15 });
-      const workloads = ids.map((id) => ({ candidate: id, session: req.session, bytes: 65536, columns: 16384, samples: [1, 2, 3], medianNsPerColumn: 1.5, iqr: 0.1, mibPerSec: 900 }));
-      out.sessions.push({ session: req.session, workloads, comparisons });
+      const workloads = ids.map((id) => ({ candidate: id, session: req.session, bytes: 65536, columns: 16384, samples: [1, 2, 3], medianNsPerColumn: 1.5, iqr: 0.1, mibPerSec: 900, samplesConsistent: true }));
+      out.sessions.push({ session: req.session, workloads, comparisons, checksumsAgree: true });
     }
     console.log(JSON.stringify(out));
     return;

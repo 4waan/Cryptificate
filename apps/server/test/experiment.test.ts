@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { ExperimentReport, ExperimentRequest } from '@cryptificate/schema';
 import { JobContext } from '../src/context.js';
 import type { PipelineEnv } from '../src/context.js';
-import { aesSharedSumProgram, decideVerdict, directProgram, EXPERIMENT_STEPS, runExperiment } from '../src/experiment.js';
+import { aesSharedSumProgram, decideVerdict as decide, directProgram, EXPERIMENT_STEPS, runExperiment } from '../src/experiment.js';
 import { AES_DESIGN, IDENTITY_PROGRAM, makeFixture } from './helpers.js';
 
 let n = 0;
@@ -82,6 +82,8 @@ test('baseline circuits compute their matrices', () => {
 test('verdict: confirmed only when both confirmation sessions clear the threshold', () => {
   const cmp = (session: number, lo: number, ratio = 1.1) => ({ candidate: 'c1', baseline: 'baseline-known', ratio, ci95: [lo, ratio + 0.05] as [number, number], session });
   const eligible = new Set(['c1']);
+  const ok = [1, 2, 3].map((session) => ({ session, checksumsAgree: true, samplesConsistent: true }));
+  const decideVerdict = (c: Parameters<typeof decide>[0], e: Parameters<typeof decide>[1], s = ok) => decide(c, e, s);
   assert.equal(decideVerdict([cmp(1, 1.05), cmp(2, 1.05), cmp(3, 1.03)], eligible), 'locally confirmed');
   assert.equal(decideVerdict([cmp(1, 1.05), cmp(2, 1.05), cmp(3, 1.01)], eligible), 'inconclusive');
   assert.equal(decideVerdict([cmp(1, 1.05), cmp(2, 1.05)], eligible), 'inconclusive');
@@ -91,6 +93,21 @@ test('verdict: confirmed only when both confirmation sessions clear the threshol
   const vsDirect = (session: number, lo: number) => ({ ...cmp(session, lo), baseline: 'baseline-direct' });
   assert.equal(decideVerdict([cmp(2, 1.05), cmp(3, 1.05), vsDirect(2, 1.5), vsDirect(3, 1.01)], eligible), 'inconclusive');
   assert.equal(decideVerdict([cmp(2, 1.05), cmp(3, 1.05), vsDirect(2, 1.5), vsDirect(3, 1.5)], eligible), 'locally confirmed');
+});
+
+test('verdict: no speed-up is confirmed unless every session reports matching outputs', () => {
+  const cmp = (session: number) => ({ candidate: 'c1', baseline: 'baseline-known', ratio: 1.5, ci95: [1.4, 1.6] as [number, number], session });
+  const all = [cmp(1), cmp(2), cmp(3)];
+  const eligible = new Set(['c1']);
+  const sessions = (patch: Partial<{ session: number; checksumsAgree: boolean | null; samplesConsistent: boolean | null }>) =>
+    [1, 2, 3].map((session) => ({ session, checksumsAgree: true as boolean | null, samplesConsistent: true as boolean | null, ...(session === (patch.session ?? 3) ? patch : {}) }));
+  assert.equal(decide(all, eligible, sessions({})), 'locally confirmed');
+  assert.equal(decide(all, eligible, sessions({ checksumsAgree: false })), 'inconclusive');
+  assert.equal(decide(all, eligible, sessions({ session: 1, samplesConsistent: false })), 'inconclusive');
+  assert.equal(decide(all, eligible, sessions({ checksumsAgree: null })), 'inconclusive');
+  assert.equal(decide(all, eligible, sessions({}).slice(0, 2)), 'inconclusive');
+  const slower = all.map((c) => ({ ...c, ratio: 0.8, ci95: [0.7, 0.9] as [number, number] }));
+  assert.equal(decide(slower, eligible, sessions({ checksumsAgree: false })), 'inconclusive');
 });
 
 test('experiment with a native backend: correctness, three sessions, frozen contender, verdict', async () => {
@@ -106,6 +123,7 @@ test('experiment with a native backend: correctness, three sessions, frozen cont
     assert.deepEqual([...new Set(m.comparisons.map((c) => c.session))], [1, 2, 3]);
     assert.ok(m.comparisons.filter((c) => c.session > 1).every((c) => c.candidate === 'c1'));
     assert.equal(m.verdict, 'locally confirmed');
+    assert.deepEqual(m.sessions, [1, 2, 3].map((session) => ({ session, checksumsAgree: true, samplesConsistent: true })));
     const steps = report.checkpoints.map((c) => `${c.name}:${c.state}`);
     for (const n of [1, 2, 3]) assert.ok(steps.includes(`benchmark-${n}:completed`), steps.join(' '));
     const tc = await env.toolchain();
