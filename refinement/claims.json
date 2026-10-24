@@ -1,0 +1,650 @@
+{
+  "format": "cryptificate-refinement-claims/1",
+  "evidenceLabel": "Rust-source refinement (Aeneas)",
+  "toolchain": {
+    "lean": "v4.35.0",
+    "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+    "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+    "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+    "rustForCharon": "nightly-2026-09-17",
+    "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+  },
+  "trusted": [
+    "Charon and Aeneas translate the Rust source faithfully into the Lean model",
+    "the Aeneas library's models of Rust integers, arrays, slices and shifts",
+    "the Lean kernel",
+    "rustc, which compiles the Rust source to machine code (outside the chain)",
+    "the hardware"
+  ],
+  "notClaimed": [
+    "constant-time execution",
+    "absence of side channels"
+  ],
+  "kernels": [
+    {
+      "id": "gf256",
+      "title": "GF(2^8) arithmetic of crates/kernels (xtime, add, mul)",
+      "appliesTo": {
+        "field": "gf256"
+      },
+      "specification": "WideTrail GF256.xtime and GF256.rawMul on BitVec 8, the multiplication of the field GF256",
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "theorems": [
+        "Cryptificate.Refinement.gf256_xtime_refines",
+        "Cryptificate.Refinement.gf256_add_refines",
+        "Cryptificate.Refinement.gf256_mul_refines",
+        "Cryptificate.Refinement.gf256_mul_field",
+        "Cryptificate.Refinement.gf256_add_field",
+        "Cryptificate.Refinement.gf256_xtime_field"
+      ]
+    },
+    {
+      "id": "aes-like",
+      "title": "Parametric AES-like round and multi-round encryption of crates/kernels",
+      "appliesTo": {
+        "model": "aes-like/gf256/v1"
+      },
+      "specification": "Cryptificate.aesLikeRound and Cryptificate.aesLikeExec of the main Lean package (lean/Cryptificate/Bridge.lean) over WideTrail GF256",
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "theorems": [
+        "Cryptificate.Refinement.aes_like_round_refines",
+        "Cryptificate.Refinement.aes_like_round_eq",
+        "Cryptificate.Refinement.aes_like_encrypt_refines",
+        "Cryptificate.Refinement.aes_like_encrypt_eq",
+        "Cryptificate.Refinement.aes_like_encrypt_activity_bound"
+      ]
+    },
+    {
+      "id": "gf256-crate",
+      "title": "Multiplication of the crates.io gf256 crate 0.3.1, polynomial 0x11B, features no-tables and no-xmul (expanded source)",
+      "appliesTo": {
+        "field": "gf256",
+        "implementation": "gf256 0.3.1 (barret mode, no-tables, no-xmul)"
+      },
+      "specification": "WideTrail GF256.rawMul on BitVec 8",
+      "rustSources": [
+        {
+          "path": "refinement/rust/gf256_aes_expanded.rs",
+          "sha256": "53c324b9d62d448aaedf38c7741c8eba6bc4a2448dc888fa255529c859ddf824"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/Gf256Aes.lean",
+        "sha256": "9e5f2d14e1d09a00a9a7d70d4796bc13fcde77b0f25dda6ebe827e2ff41d9c0f"
+      },
+      "theorems": [
+        "Cryptificate.Refinement.Gf256Crate.gf256crate_mul_refines",
+        "Cryptificate.Refinement.Gf256Crate.gf256crate_mul_field",
+        "Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels"
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "theorem": "Cryptificate.Refinement.gf256_xtime_refines",
+      "status": "proved",
+      "kernel": "gf256",
+      "statement": "∀ (a : Aeneas.Std.U8), cryptificate_kernels.gf256.xtime a = Aeneas.Std.Result.ok (GF256.xtime a.bv#uscalar)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/GF256.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.gf256_add_refines",
+      "status": "proved",
+      "kernel": "gf256",
+      "statement": "∀ (a b : Aeneas.Std.U8), cryptificate_kernels.gf256.add a b = Aeneas.Std.Result.ok ((a.bv ^^^ b.bv)#uscalar)",
+      "axioms": [
+        "propext",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/GF256.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.gf256_mul_refines",
+      "status": "proved",
+      "kernel": "gf256",
+      "statement": "∀ (a b : Aeneas.Std.U8), cryptificate_kernels.gf256.mul a b = Aeneas.Std.Result.ok (GF256.rawMul a.bv b.bv#uscalar)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/GF256.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.gf256_mul_field",
+      "status": "proved",
+      "kernel": "gf256",
+      "statement": "∀ (a b : Aeneas.Std.U8), cryptificate_kernels.gf256.mul a b = Aeneas.Std.Result.ok (Cryptificate.Refinement.ofField (Cryptificate.Refinement.toField a * Cryptificate.Refinement.toField b))",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/GF256.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.gf256_add_field",
+      "status": "proved",
+      "kernel": "gf256",
+      "statement": "∀ (a b : Aeneas.Std.U8), cryptificate_kernels.gf256.add a b = Aeneas.Std.Result.ok (Cryptificate.Refinement.ofField (Cryptificate.Refinement.toField a + Cryptificate.Refinement.toField b))",
+      "axioms": [
+        "propext",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/GF256.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.gf256_xtime_field",
+      "status": "proved",
+      "kernel": "gf256",
+      "statement": "∀ (a : Aeneas.Std.U8), cryptificate_kernels.gf256.xtime a = Aeneas.Std.Result.ok (Cryptificate.Refinement.ofField ({ val := 2#8 } * Cryptificate.Refinement.toField a))",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/GF256.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_round_refines",
+      "status": "proved",
+      "kernel": "aes-like",
+      "statement": "∀ (s m : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (k : Aeneas.Std.Array Aeneas.Std.U8 16#usize), Aeneas.Std.WP.spec (cryptificate_kernels.aes_like.round s m o t k) fun out => Cryptificate.Refinement.stateOf out = Cryptificate.aesLikeRound (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.stateOf k) (Cryptificate.Refinement.stateOf s)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_round_eq",
+      "status": "proved",
+      "kernel": "aes-like",
+      "statement": "∀ (s m : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (k : Aeneas.Std.Array Aeneas.Std.U8 16#usize), ∃ out, cryptificate_kernels.aes_like.round s m o t k = Aeneas.Std.Result.ok out ∧ Cryptificate.Refinement.stateOf out = Cryptificate.aesLikeRound (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.stateOf k) (Cryptificate.Refinement.stateOf s)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_encrypt_refines",
+      "status": "proved",
+      "kernel": "aes-like",
+      "statement": "∀ (s m : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (rounds : Aeneas.Std.Usize), ↑rounds ≤ ks.length → Aeneas.Std.WP.spec (cryptificate_kernels.aes_like.encrypt s m o t ks rounds) fun out => Cryptificate.Refinement.stateOf out = Cryptificate.aesLikeExec (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf s) ↑rounds",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_encrypt_eq",
+      "status": "proved",
+      "kernel": "aes-like",
+      "statement": "∀ (s m : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (rounds : Aeneas.Std.Usize), ↑rounds ≤ ks.length → ∃ out, cryptificate_kernels.aes_like.encrypt s m o t ks rounds = Aeneas.Std.Result.ok out ∧ Cryptificate.Refinement.stateOf out = Cryptificate.aesLikeExec (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf s) ↑rounds",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_encrypt_activity_bound",
+      "status": "proved",
+      "kernel": "aes-like",
+      "statement": "∀ (m : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)), IsMDS (Cryptificate.Refinement.matrixOf m) → DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 (Cryptificate.Refinement.offsetsOf o)) → (∀ a < 256, ∀ b < 256, t[a]! = t[b]! → a = b) → ∀ (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), Cryptificate.Refinement.stateOf x ≠ Cryptificate.Refinement.stateOf y → ∀ r ≤ ks.length, ∀ (outX outY : ℕ → Aeneas.Std.Array Aeneas.Std.U8 16#usize), (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt x m o t ks n = Aeneas.Std.Result.ok (outX ↑n)) → (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt y m o t ks n = Aeneas.Std.Result.ok (outY ↑n)) → Cryptificate.activityBound r ≤ ∑ n ∈ Finset.range r, {p | Cryptificate.Refinement.stateOf (outX n) p + Cryptificate.Refinement.keysOf ks n p ≠ Cryptificate.Refinement.stateOf (outY n) p + Cryptificate.Refinement.keysOf ks n p}.card",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.Gf256Crate.gf256crate_mul_refines",
+      "status": "proved",
+      "kernel": "gf256-crate",
+      "statement": "Cryptificate.Refinement.Gf256Crate.SizeOfU8 → ∀ (a b : Aeneas.Std.U8), gf256_aes.__gf256_aes_gen.gf256_aes.mul a b = Aeneas.Std.Result.ok (GF256.rawMul a.bv b.bv#uscalar)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound",
+        "gf256_aes.core.mem.size_of"
+      ],
+      "extraAxioms": [
+        "gf256_aes.core.mem.size_of"
+      ],
+      "hypotheses": [
+        "SizeOfU8: core::mem::size_of::<u8>() returns 1 (not modelled by the Aeneas library; the extraction declares gf256_aes.core.mem.size_of as an uninterpreted function)"
+      ],
+      "rustSources": [
+        {
+          "path": "refinement/rust/gf256_aes_expanded.rs",
+          "sha256": "53c324b9d62d448aaedf38c7741c8eba6bc4a2448dc888fa255529c859ddf824"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/Gf256Aes.lean",
+        "sha256": "9e5f2d14e1d09a00a9a7d70d4796bc13fcde77b0f25dda6ebe827e2ff41d9c0f"
+      },
+      "proofFile": "refinement/Refinement/Gf256Crate.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.Gf256Crate.gf256crate_mul_field",
+      "status": "proved",
+      "kernel": "gf256-crate",
+      "statement": "Cryptificate.Refinement.Gf256Crate.SizeOfU8 → ∀ (a b : Aeneas.Std.U8), gf256_aes.__gf256_aes_gen.gf256_aes.mul a b = Aeneas.Std.Result.ok (Cryptificate.Refinement.ofField (Cryptificate.Refinement.toField a * Cryptificate.Refinement.toField b))",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound",
+        "gf256_aes.core.mem.size_of"
+      ],
+      "extraAxioms": [
+        "gf256_aes.core.mem.size_of"
+      ],
+      "hypotheses": [
+        "SizeOfU8 (as above)"
+      ],
+      "rustSources": [
+        {
+          "path": "refinement/rust/gf256_aes_expanded.rs",
+          "sha256": "53c324b9d62d448aaedf38c7741c8eba6bc4a2448dc888fa255529c859ddf824"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/Gf256Aes.lean",
+        "sha256": "9e5f2d14e1d09a00a9a7d70d4796bc13fcde77b0f25dda6ebe827e2ff41d9c0f"
+      },
+      "proofFile": "refinement/Refinement/Gf256Crate.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels",
+      "status": "proved",
+      "kernel": "gf256-crate",
+      "statement": "Cryptificate.Refinement.Gf256Crate.SizeOfU8 → ∀ (a b : Aeneas.Std.U8), gf256_aes.__gf256_aes_gen.gf256_aes.mul a b = cryptificate_kernels.gf256.mul a b",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound",
+        "gf256_aes.core.mem.size_of"
+      ],
+      "extraAxioms": [
+        "gf256_aes.core.mem.size_of"
+      ],
+      "hypotheses": [
+        "SizeOfU8 (as above)"
+      ],
+      "rustSources": [
+        {
+          "path": "refinement/rust/gf256_aes_expanded.rs",
+          "sha256": "53c324b9d62d448aaedf38c7741c8eba6bc4a2448dc888fa255529c859ddf824"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/Gf256Aes.lean",
+        "sha256": "9e5f2d14e1d09a00a9a7d70d4796bc13fcde77b0f25dda6ebe827e2ff41d9c0f"
+      },
+      "proofFile": "refinement/Refinement/Gf256Crate.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    }
+  ],
+  "notEstablished": [
+    {
+      "id": "bn254",
+      "title": "BN254 scalar-field arithmetic (arkworks ark-bn254 / ark-ff 0.6 Fr) and HADES rounds over it",
+      "status": "not_established",
+      "appliesTo": {
+        "field": "bn254"
+      },
+      "reason": "No refinement theorem covers arkworks Fr arithmetic. Proving it requires a machine-checked proof of the arkworks Montgomery multiplication and modular reduction for the BN254 modulus, which has not been done; see refinement/STATUS.md."
+    }
+  ]
+}
