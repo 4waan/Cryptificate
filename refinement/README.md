@@ -46,9 +46,13 @@ kernel only: no `native_decide`, `bv_decide` or `sorry`.
 
 The `CryptificateBridge` library in `lakefile.toml` compiles `lean/Cryptificate/Bridge.lean`
 and `lean/Cryptificate/Diffusion/Activity.lean` of the main package from their source files, so
-the AES-like theorems are stated against the main package's own definitions. The main package
-itself builds on Lean `v4.33.1`; here the same files are compiled with Lean and Mathlib
-`v4.35.0`, into this package's build directory.
+the AES-like theorems are stated against the main package's definitions rather than a copy of
+them. The main package itself builds on Lean `v4.33.1`; here the same files are compiled with
+Lean and Mathlib `v4.35.0`, into this package's build directory. The correspondence is the
+identical source text (`claims.json` records its SHA-256), not a shared Lean environment: the
+main package's per-design certificates (MDS, offsets, S-box), which discharge the hypotheses of
+`aes_like_encrypt_activity_bound` for a concrete design, are checked on `v4.33.1` and are not
+imported here.
 
 ## WideTrail on Lean and Mathlib v4.35.0
 
@@ -73,7 +77,9 @@ The build reports warnings only:
 The theorems are about the Lean programs that Aeneas generates. That these programs have the
 behaviour of the Rust source is the job of Charon (Rust MIR to LLBC) and Aeneas (LLBC to Lean),
 which are trusted here, as are the Aeneas library's models of integers, shifts, casts, arrays
-and slices. Compilation by `rustc` and the hardware are outside the chain, and nothing is
+and slices. For the gf256 crate, the macro expansion that produces the extracted source is
+checked by testing all 65,536 products, not proved. Compilation by `rustc` and the hardware are
+outside the chain, and nothing is
 claimed about timing or other side channels. `STATUS.md` has the full list, including the
 axioms the Aeneas library declares for parts of the standard library it does not model (none
 of the theorems depends on them).

@@ -45,7 +45,9 @@ data, so these theorems cover every AES-like design at once. Proof file
 `Cryptificate.aesLikeRound` and `Cryptificate.aesLikeExec` from `lean/Cryptificate/Bridge.lean`;
 the refinement package compiles that file (and `lean/Cryptificate/Diffusion/Activity.lean`,
 which it imports) from the same sources, under Lean and Mathlib `v4.35.0`, instead of copying
-the definitions.
+the definitions. The two packages share the source text of these definitions (`claims.json`
+records the SHA-256 of both files), not a compiled environment: the main package checks the same
+files on Lean `v4.33.1`, and nothing here imports the main package's build.
 
 Reading the Rust data: `stateOf s p = toField s[p]` (byte `4·c + r` is row `r`, column `c`),
 `matrixOf m r j = toField m[4·r + j]`, `offsetsOf o r = o[r] mod 4`, `sboxOf t x = toField t[x]`,
@@ -69,7 +71,8 @@ theorem aes_like_encrypt_eq (…) (hks : rounds.val ≤ ks.length) :
 `m ⦃ v => P v ⦄` is Aeneas's total-correctness predicate (`WP.spec`): `m` returns normally
 (no panic, no divergence) with a value satisfying `P`; `spec_iff_exists_ok` turns it into the
 `∃ out, … = ok out ∧ …` form. So `round` never panics, and `encrypt` never panics when there are
-at least `rounds` round keys (it panics otherwise, by indexing past the slice).
+at least `rounds` round keys. With fewer keys the Rust code indexes past the slice; the theorems
+say nothing about that case.
 
 Connection to the wide-trail bound (`Cryptificate.activeSboxes_bound` of the main package, from
 WideTrail's `IsTrail.bound_rounds`):
@@ -178,6 +181,10 @@ arkworks; that is not done.
 * **Charon and Aeneas**: that the Lean model has the behaviour of the Rust source. The
   extraction is reproducible (`extract.sh` regenerates it byte for byte and checks the hashes),
   but its faithfulness is not proved.
+* **The gf256 crate expansion** (section 3): that `rustc -Zunpretty=expanded` and
+  `gf256crate/assemble.py` preserve the behaviour of the crate, which is checked by testing all
+  65,536 products, not proved; and the renaming of module paths that `extract.sh` applies to
+  `Extracted/Gf256Aes.lean` before Lean checks it.
 * **The Aeneas Lean library**: its models of Rust integers (`U8`, `I8`, `I32`, `U16`, `U32`,
   `Usize`), shifts, casts, arrays and slices. It also declares axioms of its own for parts of
   the standard library it does not model (`Aeneas.Std.get_target`, `get_target.spec`,
@@ -190,9 +197,12 @@ arkworks; that is not done.
   optimizer and linker. The theorems are about the source.
 * **The hardware.**
 
-Not claimed: constant-time execution or the absence of other side channels; anything about the
-generated native variants (`crates/native`) beyond their calls to these kernel functions; the
-BN254 arithmetic.
+Not claimed: constant-time execution or the absence of other side channels; correctness of the
+compiled machine code; anything about the generated native variants (`crates/native`) beyond
+their calls to these kernel functions (the generated circuit code is checked by tests, not
+refined); the BN254 arithmetic. The AES-like round kernel is proved, but the timed GF(2⁸)
+native variants implement the column mixing as generated circuits and call only `gf256::add`,
+`xtime` and `mul` from these kernels.
 
 ## Reproducing
 
