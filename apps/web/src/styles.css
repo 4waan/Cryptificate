@@ -566,6 +566,7 @@ textarea {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-5);
+  align-items: start;
 }
 .grid-inputs {
   display: grid;
@@ -769,6 +770,7 @@ textarea {
 }
 .claim {
   min-width: 0;
+  align-content: start;
   overflow-wrap: anywhere;
   border: 1px solid var(--line);
   border-radius: var(--radius);
