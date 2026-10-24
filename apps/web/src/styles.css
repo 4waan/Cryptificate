@@ -1882,3 +1882,12 @@ input[type='checkbox'],
 input[type='radio'] {
   accent-color: var(--accent);
 }
+
+/* Uppercase controls and labels keep code and maths in their real case: y0, e, x ↦ xᵉ. */
+.btn .mono,
+.btn code,
+.field-label .case,
+.predict button {
+  text-transform: none;
+  letter-spacing: 0;
+}

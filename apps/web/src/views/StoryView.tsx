@@ -527,10 +527,11 @@ function Step4() {
       </div>
       <div className="row">
         <button type="button" className="btn btn-primary" onClick={load5} disabled={isActive(r5)}>
-          <IconPlay size={12} /> Load the BN254 design and {source === 'live' ? 'check' : 'replay'} with e = 5
+          <IconPlay size={12} /> Load the BN254 design and {source === 'live' ? 'check' : 'replay'} with{' '}
+          <span className="mono">e = 5</span>
         </button>
         <button type="button" className="btn" onClick={load3} disabled={!r5 || isActive(r3)}>
-          Try e = 3
+          Try <span className="mono">e = 3</span>
         </button>
       </div>
       <div className="grid-2">

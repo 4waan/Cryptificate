@@ -256,7 +256,7 @@ function HadesFields({ design, target }: { design: HadesDesign; target: ProgramT
       <div className="row" style={{ alignItems: 'flex-start', gap: 24 }}>
         <div className="field">
           <label className="field-label" htmlFor={`${id}-exp`}>
-            S-box exponent e (x ↦ xᵉ)
+            S-box exponent <span className="case">e (x ↦ xᵉ)</span>
           </label>
           <div className="row">
             <input
