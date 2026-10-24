@@ -1,0 +1,27 @@
+{
+  "name": "@cryptificate/server",
+  "version": "0.1.0",
+  "description": "Local Cryptificate service and the cryptificate command-line tool",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "cryptificate": "./dist/src/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/cli.js serve",
+    "dev": "tsc -p tsconfig.json && node dist/src/cli.js serve",
+    "test": "tsc -p tsconfig.json && node --test --test-concurrency=1 \"dist/test/**/*.test.js\""
+  },
+  "dependencies": {
+    "@cryptificate/schema": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "~5.9.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
