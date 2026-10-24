@@ -40,6 +40,8 @@ export default defineConfig(({ command }) => {
     // Relative asset paths so the replay build can be served from any static location.
     base: './',
     plugins: [react()],
+  // Use the schema package from source so the app needs no separate build step for it.
+  resolve: { alias: { '@cryptificate/schema': `${here}../../packages/schema/src/index.ts` } },
     define: {
       __BRAND_MARK__: JSON.stringify(existsSync(`${here}public/brand/mark.svg`)),
       __BRAND_LOGO__: JSON.stringify(existsSync(`${here}public/brand/logo.svg`)),

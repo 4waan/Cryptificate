@@ -1,6 +1,8 @@
 /** BN254 scalar field Fr arithmetic over BigInt, elements as canonical decimal strings. */
 
-export const BN254_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+import { BN254_MODULUS } from './types';
+
+export const BN254_P = BigInt(BN254_MODULUS);
 
 const DEC_RE = /^(0|[1-9][0-9]*)$/;
 

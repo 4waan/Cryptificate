@@ -1,10 +1,10 @@
 import { activityFormula } from '../lib/design';
 import type { PreviewItem } from '../lib/preview';
-import type { Claim, FieldName } from '../lib/types';
+import { ALLOWED_AXIOMS, type Claim, type FieldName } from '../lib/types';
 import { IconInfo, IconPreview, StatusPill } from './icons';
 import { WitnessView } from './WitnessView';
 
-const ALLOWED_AXIOMS = new Set(['propext', 'Classical.choice', 'Quot.sound']);
+const ALLOWED = new Set(ALLOWED_AXIOMS);
 
 export function ClaimCard({ claim, field, rounds }: { claim: Claim; field: FieldName; rounds?: number }) {
   const ev = claim.evidence;
@@ -50,7 +50,7 @@ export function ClaimCard({ claim, field, rounds }: { claim: Claim; field: Field
                 <dt>Axioms</dt>
                 <dd>
                   {ev.axioms.length ? ev.axioms.join(', ') : 'none'}
-                  {ev.axioms.every((a) => ALLOWED_AXIOMS.has(a)) ? (
+                  {ev.axioms.every((a) => ALLOWED.has(a)) ? (
                     <span className="muted"> (standard axioms only; no sorry, no native evaluation)</span>
                   ) : (
                     <span className="error-text"> includes axioms outside the allowed set</span>
