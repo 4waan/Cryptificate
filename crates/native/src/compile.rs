@@ -23,7 +23,8 @@ use crate::embedded;
 /// Where and how variants are built.
 #[derive(Clone, Debug)]
 pub struct BuildOptions {
-    /// Build workspace and copied libraries.
+    /// Build workspace and copied libraries. [`crate::run_native`] uses a
+    /// subdirectory `run-<digest of the variant packages>` of this.
     pub work_dir: PathBuf,
     /// Cargo target directory, shared across runs for dependency reuse.
     pub target_dir: PathBuf,
@@ -96,12 +97,15 @@ fn write_if_changed(path: &Path, contents: &str) -> Result<()> {
     fs::write(path, contents).with_context(|| format!("writing {}", path.display()))
 }
 
-/// Creates or refreshes the build workspace for the given variant packages:
-/// manifest, lockfile and the kernels crate. Cargo trims the lockfile to
-/// the packages in use, so it is rewritten only when the embedded lockfile
-/// changed since it was last written (recorded in `.lock-source`).
-pub fn prepare_workspace<S: AsRef<str>>(work_dir: &Path, packages: &[S]) -> Result<()> {
-    write_if_changed(&work_dir.join("Cargo.toml"), &workspace_manifest(packages))?;
+/// Creates or refreshes the build workspace for the given variants:
+/// manifest, lockfile, the kernels crate and every variant crate (all
+/// members must exist before cargo loads the workspace). Cargo trims the
+/// lockfile to the packages in use, so it is rewritten only when the
+/// embedded lockfile changed since it was last written (recorded in
+/// `.lock-source`).
+pub fn prepare_workspace(work_dir: &Path, variants: &[VariantSource]) -> Result<()> {
+    let packages: Vec<&str> = variants.iter().map(|v| v.package.as_str()).collect();
+    write_if_changed(&work_dir.join("Cargo.toml"), &workspace_manifest(&packages))?;
     let lock = work_dir.join("Cargo.lock");
     let marker = work_dir.join(".lock-source");
     let digest = sha256_hex(embedded::WORKSPACE_LOCK.as_bytes());
@@ -114,7 +118,9 @@ pub fn prepare_workspace<S: AsRef<str>>(work_dir: &Path, packages: &[S]) -> Resu
     for (rel, text) in embedded::KERNEL_FILES {
         write_if_changed(&work_dir.join("kernels").join(rel), text)?;
     }
-    fs::create_dir_all(work_dir.join("variants"))?;
+    for v in variants {
+        write_variant(work_dir, v)?;
+    }
     Ok(())
 }
 
@@ -147,11 +153,10 @@ fn cargo_command(opts: &BuildOptions) -> Command {
     cmd
 }
 
-/// Compiles one variant (writing it into the workspace first) and copies the
-/// library into `<work>/lib/`.
+/// Compiles one variant of a workspace made by [`prepare_workspace`] and
+/// copies the library into `<work>/lib/`.
 pub fn build_variant(opts: &BuildOptions, v: &VariantSource) -> Result<BuiltVariant> {
     let start = Instant::now();
-    write_variant(&opts.work_dir, v)?;
     let mut cmd = cargo_command(opts);
     cmd.arg("build")
         .arg("--release")

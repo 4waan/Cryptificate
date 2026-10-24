@@ -271,12 +271,19 @@ pub fn run_native(req: &NativeRequest, opts: &NativeOptions) -> Result<NativeRep
     let correctness_seed = derive_seed(&master, "correctness");
 
     let packages: Vec<&str> = sources.iter().map(|v| v.package.as_str()).collect();
-    compile::prepare_workspace(&opts.build.work_dir, &packages)?;
+    // One build workspace per set of variants, so concurrent runs with
+    // different variants never rewrite each other's workspace manifest.
+    let mut build = opts.build.clone();
+    build.work_dir = opts.build.work_dir.join(format!(
+        "run-{}",
+        &sha256_hex(packages.join("\n").as_bytes())[..16]
+    ));
+    compile::prepare_workspace(&build.work_dir, &sources)?;
     let mut excluded = Vec::new();
     let mut builds = Vec::new();
     let mut loaded: Vec<Loaded> = Vec::new();
     for (spec, src) in req.variants.iter().zip(&sources) {
-        let built: Result<BuiltVariant> = compile::build_variant(&opts.build, src);
+        let built: Result<BuiltVariant> = compile::build_variant(&build, src);
         let mut record = BuildRecord {
             id: spec.id.clone(),
             origin: spec.origin,
@@ -320,7 +327,7 @@ pub fn run_native(req: &NativeRequest, opts: &NativeOptions) -> Result<NativeRep
         cpus: machine::cpus(),
         build: BuildReport {
             codegen: codegen::CODEGEN_VERSION,
-            cargo: compile::cargo_version(&opts.build),
+            cargo: compile::cargo_version(&build),
             flags: codegen::flags(),
             kernels_sha256: codegen::kernels_sha256(),
             lock_sha256: codegen::lock_sha256(),
