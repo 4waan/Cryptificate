@@ -1,4 +1,5 @@
 import Cryptificate.Diffusion.Minors3
+import Cryptificate.Diffusion.Branch
 import Cryptificate.PrimePower
 import Cryptificate.Hades.Design
 import Cryptificate.Hades.Reference
