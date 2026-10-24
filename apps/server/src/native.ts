@@ -52,8 +52,8 @@ export function codegenFiles(doc: unknown): Record<string, string> {
       const o = asRecord(v);
       if (!o) continue;
       const id = safe(typeof o['id'] === 'string' ? o['id'] : 'variant');
-      if (typeof o['source'] === 'string') files[`${id}/src/lib.rs`] = o['source'];
-      if (typeof o['manifest'] === 'string') files[`${id}/Cargo.toml`] = o['manifest'];
+      if (typeof o['source'] === 'string') files[`variants/${id}/src/lib.rs`] = o['source'];
+      if (typeof o['manifest'] === 'string') files[`variants/${id}/Cargo.toml`] = o['manifest'];
     }
   }
   const ws = asRecord(root['workspace']);
@@ -157,7 +157,7 @@ export async function runNative(env: PipelineEnv, ctx: JobContext, opts: NativeO
       return { ok: false, correctness: [], raw: null, codegen: null, error: { ...cg.error, kind: cg.kind } };
     }
     codegen = { raw: cg.value, files: codegenFiles(cg.value) };
-    for (const [name, text] of Object.entries(codegen.files)) ctx.write(`native/variants/${name}`, text);
+    for (const [name, text] of Object.entries(codegen.files)) ctx.write(`native/${name}`, text);
   }
   const input: Record<string, unknown> = {
     mode: opts.mode,
