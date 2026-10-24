@@ -4,6 +4,7 @@ import Cryptificate.Diffusion.Offsets
 import Cryptificate.Diffusion.Activity
 import Cryptificate.Bridge
 import Cryptificate.Sbox
+import Cryptificate.Diffusion.Echo
 
 /-!
 # Diffusion certificates for AES-like designs
@@ -23,4 +24,5 @@ small concrete computation:
   keys with an injective S-box produce such a trail, so the bound holds for executions.
 * `Sbox`: byte S-boxes given as tables; an inverse table certifies bijectivity and a
   collision refutes injectivity.
+* `Diffusion.Echo`: the request encoding of an S-box, for the certificate's input echo.
 -/
