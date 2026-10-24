@@ -94,9 +94,12 @@ export function verifyMarkdown(report: Report, tc: ToolchainInfo): string {
   return lines.join('\n');
 }
 
-/** Sanitize text written into a bundle (no local paths). */
+/**
+ * Sanitize text written into a bundle: no local paths, and no build dates in
+ * tool version strings ("rustc 1.97.0 (2d8144b78 YYYY-MM-DD)" keeps its commit).
+ */
 function scrub(text: string, paths: Paths): string {
-  let s = text;
+  let s = text.replace(/(\([0-9a-f]{7,40}) \d{4}-\d{2}-\d{2}\)/g, '$1)');
   for (const [from, to] of [
     [paths.jobsDir, '<jobs>'],
     [paths.home, '<state>'],
