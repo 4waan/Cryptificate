@@ -374,6 +374,10 @@ export interface Workload {
   columns: number;
   /** Raw per-sample nanoseconds. */
   samples: number[];
+  /** Batch calls timed in each sample. */
+  iterations?: number;
+  /** Each sample in nanoseconds per column: samples[i] / (iterations * columns). */
+  nsPerColumn?: number[];
   medianNsPerColumn: number;
   iqr: number;
   mibPerSec: number;
