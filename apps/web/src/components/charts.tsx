@@ -44,6 +44,14 @@ export interface VariantSeries {
 }
 
 const LABEL_W = 150;
+/** Row labels are 12px JetBrains Mono, which advances 0.6em (7.2px) per character. */
+const LABEL_CHAR_W = 7.2;
+
+/** Label column wide enough for the longest row label, but never more than 45% of the chart. */
+function labelColumn(labels: string[], min: number, width: number): number {
+  const longest = Math.max(0, ...labels.map((l) => l.length));
+  return Math.max(min, Math.min(Math.ceil(longest * LABEL_CHAR_W) + 20, Math.round(width * 0.45)));
+}
 const ROW = 34;
 const PAD_T = 12;
 const AXIS_H = 34;
@@ -62,18 +70,19 @@ export function MeasurementChart({ title, series }: { title: string; series: Var
     const values = samplesPerColumn(s.workload);
     return { ...s, values, sum: summarize(values) };
   });
+  const labelW = labelColumn(rows.map((r) => r.label), LABEL_W, width);
   const all = rows.flatMap((r) => r.values);
   const lo = Math.min(...all);
   const hi = Math.max(...all);
   const ticks = niceTicks(
     lo - (hi - lo) * 0.05,
     hi + (hi - lo) * 0.05,
-    Math.max(3, Math.floor((width - LABEL_W) / 90)),
+    Math.max(3, Math.floor((width - labelW) / 90)),
   );
   const x0 = ticks[0] ?? lo;
   const x1 = ticks[ticks.length - 1] ?? hi;
-  const plotW = width - LABEL_W - PAD_R;
-  const sx = (v: number) => LABEL_W + ((v - x0) / (x1 - x0 || 1)) * plotW;
+  const plotW = width - labelW - PAD_R;
+  const sx = (v: number) => labelW + ((v - x0) / (x1 - x0 || 1)) * plotW;
   const height = PAD_T + rows.length * ROW + AXIS_H;
   const id = `mc-${title.replace(/\W+/g, '-')}`;
 
@@ -142,7 +151,7 @@ export function MeasurementChart({ title, series }: { title: string; series: Var
               ))}
             </g>
             <g className="axis">
-              <line x1={LABEL_W} x2={LABEL_W + plotW} y1={PAD_T + rows.length * ROW} y2={PAD_T + rows.length * ROW} />
+              <line x1={labelW} x2={labelW + plotW} y1={PAD_T + rows.length * ROW} y2={PAD_T + rows.length * ROW} />
               {ticks.map((t) => (
                 <text key={t} x={sx(t)} y={PAD_T + rows.length * ROW + 16} textAnchor="middle">
                   {formatNumber(t, 4)}
@@ -168,7 +177,7 @@ export function MeasurementChart({ title, series }: { title: string; series: Var
                   }
                   onBlur={() => setTip(null)}
                 >
-                  <text className="label" x={LABEL_W - 10} y={cy + 4} textAnchor="end">
+                  <text className="label" x={labelW - 10} y={cy + 4} textAnchor="end">
                     {r.label}
                   </text>
                   <rect
@@ -226,6 +235,7 @@ export function RatioChart({ title, rows, threshold = 1.02 }: { title: string; r
   const [ref, width] = useWidth<HTMLElement>();
   const [tip, setTip] = useState<Tip | null>(null);
   const [table, setTable] = useState(false);
+  const labelW = labelColumn(rows.map((r) => r.label), LABEL_W + 40, width);
   const values = rows
     .flatMap((r) => [r.comparison.ci95[0], r.comparison.ci95[1], r.comparison.ratio])
     .concat([1, threshold]);
@@ -234,11 +244,10 @@ export function RatioChart({ title, rows, threshold = 1.02 }: { title: string; r
   const ticks = niceTicks(
     lo - (hi - lo) * 0.08,
     hi + (hi - lo) * 0.08,
-    Math.max(3, Math.floor((width - LABEL_W - 40) / 80)),
+    Math.max(3, Math.floor((width - labelW) / 80)),
   );
   const x0 = ticks[0] ?? lo;
   const x1 = ticks[ticks.length - 1] ?? hi;
-  const labelW = LABEL_W + 40;
   const plotW = width - labelW - PAD_R;
   const sx = (v: number) => labelW + ((v - x0) / (x1 - x0 || 1)) * plotW;
   const top = PAD_T + 18;
