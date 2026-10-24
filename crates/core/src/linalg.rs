@@ -90,6 +90,13 @@ pub fn submatrix<F: Field>(m: &[Vec<F>], rows: &[usize], cols: &[usize]) -> Matr
         .collect()
 }
 
+/// `row -= factor * pivot_row`, entry by entry.
+fn subtract_scaled<F: Field>(row: &mut [F], factor: F, pivot_row: &[F]) {
+    for (x, &p) in row.iter_mut().zip(pivot_row) {
+        *x = *x - factor * p;
+    }
+}
+
 /// Reduced row echelon form of `m`, computed in place, and the pivot
 /// column of each nonzero row. Pivots are the first nonzero entry found
 /// scanning rows downwards, so the result is deterministic.
@@ -110,13 +117,11 @@ fn row_reduce<F: Field>(m: &mut [Vec<F>]) -> Vec<usize> {
         for x in m[r].iter_mut() {
             *x = *x * inv;
         }
-        for i in 0..rows {
-            if i != r && !m[i][c].is_zero() {
-                let factor = m[i][c];
-                for j in 0..cols {
-                    let delta = factor * m[r][j];
-                    m[i][j] = m[i][j] - delta;
-                }
+        let pivot_row = m[r].clone();
+        for (i, row) in m.iter_mut().enumerate() {
+            let factor = row[c];
+            if i != r && !factor.is_zero() {
+                subtract_scaled(row, factor, &pivot_row);
             }
         }
         pivots.push(c);
@@ -147,13 +152,11 @@ pub fn determinant<F: Field>(m: &[Vec<F>]) -> F {
         let pivot = a[c][c];
         det = det * pivot;
         let inv = pivot.inverse().expect("pivot is nonzero");
-        for i in c + 1..n {
-            if !a[i][c].is_zero() {
-                let factor = a[i][c] * inv;
-                for j in c..n {
-                    let delta = factor * a[c][j];
-                    a[i][j] = a[i][j] - delta;
-                }
+        let pivot_row = a[c].clone();
+        for row in a.iter_mut().skip(c + 1) {
+            if !row[c].is_zero() {
+                let factor = row[c] * inv;
+                subtract_scaled(row, factor, &pivot_row);
             }
         }
     }
@@ -276,7 +279,11 @@ mod tests {
                         (0..n)
                             .map(|_| {
                                 let v = next();
-                                Gf256(if sparse && v % 2 == 0 { 0 } else { (v >> 8) as u8 })
+                                Gf256(if sparse && v % 2 == 0 {
+                                    0
+                                } else {
+                                    (v >> 8) as u8
+                                })
                             })
                             .collect()
                     })
