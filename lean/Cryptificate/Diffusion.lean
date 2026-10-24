@@ -23,6 +23,7 @@ small concrete computation:
 * `Bridge`: an AES-like execution on the 16-byte state; two executions under the same round
   keys with an injective S-box produce such a trail, so the bound holds for executions.
 * `Sbox`: byte S-boxes given as tables; an inverse table certifies bijectivity and a
-  collision refutes injectivity.
+  collision refutes injectivity. WideTrail's AES S-box is checked against the table of
+  FIPS 197.
 * `Diffusion.Echo`: the request encoding of an S-box, for the certificate's input echo.
 -/
