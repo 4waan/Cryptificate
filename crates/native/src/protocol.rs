@@ -14,7 +14,8 @@
 //!
 //! * `locally confirmed` when, in both confirmation sessions and against
 //!   every baseline, the lower bound of the 95% interval at the primary
-//!   workload exceeds the threshold (1.02);
+//!   workload exceeds the threshold (1.02), and in both sessions every
+//!   timed sample of every variant left the same output checksum;
 //! * `no improvement` when there is no contender, or when in both
 //!   confirmation sessions the frozen contender's ratio is at most 1 against
 //!   some baseline;
@@ -627,6 +628,20 @@ pub fn decide(
                 .into(),
         );
     }
+    // Outputs that changed between samples or differ between variants mean
+    // the timed code did not compute what correctness checked.
+    if let Some(s) = confirmations
+        .iter()
+        .find(|s| !s.checksums_agree || s.workloads.iter().any(|w| !w.samples_consistent))
+    {
+        return (
+            Verdict::Inconclusive,
+            format!(
+                "The outputs timed in session {} did not all have the same checksum, so no speed-up is claimed.",
+                s.session
+            ),
+        );
+    }
     let mut lowest = f64::INFINITY;
     let mut confirmed = !confirmations.is_empty();
     let mut slower_everywhere = !confirmations.is_empty();
@@ -740,6 +755,12 @@ mod tests {
         // A missing comparison never confirms.
         let (v, _) = decide(&[session(2, &good[..1]), session(3, &good)], "c1", &b, &p);
         assert_eq!(v, Verdict::Inconclusive);
+        // Nor do disagreeing output checksums.
+        let mut odd = session(3, &good);
+        odd.checksums_agree = false;
+        let (v, note) = decide(&[session(2, &good), odd], "c1", &b, &p);
+        assert_eq!(v, Verdict::Inconclusive);
+        assert!(note.contains("session 3"), "{note}");
     }
 
     #[test]
