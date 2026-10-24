@@ -655,22 +655,18 @@ fn mds_note(a: &MatrixAnalysis<impl Field>, what: &str) -> String {
 }
 
 fn program_prediction<F: Field>(p: &ProgramAnalysis<F>) -> ClaimPrediction {
+    let matrix = match p.target {
+        Target::Matrix => "design matrix",
+        Target::External => "external matrix",
+        Target::Internal => "internal matrix",
+    };
     let note = match (&p.first_mismatch, &p.distinguisher) {
         (Some(m), Some(d)) => format!(
-            "coefficient ({}, {}) of the program is {} where the {} matrix has {}; on basis \
+            "coefficient ({}, {}) of the program is {} where the {matrix} has {}; on basis \
              input e{} the outputs differ at {:?}",
-            m.row,
-            m.col,
-            m.actual,
-            p.target.as_str(),
-            m.expected,
-            m.col,
-            d.differing
+            m.row, m.col, m.actual, m.expected, m.col, d.differing
         ),
-        _ => format!(
-            "the program's coefficient matrix equals the {} matrix",
-            p.target.as_str()
-        ),
+        _ => format!("the program's coefficient matrix equals the {matrix}"),
     };
     ClaimPrediction::decided(
         claim_ids::CIRCUIT_EQUIVALENCE,
@@ -747,7 +743,10 @@ fn diagnose_aes_like(
             sbox.bijective,
             sbox.collision.map(|c| c.to_witness()),
             match sbox.collision {
-                None => "the S-box table has an inverse table".into(),
+                None => match sbox.source {
+                    SboxSource::Aes => "the AES S-box has an inverse table".into(),
+                    SboxSource::Table => "the S-box table has an inverse table".into(),
+                },
                 Some(c) => format!("bytes {} and {} both map to {}", c.x1, c.x2, c.y),
             },
         ),
