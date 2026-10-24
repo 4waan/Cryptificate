@@ -1,0 +1,3532 @@
+{
+  "kind": "experiment",
+  "id": "9697de03f7061aa26360c427ef463a04",
+  "inputDigest": "sha256:0e507a53080179eced7cf8148798d7ddbc81de276c822abbb8a1503622daab6c",
+  "profile": "quick",
+  "inputs": {
+    "design": {
+      "field": "gf256",
+      "matrix": [
+        [
+          "02",
+          "03",
+          "01",
+          "01"
+        ],
+        [
+          "01",
+          "02",
+          "03",
+          "01"
+        ],
+        [
+          "01",
+          "01",
+          "02",
+          "03"
+        ],
+        [
+          "03",
+          "01",
+          "01",
+          "02"
+        ]
+      ],
+      "model": "aes-like/gf256/v1",
+      "offsets": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "rounds": 4,
+      "sbox": {
+        "kind": "aes"
+      },
+      "width": 4
+    },
+    "profile": "quick",
+    "program": {
+      "field": "gf256",
+      "instructions": [
+        {
+          "a": 0,
+          "b": 1,
+          "op": "add"
+        },
+        {
+          "a": 4,
+          "b": 2,
+          "op": "add"
+        },
+        {
+          "a": 5,
+          "b": 3,
+          "op": "add"
+        },
+        {
+          "a": 0,
+          "b": 1,
+          "op": "add"
+        },
+        {
+          "a": 7,
+          "k": "02",
+          "op": "mul"
+        },
+        {
+          "a": 0,
+          "b": 8,
+          "op": "add"
+        },
+        {
+          "a": 9,
+          "b": 6,
+          "op": "add"
+        },
+        {
+          "a": 1,
+          "b": 2,
+          "op": "add"
+        },
+        {
+          "a": 11,
+          "k": "02",
+          "op": "mul"
+        },
+        {
+          "a": 1,
+          "b": 12,
+          "op": "add"
+        },
+        {
+          "a": 13,
+          "b": 6,
+          "op": "add"
+        },
+        {
+          "a": 2,
+          "b": 3,
+          "op": "add"
+        },
+        {
+          "a": 15,
+          "k": "02",
+          "op": "mul"
+        },
+        {
+          "a": 2,
+          "b": 16,
+          "op": "add"
+        },
+        {
+          "a": 17,
+          "b": 6,
+          "op": "add"
+        },
+        {
+          "a": 3,
+          "b": 0,
+          "op": "add"
+        },
+        {
+          "a": 19,
+          "k": "02",
+          "op": "mul"
+        },
+        {
+          "a": 3,
+          "b": 20,
+          "op": "add"
+        },
+        {
+          "a": 21,
+          "b": 6,
+          "op": "add"
+        }
+      ],
+      "name": "aes-shared-sum",
+      "outputs": [
+        10,
+        14,
+        18,
+        22
+      ],
+      "width": 4
+    }
+  },
+  "search": {
+    "seed": "26e6b3d3da9145b2",
+    "budget": {
+      "maxCandidates": 8,
+      "profile": "quick",
+      "requested": {
+        "maxCandidates": 8,
+        "synthMs": 10000
+      },
+      "shortlist": 1,
+      "synthMs": 10000,
+      "totalMs": 180000
+    },
+    "generated": 8,
+    "history": [
+      {
+        "id": "c1",
+        "ops": {
+          "add": 12,
+          "mul": 4
+        },
+        "depth": 3,
+        "temps": 5,
+        "symbolic": "pass"
+      },
+      {
+        "id": "c2",
+        "ops": {
+          "add": 12,
+          "mul": 4
+        },
+        "depth": 3,
+        "temps": 6,
+        "symbolic": "pass"
+      },
+      {
+        "id": "c3",
+        "ops": {
+          "add": 12,
+          "mul": 4
+        },
+        "depth": 4,
+        "temps": 5,
+        "symbolic": "pass"
+      },
+      {
+        "id": "c4",
+        "ops": {
+          "add": 12,
+          "mul": 4
+        },
+        "depth": 5,
+        "temps": 5,
+        "symbolic": "pass"
+      },
+      {
+        "id": "c5",
+        "ops": {
+          "add": 12,
+          "mul": 5
+        },
+        "depth": 3,
+        "temps": 5,
+        "symbolic": "pass"
+      },
+      {
+        "id": "c6",
+        "ops": {
+          "add": 12,
+          "mul": 4
+        },
+        "depth": 4,
+        "temps": 5,
+        "symbolic": "pass"
+      },
+      {
+        "id": "c7",
+        "ops": {
+          "add": 12,
+          "mul": 6
+        },
+        "depth": 3,
+        "temps": 5,
+        "symbolic": "pass"
+      },
+      {
+        "id": "c8",
+        "ops": {
+          "add": 13,
+          "mul": 5
+        },
+        "depth": 4,
+        "temps": 5,
+        "symbolic": "pass"
+      }
+    ],
+    "shortlist": [
+      "c1"
+    ]
+  },
+  "candidates": [
+    {
+      "id": "c1",
+      "program": {
+        "field": "gf256",
+        "instructions": [
+          {
+            "a": 0,
+            "b": 1,
+            "op": "add"
+          },
+          {
+            "a": 4,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 2,
+            "b": 3,
+            "op": "add"
+          },
+          {
+            "a": 1,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 5,
+            "b": 7,
+            "op": "add"
+          },
+          {
+            "a": 1,
+            "b": 2,
+            "op": "add"
+          },
+          {
+            "a": 9,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 0,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 10,
+            "b": 11,
+            "op": "add"
+          },
+          {
+            "a": 6,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 3,
+            "b": 4,
+            "op": "add"
+          },
+          {
+            "a": 13,
+            "b": 14,
+            "op": "add"
+          },
+          {
+            "a": 0,
+            "b": 3,
+            "op": "add"
+          },
+          {
+            "a": 16,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 2,
+            "b": 4,
+            "op": "add"
+          },
+          {
+            "a": 17,
+            "b": 18,
+            "op": "add"
+          }
+        ],
+        "outputs": [
+          8,
+          12,
+          15,
+          19
+        ],
+        "width": 4
+      },
+      "origin": "search",
+      "equivalence": {
+        "id": "circuit.equivalence",
+        "chain": "implementation",
+        "title": "Circuit computes the design matrix",
+        "status": "proved",
+        "evidence": {
+          "kind": "lean",
+          "label": "Lean-checked circuit equivalence",
+          "theorem": "CryptificateJob.circuit_equivalence",
+          "type": "CryptificateJob.candProgram.WellFormed ∧ ∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x",
+          "axioms": [
+            "propext",
+            "Classical.choice",
+            "Quot.sound"
+          ]
+        },
+        "witness": null,
+        "note": "Lean checked CryptificateJob.circuit_equivalence using only the standard axioms."
+      },
+      "native": {
+        "cases": 9214,
+        "passed": true,
+        "checksum": "sha256:f74c1c30a4a4450b5ca2e6098c6994b526326ccae711f4aa1197a5253f14fe77"
+      }
+    },
+    {
+      "id": "baseline-direct",
+      "program": {
+        "field": "gf256",
+        "instructions": [
+          {
+            "a": 0,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 1,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 2,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 3,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 4,
+            "b": 1,
+            "op": "add"
+          },
+          {
+            "a": 8,
+            "b": 5,
+            "op": "add"
+          },
+          {
+            "a": 9,
+            "b": 2,
+            "op": "add"
+          },
+          {
+            "a": 10,
+            "b": 3,
+            "op": "add"
+          },
+          {
+            "a": 0,
+            "b": 5,
+            "op": "add"
+          },
+          {
+            "a": 12,
+            "b": 2,
+            "op": "add"
+          },
+          {
+            "a": 13,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 14,
+            "b": 3,
+            "op": "add"
+          },
+          {
+            "a": 0,
+            "b": 1,
+            "op": "add"
+          },
+          {
+            "a": 16,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 17,
+            "b": 3,
+            "op": "add"
+          },
+          {
+            "a": 18,
+            "b": 7,
+            "op": "add"
+          },
+          {
+            "a": 0,
+            "b": 4,
+            "op": "add"
+          },
+          {
+            "a": 20,
+            "b": 1,
+            "op": "add"
+          },
+          {
+            "a": 21,
+            "b": 2,
+            "op": "add"
+          },
+          {
+            "a": 22,
+            "b": 7,
+            "op": "add"
+          }
+        ],
+        "name": "direct-primitive",
+        "outputs": [
+          11,
+          15,
+          19,
+          23
+        ],
+        "width": 4
+      },
+      "origin": "baseline-direct",
+      "equivalence": {
+        "id": "circuit.equivalence",
+        "chain": "implementation",
+        "title": "Circuit computes the design matrix",
+        "status": "proved",
+        "evidence": {
+          "kind": "lean",
+          "label": "Lean-checked circuit equivalence",
+          "theorem": "CryptificateJob.circuit_equivalence",
+          "type": "CryptificateJob.candProgram.WellFormed ∧ ∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x",
+          "axioms": [
+            "propext",
+            "Classical.choice",
+            "Quot.sound"
+          ]
+        },
+        "witness": null,
+        "note": "Lean checked CryptificateJob.circuit_equivalence using only the standard axioms."
+      },
+      "native": {
+        "cases": 9214,
+        "passed": true,
+        "checksum": "sha256:f74c1c30a4a4450b5ca2e6098c6994b526326ccae711f4aa1197a5253f14fe77"
+      }
+    },
+    {
+      "id": "baseline-known",
+      "program": {
+        "field": "gf256",
+        "instructions": [
+          {
+            "a": 0,
+            "b": 1,
+            "op": "add"
+          },
+          {
+            "a": 4,
+            "b": 2,
+            "op": "add"
+          },
+          {
+            "a": 5,
+            "b": 3,
+            "op": "add"
+          },
+          {
+            "a": 0,
+            "b": 1,
+            "op": "add"
+          },
+          {
+            "a": 7,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 8,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 9,
+            "b": 0,
+            "op": "add"
+          },
+          {
+            "a": 1,
+            "b": 2,
+            "op": "add"
+          },
+          {
+            "a": 11,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 12,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 13,
+            "b": 1,
+            "op": "add"
+          },
+          {
+            "a": 2,
+            "b": 3,
+            "op": "add"
+          },
+          {
+            "a": 15,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 16,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 17,
+            "b": 2,
+            "op": "add"
+          },
+          {
+            "a": 3,
+            "b": 0,
+            "op": "add"
+          },
+          {
+            "a": 19,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 20,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 21,
+            "b": 3,
+            "op": "add"
+          }
+        ],
+        "name": "aes-shared-sum",
+        "outputs": [
+          10,
+          14,
+          18,
+          22
+        ],
+        "width": 4
+      },
+      "origin": "baseline-known",
+      "equivalence": {
+        "id": "circuit.equivalence",
+        "chain": "implementation",
+        "title": "Circuit computes the design matrix",
+        "status": "proved",
+        "evidence": {
+          "kind": "lean",
+          "label": "Lean-checked circuit equivalence",
+          "theorem": "CryptificateJob.circuit_equivalence",
+          "type": "CryptificateJob.candProgram.WellFormed ∧ ∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x",
+          "axioms": [
+            "propext",
+            "Classical.choice",
+            "Quot.sound"
+          ]
+        },
+        "witness": null,
+        "note": "Lean checked CryptificateJob.circuit_equivalence using only the standard axioms."
+      },
+      "native": {
+        "cases": 9214,
+        "passed": true,
+        "checksum": "sha256:f74c1c30a4a4450b5ca2e6098c6994b526326ccae711f4aa1197a5253f14fe77"
+      }
+    },
+    {
+      "id": "user",
+      "program": {
+        "field": "gf256",
+        "instructions": [
+          {
+            "a": 0,
+            "b": 1,
+            "op": "add"
+          },
+          {
+            "a": 4,
+            "b": 2,
+            "op": "add"
+          },
+          {
+            "a": 5,
+            "b": 3,
+            "op": "add"
+          },
+          {
+            "a": 0,
+            "b": 1,
+            "op": "add"
+          },
+          {
+            "a": 7,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 0,
+            "b": 8,
+            "op": "add"
+          },
+          {
+            "a": 9,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 1,
+            "b": 2,
+            "op": "add"
+          },
+          {
+            "a": 11,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 1,
+            "b": 12,
+            "op": "add"
+          },
+          {
+            "a": 13,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 2,
+            "b": 3,
+            "op": "add"
+          },
+          {
+            "a": 15,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 2,
+            "b": 16,
+            "op": "add"
+          },
+          {
+            "a": 17,
+            "b": 6,
+            "op": "add"
+          },
+          {
+            "a": 3,
+            "b": 0,
+            "op": "add"
+          },
+          {
+            "a": 19,
+            "k": "02",
+            "op": "mul"
+          },
+          {
+            "a": 3,
+            "b": 20,
+            "op": "add"
+          },
+          {
+            "a": 21,
+            "b": 6,
+            "op": "add"
+          }
+        ],
+        "name": "aes-shared-sum",
+        "outputs": [
+          10,
+          14,
+          18,
+          22
+        ],
+        "width": 4
+      },
+      "origin": "user",
+      "equivalence": {
+        "id": "circuit.equivalence",
+        "chain": "implementation",
+        "title": "Circuit computes the design matrix",
+        "status": "proved",
+        "evidence": {
+          "kind": "lean",
+          "label": "Lean-checked circuit equivalence",
+          "theorem": "CryptificateJob.circuit_equivalence",
+          "type": "CryptificateJob.candProgram.WellFormed ∧ ∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x",
+          "axioms": [
+            "propext",
+            "Classical.choice",
+            "Quot.sound"
+          ]
+        },
+        "witness": null,
+        "note": "Lean checked CryptificateJob.circuit_equivalence using only the standard axioms."
+      },
+      "native": {
+        "cases": 9214,
+        "passed": true,
+        "checksum": "sha256:f74c1c30a4a4450b5ca2e6098c6994b526326ccae711f4aa1197a5253f14fe77"
+      }
+    }
+  ],
+  "measurements": {
+    "machine": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "os": "Linux 6.18.44-fc-v153 x86_64",
+      "ramMiB": 16091,
+      "rustc": "rustc 1.97.0 (2d8144b78)",
+      "flags": "opt-level=3 codegen-units=1 lto=false panic=abort debug=false overflow-checks=false incremental=false target-cpu=default rustflags=none"
+    },
+    "workloads": [
+      {
+        "bytes": 4096,
+        "calibrationNs": 94662096,
+        "candidate": "c1",
+        "checksum": "sha256:1cc99c2358437cffd3468336d80860c612550bc66a9c746a611f430dbe716a93",
+        "columns": 1024,
+        "iqr": 0.056168465474326634,
+        "iterations": 56849,
+        "medianNsPerColumn": 1.5608494171511371,
+        "mibPerSec": 2443.9880130061406,
+        "minSampleNs": 85907927,
+        "nsPerColumn": [
+          1.5128959880285933,
+          1.5401896464482665,
+          1.5925069008194954,
+          1.5424852185174762,
+          1.4757420528230487,
+          1.5808615016590002,
+          1.5454179293776056,
+          1.6025048950949006,
+          1.5225505560783832,
+          1.5849230767856515,
+          1.7751182305592446,
+          1.5608494171511371,
+          1.7951943725098507,
+          1.7923521563154146,
+          1.5592284494889972
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          88070783,
+          89659639,
+          92705203,
+          89793272,
+          85907927,
+          92027285,
+          89963995,
+          93287220,
+          88632808,
+          92263723,
+          103335625,
+          90862314,
+          104504325,
+          104338870,
+          90767952
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          92308211,
+          84086986,
+          86633988
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 99961547,
+        "candidate": "baseline-direct",
+        "checksum": "sha256:1cc99c2358437cffd3468336d80860c612550bc66a9c746a611f430dbe716a93",
+        "columns": 1024,
+        "iqr": 0.07533836239195768,
+        "iterations": 63806,
+        "medianNsPerColumn": 1.5768639294551061,
+        "mibPerSec": 2419.1670532683115,
+        "minSampleNs": 97409285,
+        "nsPerColumn": [
+          1.602594957027944,
+          1.5330120704018824,
+          1.5180672786454252,
+          1.5416640902942123,
+          1.4908669229039981,
+          1.5939950512833825,
+          1.5962777887022772,
+          1.550231334778469,
+          1.5768639294551061,
+          1.5518164925712314,
+          1.636171406049196,
+          1.6485289943833652,
+          1.851273063686213,
+          1.5464255479990126,
+          1.6829367750240964
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          104709298,
+          100162937,
+          99186484,
+          100728237,
+          97409285,
+          104147403,
+          104296551,
+          101287998,
+          103028101,
+          101391568,
+          106903094,
+          107710506,
+          120957265,
+          101039338,
+          109958619
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          102048498,
+          97646644,
+          103782637
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 106985871,
+        "candidate": "baseline-known",
+        "checksum": "sha256:1cc99c2358437cffd3468336d80860c612550bc66a9c746a611f430dbe716a93",
+        "columns": 1024,
+        "iqr": 0.06321242821371009,
+        "iterations": 68552,
+        "medianNsPerColumn": 1.5675595715661104,
+        "mibPerSec": 2433.5261860663004,
+        "minSampleNs": 103821366,
+        "nsPerColumn": [
+          1.5675595715661104,
+          1.5020429433358984,
+          1.573195177110077,
+          1.5366884183265987,
+          1.4789948175746148,
+          1.4964929251927368,
+          1.566597995408595,
+          1.6153713034448303,
+          1.527019691712131,
+          1.769459751470599,
+          1.72299416923011,
+          1.5825486349550342,
+          1.6075843315111156,
+          1.53877067944316,
+          1.5807279652900352
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          110038368,
+          105439281,
+          110433972,
+          107871298,
+          103821366,
+          105049685,
+          109970868,
+          113394620,
+          107192580,
+          124211205,
+          120949449,
+          111090559,
+          112847996,
+          108017467,
+          110962753
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          106744976,
+          106009626,
+          107565148
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 101525912,
+        "candidate": "user",
+        "checksum": "sha256:1cc99c2358437cffd3468336d80860c612550bc66a9c746a611f430dbe716a93",
+        "columns": 1024,
+        "iqr": 0.05234090823381066,
+        "iterations": 65877,
+        "medianNsPerColumn": 1.5306168361112376,
+        "mibPerSec": 2492.26140443928,
+        "minSampleNs": 101355554,
+        "nsPerColumn": [
+          1.5649566972349986,
+          1.520150597894561,
+          1.5306168361112376,
+          1.5494014442872701,
+          1.5223613200310806,
+          1.5024975819045343,
+          1.5391226559060824,
+          1.5119221653137667,
+          1.5212410978746376,
+          1.5764668879834767,
+          1.62304475516398,
+          1.5764821567324332,
+          1.6603478505633604,
+          1.5158898312622386,
+          1.5165911708562927
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          105568924,
+          102546392,
+          103252424,
+          104519597,
+          102695523,
+          101355554,
+          103826210,
+          101991318,
+          102619955,
+          106345379,
+          109487431,
+          106346409,
+          112003825,
+          102258969,
+          102306280
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          102965262,
+          106712059,
+          108008411
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 99511691,
+        "candidate": "c1",
+        "checksum": "sha256:e27421d8ea808aa018f46692e816a0e812c97f2a5c64d2cfdfa0d8a6356dc93d",
+        "columns": 16384,
+        "iqr": 0.06117125115561994,
+        "iterations": 3845,
+        "medianNsPerColumn": 1.5742517677178154,
+        "mibPerSec": 2423.181186040621,
+        "minSampleNs": 93566485,
+        "nsPerColumn": [
+          1.5554758932562582,
+          1.5738685399565182,
+          1.9370065438576887,
+          1.5300607589503414,
+          1.8110672215336476,
+          1.6309917316015117,
+          1.5954595558355007,
+          1.5780929188424495,
+          1.5379466440029665,
+          1.6790282726907917,
+          1.5742517677178154,
+          1.576216734649301,
+          1.548632891869514,
+          1.4852652878383046,
+          1.5687122677330543
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          97989506,
+          99148178,
+          122024594,
+          96388442,
+          114090860,
+          102746738,
+          100508336,
+          99414299,
+          96885225,
+          105772871,
+          99172320,
+          99296106,
+          97558421,
+          93566485,
+          98823351
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          103000999,
+          94271798,
+          95317601
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 107599698,
+        "candidate": "baseline-direct",
+        "checksum": "sha256:e27421d8ea808aa018f46692e816a0e812c97f2a5c64d2cfdfa0d8a6356dc93d",
+        "columns": 16384,
+        "iqr": 0.03408530892402584,
+        "iterations": 4039,
+        "medianNsPerColumn": 1.5933539741669116,
+        "mibPerSec": 2394.1304490231196,
+        "minSampleNs": 102687728,
+        "nsPerColumn": [
+          1.6003599608407868,
+          1.6200771421511357,
+          1.6723332547940781,
+          1.6050257124384903,
+          1.620036885241938,
+          1.5835763355622525,
+          1.6015398177099451,
+          1.6400653775832121,
+          1.5517607138988612,
+          1.5768051959701503,
+          1.5877452074935396,
+          1.5743691391743007,
+          1.5800867838622261,
+          1.5574236702405453,
+          1.5933539741669116
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          105903782,
+          107208566,
+          110666613,
+          106212538,
+          107205902,
+          104793126,
+          105981859,
+          108531287,
+          102687728,
+          104345046,
+          105069001,
+          104183840,
+          104562205,
+          103062474,
+          105440161
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          107758730,
+          100076862,
+          98501929
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 106998307,
+        "candidate": "baseline-known",
+        "checksum": "sha256:e27421d8ea808aa018f46692e816a0e812c97f2a5c64d2cfdfa0d8a6356dc93d",
+        "columns": 16384,
+        "iqr": 0.03998905987199319,
+        "iterations": 4069,
+        "medianNsPerColumn": 1.5850531427360455,
+        "mibPerSec": 2406.668371408826,
+        "minSampleNs": 97125285,
+        "nsPerColumn": [
+          1.6638819145377013,
+          1.6088803887337952,
+          1.5939704405643278,
+          1.5726761910510492,
+          1.6516448382107858,
+          1.576927426934213,
+          1.5962570164179621,
+          1.5850531427360455,
+          1.554125283560726,
+          1.5765206708929176,
+          1.5821797653801994,
+          1.620294592954158,
+          1.5463113585570778,
+          1.6587328513560995,
+          1.456883004620492
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          110925177,
+          107258418,
+          106264424,
+          104844811,
+          110109374,
+          105128226,
+          106416862,
+          105669939,
+          103608087,
+          105101109,
+          105478381,
+          108019363,
+          103087160,
+          110581907,
+          97125285
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          102822354,
+          103804136,
+          100053605
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 104245699,
+        "candidate": "user",
+        "checksum": "sha256:e27421d8ea808aa018f46692e816a0e812c97f2a5c64d2cfdfa0d8a6356dc93d",
+        "columns": 16384,
+        "iqr": 0.04875360637771542,
+        "iterations": 4074,
+        "medianNsPerColumn": 1.5764964969355977,
+        "mibPerSec": 2419.7308862024297,
+        "minSampleNs": 100646888,
+        "nsPerColumn": [
+          1.598118343362635,
+          1.6581288610654072,
+          1.825384785161044,
+          1.5813005060674399,
+          1.6992571179516829,
+          1.6123588610702013,
+          1.5764964969355977,
+          1.6297922335715054,
+          1.571421874640441,
+          1.573222007245835,
+          1.573386715274262,
+          1.575826488526709,
+          1.5711062416821997,
+          1.560304577115358,
+          1.507854328707965
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          106671868,
+          110677475,
+          121841543,
+          105549304,
+          113422721,
+          107622400,
+          105228644,
+          108786050,
+          104889921,
+          105010077,
+          105021071,
+          105183922,
+          104868853,
+          104147859,
+          100646888
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          105379542,
+          97320321,
+          98343404
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 99407650,
+        "candidate": "c1",
+        "checksum": "sha256:c6a1f7e4b4ed99ff9363831e8f1ffae1cee1440b1113ffcdb61df6a902d5b9a9",
+        "columns": 262144,
+        "iqr": 0.0799961389279833,
+        "iterations": 255,
+        "medianNsPerColumn": 1.5773197398466223,
+        "mibPerSec": 2418.46796769052,
+        "minSampleNs": 100527714,
+        "nsPerColumn": [
+          1.5773197398466223,
+          1.5474586187624464,
+          1.5837308247884114,
+          1.5987809873094745,
+          1.548556952383004,
+          1.5520166135301776,
+          1.549764954810049,
+          1.5038541008444393,
+          2.014290574017693,
+          1.6294350418390011,
+          1.632338804357192,
+          1.552861052868413,
+          1.5750546025294883,
+          1.6366623672784544,
+          1.6328124102424173
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          105438651,
+          103442533,
+          105867211,
+          106873265,
+          103515953,
+          103747220,
+          103596704,
+          100527714,
+          134648718,
+          108922388,
+          109116495,
+          103803668,
+          105287234,
+          109405511,
+          109148154
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          111123378,
+          110525321,
+          108180214
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 102552513,
+        "candidate": "baseline-direct",
+        "checksum": "sha256:c6a1f7e4b4ed99ff9363831e8f1ffae1cee1440b1113ffcdb61df6a902d5b9a9",
+        "columns": 262144,
+        "iqr": 0.0673167262623906,
+        "iterations": 253,
+        "medianNsPerColumn": 1.588378453914356,
+        "mibPerSec": 2401.629949225366,
+        "minSampleNs": 98514868,
+        "nsPerColumn": [
+          1.5883034415867017,
+          1.5403368048988313,
+          1.5974837894967422,
+          1.5736855668983911,
+          1.5244874162636255,
+          1.588378453914356,
+          1.4853928758221653,
+          1.5587007273798403,
+          1.718948092856426,
+          1.6633682100198015,
+          1.6231022107271338,
+          1.6280893921380928,
+          1.5487616618160203,
+          1.59636098688299,
+          1.6189936309935076
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          105340147,
+          102158883,
+          105949010,
+          104370654,
+          101107713,
+          105345122,
+          98514868,
+          103376823,
+          114004818,
+          110318625,
+          107648086,
+          107978848,
+          102717640,
+          105874543,
+          107375595
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          125139973,
+          137603258,
+          119217285
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 114735840,
+        "candidate": "baseline-known",
+        "checksum": "sha256:c6a1f7e4b4ed99ff9363831e8f1ffae1cee1440b1113ffcdb61df6a902d5b9a9",
+        "columns": 262144,
+        "iqr": 0.07030515911198476,
+        "iterations": 238,
+        "medianNsPerColumn": 1.5625951911221032,
+        "mibPerSec": 2441.257522932511,
+        "minSampleNs": 95191525,
+        "nsPerColumn": [
+          1.598374006127109,
+          1.551406058944574,
+          1.6109338808460396,
+          1.5332322801862444,
+          1.5625951911221032,
+          1.539722378514394,
+          1.5310375309791886,
+          1.5257430677654362,
+          1.6261232840914686,
+          1.5308823785862,
+          1.5855563348080932,
+          1.5300194395690405,
+          1.5997025626046317,
+          1.6051775667847705,
+          1.7523688789175338
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          99722989,
+          96792646,
+          100506603,
+          95658779,
+          97490739,
+          96063698,
+          95521848,
+          95191525,
+          101454274,
+          95512168,
+          98923291,
+          95458329,
+          99805878,
+          100147465,
+          109330771
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          112898628,
+          129327236,
+          102260183
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 101656295,
+        "candidate": "user",
+        "checksum": "sha256:c6a1f7e4b4ed99ff9363831e8f1ffae1cee1440b1113ffcdb61df6a902d5b9a9",
+        "columns": 262144,
+        "iqr": 0.053335051382741305,
+        "iterations": 248,
+        "medianNsPerColumn": 1.6201646866336945,
+        "mibPerSec": 2354.5120425695777,
+        "minSampleNs": 96332783,
+        "nsPerColumn": [
+          1.592788342506655,
+          1.631639757464009,
+          1.6224783466708275,
+          1.6126688987978044,
+          1.6269815660292102,
+          1.48177582217801,
+          1.5582378756615423,
+          1.5421693555770382,
+          1.7374677350444179,
+          1.65605043595837,
+          1.6554238257869598,
+          1.5878299897716892,
+          1.579814649397327,
+          1.6201646866336945,
+          1.6426749844704904
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          103549897,
+          106075694,
+          105480095,
+          104842366,
+          105772857,
+          96332783,
+          101303712,
+          100259070,
+          112955752,
+          107662674,
+          107621937,
+          103227546,
+          102706455,
+          105329680,
+          106793113
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 1,
+        "warmupNs": [
+          112731104,
+          102798279,
+          103494742
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 94680731,
+        "candidate": "c1",
+        "checksum": "sha256:a775f12cc947742be1974cdd0899e50f848dc3cdb937b656637882da39f078d7",
+        "columns": 1024,
+        "iqr": 0.04137397484246441,
+        "iterations": 53837,
+        "medianNsPerColumn": 1.556569029402409,
+        "mibPerSec": 2450.708702003098,
+        "minSampleNs": 81688604,
+        "nsPerColumn": [
+          1.5785238638448,
+          1.589323262521593,
+          1.5899838575236362,
+          1.5434989963918866,
+          1.5607911562041439,
+          1.5397749188232535,
+          1.5508068988915615,
+          1.4817695514933968,
+          1.5767969896400245,
+          1.656131097253051,
+          1.5327979849766424,
+          1.556569029402409,
+          1.4988820420900124,
+          1.5231696014996656,
+          1.5632810940024984
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          87022581,
+          87617942,
+          87654360,
+          85091692,
+          86044993,
+          84886387,
+          85494570,
+          81688604,
+          86927380,
+          91300997,
+          84501755,
+          85812231,
+          82632000,
+          83970951,
+          86182261
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          86172649,
+          86213986,
+          93703267
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 98513177,
+        "candidate": "baseline-direct",
+        "checksum": "sha256:a775f12cc947742be1974cdd0899e50f848dc3cdb937b656637882da39f078d7",
+        "columns": 1024,
+        "iqr": 0.03680895165501363,
+        "iterations": 64754,
+        "medianNsPerColumn": 1.5468772772483168,
+        "mibPerSec": 2466.063288750886,
+        "minSampleNs": 97312923,
+        "nsPerColumn": [
+          1.5563620164873984,
+          1.5367392844457486,
+          1.5813345929884641,
+          1.5507538325335115,
+          1.5347998380167633,
+          1.5360280138340874,
+          1.7794674273259181,
+          1.5303366876949687,
+          1.5293648908272075,
+          1.4869866569536245,
+          1.4675873516259614,
+          1.5887349562864843,
+          1.6189952581355977,
+          1.5574198360332951,
+          1.5468772772483168
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          103199402,
+          101898256,
+          104855286,
+          102827534,
+          101769655,
+          101851093,
+          117993097,
+          101473712,
+          101409274,
+          98599254,
+          97312923,
+          105345990,
+          107352493,
+          103269544,
+          102570487
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          103798356,
+          106612856,
+          106186695
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 98127147,
+        "candidate": "baseline-known",
+        "checksum": "sha256:a775f12cc947742be1974cdd0899e50f848dc3cdb937b656637882da39f078d7",
+        "columns": 1024,
+        "iqr": 0.05055995305695937,
+        "iterations": 62233,
+        "medianNsPerColumn": 1.5496183131839216,
+        "mibPerSec": 2461.7012029156626,
+        "minSampleNs": 94572764,
+        "nsPerColumn": [
+          1.5089471126904135,
+          1.5672003768850529,
+          1.545670714668062,
+          1.5679275301588385,
+          1.8452084649372118,
+          1.5496183131839216,
+          1.616484481078166,
+          1.5195754387744445,
+          1.526151877068838,
+          1.5439404008926132,
+          1.4868644160353028,
+          1.58795034889046,
+          1.550591172363336,
+          1.5789196917983626,
+          1.484039253189626
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          96160057,
+          99872339,
+          98500327,
+          99918678,
+          117588847,
+          98751894,
+          103013047,
+          96837364,
+          97256458,
+          98390060,
+          94752802,
+          101194664,
+          98813891,
+          100619171,
+          94572764
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          109681857,
+          101007661,
+          100212583
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 123216131,
+        "candidate": "user",
+        "checksum": "sha256:a775f12cc947742be1974cdd0899e50f848dc3cdb937b656637882da39f078d7",
+        "columns": 1024,
+        "iqr": 0.07735237757091706,
+        "iterations": 65164,
+        "medianNsPerColumn": 1.5371768729666686,
+        "mibPerSec": 2481.6254607466476,
+        "minSampleNs": 99369081,
+        "nsPerColumn": [
+          1.5313823433711482,
+          1.5827369514321559,
+          1.6286405591804907,
+          1.5311562311772988,
+          1.611645533289086,
+          1.53633915786036,
+          1.7458851117469,
+          1.557269701853209,
+          1.5216722273561707,
+          1.5185470744966545,
+          1.5967459116373688,
+          1.610787302037935,
+          1.5371768729666686,
+          1.5198894807715917,
+          1.4891676103993385
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          102185983,
+          105612770,
+          108675823,
+          102170895,
+          107541780,
+          102516741,
+          116499310,
+          103913393,
+          101538047,
+          101329512,
+          106547559,
+          107484512,
+          102572640,
+          101419088,
+          99369081
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          111501889,
+          114596068,
+          126380779
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 101421617,
+        "candidate": "c1",
+        "checksum": "sha256:0f3f6932e44086ce9147af02d04589812c2d774e8ba8709e27e75e2db633d2e1",
+        "columns": 16384,
+        "iqr": 0.0960841153144365,
+        "iterations": 4074,
+        "medianNsPerColumn": 1.555696422818483,
+        "mibPerSec": 2452.083330444281,
+        "minSampleNs": 98912354,
+        "nsPerColumn": [
+          1.5176195941488708,
+          1.501421367062853,
+          1.588846962300948,
+          1.6758162171219164,
+          1.521078807323308,
+          1.6290468076425964,
+          1.609781002143931,
+          1.5050383667531526,
+          1.4818681839581032,
+          1.557891021713534,
+          1.5694373930910959,
+          1.555696422818483,
+          1.4978603237565966,
+          1.7691562148830617,
+          1.4941038001560967
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          101298704,
+          100217498,
+          106053018,
+          111858078,
+          101529601,
+          108736294,
+          107450332,
+          100458927,
+          98912354,
+          103986758,
+          104757460,
+          103840272,
+          99979804,
+          118088375,
+          99729062
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          107836691,
+          102584409,
+          104742822
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 99999325,
+        "candidate": "baseline-direct",
+        "checksum": "sha256:0f3f6932e44086ce9147af02d04589812c2d774e8ba8709e27e75e2db633d2e1",
+        "columns": 16384,
+        "iqr": 0.06532435988630425,
+        "iterations": 4072,
+        "medianNsPerColumn": 1.5312991189113534,
+        "mibPerSec": 2491.1509570625126,
+        "minSampleNs": 97586539,
+        "nsPerColumn": [
+          1.520909277535609,
+          1.7431100122118277,
+          1.607573278760629,
+          1.563777151651139,
+          1.4904396641699411,
+          1.676377811694192,
+          1.6164113252710968,
+          1.4627233928687915,
+          1.5312991189113534,
+          1.5244397236462426,
+          1.5197924331035502,
+          1.5417804080985618,
+          1.5352038850016116,
+          1.5247859992306452,
+          1.511835364321126
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          101468448,
+          116292714,
+          107250293,
+          104328406,
+          99435648,
+          111840632,
+          107839929,
+          97586539,
+          102161613,
+          101703984,
+          101393937,
+          102860879,
+          102422122,
+          101727086,
+          100863076
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          104616823,
+          105441776,
+          111525561
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 104312430,
+        "candidate": "baseline-known",
+        "checksum": "sha256:0f3f6932e44086ce9147af02d04589812c2d774e8ba8709e27e75e2db633d2e1",
+        "columns": 16384,
+        "iqr": 0.13649799701611043,
+        "iterations": 4216,
+        "medianNsPerColumn": 1.5564098032421134,
+        "mibPerSec": 2450.959418065031,
+        "minSampleNs": 97433388,
+        "nsPerColumn": [
+          1.8499509026022518,
+          1.6823281246525512,
+          1.540075298504766,
+          1.955535671516433,
+          1.64882368923817,
+          1.6715841420008968,
+          1.6143843851686654,
+          1.410546029541479,
+          1.4979666867337598,
+          1.5339720145122375,
+          1.6158684109827146,
+          1.5134398226946084,
+          1.5564098032421134,
+          1.5050872281561314,
+          1.5346769589853015
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          127785255,
+          116206721,
+          106380615,
+          135078517,
+          113892404,
+          115464581,
+          111513511,
+          97433388,
+          103471965,
+          105959031,
+          111616020,
+          104540771,
+          107508920,
+          103963816,
+          106007725
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          104658162,
+          106584677,
+          106109450
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 115331544,
+        "candidate": "user",
+        "checksum": "sha256:0f3f6932e44086ce9147af02d04589812c2d774e8ba8709e27e75e2db633d2e1",
+        "columns": 16384,
+        "iqr": 0.1009631153626036,
+        "iterations": 4341,
+        "medianNsPerColumn": 1.5856637908577014,
+        "mibPerSec": 2405.741549765472,
+        "minSampleNs": 102887601,
+        "nsPerColumn": [
+          1.816827323683339,
+          1.5064762926574018,
+          1.671958250209665,
+          1.5856637908577014,
+          1.5739931125460724,
+          1.6741316135620032,
+          1.6344972727788096,
+          1.4466161721314574,
+          1.6600777943050276,
+          1.5220062600333304,
+          1.5621288258258825,
+          1.5305200105327474,
+          1.6151756175897332,
+          1.5915868443241046,
+          1.5795173073825515
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          129218108,
+          107145029,
+          118914593,
+          112777077,
+          111947024,
+          119069169,
+          116250258,
+          102887601,
+          118069620,
+          108249566,
+          111103201,
+          108855089,
+          114876045,
+          113198342,
+          112339921
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          107472108,
+          118293730,
+          121219640
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 107097188,
+        "candidate": "c1",
+        "checksum": "sha256:c2fd2b1ccf4804e2fbdf958b19bb14ce283fae9e305284a4f07b216d70006c33",
+        "columns": 262144,
+        "iqr": 0.08039371610626489,
+        "iterations": 254,
+        "medianNsPerColumn": 1.548951772254283,
+        "mibPerSec": 2462.760515824996,
+        "minSampleNs": 100208754,
+        "nsPerColumn": [
+          1.541136373685101,
+          1.5273446811465767,
+          1.6337788799616295,
+          1.559346807284618,
+          1.6184606927586354,
+          1.548951772254283,
+          1.598855611846203,
+          1.6191900058055486,
+          1.5049844876987728,
+          1.5177686946598563,
+          1.5130496287909079,
+          1.5291841912457322,
+          1.5432519987812192,
+          1.7010061008723703,
+          1.5979355939729947
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          102615912,
+          101697598,
+          108784474,
+          103828446,
+          107764519,
+          103136297,
+          106459123,
+          107813080,
+          100208754,
+          101059985,
+          100745768,
+          101820081,
+          102756780,
+          113260770,
+          106397864
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          104756002,
+          99787864,
+          104808952
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 109226255,
+        "candidate": "baseline-direct",
+        "checksum": "sha256:c2fd2b1ccf4804e2fbdf958b19bb14ce283fae9e305284a4f07b216d70006c33",
+        "columns": 262144,
+        "iqr": 0.06578371132234007,
+        "iterations": 249,
+        "medianNsPerColumn": 1.6266852689076619,
+        "mibPerSec": 2345.0739602422377,
+        "minSampleNs": 94611796,
+        "nsPerColumn": [
+          2.024599190217903,
+          1.5735954989391159,
+          1.6462867307854465,
+          1.6307931003800358,
+          1.6357511344204945,
+          1.6270450147759006,
+          1.6266852689076619,
+          1.8048991161177914,
+          1.5912502549259537,
+          1.4961065882181068,
+          1.5877569573950097,
+          1.5280789141674118,
+          1.710460034718954,
+          1.5768749436221448,
+          1.4494592750886357
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          132153396,
+          102714646,
+          107459483,
+          106448154,
+          106771784,
+          106203502,
+          106180020,
+          117812725,
+          103867040,
+          97656646,
+          103639019,
+          99743603,
+          111648322,
+          102928708,
+          94611796
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          98988169,
+          101323937,
+          101398417
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 86385545,
+        "candidate": "baseline-known",
+        "checksum": "sha256:c2fd2b1ccf4804e2fbdf958b19bb14ce283fae9e305284a4f07b216d70006c33",
+        "columns": 262144,
+        "iqr": 0.12387461889357798,
+        "iterations": 252,
+        "medianNsPerColumn": 1.6085167839413597,
+        "mibPerSec": 2371.5619903435645,
+        "minSampleNs": 94992643,
+        "nsPerColumn": [
+          1.7977930250621976,
+          1.4950572725326297,
+          1.71517394837879,
+          1.6573251542590914,
+          1.641126511588929,
+          1.5380914476182725,
+          1.5871889174930633,
+          1.5447525145515564,
+          1.659260976882208,
+          1.4379689504229833,
+          1.6042597180321103,
+          1.4810227742270818,
+          1.6085167839413597,
+          1.7019316809517997,
+          1.6713322230747767
+        ],
+        "recalibrated": true,
+        "requestedBytes": 1048576,
+        "samples": [
+          118762725,
+          98763914,
+          113304885,
+          109483377,
+          108413290,
+          101606764,
+          104850157,
+          102046796,
+          109611258,
+          94992643,
+          105977859,
+          97836791,
+          106259082,
+          112430097,
+          110408688
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          64411536,
+          63368423,
+          60107410
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 100897070,
+        "candidate": "user",
+        "checksum": "sha256:c2fd2b1ccf4804e2fbdf958b19bb14ce283fae9e305284a4f07b216d70006c33",
+        "columns": 262144,
+        "iqr": 0.07055828648228823,
+        "iterations": 248,
+        "medianNsPerColumn": 1.5838312641266854,
+        "mibPerSec": 2408.5250443192886,
+        "minSampleNs": 95356003,
+        "nsPerColumn": [
+          1.5291865871798607,
+          1.5649499739370039,
+          1.5560251051379788,
+          1.6297797080009215,
+          1.7081531093966575,
+          1.5486314219813193,
+          1.629318775669221,
+          1.649112332251764,
+          1.580497803226594,
+          1.5075737430203346,
+          1.6002611498678885,
+          1.6030792728547127,
+          1.6164543244146532,
+          1.5838312641266854,
+          1.466751144778344
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          99415038,
+          101740077,
+          101159856,
+          105954769,
+          111049958,
+          100679180,
+          105924803,
+          107211616,
+          102750868,
+          98009950,
+          104035717,
+          104218928,
+          105088463,
+          102967582,
+          95356003
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 2,
+        "warmupNs": [
+          104240793,
+          99861571,
+          97644679
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 102261192,
+        "candidate": "c1",
+        "checksum": "sha256:58ca457808e936d51f49c08a93d795b5cbea2664a6ae4084c51e2b99e6f1d6f9",
+        "columns": 1024,
+        "iqr": 0.05113519825165991,
+        "iterations": 65362,
+        "medianNsPerColumn": 1.6008731749477907,
+        "mibPerSec": 2382.885368636031,
+        "minSampleNs": 102810725,
+        "nsPerColumn": [
+          1.552923630487707,
+          1.5736386722933433,
+          1.60219921839142,
+          1.5859428189353142,
+          1.603544699854273,
+          1.6299288153141351,
+          1.5816345709758728,
+          1.6008731749477907,
+          1.7378459489315274,
+          1.8444570448760365,
+          1.5360775164898948,
+          1.570261492007971,
+          1.5776732341373811,
+          1.8637149523997123,
+          1.6236534876199091
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          103938247,
+          105324719,
+          107236296,
+          106148244,
+          107326350,
+          109092257,
+          105859890,
+          107147543,
+          116315225,
+          123450779,
+          102810725,
+          105098682,
+          105594755,
+          124739724,
+          108672245
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          106909304,
+          104619321,
+          105341679
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 99842650,
+        "candidate": "baseline-direct",
+        "checksum": "sha256:58ca457808e936d51f49c08a93d795b5cbea2664a6ae4084c51e2b99e6f1d6f9",
+        "columns": 1024,
+        "iqr": 0.024991777167590712,
+        "iterations": 62754,
+        "medianNsPerColumn": 1.573895221071565,
+        "mibPerSec": 2423.730127999128,
+        "minSampleNs": 97503209,
+        "nsPerColumn": [
+          1.5173212470768795,
+          1.573895221071565,
+          1.592713415803176,
+          1.5954786310932372,
+          1.5902486669176468,
+          1.571453659203995,
+          1.5417695921275936,
+          1.6043424211504447,
+          1.5668183408876326,
+          1.5491800230114814,
+          1.5548748324310004,
+          1.5808011086693676,
+          1.57978318301921,
+          1.566191388820832,
+          1.5756615116167894
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          97503209,
+          101138658,
+          102347917,
+          102525610,
+          102189532,
+          100981763,
+          99074262,
+          103095198,
+          100683897,
+          99550457,
+          99916406,
+          101582431,
+          101517019,
+          100643609,
+          101252160
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          100621708,
+          100316726,
+          100798723
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 104618290,
+        "candidate": "baseline-known",
+        "checksum": "sha256:58ca457808e936d51f49c08a93d795b5cbea2664a6ae4084c51e2b99e6f1d6f9",
+        "columns": 1024,
+        "iqr": 0.0248602975615575,
+        "iterations": 64452,
+        "medianNsPerColumn": 1.5787604656372185,
+        "mibPerSec": 2416.260951964815,
+        "minSampleNs": 102264942,
+        "nsPerColumn": [
+          1.5564360002162463,
+          1.5787604656372185,
+          1.6050758492027013,
+          1.5764880320335288,
+          1.6003188419288774,
+          1.601271555527757,
+          1.5663407791602666,
+          1.5776654465241575,
+          1.5494958639278067,
+          1.6028123248454276,
+          1.6552826346302287,
+          1.583600474359795,
+          1.5753817702999906,
+          1.579851636198256,
+          1.5771803471478776
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          102722983,
+          104196372,
+          105933157,
+          104046394,
+          105619200,
+          105682078,
+          103376687,
+          104124102,
+          102264942,
+          105783767,
+          109246747,
+          104515807,
+          103973382,
+          104268388,
+          104092086
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          104008438,
+          103643213,
+          104468440
+        ]
+      },
+      {
+        "bytes": 4096,
+        "calibrationNs": 102978122,
+        "candidate": "user",
+        "checksum": "sha256:58ca457808e936d51f49c08a93d795b5cbea2664a6ae4084c51e2b99e6f1d6f9",
+        "columns": 1024,
+        "iqr": 0.022504721018540508,
+        "iterations": 65006,
+        "medianNsPerColumn": 1.579346627018083,
+        "mibPerSec": 2415.364176784558,
+        "minSampleNs": 102585606,
+        "nsPerColumn": [
+          1.5558487810259822,
+          1.5855031350471496,
+          1.5884126921937975,
+          1.5946457556562086,
+          1.573913054059433,
+          1.611474505718703,
+          1.5700595485897455,
+          1.579346627018083,
+          1.594336289030051,
+          1.5411078340364737,
+          1.7620998446297265,
+          1.5774768326673692,
+          1.5612036503120865,
+          1.596070323676853,
+          1.5788937391356181
+        ],
+        "recalibrated": false,
+        "requestedBytes": 4096,
+        "samples": [
+          103566854,
+          105540830,
+          105734508,
+          106149419,
+          104769323,
+          107269644,
+          104512810,
+          105131015,
+          106128819,
+          102585606,
+          117296192,
+          105006550,
+          103923307,
+          106244247,
+          105100868
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          106431019,
+          102657571,
+          106787195
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 100255443,
+        "candidate": "c1",
+        "checksum": "sha256:7bf38611f185f226306fe537aa541378e5fd3718c763e14f4cfbcd8c3c9c6e5c",
+        "columns": 16384,
+        "iqr": 0.04322651382619069,
+        "iterations": 3797,
+        "medianNsPerColumn": 1.5970003752448478,
+        "mibPerSec": 2388.6639757615217,
+        "minSampleNs": 96858061,
+        "nsPerColumn": [
+          1.7108125201896645,
+          1.6248284360751497,
+          1.6248064460583602,
+          1.6083135155272665,
+          1.581137439405287,
+          1.5569520377158366,
+          1.573869288768271,
+          1.564397105110737,
+          1.582044415075841,
+          1.6288621895935524,
+          1.6068113466171896,
+          1.7872461696219877,
+          1.5970003752448478,
+          1.590647301863519,
+          1.589142641394522
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          106429729,
+          101080655,
+          101079287,
+          100053261,
+          98362636,
+          96858061,
+          97910484,
+          97321219,
+          98419059,
+          101331595,
+          99959811,
+          111184670,
+          99349470,
+          98954245,
+          98860640
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          121402940,
+          108215364,
+          119027992
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 102043146,
+        "candidate": "baseline-direct",
+        "checksum": "sha256:7bf38611f185f226306fe537aa541378e5fd3718c763e14f4cfbcd8c3c9c6e5c",
+        "columns": 16384,
+        "iqr": 0.04174489992185482,
+        "iterations": 3879,
+        "medianNsPerColumn": 1.600089788867137,
+        "mibPerSec": 2384.052002685302,
+        "minSampleNs": 99043376,
+        "nsPerColumn": [
+          1.6013049690893675,
+          1.6523891605338843,
+          1.6513792088610144,
+          1.619763359823126,
+          1.589572655721312,
+          1.600089788867137,
+          1.5584243180426656,
+          1.5605195279771686,
+          1.5941302463485274,
+          1.6292166969277682,
+          1.6295362700196572,
+          1.5774731873298127,
+          1.602561028232953,
+          1.5771048049946426,
+          1.5880170695773717
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          101768593,
+          105015174,
+          104950988,
+          102941689,
+          101022963,
+          101691364,
+          99043376,
+          99176534,
+          101312614,
+          103542482,
+          103562792,
+          100253999,
+          101848420,
+          100230587,
+          100924100
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          106621055,
+          113216550,
+          111228883
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 99992384,
+        "candidate": "baseline-known",
+        "checksum": "sha256:7bf38611f185f226306fe537aa541378e5fd3718c763e14f4cfbcd8c3c9c6e5c",
+        "columns": 16384,
+        "iqr": 0.031881516979586744,
+        "iterations": 3782,
+        "medianNsPerColumn": 1.6122082609905886,
+        "mibPerSec": 2366.131819273235,
+        "minSampleNs": 98083594,
+        "nsPerColumn": [
+          1.617223230258048,
+          1.6654978913015188,
+          1.6660088630405951,
+          1.6273777889612804,
+          1.5829052050109895,
+          1.6000555997674015,
+          1.595672090995381,
+          1.6122082609905886,
+          1.5958583918530622,
+          1.6282323134254362,
+          1.6134307716083174,
+          1.6406571475492464,
+          1.595988676574481,
+          1.5930060714971823,
+          1.6079161919846476
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          100210086,
+          103201391,
+          103233053,
+          100839306,
+          98083594,
+          99146306,
+          98874685,
+          99899337,
+          98886229,
+          100892256,
+          99975089,
+          101662152,
+          98894302,
+          98709487,
+          99633382
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          132958620,
+          108785953,
+          115201331
+        ]
+      },
+      {
+        "bytes": 65536,
+        "calibrationNs": 112656592,
+        "candidate": "user",
+        "checksum": "sha256:7bf38611f185f226306fe537aa541378e5fd3718c763e14f4cfbcd8c3c9c6e5c",
+        "columns": 16384,
+        "iqr": 0.06462245377844078,
+        "iterations": 3799,
+        "medianNsPerColumn": 1.5903798761289978,
+        "mibPerSec": 2398.6076049390263,
+        "minSampleNs": 97113630,
+        "nsPerColumn": [
+          1.5903798761289978,
+          1.9648357330105373,
+          1.6502468654374507,
+          1.5913913502885217,
+          1.5714342198142193,
+          1.5670959842176806,
+          1.5602383735337424,
+          1.5607601847577077,
+          1.592899331546953,
+          1.5661669934727889,
+          1.6340227440866428,
+          1.6607498606746842,
+          1.5795748380021881,
+          1.568178663381811,
+          1.6304968110697304
+        ],
+        "recalibrated": false,
+        "requestedBytes": 65536,
+        "samples": [
+          98989722,
+          122296909,
+          102716012,
+          99052679,
+          97810491,
+          97540467,
+          97113630,
+          97146109,
+          99146540,
+          97482644,
+          101706177,
+          103369748,
+          98317186,
+          97607856,
+          101486713
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          106163623,
+          111952123,
+          108176846
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 103158189,
+        "candidate": "c1",
+        "checksum": "sha256:ba379ee6ea2be6b39caa89ccd512f7129286a075aa8135415f1377b73fab8386",
+        "columns": 262144,
+        "iqr": 0.22851074536641458,
+        "iterations": 240,
+        "medianNsPerColumn": 1.7066870053609213,
+        "mibPerSec": 2235.147542368665,
+        "minSampleNs": 100983429,
+        "nsPerColumn": [
+          1.6114256699879965,
+          1.6050883769989013,
+          1.7134867827097575,
+          1.8106865882873535,
+          1.8059743086496989,
+          1.7066870053609213,
+          1.6829186757405599,
+          1.6234330177307128,
+          1.6612844626108805,
+          1.6143499851226806,
+          1.6533183733622232,
+          2.1259536584218344,
+          1.9345134576161702,
+          2.282355054219564,
+          1.9230862935384114
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          101382137,
+          100983429,
+          107803267,
+          113918550,
+          113622079,
+          107375462,
+          105880088,
+          102137574,
+          104518981,
+          101566119,
+          104017798,
+          133753439,
+          121709063,
+          143593364,
+          120990128
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          105613947,
+          107288153,
+          100898804
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 99131570,
+        "candidate": "baseline-direct",
+        "checksum": "sha256:ba379ee6ea2be6b39caa89ccd512f7129286a075aa8135415f1377b73fab8386",
+        "columns": 262144,
+        "iqr": 0.0680956964907442,
+        "iterations": 230,
+        "medianNsPerColumn": 1.6423521622367527,
+        "mibPerSec": 2322.703591432964,
+        "minSampleNs": 96788438,
+        "nsPerColumn": [
+          1.6370673304018768,
+          1.6087428051492443,
+          1.6427026997441831,
+          1.6900013467539912,
+          1.6244797084642493,
+          1.9384646208389946,
+          1.6113378773564877,
+          1.6052982164465863,
+          1.6864065419072691,
+          1.6423521622367527,
+          1.7292442321777344,
+          1.6369351262631624,
+          1.615736787215523,
+          2.117964802617612,
+          1.6542763751486074
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          98703897,
+          96996123,
+          99043671,
+          101895454,
+          97944950,
+          116876080,
+          97152588,
+          96788438,
+          101678712,
+          99022536,
+          104261530,
+          98695926,
+          97417812,
+          127698706,
+          99741484
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          100332761,
+          115140063,
+          109795622
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 99447322,
+        "candidate": "baseline-known",
+        "checksum": "sha256:ba379ee6ea2be6b39caa89ccd512f7129286a075aa8135415f1377b73fab8386",
+        "columns": 262144,
+        "iqr": 0.073310739380398,
+        "iterations": 237,
+        "medianNsPerColumn": 1.6508043023604382,
+        "mibPerSec": 2310.8113179560246,
+        "minSampleNs": 98158440,
+        "nsPerColumn": [
+          1.6083167353762855,
+          1.5907374031936066,
+          1.6048012101700537,
+          1.6508043023604382,
+          1.664335934924677,
+          1.8013023505230996,
+          1.60440242139599,
+          1.5799355808692643,
+          1.6079673767089844,
+          1.68377056202305,
+          1.602703110578191,
+          1.670040275477156,
+          1.7584539163967727,
+          1.90756710068586,
+          1.6720545483037892
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          99921708,
+          98829537,
+          99703295,
+          102561381,
+          103402076,
+          111911543,
+          99678519,
+          98158440,
+          99900003,
+          104609513,
+          99572944,
+          103756476,
+          109249450,
+          118513573,
+          103881619
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          103830949,
+          111829049,
+          101176144
+        ]
+      },
+      {
+        "bytes": 1048576,
+        "calibrationNs": 102111871,
+        "candidate": "user",
+        "checksum": "sha256:ba379ee6ea2be6b39caa89ccd512f7129286a075aa8135415f1377b73fab8386",
+        "columns": 262144,
+        "iqr": 0.08923961735573127,
+        "iterations": 238,
+        "medianNsPerColumn": 1.6513549580293543,
+        "mibPerSec": 2310.040762028094,
+        "minSampleNs": 99624485,
+        "nsPerColumn": [
+          1.5979402526086117,
+          1.6905132902770483,
+          1.6263426612405216,
+          1.596795170247054,
+          1.6369660161122555,
+          1.7423610206411666,
+          1.665335038129021,
+          1.6149258172812582,
+          1.611790953564043,
+          1.6513549580293543,
+          2.0735237378032267,
+          1.8073299472071545,
+          1.6887466206270105,
+          1.6486651316410352,
+          1.7292344229561942
+        ],
+        "recalibrated": false,
+        "requestedBytes": 1048576,
+        "samples": [
+          99695927,
+          105471584,
+          101467961,
+          99624485,
+          102130755,
+          108706378,
+          103900706,
+          100755661,
+          100560076,
+          103028485,
+          129367710,
+          112759807,
+          105361361,
+          102860666,
+          107887406
+        ],
+        "samplesBelowMinimum": 0,
+        "samplesConsistent": true,
+        "session": 3,
+        "warmupNs": [
+          103119409,
+          115149960,
+          102111613
+        ]
+      }
+    ],
+    "comparisons": [
+      {
+        "baseline": "baseline-direct",
+        "bytes": 4096,
+        "candidate": "c1",
+        "ci95": [
+          0.9791115514062911,
+          1.0329101004704628
+        ],
+        "primary": false,
+        "ratio": 1.0083078432934192,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 4096,
+        "candidate": "c1",
+        "ci95": [
+          0.9706362875262043,
+          1.0137050733192408
+        ],
+        "primary": false,
+        "ratio": 1.0022041553571939,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "user",
+        "bytes": 4096,
+        "candidate": "c1",
+        "ci95": [
+          0.9434742882481058,
+          1.004483819803759
+        ],
+        "primary": false,
+        "ratio": 0.986989233046777,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 4096,
+        "candidate": "user",
+        "ci95": [
+          1.0080876703143593,
+          1.037134878482149
+        ],
+        "primary": false,
+        "ratio": 1.0240506717274962,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 4096,
+        "candidate": "user",
+        "ci95": [
+          0.9960035498332143,
+          1.0278177660106078
+        ],
+        "primary": false,
+        "ratio": 1.003848110932746,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 65536,
+        "candidate": "c1",
+        "ci95": [
+          0.9709284877902472,
+          1.0288555211810886
+        ],
+        "primary": true,
+        "ratio": 1.0089821515913837,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 65536,
+        "candidate": "c1",
+        "ci95": [
+          0.9668518830477384,
+          1.0278521175393995
+        ],
+        "primary": true,
+        "ratio": 1.0044105285629832,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "user",
+        "bytes": 65536,
+        "candidate": "c1",
+        "ci95": [
+          0.9881143593828221,
+          1.0327606277879873
+        ],
+        "primary": true,
+        "ratio": 0.9997524159501587,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 65536,
+        "candidate": "user",
+        "ci95": [
+          0.9821488092986667,
+          1.0091258506760525
+        ],
+        "primary": true,
+        "ratio": 1.0014026605022475,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 65536,
+        "candidate": "user",
+        "ci95": [
+          0.9725492060190891,
+          1.005588613416254
+        ],
+        "primary": true,
+        "ratio": 0.9889930314966039,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 1048576,
+        "candidate": "c1",
+        "ci95": [
+          0.9833066481179494,
+          1.0208251125755237
+        ],
+        "primary": false,
+        "ratio": 0.9943414972397868,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 1048576,
+        "candidate": "c1",
+        "ci95": [
+          0.9713402209000835,
+          1.0145552463558174
+        ],
+        "primary": false,
+        "ratio": 0.9920785416157245,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "user",
+        "bytes": 1048576,
+        "candidate": "c1",
+        "ci95": [
+          1.005406102551192,
+          1.024465976967767
+        ],
+        "primary": false,
+        "ratio": 1.0098068909360995,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 1048576,
+        "candidate": "user",
+        "ci95": [
+          0.97582682227674,
+          0.9971842455144447
+        ],
+        "primary": false,
+        "ratio": 0.9853078517590932,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 1048576,
+        "candidate": "user",
+        "ci95": [
+          0.9577948016148355,
+          0.992884671867285
+        ],
+        "primary": false,
+        "ratio": 0.9825441640796942,
+        "rounds": 15,
+        "session": 1
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 4096,
+        "candidate": "c1",
+        "ci95": [
+          0.9833473440158441,
+          1.0224861594532269
+        ],
+        "primary": false,
+        "ratio": 0.9945601557561451,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 4096,
+        "candidate": "c1",
+        "ci95": [
+          0.9700328618698963,
+          1.0344984654037361
+        ],
+        "primary": false,
+        "ratio": 1.0063927488624056,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "user",
+        "bytes": 4096,
+        "candidate": "c1",
+        "ci95": [
+          0.9701356935087256,
+          1.0348319101892585
+        ],
+        "primary": false,
+        "ratio": 0.997846516418891,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 4096,
+        "candidate": "user",
+        "ci95": [
+          0.9792167012316749,
+          1.0163118461071325
+        ],
+        "primary": false,
+        "ratio": 0.9997974769928367,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 4096,
+        "candidate": "user",
+        "ci95": [
+          0.9757946468528176,
+          1.0167221199937946
+        ],
+        "primary": false,
+        "ratio": 0.9965562256566021,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 65536,
+        "candidate": "c1",
+        "ci95": [
+          0.978527831792433,
+          1.0118676923003453
+        ],
+        "primary": true,
+        "ratio": 1.002167660064104,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 65536,
+        "candidate": "c1",
+        "ci95": [
+          0.9728375025460831,
+          1.0839830791802687
+        ],
+        "primary": true,
+        "ratio": 1.0261117938163216,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "user",
+        "bytes": 65536,
+        "candidate": "c1",
+        "ci95": [
+          0.9838166290566362,
+          1.0571670503866808
+        ],
+        "primary": true,
+        "ratio": 1.0153538093703187,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 65536,
+        "candidate": "user",
+        "ci95": [
+          0.957150236502579,
+          1.0015988525650734
+        ],
+        "primary": true,
+        "ratio": 0.9728982706020104,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 65536,
+        "candidate": "user",
+        "ci95": [
+          0.9716113598833838,
+          1.0182315503994952
+        ],
+        "primary": true,
+        "ratio": 0.9888402714629039,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 1048576,
+        "candidate": "c1",
+        "ci95": [
+          0.9992772112838676,
+          1.0573200374703446
+        ],
+        "primary": false,
+        "ratio": 1.030281846896418,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 1048576,
+        "candidate": "c1",
+        "ci95": [
+          0.9788604307773482,
+          1.0602822851978022
+        ],
+        "primary": false,
+        "ratio": 1.0140045531730897,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "user",
+        "bytes": 1048576,
+        "candidate": "c1",
+        "ci95": [
+          0.9932829345634867,
+          1.04832320529601
+        ],
+        "primary": false,
+        "ratio": 1.0190531049816576,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 1048576,
+        "candidate": "user",
+        "ci95": [
+          0.9923936358965406,
+          1.0506341222847324
+        ],
+        "primary": false,
+        "ratio": 1.000621797150952,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 1048576,
+        "candidate": "user",
+        "ci95": [
+          0.9553386992757714,
+          1.0498344088139944
+        ],
+        "primary": false,
+        "ratio": 0.9950895361821201,
+        "rounds": 15,
+        "session": 2
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 4096,
+        "candidate": "c1",
+        "ci95": [
+          0.9641241043407958,
+          1.0021670962178295
+        ],
+        "primary": false,
+        "ratio": 0.9917083490483086,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 4096,
+        "candidate": "c1",
+        "ci95": [
+          0.9824180911969121,
+          1.0017954264227948
+        ],
+        "primary": false,
+        "ratio": 0.9940383809624784,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "user",
+        "bytes": 4096,
+        "candidate": "c1",
+        "ci95": [
+          0.9724326964924618,
+          1.0045949930607874
+        ],
+        "primary": false,
+        "ratio": 0.9895608396790102,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 4096,
+        "candidate": "user",
+        "ci95": [
+          0.9812796877350686,
+          1.0027075605921019
+        ],
+        "primary": false,
+        "ratio": 0.9979528530396237,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 4096,
+        "candidate": "user",
+        "ci95": [
+          0.993668562453369,
+          1.0090815314101205
+        ],
+        "primary": false,
+        "ratio": 0.9989148148825527,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 65536,
+        "candidate": "c1",
+        "ci95": [
+          0.9975213600684246,
+          1.0076393754546435
+        ],
+        "primary": true,
+        "ratio": 1.0034819359308245,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 65536,
+        "candidate": "c1",
+        "ci95": [
+          0.9996133029717674,
+          1.0250299996746783
+        ],
+        "primary": true,
+        "ratio": 1.0087317250044203,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "user",
+        "bytes": 65536,
+        "candidate": "c1",
+        "ci95": [
+          0.9858745314216516,
+          1.015657507662409
+        ],
+        "primary": true,
+        "ratio": 0.9938631396934617,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 65536,
+        "candidate": "user",
+        "ci95": [
+          0.9988373215773637,
+          1.014552137497858
+        ],
+        "primary": true,
+        "ratio": 1.0007727511570859,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 65536,
+        "candidate": "user",
+        "ci95": [
+          1.0018576568195527,
+          1.021032288948258
+        ],
+        "primary": true,
+        "ratio": 1.010391301619525,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 1048576,
+        "candidate": "c1",
+        "ci95": [
+          0.8995032214377675,
+          1.0159124065673295
+        ],
+        "primary": false,
+        "ratio": 0.9586900326983355,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 1048576,
+        "candidate": "c1",
+        "ci95": [
+          0.908990273225419,
+          0.991059075617925
+        ],
+        "primary": false,
+        "ratio": 0.9533451880495537,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "user",
+        "bytes": 1048576,
+        "candidate": "c1",
+        "ci95": [
+          0.8818727551063325,
+          1.020902494228988
+        ],
+        "primary": false,
+        "ratio": 0.9702076855826043,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-direct",
+        "bytes": 1048576,
+        "candidate": "user",
+        "ci95": [
+          0.9566524660783452,
+          1.024485945409655
+        ],
+        "primary": false,
+        "ratio": 0.99403836341481,
+        "rounds": 15,
+        "session": 3
+      },
+      {
+        "baseline": "baseline-known",
+        "bytes": 1048576,
+        "candidate": "user",
+        "ci95": [
+          0.9634111963431167,
+          1.0196297009531972
+        ],
+        "primary": false,
+        "ratio": 0.9976277464229442,
+        "rounds": 15,
+        "session": 3
+      }
+    ],
+    "sessions": [
+      {
+        "session": 1,
+        "checksumsAgree": true,
+        "samplesConsistent": true
+      },
+      {
+        "session": 2,
+        "checksumsAgree": true,
+        "samplesConsistent": true
+      },
+      {
+        "session": 3,
+        "checksumsAgree": true,
+        "samplesConsistent": true
+      }
+    ],
+    "verdict": "inconclusive"
+  },
+  "execution": {
+    "state": "completed",
+    "steps": [
+      {
+        "name": "validate",
+        "state": "completed",
+        "ms": 6
+      },
+      {
+        "name": "search",
+        "state": "completed",
+        "detail": "8 generated, 1 shortlisted",
+        "ms": 10
+      },
+      {
+        "name": "equivalence",
+        "state": "completed",
+        "detail": "4 proved",
+        "ms": 18156
+      },
+      {
+        "name": "native-correctness",
+        "state": "completed",
+        "ms": 19857
+      },
+      {
+        "name": "benchmark-1",
+        "state": "completed",
+        "ms": 25540,
+        "detail": "frozen c1"
+      },
+      {
+        "name": "benchmark-2",
+        "state": "completed",
+        "ms": 25307,
+        "detail": "confirming c1"
+      },
+      {
+        "name": "benchmark-3",
+        "state": "completed",
+        "ms": 25621,
+        "detail": "confirming c1"
+      },
+      {
+        "name": "report",
+        "state": "completed",
+        "ms": 0
+      }
+    ]
+  },
+  "provenance": {
+    "origin": "live",
+    "checker": "cryptificate 0.1.0 (e74b8e6)",
+    "toolchain": {
+      "lean": "v4.33.1",
+      "mathlib": "v4.33.1",
+      "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298",
+      "rustc": "rustc 1.97.0 (2d8144b78)"
+    }
+  },
+  "checkpoints": [
+    {
+      "name": "validate",
+      "state": "completed",
+      "ms": 6
+    },
+    {
+      "name": "search",
+      "state": "completed",
+      "detail": "8 generated, 1 shortlisted",
+      "ms": 10
+    },
+    {
+      "name": "equivalence",
+      "state": "completed",
+      "detail": "4 proved",
+      "ms": 18156
+    },
+    {
+      "name": "native-correctness",
+      "state": "completed",
+      "ms": 19857
+    },
+    {
+      "name": "benchmark-1",
+      "state": "completed",
+      "ms": 25540,
+      "detail": "frozen c1"
+    },
+    {
+      "name": "benchmark-2",
+      "state": "completed",
+      "ms": 25307,
+      "detail": "confirming c1"
+    },
+    {
+      "name": "benchmark-3",
+      "state": "completed",
+      "ms": 25621,
+      "detail": "confirming c1"
+    },
+    {
+      "name": "report",
+      "state": "completed",
+      "ms": 0
+    }
+  ]
+}

@@ -1,0 +1,283 @@
+{
+  "kind": "analysis",
+  "id": "46ed3f101b10988d83bd4d768729da48",
+  "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4",
+  "inputs": {
+    "design": {
+      "constants": {
+        "kind": "reference"
+      },
+      "external": [
+        [
+          "2",
+          "1",
+          "1"
+        ],
+        [
+          "1",
+          "2",
+          "1"
+        ],
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "field": "bn254",
+      "fullRounds": 8,
+      "internal": [
+        [
+          "2",
+          "1",
+          "1"
+        ],
+        [
+          "1",
+          "2",
+          "1"
+        ],
+        [
+          "1",
+          "1",
+          "3"
+        ]
+      ],
+      "model": "hades/bn254/v1",
+      "partialMask": [
+        true,
+        false,
+        false
+      ],
+      "partialRounds": 56,
+      "sbox": {
+        "exponent": 3,
+        "kind": "power"
+      },
+      "width": 3
+    },
+    "program": {
+      "field": "bn254",
+      "instructions": [
+        {
+          "a": 0,
+          "b": 1,
+          "op": "add"
+        },
+        {
+          "a": 3,
+          "b": 2,
+          "op": "add"
+        },
+        {
+          "a": 4,
+          "b": 0,
+          "op": "add"
+        },
+        {
+          "a": 4,
+          "b": 1,
+          "op": "add"
+        },
+        {
+          "a": 4,
+          "b": 2,
+          "op": "add"
+        }
+      ],
+      "name": "bn254-shared-sum",
+      "outputs": [
+        5,
+        6,
+        7
+      ],
+      "width": 3
+    },
+    "target": "external"
+  },
+  "claims": [
+    {
+      "id": "external.mds",
+      "chain": "design",
+      "title": "External matrix is MDS (branch number 4)",
+      "status": "proved",
+      "evidence": {
+        "kind": "lean",
+        "label": "Lean-checked proof",
+        "theorem": "CryptificateJob.external_mds",
+        "type": "IsMDS CryptificateJob.candExternal",
+        "axioms": [
+          "propext",
+          "Classical.choice",
+          "Quot.sound"
+        ]
+      },
+      "witness": null,
+      "note": "Lean checked CryptificateJob.external_mds using only the standard axioms."
+    },
+    {
+      "id": "internal.invertible",
+      "chain": "design",
+      "title": "Internal matrix is invertible",
+      "status": "proved",
+      "evidence": {
+        "kind": "lean",
+        "label": "Lean-checked proof",
+        "theorem": "CryptificateJob.internal_invertible",
+        "type": "CryptificateJob.candInternal.det ≠ 0",
+        "axioms": [
+          "propext",
+          "Classical.choice",
+          "Quot.sound"
+        ]
+      },
+      "witness": null,
+      "note": "Lean checked CryptificateJob.internal_invertible using only the standard axioms."
+    },
+    {
+      "id": "sbox.bijective",
+      "chain": "design",
+      "title": "Power S-box is a permutation",
+      "status": "refuted",
+      "evidence": {
+        "kind": "lean",
+        "label": "Lean-checked counterexample",
+        "theorem": "CryptificateJob.power_not_injective",
+        "type": "¬Function.Injective fun x => x ^ CryptificateJob.candExponent",
+        "axioms": [
+          "propext",
+          "Classical.choice",
+          "Quot.sound"
+        ]
+      },
+      "witness": {
+        "exponent": 3,
+        "kind": "power-collision",
+        "note": "omega^3 = 1 = 1^3, where omega = 3^((p-1)/3) is not 1",
+        "x1": "1",
+        "x2": "4407920970296243842393367215006156084916469457145843978461"
+      },
+      "note": "Lean checked a counterexample (CryptificateJob.power_not_injective)."
+    },
+    {
+      "id": "activity.outer",
+      "chain": "design",
+      "title": "Active S-box bound for the full rounds",
+      "status": "not_established",
+      "evidence": {
+        "kind": "diagnostic",
+        "label": "Unchecked diagnostic"
+      },
+      "witness": null,
+      "note": "Not established by this method: the bound needs a bijective S-box to be proved first. This is not a refutation.",
+      "reason": "precondition-failed"
+    },
+    {
+      "id": "circuit.equivalence",
+      "chain": "implementation",
+      "title": "Circuit computes the design matrix",
+      "status": "proved",
+      "evidence": {
+        "kind": "lean",
+        "label": "Lean-checked circuit equivalence",
+        "theorem": "CryptificateJob.circuit_equivalence",
+        "type": "CryptificateJob.candProgram.WellFormed ∧ ∀ (x : Fin 3 → Poseidon2.BN254.F), CryptificateJob.candProgram.eval x = CryptificateJob.candExternal.mulVec x",
+        "axioms": [
+          "propext",
+          "Classical.choice",
+          "Quot.sound"
+        ]
+      },
+      "witness": null,
+      "note": "Lean checked CryptificateJob.circuit_equivalence using only the standard axioms."
+    },
+    {
+      "id": "native.correctness",
+      "chain": "implementation",
+      "title": "Generated Rust matches the reference",
+      "status": "proved",
+      "evidence": {
+        "kind": "native",
+        "label": "Generated Rust passed 8278 correctness cases",
+        "cases": 8278
+      },
+      "witness": null,
+      "note": "Generated Rust matched the independently computed matrix product on all 8278 test vectors. This is testing, not a proof."
+    },
+    {
+      "id": "rust.refinement",
+      "chain": "implementation",
+      "title": "Rust kernel refines the Lean model",
+      "status": "unsupported",
+      "evidence": {
+        "kind": "diagnostic",
+        "label": "Unchecked diagnostic"
+      },
+      "witness": null,
+      "note": "Refinement proofs exist for the GF(2^8) kernels only; BN254 arithmetic is not covered.",
+      "reason": "out-of-scope"
+    },
+    {
+      "id": "native.timing",
+      "chain": "implementation",
+      "title": "Native speed on this machine",
+      "status": "not_established",
+      "evidence": {
+        "kind": "diagnostic",
+        "label": "Unchecked diagnostic"
+      },
+      "witness": null,
+      "note": "Timing is measured by experiments, not by an analysis.",
+      "reason": "not-run"
+    }
+  ],
+  "execution": {
+    "state": "completed",
+    "steps": [
+      {
+        "name": "validate",
+        "state": "completed",
+        "ms": 4
+      },
+      {
+        "name": "diagnose",
+        "state": "completed",
+        "ms": 4
+      },
+      {
+        "name": "emit-lean",
+        "state": "completed",
+        "ms": 5,
+        "detail": "4 theorem(s)"
+      },
+      {
+        "name": "lean",
+        "state": "completed",
+        "detail": "4/4 theorem(s) accepted",
+        "ms": 3307
+      },
+      {
+        "name": "native",
+        "state": "completed",
+        "ms": 198
+      },
+      {
+        "name": "report",
+        "state": "completed",
+        "ms": 0
+      }
+    ]
+  },
+  "provenance": {
+    "origin": "live",
+    "checker": "cryptificate 0.1.0 (e74b8e6)",
+    "toolchain": {
+      "lean": "v4.33.1",
+      "mathlib": "v4.33.1",
+      "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298",
+      "rustc": "rustc 1.97.0 (2d8144b78)"
+    },
+    "leanSourceSha256": "9f30b5ef81f0e93bb17c058ed628b37ece05f65be03479d1462e3d20ea243b1b",
+    "cacheKey": "6288bb3b9c071138b2bcc816d48e1ffe95713a2a97bb5cdea6619ad9cfbd4a28"
+  }
+}
