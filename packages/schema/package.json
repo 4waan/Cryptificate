@@ -1,0 +1,27 @@
+{
+  "name": "@cryptificate/schema",
+  "version": "0.1.0",
+  "description": "Public JSON types, constants and request validators for Cryptificate",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist/src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test \"dist/test/**/*.test.js\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "~5.9.3"
+  }
+}
