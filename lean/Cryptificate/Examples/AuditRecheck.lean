@@ -11,11 +11,13 @@ theorem is rejected with the kernel's own error, a genuine one is reported, and 
 refused because only theorems are audited.
 -/
 
+namespace Cryptificate.Examples.AuditRecheck
+
 set_option debug.skipKernelTC true in
 theorem unchecked : 2 + 2 = 5 := by decide +kernel
 
 /--
-error: #cryptificate_audit: the kernel rejects 'unchecked._proof_1_1': (kernel) application type mismatch
+error: #cryptificate_audit: the kernel rejects 'Cryptificate.Examples.AuditRecheck.unchecked._proof_1_1': (kernel) application type mismatch
   id (Eq.refl true)
 argument has type
   true = true
@@ -27,12 +29,14 @@ but function has type
 
 theorem checked : 2 + 2 = 4 := by decide +kernel
 
-/-- info: CRYPTIFICATE_AUDIT {"theorem":"checked","type":"2 + 2 = 4","axioms":[]} -/
+/-- info: CRYPTIFICATE_AUDIT {"theorem":"Cryptificate.Examples.AuditRecheck.checked","type":"2 + 2 = 4","axioms":[]} -/
 #guard_msgs in
 #cryptificate_audit checked
 
 def answer : Nat := 42
 
-/-- error: #cryptificate_audit: 'answer' is not a theorem -/
+/-- error: #cryptificate_audit: 'Cryptificate.Examples.AuditRecheck.answer' is not a theorem -/
 #guard_msgs in
 #cryptificate_audit answer
+
+end Cryptificate.Examples.AuditRecheck
