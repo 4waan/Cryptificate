@@ -100,8 +100,8 @@ setup_refinement() {
     elan toolchain install "$toolchain"
   fi
   cd "$ROOT/refinement"
-  # Aeneas's lakefile precompiles its modules unless CI is set; with CI=1 Lake uses
-  # the Aeneas release build instead of rebuilding the library from source.
+  # Aeneas's lakefile precompiles AeneasMeta unless CI is set, which the release build
+  # does not do; with CI=1 Lake uses the Aeneas release build instead of recompiling.
   if [ ! -d .lake/packages/mathlib/.lake/build/lib ]; then
     if needs_network "refinement Lake packages and Mathlib cache"; then
       CI=1 lake exe cache get
