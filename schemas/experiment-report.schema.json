@@ -3,42 +3,113 @@
   "$id": "https://github.com/4waan/Cryptificate/schemas/experiment-report.schema.json",
   "title": "ExperimentReport",
   "type": "object",
-  "required": ["kind", "id", "inputDigest", "profile", "search", "candidates", "measurements", "provenance", "checkpoints"],
+  "required": [
+    "kind",
+    "id",
+    "inputDigest",
+    "profile",
+    "search",
+    "candidates",
+    "measurements",
+    "provenance",
+    "checkpoints"
+  ],
   "properties": {
-    "kind": { "const": "experiment" },
-    "id": { "type": "string" },
-    "inputDigest": { "type": "string" },
-    "profile": { "enum": ["quick", "research"] },
-    "inputs": { "$ref": "experiment-request.schema.json" },
+    "kind": {
+      "const": "experiment"
+    },
+    "id": {
+      "type": "string"
+    },
+    "inputDigest": {
+      "type": "string"
+    },
+    "profile": {
+      "enum": [
+        "quick",
+        "research"
+      ]
+    },
+    "inputs": {
+      "$ref": "experiment-request.schema.json"
+    },
     "search": {
       "oneOf": [
-        { "type": "null" },
+        {
+          "type": "null"
+        },
         {
           "type": "object",
-          "required": ["seed", "budget", "generated", "history", "shortlist"],
+          "required": [
+            "seed",
+            "budget",
+            "generated",
+            "history",
+            "shortlist"
+          ],
           "properties": {
-            "seed": { "type": "string" },
-            "budget": { "type": "object" },
-            "generated": { "type": "integer", "minimum": 0 },
+            "seed": {
+              "type": "string"
+            },
+            "budget": {
+              "type": "object",
+              "description": "Budget the search ran under, as reported by the engine."
+            },
+            "generated": {
+              "type": "integer",
+              "minimum": 0
+            },
             "history": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["id", "ops", "depth", "temps", "symbolic"],
+                "required": [
+                  "id",
+                  "ops",
+                  "depth",
+                  "temps",
+                  "symbolic"
+                ],
                 "properties": {
-                  "id": { "type": "string" },
+                  "id": {
+                    "type": "string"
+                  },
                   "ops": {
                     "type": "object",
-                    "required": ["add", "mul"],
-                    "properties": { "add": { "type": "integer" }, "mul": { "type": "integer" } }
+                    "required": [
+                      "add",
+                      "mul"
+                    ],
+                    "properties": {
+                      "add": {
+                        "type": "integer"
+                      },
+                      "mul": {
+                        "type": "integer"
+                      }
+                    }
                   },
-                  "depth": { "type": "integer" },
-                  "temps": { "type": "integer" },
-                  "symbolic": { "enum": ["pass", "reject"] }
+                  "depth": {
+                    "type": "integer"
+                  },
+                  "temps": {
+                    "type": "integer"
+                  },
+                  "symbolic": {
+                    "enum": [
+                      "pass",
+                      "reject"
+                    ]
+                  }
                 }
               }
             },
-            "shortlist": { "type": "array", "items": { "type": "string" } }
+            "shortlist": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         }
       ]
@@ -47,22 +118,54 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "program", "origin", "equivalence", "native"],
+        "required": [
+          "id",
+          "program",
+          "origin",
+          "equivalence",
+          "native"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "program": { "$ref": "program.schema.json" },
-          "origin": { "enum": ["search", "baseline-direct", "baseline-known", "user"] },
-          "equivalence": { "$ref": "claim.schema.json" },
+          "id": {
+            "type": "string"
+          },
+          "program": {
+            "$ref": "program.schema.json"
+          },
+          "origin": {
+            "enum": [
+              "search",
+              "baseline-direct",
+              "baseline-known",
+              "user"
+            ]
+          },
+          "equivalence": {
+            "$ref": "claim.schema.json"
+          },
           "native": {
             "oneOf": [
-              { "type": "null" },
+              {
+                "type": "null"
+              },
               {
                 "type": "object",
-                "required": ["cases", "passed", "checksum"],
+                "required": [
+                  "cases",
+                  "passed",
+                  "checksum"
+                ],
                 "properties": {
-                  "cases": { "type": "integer", "minimum": 0 },
-                  "passed": { "type": "boolean" },
-                  "checksum": { "type": "string" }
+                  "cases": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "passed": {
+                    "type": "boolean"
+                  },
+                  "checksum": {
+                    "type": "string"
+                  }
                 }
               }
             ]
@@ -72,36 +175,85 @@
     },
     "measurements": {
       "oneOf": [
-        { "type": "null" },
+        {
+          "type": "null"
+        },
         {
           "type": "object",
-          "required": ["machine", "workloads", "comparisons", "verdict"],
+          "required": [
+            "machine",
+            "workloads",
+            "comparisons",
+            "verdict"
+          ],
           "properties": {
             "machine": {
               "type": "object",
-              "required": ["cpu", "os", "ramMiB", "rustc", "flags"],
+              "required": [
+                "cpu",
+                "os",
+                "ramMiB",
+                "rustc",
+                "flags"
+              ],
               "properties": {
-                "cpu": { "type": "string" },
-                "os": { "type": "string" },
-                "ramMiB": { "type": "number" },
-                "rustc": { "type": "string" },
-                "flags": { "type": "string" }
+                "cpu": {
+                  "type": "string"
+                },
+                "os": {
+                  "type": "string"
+                },
+                "ramMiB": {
+                  "type": "number"
+                },
+                "rustc": {
+                  "type": "string"
+                },
+                "flags": {
+                  "type": "string"
+                }
               }
             },
             "workloads": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["bytes", "columns", "samples", "medianNsPerColumn", "iqr", "mibPerSec"],
+                "required": [
+                  "bytes",
+                  "columns",
+                  "samples",
+                  "medianNsPerColumn",
+                  "iqr",
+                  "mibPerSec"
+                ],
                 "properties": {
-                  "candidate": { "type": "string" },
-                  "bytes": { "type": "integer" },
-                  "columns": { "type": "integer" },
-                  "samples": { "type": "array", "items": { "type": "number" } },
-                  "medianNsPerColumn": { "type": "number" },
-                  "iqr": { "type": "number" },
-                  "mibPerSec": { "type": "number" },
-                  "session": { "type": "integer" }
+                  "candidate": {
+                    "type": "string"
+                  },
+                  "bytes": {
+                    "type": "integer"
+                  },
+                  "columns": {
+                    "type": "integer"
+                  },
+                  "samples": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "medianNsPerColumn": {
+                    "type": "number"
+                  },
+                  "iqr": {
+                    "type": "number"
+                  },
+                  "mibPerSec": {
+                    "type": "number"
+                  },
+                  "session": {
+                    "type": "integer"
+                  }
                 }
               }
             },
@@ -109,24 +261,66 @@
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["candidate", "baseline", "ratio", "ci95", "session"],
+                "required": [
+                  "candidate",
+                  "baseline",
+                  "ratio",
+                  "ci95",
+                  "session"
+                ],
                 "properties": {
-                  "candidate": { "type": "string" },
-                  "baseline": { "type": "string" },
-                  "ratio": { "type": "number" },
-                  "ci95": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } },
-                  "session": { "type": "integer" },
-                  "bytes": { "type": "integer" }
+                  "candidate": {
+                    "type": "string"
+                  },
+                  "baseline": {
+                    "type": "string"
+                  },
+                  "ratio": {
+                    "type": "number"
+                  },
+                  "ci95": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "session": {
+                    "type": "integer"
+                  },
+                  "bytes": {
+                    "type": "integer"
+                  },
+                  "primary": {
+                    "type": "boolean",
+                    "description": "Set on comparisons at the primary workload (64 KiB)."
+                  }
                 }
               }
             },
-            "verdict": { "enum": ["locally confirmed", "inconclusive", "no improvement"] }
+            "verdict": {
+              "enum": [
+                "locally confirmed",
+                "inconclusive",
+                "no improvement"
+              ]
+            }
           }
         }
       ]
     },
-    "execution": { "$ref": "provenance.schema.json#/$defs/execution" },
-    "provenance": { "$ref": "provenance.schema.json#/$defs/provenance" },
-    "checkpoints": { "type": "array", "items": { "$ref": "provenance.schema.json#/$defs/step" } }
+    "execution": {
+      "$ref": "provenance.schema.json#/$defs/execution"
+    },
+    "provenance": {
+      "$ref": "provenance.schema.json#/$defs/provenance"
+    },
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "$ref": "provenance.schema.json#/$defs/step"
+      }
+    }
   }
 }
