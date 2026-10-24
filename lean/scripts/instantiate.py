@@ -16,7 +16,9 @@ engine:
       "audit": ["circuit_equivalence"]
     }
 
-Audit names without a dot are taken in the ``CryptificateJob`` namespace.
+Audit names without a dot are taken in the ``CryptificateJob`` namespace. An
+optional ``"doc"`` string becomes the module docstring of the generated file,
+placed after its imports; the committed examples use it to say what they show.
 
 Usage:
 
@@ -106,6 +108,18 @@ def substitute(text: str, values: dict[str, str], used: set[str], where: str) ->
     return PLACEHOLDER.sub(repl, text)
 
 
+def insert_doc(source: str, doc: str) -> str:
+    """Insert `doc` as a module docstring after the leading `import` lines."""
+    if not isinstance(doc, str) or "-/" in doc or "/-" in doc:
+        raise SpecError("spec.doc must be a string without comment delimiters")
+    lines = source.split("\n")
+    i = 0
+    while i < len(lines) and lines[i].startswith("import "):
+        i += 1
+    block = ["", "/-!", *doc.strip("\n").split("\n"), "-/"]
+    return "\n".join(lines[:i] + block + lines[i:])
+
+
 def build(spec: dict, dirs: list[Path]) -> tuple[str, list[dict]]:
     """Return the certificate source and the sidecars of the fragments used."""
     fragments = spec.get("fragments")
@@ -138,6 +152,9 @@ def build(spec: dict, dirs: list[Path]) -> tuple[str, list[dict]]:
         print(f"note: unused values: {', '.join(unused)}", file=sys.stderr)
 
     source = "".join(p if p.endswith("\n") else p + "\n" for p in parts)
+    doc = spec.get("doc")
+    if doc is not None:
+        source = insert_doc(source, doc)
     source += "".join(f"#cryptificate_audit {full_name(a)}\n" for a in audit)
     return source, sidecars
 
