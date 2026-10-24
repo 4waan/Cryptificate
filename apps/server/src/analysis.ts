@@ -168,6 +168,7 @@ export async function runAnalysis(env: PipelineEnv, ctx: JobContext, raw: Analys
       ...(cert.problem ? { leanProblem: cert.problem } : {}),
       native: null,
       skipped: cert.emit.skipped,
+      refinement: request.program ? refinementStatus(env.paths, request.design.field) : null,
     });
     for (const c of partial) {
       if (c.id === 'native.correctness' && request.program && !env.skipNative) c.note = 'Native correctness is running.';
