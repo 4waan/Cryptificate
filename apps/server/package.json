@@ -12,7 +12,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/cli.js serve",
     "dev": "tsc -p tsconfig.json && node dist/src/cli.js serve",
-    "test": "tsc -p tsconfig.json && node --test --test-concurrency=1 \"dist/test/**/*.test.js\""
+    "test": "tsc -p tsconfig.json && node --test --test-concurrency=1 \"dist/test/**/*.test.js\"",
+    "test:integration": "tsc -p tsconfig.json && CRYPTIFICATE_INTEGRATION=1 node --test --test-concurrency=1 dist/test/integration.test.js"
   },
   "dependencies": {
     "@cryptificate/schema": "0.1.0"
