@@ -6,6 +6,19 @@ import { WitnessView } from './WitnessView';
 
 const ALLOWED = new Set(ALLOWED_AXIOMS);
 
+/**
+ * The evidence label as shown. A failed native run's label counts only the
+ * passing cases; the total is added so "passed 39" is not read as success.
+ */
+export function evidenceText(claim: Claim): string {
+  const ev = claim.evidence;
+  const m = /^Generated Rust passed (\d+) correctness cases$/.exec(ev.label);
+  if (ev.kind === 'native' && claim.status === 'refuted' && m && typeof ev.cases === 'number' && ev.cases > Number(m[1])) {
+    return `Generated Rust passed only ${m[1]} of ${ev.cases} correctness cases`;
+  }
+  return ev.label;
+}
+
 export function ClaimCard({ claim, field, rounds }: { claim: Claim; field: FieldName; rounds?: number }) {
   const ev = claim.evidence;
   const hasProofDetails = Boolean(ev.theorem || ev.type || (ev.axioms && ev.axioms.length));
@@ -24,7 +37,7 @@ export function ClaimCard({ claim, field, rounds }: { claim: Claim; field: Field
       <p className="evidence">
         {unchecked ? <IconInfo /> : null}
         <span>
-          Evidence: <strong>{ev.label}</strong>
+          Evidence: <strong>{evidenceText(claim)}</strong>
         </span>
       </p>
       {claim.note ? <p className="claim-note">{claim.note}</p> : null}
