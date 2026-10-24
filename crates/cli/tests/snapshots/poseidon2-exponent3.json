@@ -2,9 +2,9 @@
   "diagnostics": {
     "activity": {
       "applicable": false,
-      "bound": null,
+      "bound": 16,
       "claim": "activity.outer",
-      "reason": "not established by this method: the full-round bound needs an MDS external matrix and a bijective power map",
+      "reason": "not established by this method: the full-round bound needs an MDS external matrix, an invertible internal matrix and a bijective power map",
       "rounds": 8
     },
     "claims": [
@@ -38,7 +38,7 @@
       {
         "claim": "activity.outer",
         "holds": null,
-        "note": "not established by this method: the full-round bound needs an MDS external matrix and a bijective power map",
+        "note": "not established by this method: the full-round bound needs an MDS external matrix, an invertible internal matrix and a bijective power map",
         "predicted": "not_established",
         "witness": null
       },

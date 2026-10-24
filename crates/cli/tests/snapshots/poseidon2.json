@@ -2,9 +2,9 @@
   "diagnostics": {
     "activity": {
       "applicable": true,
-      "bound": null,
+      "bound": 16,
       "claim": "activity.outer",
-      "reason": "the external matrix is MDS and the power map is a bijection, so the full-round bound applies",
+      "reason": "the external matrix is MDS, the internal matrix is invertible and the power map is a bijection, so the full-round bound applies",
       "rounds": 8
     },
     "claims": [
@@ -32,7 +32,7 @@
       {
         "claim": "activity.outer",
         "holds": true,
-        "note": "the external matrix is MDS and the power map is a bijection, so the full-round bound applies",
+        "note": "the external matrix is MDS, the internal matrix is invertible and the power map is a bijection, so the full-round bound applies",
         "predicted": "proved",
         "witness": null
       },

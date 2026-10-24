@@ -28,7 +28,9 @@ use crate::linalg::{
     combinations, determinant, encode_vec, kernel_vector, mat_vec, submatrix, weight, Matrix,
 };
 use crate::program::Program;
-use crate::report::{aes_like_activity_bound, claim_ids, labels, Status, Witness};
+use crate::report::{
+    aes_like_activity_bound, claim_ids, hades_outer_activity_bound, labels, Status, Witness,
+};
 use crate::request::AnalysisRequest;
 use crate::AnyProgram;
 
@@ -510,7 +512,9 @@ pub struct ActivityAnalysis {
     pub claim: &'static str,
     pub applicable: bool,
     pub rounds: u32,
-    /// The AES-like bound `floor(r/4)*25 + (5 if r mod 4 >= 2)`, for width 4.
+    /// The number of active S-boxes the certificate would establish: the
+    /// AES-like bound `floor(r/4)*25 + (5 if r mod 4 >= 2)` for width 4, or
+    /// the HADES full-round bound ([`hades_outer_activity_bound`]).
     pub bound: Option<u32>,
     pub reason: String,
 }
@@ -785,19 +789,19 @@ fn diagnose_hades(
     let external = analyze_matrix(&d.external);
     let internal = analyze_matrix(&d.internal);
     let power = analyze_power(d.exponent().unwrap_or(1));
-    let applicable = external.mds && power.bijective;
+    let applicable = external.mds && internal.invertible && power.bijective;
     let activity = ActivityAnalysis {
         claim: claim_ids::ACTIVITY_OUTER,
         applicable,
         rounds: d.full_rounds,
-        bound: None,
+        bound: Some(hades_outer_activity_bound(d.full_rounds)),
         reason: if applicable {
-            "the external matrix is MDS and the power map is a bijection, so the full-round \
-             bound applies"
+            "the external matrix is MDS, the internal matrix is invertible and the power map is \
+             a bijection, so the full-round bound applies"
                 .into()
         } else {
-            "not established by this method: the full-round bound needs an MDS external matrix \
-             and a bijective power map"
+            "not established by this method: the full-round bound needs an MDS external matrix, \
+             an invertible internal matrix and a bijective power map"
                 .into()
         },
     };

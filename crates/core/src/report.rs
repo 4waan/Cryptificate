@@ -49,6 +49,15 @@ pub fn aes_like_activity_bound(rounds: u32) -> u32 {
     (rounds / 4) * 25 + if rounds % 4 >= 2 { 5 } else { 0 }
 }
 
+/// HADES full-round activity bound for `full_rounds` full rounds of width 3
+/// (branch number 4): with `h = full_rounds / 2` full rounds on each side of
+/// the partial rounds, `(h/2 + h/2)*4 + h%2 + h%2`, that is
+/// `2 * (4 * floor(h/2) + h mod 2)`. Partial rounds are not counted.
+pub fn hades_outer_activity_bound(full_rounds: u32) -> u32 {
+    let h = full_rounds / 2;
+    2 * (4 * (h / 2) + h % 2)
+}
+
 /// Which chain of the argument a claim belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -357,6 +366,9 @@ mod tests {
 
     #[test]
     fn activity_bound_table() {
+        assert_eq!(hades_outer_activity_bound(8), 16);
+        assert_eq!(hades_outer_activity_bound(2), 2);
+        assert_eq!(hades_outer_activity_bound(6), 10);
         assert_eq!(aes_like_activity_bound(4), 25);
         assert_eq!(aes_like_activity_bound(6), 30);
         assert_eq!(aes_like_activity_bound(10), 55);
