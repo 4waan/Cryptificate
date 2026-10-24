@@ -28,15 +28,15 @@ A failed MDS check or a repeated row offset makes the activity bound **not estab
 
 ## Evidence labels
 
-| Label | What was checked | What it does not cover |
+| Label | What was checked | Scope |
 |---|---|---|
-| Lean-checked proof | A Lean theorem about the exact submitted constants, checked by the Lean kernel. | Properties not named in the theorem. |
-| Lean-checked circuit equivalence | `∀ x, eval(program, x) = M·x` for the exact program and matrix. | The generated Rust or the compiled binary. |
-| Lean-checked counterexample | A concrete input whose property violation Lean evaluated. | Nothing beyond that witness. |
-| Rust-source refinement (Aeneas) | The recorded Rust source, translated by Charon and Aeneas, equals the mathematical model for all inputs. | The Rust compiler, the translation tools themselves, the hardware, constant-time behaviour. |
-| Generated Rust passed N correctness cases | The compiled variant matched an independent evaluation on N recorded inputs. | Inputs outside the corpus. It is a test, not a proof. |
-| Native timing measured on this machine | Paired timings under the protocol in [batch-interface.md](batch-interface.md). | Other machines, other compilers, other workloads. |
-| Unchecked diagnostic | A value computed by the engine that Lean has not checked. | Anything: it is a hint. |
+| Lean-checked proof | A Lean theorem about the exact submitted constants, checked by the Lean kernel. | The property named in the theorem. |
+| Lean-checked circuit equivalence | `∀ x, eval(program, x) = M·x` for the exact program and matrix. | The circuit model; the generated Rust is covered by native correctness. |
+| Lean-checked counterexample | A concrete input whose property violation Lean evaluated. | That witness. |
+| Rust-source refinement (Aeneas) | The recorded Rust source, translated by Charon and Aeneas, equals the mathematical model for all inputs. | Rust source, with Charon and Aeneas as the translation. |
+| Generated Rust passed N correctness cases | The compiled variant matched an independent evaluation on N recorded inputs. | The recorded corpus. |
+| Native timing measured on this machine | Paired timings under the protocol in [batch-interface.md](batch-interface.md). | The recorded machine, compiler and workloads. |
+| Unchecked diagnostic | A value computed by the engine before Lean checks it. | A hint that guides certificate generation. |
 
 ## Origin badges
 
@@ -65,11 +65,3 @@ Certificates use kernel evaluation (`decide`, `rfl`) on small concrete computati
 - The certificate generator is *not* trusted for soundness: the acceptance checks above catch a generator that proves the wrong statement or about the wrong constants.
 - For Rust-source refinement: Charon, Aeneas and the Rust compiler. The refinement theorem is about the source, not the binary.
 - For native correctness and timing: the harness, the operating system and the hardware. These results support statements about the recorded machine and workload only.
-
-## What a report never claims
-
-- A security level, a number of security bits, or a recommended round count.
-- That fewer operations or a faster binary means a stronger cipher.
-- That an MDS matrix is better than another MDS matrix. The activity figure is a conservative lower bound shared by every passing design.
-- Constant-time execution, fault resistance or freedom from side channels.
-- Global optimality of a searched circuit. The search reports the best *measured* among the *checked, shortlisted* candidates.
