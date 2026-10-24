@@ -359,3 +359,54 @@ fn diagnostics_are_deterministic() {
     let (_, b) = diagnose_json(req);
     assert_eq!(a, b);
 }
+
+#[test]
+fn hades_internal_target() {
+    // The external shared-sum circuit checked against the internal matrix:
+    // they differ only in the last diagonal entry (3 instead of 2).
+    let program = json!({
+        "field": "bn254", "width": 3,
+        "instructions": [add(0, 1), add(3, 2), add(4, 0), add(4, 1), add(4, 2)],
+        "outputs": [5, 6, 7]
+    });
+    let (d, v) =
+        diagnose_json(json!({"design": hades(5), "program": program, "target": "internal"}));
+    assert_eq!(v["target"], "internal");
+    assert_eq!(v["program"]["target"], "internal");
+    assert_eq!(
+        v["program"]["firstMismatch"],
+        json!({"row": 2, "col": 2, "expected": "3", "actual": "2"})
+    );
+    assert_eq!(
+        v["program"]["distinguisher"],
+        json!({"input": ["0", "0", "1"], "expected": ["1", "1", "3"], "actual": ["1", "1", "2"], "differing": [2]})
+    );
+    let c = d.claim(claim_ids::CIRCUIT_EQUIVALENCE).unwrap();
+    assert_eq!(c.predicted, Status::Refuted);
+    assert!(c.note.contains("internal matrix"));
+}
+
+#[test]
+fn singular_internal_matrix() {
+    let mut design = hades(5);
+    design["internal"] = json!([["1", "1", "0"], ["1", "1", "0"], ["0", "0", "1"]]);
+    let (d, v) = diagnose_json(json!({ "design": design }));
+    assert_eq!(v["internal"]["determinant"], "0");
+    assert_eq!(v["internal"]["invertible"], false);
+    let k: Vec<Bn254> = v["internal"]["kernelVector"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| Bn254::decode(x.as_str().unwrap()).unwrap())
+        .collect();
+    let m: Matrix<Bn254> = [[1u64, 1, 0], [1, 1, 0], [0, 0, 1]]
+        .iter()
+        .map(|r| r.iter().map(|&x| Bn254::from_u64(x)).collect())
+        .collect();
+    assert!(weight(&k) > 0);
+    assert!(mat_vec(&m, &k).iter().all(Field::is_zero));
+    assert_eq!(
+        d.claim(claim_ids::INTERNAL_INVERTIBLE).unwrap().predicted,
+        Status::Refuted
+    );
+}
