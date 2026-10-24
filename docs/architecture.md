@@ -26,8 +26,8 @@ Cryptificate is a local application. A loopback Node service orchestrates three 
 | `crates/core`, `crates/cli` | Validation, canonical encodings, unchecked diagnostics (minors, Gaussian-elimination witnesses, collisions), certificate emission. | No |
 | `crates/search` | Bounded optimizer. Every candidate is an untrusted proposal. | No |
 | `crates/native` | Rust code generation, native correctness corpus, measurement protocol and statistics. | Tests only |
-| `crates/kernels` | Arithmetic and parametric round kernels used by every native variant; the subject of the refinement proofs. | Via `refinement/` |
-| `refinement/` | Charon/Aeneas extraction and Lean proofs that the Rust source equals the model. | Yes, with Charon, Aeneas and rustc trusted |
+| `crates/kernels` | Arithmetic and parametric round kernels used by every native variant; the GF(2⁸) arithmetic and the AES-like round are the subject of the refinement proofs, the BN254 arithmetic (arkworks) is not. | GF(2⁸) and AES-like parts, via `refinement/` |
+| `refinement/` | Charon/Aeneas extraction and Lean proofs that the GF(2⁸) and AES-like Rust source equals the model. | Yes, with Charon, Aeneas and rustc trusted |
 | `apps/server` | HTTP API, job queue, Lean runner, proof acceptance, bundles, CLI. | Acceptance logic only |
 | `apps/web` | Workbench and static replay viewer. | No |
 | `python/` | Thin client for research scripts. | No |
