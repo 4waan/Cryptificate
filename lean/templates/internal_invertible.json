@@ -1,0 +1,13 @@
+{
+  "name": "internal_invertible",
+  "kind": "claim",
+  "claim": "internal.invertible",
+  "status": "proved",
+  "theorem": "CryptificateJob.internal_invertible",
+  "expectedType": "CryptificateJob.candInternal.det ≠ 0",
+  "placeholders": [],
+  "requires": [
+    "const_internal_bn254"
+  ],
+  "field": "bn254"
+}

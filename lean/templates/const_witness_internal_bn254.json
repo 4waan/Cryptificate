@@ -1,0 +1,15 @@
+{
+  "name": "const_witness_internal_bn254",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "KERNEL_VECTOR"
+  ],
+  "requires": [
+    "header"
+  ],
+  "field": "bn254"
+}

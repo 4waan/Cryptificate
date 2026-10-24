@@ -1,0 +1,13 @@
+{
+  "name": "external_mds",
+  "kind": "claim",
+  "claim": "external.mds",
+  "status": "proved",
+  "theorem": "CryptificateJob.external_mds",
+  "expectedType": "IsMDS CryptificateJob.candExternal",
+  "placeholders": [],
+  "requires": [
+    "const_external_bn254"
+  ],
+  "field": "bn254"
+}
