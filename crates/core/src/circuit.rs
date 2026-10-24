@@ -40,7 +40,7 @@ pub struct CircuitStats {
 }
 
 /// The first coefficient (row-major) where a program differs from a target matrix.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct CoefficientMismatch<F> {
     pub row: usize,
     pub col: usize,
@@ -49,7 +49,7 @@ pub struct CoefficientMismatch<F> {
 }
 
 /// A basis input on which a program and a target matrix disagree.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Distinguisher<F> {
     pub input: Vec<F>,
     pub expected: Vec<F>,
