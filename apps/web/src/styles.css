@@ -1458,6 +1458,7 @@ kbd,
 .story-nav h2,
 .panel-head h2,
 .panel-head h3,
+.chain-head h3,
 table.data thead th {
   font-family: var(--font-mono);
   font-size: 0.72rem !important;
@@ -1468,12 +1469,21 @@ table.data thead th {
 }
 .panel-head h2,
 .panel-head h3,
+.chain-head h3,
 .story-nav h2 {
   color: var(--text);
+}
+.chain-head {
+  border-bottom-color: var(--line-strong);
+}
+.chain-head .small {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
 }
 .eyebrow::before,
 .panel-head h2::before,
 .panel-head h3::before,
+.chain-head h3::before,
 .story-nav h2::before {
   content: '// ';
   content: '// ' / '';
