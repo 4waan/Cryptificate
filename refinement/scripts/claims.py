@@ -46,6 +46,10 @@ KERNELS = {
         'proof': 'refinement/Refinement/AesLike.lean',
         'spec': ('Cryptificate.aesLikeRound and Cryptificate.aesLikeExec of the main Lean package '
                  '(lean/Cryptificate/Bridge.lean) over WideTrail GF256'),
+        # Compiled by this package (Lean v4.35.0) from the main package's source files, which the
+        # main package checks on Lean v4.33.1; the hashes say which text the theorems are about.
+        'specSources': ['lean/Cryptificate/Bridge.lean',
+                        'lean/Cryptificate/Diffusion/Activity.lean'],
     },
     'gf256-crate': {
         'title': ('Multiplication of the crates.io gf256 crate 0.3.1, polynomial 0x11B, features '
@@ -58,7 +62,14 @@ KERNELS = {
     },
 }
 
-# theorem -> (kernel, hypotheses beyond the statement's own premises)
+ENOUGH_KEYS = ('at least `rounds` round keys (rounds <= round_keys.len()); with fewer, the Rust '
+               'code indexes past the slice and the theorem says nothing')
+DESIGN_HYPOTHESES = ('IsMDS (matrixOf m), DiffusionOptimal offsets and an S-box table without '
+                     'repeated entries are hypotheses, not proved here; the main package proves '
+                     'them per design on Lean v4.33.1, and a certificate is not combined with this '
+                     'theorem in one Lean environment')
+
+# theorem -> (kernel, hypotheses and preconditions in words; the statement has them formally)
 THEOREMS = [
     ('Cryptificate.Refinement.gf256_xtime_refines', 'gf256', []),
     ('Cryptificate.Refinement.gf256_add_refines', 'gf256', []),
@@ -68,9 +79,10 @@ THEOREMS = [
     ('Cryptificate.Refinement.gf256_xtime_field', 'gf256', []),
     ('Cryptificate.Refinement.aes_like_round_refines', 'aes-like', []),
     ('Cryptificate.Refinement.aes_like_round_eq', 'aes-like', []),
-    ('Cryptificate.Refinement.aes_like_encrypt_refines', 'aes-like', []),
-    ('Cryptificate.Refinement.aes_like_encrypt_eq', 'aes-like', []),
-    ('Cryptificate.Refinement.aes_like_encrypt_activity_bound', 'aes-like', []),
+    ('Cryptificate.Refinement.aes_like_encrypt_refines', 'aes-like', [ENOUGH_KEYS]),
+    ('Cryptificate.Refinement.aes_like_encrypt_eq', 'aes-like', [ENOUGH_KEYS]),
+    ('Cryptificate.Refinement.aes_like_encrypt_activity_bound', 'aes-like',
+     [DESIGN_HYPOTHESES, 'at least r round keys (r <= round_keys.len())']),
     ('Cryptificate.Refinement.Gf256Crate.gf256crate_mul_refines', 'gf256-crate',
      ['SizeOfU8: core::mem::size_of::<u8>() returns 1 (not modelled by the Aeneas library; '
       'the extraction declares gf256_aes.core.mem.size_of as an uninterpreted function)']),
@@ -150,6 +162,7 @@ def build():
             'hypotheses': hypotheses,
             'rustSources': [{'path': p, 'sha256': sha256(p)} for p in k['rust']],
             'extractedLean': {'path': k['extracted'], 'sha256': sha256(k['extracted'])},
+            'specificationSources': [{'path': p, 'sha256': sha256(p)} for p in k.get('specSources', [])],
             'proofFile': k['proof'],
             'toolchain': toolchain,
         })
@@ -160,6 +173,7 @@ def build():
             'title': k['title'],
             'appliesTo': k['appliesTo'],
             'specification': k['spec'],
+            'specificationSources': [{'path': p, 'sha256': sha256(p)} for p in k.get('specSources', [])],
             'rustSources': [{'path': p, 'sha256': sha256(p)} for p in k['rust']],
             'extractedLean': {'path': k['extracted'], 'sha256': sha256(k['extracted'])},
             'theorems': [n for n, kk, _ in THEOREMS if kk == kid],
@@ -171,11 +185,21 @@ def build():
         'trusted': [
             'Charon and Aeneas translate the Rust source faithfully into the Lean model',
             "the Aeneas library's models of Rust integers, arrays, slices and shifts",
+            ('for the gf256 crate: that rustc -Zunpretty=expanded and assemble.py preserve the '
+             "crate's behaviour (tested on all 65,536 products, not proved), and the renaming of "
+             'module paths that extract.sh applies to Gf256Aes.lean'),
             'the Lean kernel',
             'rustc, which compiles the Rust source to machine code (outside the chain)',
             'the hardware',
         ],
-        'notClaimed': ['constant-time execution', 'absence of side channels'],
+        'notClaimed': [
+            'constant-time execution',
+            'absence of side channels',
+            'correctness of the compiled machine code',
+            ('the generated circuit code of the native variants, beyond its calls to the kernel '
+             'functions (checked by tests, not refined)'),
+            'BN254 arithmetic (see notEstablished)',
+        ],
         'kernels': kernels,
         'claims': claims,
         'notEstablished': NOT_ESTABLISHED,

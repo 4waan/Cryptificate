@@ -12,13 +12,17 @@
   "trusted": [
     "Charon and Aeneas translate the Rust source faithfully into the Lean model",
     "the Aeneas library's models of Rust integers, arrays, slices and shifts",
+    "for the gf256 crate: that rustc -Zunpretty=expanded and assemble.py preserve the crate's behaviour (tested on all 65,536 products, not proved), and the renaming of module paths that extract.sh applies to Gf256Aes.lean",
     "the Lean kernel",
     "rustc, which compiles the Rust source to machine code (outside the chain)",
     "the hardware"
   ],
   "notClaimed": [
     "constant-time execution",
-    "absence of side channels"
+    "absence of side channels",
+    "correctness of the compiled machine code",
+    "the generated circuit code of the native variants, beyond its calls to the kernel functions (checked by tests, not refined)",
+    "BN254 arithmetic (see notEstablished)"
   ],
   "kernels": [
     {
@@ -28,6 +32,7 @@
         "field": "gf256"
       },
       "specification": "WideTrail GF256.xtime and GF256.rawMul on BitVec 8, the multiplication of the field GF256",
+      "specificationSources": [],
       "rustSources": [
         {
           "path": "crates/kernels/src/gf256.rs",
@@ -58,6 +63,16 @@
         "model": "aes-like/gf256/v1"
       },
       "specification": "Cryptificate.aesLikeRound and Cryptificate.aesLikeExec of the main Lean package (lean/Cryptificate/Bridge.lean) over WideTrail GF256",
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
       "rustSources": [
         {
           "path": "crates/kernels/src/aes_like.rs",
@@ -92,6 +107,7 @@
         "implementation": "gf256 0.3.1 (barret mode, no-tables, no-xmul)"
       },
       "specification": "WideTrail GF256.rawMul on BitVec 8",
+      "specificationSources": [],
       "rustSources": [
         {
           "path": "refinement/rust/gf256_aes_expanded.rs",
@@ -136,6 +152,7 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -171,6 +188,7 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -207,6 +225,7 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -243,6 +262,7 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -278,6 +298,7 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -314,6 +335,7 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -354,6 +376,16 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
       "proofFile": "refinement/Refinement/AesLike.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -394,6 +426,16 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
       "proofFile": "refinement/Refinement/AesLike.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -415,7 +457,9 @@
         "Quot.sound"
       ],
       "extraAxioms": [],
-      "hypotheses": [],
+      "hypotheses": [
+        "at least `rounds` round keys (rounds <= round_keys.len()); with fewer, the Rust code indexes past the slice and the theorem says nothing"
+      ],
       "rustSources": [
         {
           "path": "crates/kernels/src/aes_like.rs",
@@ -434,6 +478,16 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
       "proofFile": "refinement/Refinement/AesLike.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -455,7 +509,9 @@
         "Quot.sound"
       ],
       "extraAxioms": [],
-      "hypotheses": [],
+      "hypotheses": [
+        "at least `rounds` round keys (rounds <= round_keys.len()); with fewer, the Rust code indexes past the slice and the theorem says nothing"
+      ],
       "rustSources": [
         {
           "path": "crates/kernels/src/aes_like.rs",
@@ -474,6 +530,16 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
       "proofFile": "refinement/Refinement/AesLike.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -495,7 +561,10 @@
         "Quot.sound"
       ],
       "extraAxioms": [],
-      "hypotheses": [],
+      "hypotheses": [
+        "IsMDS (matrixOf m), DiffusionOptimal offsets and an S-box table without repeated entries are hypotheses, not proved here; the main package proves them per design on Lean v4.33.1, and a certificate is not combined with this theorem in one Lean environment",
+        "at least r round keys (r <= round_keys.len())"
+      ],
       "rustSources": [
         {
           "path": "crates/kernels/src/aes_like.rs",
@@ -514,6 +583,16 @@
         "path": "refinement/Extracted/CryptificateKernels.lean",
         "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
       },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
       "proofFile": "refinement/Refinement/AesLike.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -551,6 +630,7 @@
         "path": "refinement/Extracted/Gf256Aes.lean",
         "sha256": "9e5f2d14e1d09a00a9a7d70d4796bc13fcde77b0f25dda6ebe827e2ff41d9c0f"
       },
+      "specificationSources": [],
       "proofFile": "refinement/Refinement/Gf256Crate.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -588,6 +668,7 @@
         "path": "refinement/Extracted/Gf256Aes.lean",
         "sha256": "9e5f2d14e1d09a00a9a7d70d4796bc13fcde77b0f25dda6ebe827e2ff41d9c0f"
       },
+      "specificationSources": [],
       "proofFile": "refinement/Refinement/Gf256Crate.lean",
       "toolchain": {
         "lean": "v4.35.0",
@@ -625,6 +706,7 @@
         "path": "refinement/Extracted/Gf256Aes.lean",
         "sha256": "9e5f2d14e1d09a00a9a7d70d4796bc13fcde77b0f25dda6ebe827e2ff41d9c0f"
       },
+      "specificationSources": [],
       "proofFile": "refinement/Refinement/Gf256Crate.lean",
       "toolchain": {
         "lean": "v4.35.0",
