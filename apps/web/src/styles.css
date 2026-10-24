@@ -386,6 +386,23 @@ textarea {
 .brand-logo {
   height: 26px;
 }
+.brand-dark {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .brand-light {
+    display: none;
+  }
+  :root:not([data-theme='light']) .brand-dark {
+    display: inline;
+  }
+}
+:root[data-theme='dark'] .brand-light {
+  display: none;
+}
+:root[data-theme='dark'] .brand-dark {
+  display: inline;
+}
 .nav {
   display: flex;
   gap: var(--space-1);

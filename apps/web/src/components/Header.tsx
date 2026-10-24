@@ -119,11 +119,20 @@ export function Header({
     <header className="header">
       <div className="header-inner">
         <a className="brand" href="#/story" aria-label="Cryptificate, guided story">
-          {__BRAND_LOGO__ ? (
-            <img className="brand-logo" src="brand/logo.svg" alt="Cryptificate" />
+          {__BRAND__.logo ? (
+            <>
+              <img
+                className={`brand-logo${__BRAND__.logoDark ? ' brand-light' : ''}`}
+                src="brand/logo.svg"
+                alt="Cryptificate"
+              />
+              {__BRAND__.logoDark ? (
+                <img className="brand-logo brand-dark" src="brand/logo-dark.svg" alt="Cryptificate" />
+              ) : null}
+            </>
           ) : (
             <>
-              {__BRAND_MARK__ ? <img src="brand/mark.svg" alt="" /> : null}
+              {__BRAND__.mark ? <img src="brand/mark.svg" alt="" /> : null}
               <span>Cryptificate</span>
             </>
           )}

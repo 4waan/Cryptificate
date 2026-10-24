@@ -1,5 +1,6 @@
-// Copies the brand files from assets/brand into public/brand so the header can
-// use them. Missing files are fine: the header falls back to a text wordmark.
+// Copies the brand files from assets/brand into public/brand so the header and
+// favicon can use them. Missing files are fine: the header falls back to a
+// text wordmark.
 import { copyFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +11,7 @@ const target = join(app, 'public', 'brand');
 
 rmSync(target, { recursive: true, force: true });
 const copied = [];
-for (const name of ['logo.svg', 'mark.svg']) {
+for (const name of ['logo.svg', 'logo-dark.svg', 'mark.svg', 'mark-dark.svg', 'favicon.svg']) {
   const from = join(source, name);
   if (existsSync(from)) {
     mkdirSync(target, { recursive: true });

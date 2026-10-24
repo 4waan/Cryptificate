@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
-declare const __BRAND_MARK__: boolean;
-declare const __BRAND_LOGO__: boolean;
+/** Which brand files scripts/copy-brand.mjs found at build time. */
+declare const __BRAND__: { logo: boolean; logoDark: boolean; mark: boolean; favicon: boolean };
 
 interface ImportMetaEnv {
   readonly VITE_REPLAY?: string;
