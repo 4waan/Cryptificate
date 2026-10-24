@@ -129,9 +129,3 @@ export function isTimingStep(run: Run | undefined): boolean {
   if (!run || (run.state !== 'running' && run.state !== 'queued')) return false;
   return run.steps.some((st) => st.state === 'running' && /tim|bench|measur/i.test(st.name));
 }
-
-/** For tests. */
-export function resetState(next: AppState = initialState()): void {
-  state = next;
-  listeners.forEach((l) => l());
-}

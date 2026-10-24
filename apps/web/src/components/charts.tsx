@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { formatBytes, formatNumber, niceTicks, samplesPerColumn, summarize } from '../lib/stats';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { formatNumber, niceTicks, samplesPerColumn, summarize } from '../lib/stats';
 import type { Comparison, Workload } from '../lib/types';
 
 /** Width of an element, kept current with ResizeObserver. */
@@ -367,11 +367,4 @@ export function RatioChart({ title, rows, threshold = 1.02 }: { title: string; r
       )}
     </figure>
   );
-}
-
-/** Tells charts to drop transitions while timing runs (no animation is ever applied then). */
-export function useQuietCharts(quiet: boolean): void {
-  useEffect(() => {
-    document.documentElement.dataset.quiet = quiet ? 'true' : 'false';
-  }, [quiet]);
 }

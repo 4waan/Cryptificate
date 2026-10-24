@@ -176,7 +176,7 @@ export function previewEquivalence(d: CandidateDesign, p: Program, target?: Prog
   const want = targetMatrix(d, target).map((r) => r.map((x) => f.canonical(x)));
   const got = coefficientMatrix(p);
   for (let j = 0; j < p.width; j++) {
-    const differing = want.map((r, i) => i).filter((i) => want[i]![j] !== got[i]![j]);
+    const differing = want.map((_, i) => i).filter((i) => want[i]![j] !== got[i]![j]);
     if (differing.length) {
       const input = Array.from({ length: p.width }, (_, i) => (i === j ? f.one : f.zero));
       return {
