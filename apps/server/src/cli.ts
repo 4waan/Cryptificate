@@ -7,7 +7,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
-import type { AnalysisReport, AnalysisRequest, ExperimentReport, ExperimentRequest, ProgramTarget } from '@cryptificate/schema';
+import type { AnalysisReport, AnalysisRequest, ExperimentReport, ExperimentRequest, ProgramTarget, Report } from '@cryptificate/schema';
+import { buildBundle } from './bundle.js';
 import { ANALYSIS_BUDGET_MS, ANALYSIS_STEPS, runAnalysis } from './analysis.js';
 import { JobContext } from './context.js';
 import type { PipelineEnv } from './context.js';
@@ -26,9 +27,11 @@ const USAGE = `Usage: cryptificate <command> [options]
 Commands:
   serve [--port 4173] [--host 127.0.0.1] [--allow-origin URL]
         Run the local service and web UI.
-  check <design.json> [--program p.json] [--target matrix|external|internal] [--json out.json] [--no-cache]
+  check <design.json> [--program p.json] [--target matrix|external|internal] [--json out.json]
+        [--bundle out.tar.gz] [--no-cache]
         Check a design (and optionally a circuit) and print the claims.
   experiment <design.json> [--program p.json] [--profile quick|research] [--seed HEX] [--json out.json]
+        [--bundle out.tar.gz]
         Search, check and measure circuits for the design's matrix.
   verify <bundle.tar.gz> [--native] [--keep] [--json out.json]
         Re-derive a bundle's claims with the installed engine and Lean checker.
@@ -77,6 +80,18 @@ function progress(ctx: JobContext, quiet: boolean): () => void {
   };
 }
 
+async function writeBundle(env: PipelineEnv, dir: string, report: Report, out: string): Promise<void> {
+  let inputs: unknown;
+  try {
+    inputs = JSON.parse(readFileSync(join(dir, 'inputs.json'), 'utf8')) as unknown;
+  } catch {
+    inputs = undefined;
+  }
+  const gz = buildBundle({ jobDir: dir, report, toolchain: await env.toolchain(), paths: env.paths, inputs });
+  writeFileSync(resolve(out), gz);
+  process.stderr.write(`bundle: ${resolve(out)}\n`);
+}
+
 function newRunDir(env: PipelineEnv): { id: string; dir: string } {
   const id = randomBytes(16).toString('hex');
   const dir = join(env.paths.jobsDir, id);
@@ -105,6 +120,7 @@ async function cmdCheck(argv: string[]): Promise<number> {
       program: { type: 'string' },
       target: { type: 'string' },
       json: { type: 'string' },
+      bundle: { type: 'string' },
       'no-cache': { type: 'boolean' },
       quiet: { type: 'boolean', short: 'q' },
     },
@@ -132,6 +148,7 @@ async function cmdCheck(argv: string[]): Promise<number> {
   const report = result.report as AnalysisReport;
   process.stdout.write(`${formatAnalysis(report, style)}\n`);
   if (values.json) writeFileSync(resolve(values.json), `${JSON.stringify(report, null, 2)}\n`);
+  if (values.bundle) await writeBundle(env, dir, report, values.bundle);
   if (!values.quiet) process.stderr.write(`job directory: ${dir}\n`);
   return result.state === 'completed' ? 0 : 1;
 }
@@ -145,6 +162,7 @@ async function cmdExperiment(argv: string[]): Promise<number> {
       profile: { type: 'string', default: 'quick' },
       seed: { type: 'string' },
       json: { type: 'string' },
+      bundle: { type: 'string' },
       quiet: { type: 'boolean', short: 'q' },
     },
   });
@@ -170,6 +188,7 @@ async function cmdExperiment(argv: string[]): Promise<number> {
   }
   process.stdout.write(`${formatExperiment(result.report as ExperimentReport, makeStyle(process.stdout))}\n`);
   if (values.json) writeFileSync(resolve(values.json), `${JSON.stringify(result.report, null, 2)}\n`);
+  if (values.bundle) await writeBundle(env, dir, result.report, values.bundle);
   if (!values.quiet) process.stderr.write(`job directory: ${dir}\n`);
   return result.state === 'completed' ? 0 : 1;
 }
