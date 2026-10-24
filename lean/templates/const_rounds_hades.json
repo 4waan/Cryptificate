@@ -1,0 +1,16 @@
+{
+  "name": "const_rounds_hades",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "FULL_ROUNDS",
+    "PARTIAL_ROUNDS"
+  ],
+  "requires": [
+    "header"
+  ],
+  "field": "bn254"
+}

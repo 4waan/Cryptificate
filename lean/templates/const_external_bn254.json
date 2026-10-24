@@ -1,0 +1,15 @@
+{
+  "name": "const_external_bn254",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "EXTERNAL"
+  ],
+  "requires": [
+    "header"
+  ],
+  "field": "bn254"
+}
