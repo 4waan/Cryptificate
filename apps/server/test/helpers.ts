@@ -22,7 +22,7 @@ export const EQ_TYPE = 'Cryptificate.Circuit.implements CryptificateJob.candProg
  */
 const FAKE_ENGINE = String.raw`#!/usr/bin/env node
 const sub = process.argv[2];
-if (sub === '--help') { console.log('Usage: cryptificate-engine <validate|diagnose|emit-lean|search>'); process.exit(0); }
+if (sub === '--help') { console.log('subcommands:\n  validate\n  diagnose\n  emit-lean\n  search'); process.exit(0); }
 let input = '';
 process.stdin.on('data', (c) => (input += c));
 process.stdin.on('end', () => {
@@ -78,7 +78,16 @@ process.stdin.on('end', () => {
     return;
   }
   if (sub === 'search') {
-    console.log(JSON.stringify({ candidates: [], history: [], shortlist: [], generated: 0 }));
+    const prog = { field: 'gf256', width: 4, instructions: [{ op: 'add', a: 0, b: 1 }], outputs: [4, 1, 2, 3] };
+    const ops = { add: 1, mul: 0 };
+    console.log(JSON.stringify({
+      kind: 'search', seed: req.seed, budget: { profile: req.profile, totalMs: 180000, maxCandidates: 8, synthMs: 10000, shortlist: 1 },
+      generated: 2,
+      history: [{ id: 'c1', ops, depth: 1, temps: 1, symbolic: 'pass', strategy: 'test' }, { id: 'c2', ops: { add: 9, mul: 9 }, depth: 4, temps: 3, symbolic: 'reject' }],
+      shortlist: ['c1'],
+      candidates: [{ id: 'c1', origin: 'search', program: prog, ops, depth: 1, temps: 1, symbolic: 'pass' }],
+      baselines: [{ id: 'baseline-direct', origin: 'baseline-direct', program: prog, ops, depth: 1, temps: 1 }],
+    }));
     return;
   }
   console.error('unknown subcommand ' + sub);
