@@ -2,51 +2,139 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/4waan/Cryptificate/schemas/candidate-design.schema.json",
   "title": "CandidateDesign",
-  "oneOf": [{ "$ref": "#/$defs/aesLike" }, { "$ref": "#/$defs/hades" }],
+  "oneOf": [
+    {
+      "$ref": "#/$defs/aesLike"
+    },
+    {
+      "$ref": "#/$defs/hades"
+    }
+  ],
   "$defs": {
     "aesLike": {
       "title": "AES-like design over GF(2^8)",
       "type": "object",
       "additionalProperties": false,
-      "required": ["model", "field", "width", "matrix", "offsets", "rounds", "sbox"],
+      "required": [
+        "model",
+        "field",
+        "width",
+        "matrix",
+        "offsets",
+        "rounds",
+        "sbox"
+      ],
       "properties": {
-        "model": { "const": "aes-like/gf256/v1" },
-        "field": { "const": "gf256" },
-        "width": { "const": 4 },
-        "matrix": { "$ref": "field-element.schema.json#/$defs/gf256Matrix4", "description": "Row-major, y = M x." },
-        "offsets": {
-          "description": "Row shift offsets: out[r][c] = in[r][(c + offsets[r]) mod 4].",
-          "type": "array",
-          "minItems": 4,
-          "maxItems": 4,
-          "items": { "type": "integer", "minimum": 0, "maximum": 3 }
+        "model": {
+          "const": "aes-like/gf256/v1"
         },
-        "rounds": { "type": "integer", "minimum": 4, "maximum": 32 },
+        "field": {
+          "const": "gf256"
+        },
+        "width": {
+          "description": "4; widths 2 and 3 are accepted only with experimental: true.",
+          "enum": [
+            2,
+            3,
+            4
+          ]
+        },
+        "matrix": {
+          "description": "Row-major width x width matrix, y = M x.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 4,
+            "items": {
+              "$ref": "field-element.schema.json#/$defs/gf256"
+            }
+          }
+        },
+        "offsets": {
+          "description": "One offset per row: out[r][c] = in[r][(c + offsets[r]) mod width].",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          }
+        },
+        "rounds": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 32
+        },
         "sbox": {
           "oneOf": [
             {
               "type": "object",
               "additionalProperties": false,
-              "required": ["kind"],
-              "properties": { "kind": { "const": "aes" } }
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "aes"
+                }
+              }
             },
             {
               "type": "object",
               "additionalProperties": false,
-              "required": ["kind", "table"],
+              "required": [
+                "kind",
+                "table"
+              ],
               "properties": {
-                "kind": { "const": "table" },
+                "kind": {
+                  "const": "table"
+                },
                 "table": {
                   "type": "array",
                   "minItems": 256,
                   "maxItems": 256,
-                  "items": { "$ref": "field-element.schema.json#/$defs/gf256" }
+                  "items": {
+                    "$ref": "field-element.schema.json#/$defs/gf256"
+                  }
                 }
               }
             }
           ]
+        },
+        "experimental": {
+          "description": "Set by normalization for the experimental widths 2 and 3.",
+          "type": "boolean"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "width": {
+                "enum": [
+                  2,
+                  3
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "experimental"
+            ],
+            "properties": {
+              "experimental": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
     },
     "hades": {
       "title": "HADES design over the BN254 scalar field",
@@ -65,11 +153,21 @@
         "constants"
       ],
       "properties": {
-        "model": { "const": "hades/bn254/v1" },
-        "field": { "const": "bn254" },
-        "width": { "const": 3 },
-        "external": { "$ref": "field-element.schema.json#/$defs/bn254Matrix3" },
-        "internal": { "$ref": "field-element.schema.json#/$defs/bn254Matrix3" },
+        "model": {
+          "const": "hades/bn254/v1"
+        },
+        "field": {
+          "const": "bn254"
+        },
+        "width": {
+          "const": 3
+        },
+        "external": {
+          "$ref": "field-element.schema.json#/$defs/bn254Matrix3"
+        },
+        "internal": {
+          "$ref": "field-element.schema.json#/$defs/bn254Matrix3"
+        },
         "fullRounds": {
           "description": "Even; half before and half after the partial rounds. fullRounds + partialRounds <= 160.",
           "type": "integer",
@@ -77,14 +175,27 @@
           "maximum": 160,
           "multipleOf": 2
         },
-        "partialRounds": { "type": "integer", "minimum": 0, "maximum": 160 },
+        "partialRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 160
+        },
         "sbox": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "exponent"],
+          "required": [
+            "kind",
+            "exponent"
+          ],
           "properties": {
-            "kind": { "const": "power" },
-            "exponent": { "type": "integer", "minimum": 1, "maximum": 65535 }
+            "kind": {
+              "const": "power"
+            },
+            "exponent": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
           }
         },
         "partialMask": {
@@ -92,22 +203,35 @@
           "type": "array",
           "minItems": 3,
           "maxItems": 3,
-          "items": { "type": "boolean" }
+          "items": {
+            "type": "boolean"
+          }
         },
         "constants": {
           "oneOf": [
             {
               "type": "object",
               "additionalProperties": false,
-              "required": ["kind"],
-              "properties": { "kind": { "const": "reference" } }
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "reference"
+                }
+              }
             },
             {
               "type": "object",
               "additionalProperties": false,
-              "required": ["kind", "values"],
+              "required": [
+                "kind",
+                "values"
+              ],
               "properties": {
-                "kind": { "const": "explicit" },
+                "kind": {
+                  "const": "explicit"
+                },
                 "values": {
                   "description": "One row per round; length must equal fullRounds + partialRounds.",
                   "type": "array",
@@ -116,7 +240,9 @@
                     "type": "array",
                     "minItems": 3,
                     "maxItems": 3,
-                    "items": { "$ref": "field-element.schema.json#/$defs/bn254" }
+                    "items": {
+                      "$ref": "field-element.schema.json#/$defs/bn254"
+                    }
                   }
                 }
               }

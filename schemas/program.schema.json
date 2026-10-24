@@ -5,19 +5,42 @@
   "description": "Linear circuit. Registers 0..width-1 are the inputs; instruction i defines register width+i. Operands must reference registers defined earlier; outputs.length == width.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["field", "width", "instructions", "outputs"],
+  "required": [
+    "field",
+    "width",
+    "instructions",
+    "outputs"
+  ],
   "properties": {
-    "field": { "enum": ["gf256", "bn254"] },
-    "width": { "type": "integer", "minimum": 1, "maximum": 16 },
-    "name": { "type": "string", "maxLength": 64, "pattern": "^[A-Za-z0-9 ._\\-+()]*$" },
+    "field": {
+      "enum": [
+        "gf256",
+        "bn254"
+      ]
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+    },
     "instructions": {
       "type": "array",
       "maxItems": 256,
-      "items": { "$ref": "#/$defs/instruction" }
+      "items": {
+        "$ref": "#/$defs/instruction"
+      }
     },
     "outputs": {
       "type": "array",
-      "items": { "type": "integer", "minimum": 0 }
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
     }
   },
   "$defs": {
@@ -27,22 +50,45 @@
           "description": "Register a plus register b (XOR over GF(2^8)).",
           "type": "object",
           "additionalProperties": false,
-          "required": ["op", "a", "b"],
+          "required": [
+            "op",
+            "a",
+            "b"
+          ],
           "properties": {
-            "op": { "const": "add" },
-            "a": { "type": "integer", "minimum": 0 },
-            "b": { "type": "integer", "minimum": 0 }
+            "op": {
+              "const": "add"
+            },
+            "a": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "b": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         {
           "description": "Public constant k times register a. The UI may display mul by 02 as xtime.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["op", "k", "a"],
+          "required": [
+            "op",
+            "k",
+            "a"
+          ],
           "properties": {
-            "op": { "const": "mul" },
-            "k": { "$ref": "field-element.schema.json#/$defs/any" },
-            "a": { "type": "integer", "minimum": 0 }
+            "op": {
+              "const": "mul"
+            },
+            "k": {
+              "$ref": "field-element.schema.json#/$defs/any"
+            },
+            "a": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         }
       ]

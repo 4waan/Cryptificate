@@ -42,14 +42,17 @@ export interface SboxPower {
 export interface AesLikeDesign {
   model: 'aes-like/gf256/v1';
   field: 'gf256';
-  width: 4;
-  /** Row-major 4x4 matrix, y = M x. */
+  /** 4; widths 2 and 3 are accepted only with `experimental: true`. */
+  width: number;
+  /** Row-major width x width matrix, y = M x. */
   matrix: GfHex[][];
   /** Row shift offsets, each 0..width-1. */
   offsets: number[];
   /** 4..32 */
   rounds: number;
   sbox: SboxAes | SboxTable;
+  /** Set (by normalization) for the experimental widths 2 and 3. */
+  experimental?: boolean;
 }
 
 export interface ReferenceConstants {

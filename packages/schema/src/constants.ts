@@ -86,7 +86,7 @@ export const LIMITS = {
   /** Jobs waiting behind the running one. */
   maxQueued: 2,
   maxSeedHexLength: 64,
-  maxProgramNameLength: 64,
+  maxProgramNameLength: 128,
 } as const;
 
 export interface ClaimInfo {

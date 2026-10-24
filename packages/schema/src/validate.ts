@@ -5,6 +5,7 @@
  */
 import { BN254_MODULUS, LIMITS, PROFILES } from './constants.js';
 import type {
+  AesLikeDesign,
   AnalysisRequest,
   CandidateDesign,
   ExperimentRequest,
@@ -27,7 +28,8 @@ export type ValidationResult<T> =
 const GF_HEX = /^[0-9A-Fa-f]{2}$/;
 const BN_DECIMAL = /^(0|[1-9][0-9]{0,76})$/;
 const SEED_HEX = /^[0-9A-Fa-f]+$/;
-const PROGRAM_NAME = /^[A-Za-z0-9 ._\-+()]*$/;
+// Printable text without control characters.
+const PROGRAM_NAME = /^[^\u0000-\u001f\u007f]*$/;
 const BN_P = BigInt(BN254_MODULUS);
 
 export function isGfHex(value: unknown): value is string {
@@ -142,15 +144,26 @@ function checkDesign(c: Checker, value: unknown, path: string): value is Candida
   if (!c.object(value, path)) return false;
   const model = value['model'];
   if (model === 'aes-like/gf256/v1') {
-    let ok = c.keys(value, path, ['model', 'field', 'width', 'matrix', 'offsets', 'rounds', 'sbox']);
+    let ok = c.keys(value, path, ['model', 'field', 'width', 'matrix', 'offsets', 'rounds', 'sbox'], ['experimental']);
     ok = c.literal(value['field'], `${path}/field`, ['gf256']) && ok;
-    ok = c.literal(value['width'], `${path}/width`, [4]) && ok;
-    if ('matrix' in value) ok = c.matrix('gf256', value['matrix'], `${path}/matrix`, 4) && ok;
+    let n = 4;
+    const width = value['width'];
+    if ('experimental' in value && typeof value['experimental'] !== 'boolean') {
+      ok = c.fail(`${path}/experimental`, 'type', 'expected a boolean');
+    }
+    if (value['experimental'] === true && (width === 2 || width === 3)) {
+      n = width;
+    } else if (width === 2 || width === 3) {
+      ok = c.fail(`${path}/width`, 'experimental', `width ${width} is experimental and must be marked "experimental": true`);
+    } else {
+      ok = c.literal(width, `${path}/width`, [4]) && ok;
+    }
+    if ('matrix' in value) ok = c.matrix('gf256', value['matrix'], `${path}/matrix`, n) && ok;
     if ('offsets' in value) {
       const offsets = value['offsets'];
-      if (c.array(offsets, `${path}/offsets`, 4)) {
+      if (c.array(offsets, `${path}/offsets`, n)) {
         offsets.forEach((o, i) => {
-          if (!c.integer(o, `${path}/offsets/${i}`, 0, 3)) ok = false;
+          if (!c.integer(o, `${path}/offsets/${i}`, 0, n - 1)) ok = false;
         });
       } else ok = false;
     }
@@ -274,7 +287,7 @@ function checkProgram(c: Checker, value: unknown, path: string, field?: FieldNam
   if ('name' in value) {
     const name = value['name'];
     if (typeof name !== 'string' || name.length > LIMITS.maxProgramNameLength || !PROGRAM_NAME.test(name)) {
-      ok = c.fail(`${path}/name`, 'name', `expected a short name (letters, digits, space, . _ - + ( ); at most ${LIMITS.maxProgramNameLength} characters)`);
+      ok = c.fail(`${path}/name`, 'name', `expected a name of at most ${LIMITS.maxProgramNameLength} characters without control characters`);
     }
   }
   const instrs = value['instructions'];
@@ -321,7 +334,10 @@ function registerRef(c: Checker, value: unknown, path: string, maxRegister: numb
 function designField(design: unknown): { field?: FieldName; width?: number; model?: string } {
   if (typeof design !== 'object' || design === null) return {};
   const d = design as Record<string, unknown>;
-  if (d['model'] === 'aes-like/gf256/v1') return { field: 'gf256', width: 4, model: d['model'] };
+  if (d['model'] === 'aes-like/gf256/v1') {
+    const w = d['experimental'] === true && (d['width'] === 2 || d['width'] === 3) ? d['width'] : 4;
+    return { field: 'gf256', width: w, model: d['model'] };
+  }
   if (d['model'] === 'hades/bn254/v1') return { field: 'bn254', width: 3, model: d['model'] };
   return {};
 }
@@ -396,15 +412,17 @@ export function normalizeAnalysisRequest(req: AnalysisRequest): AnalysisRequest 
 
 export function normalizeDesign(d: CandidateDesign): CandidateDesign {
   if (d.model === 'aes-like/gf256/v1') {
-    return {
+    const out: AesLikeDesign = {
       model: d.model,
       field: 'gf256',
-      width: 4,
+      width: d.width,
       matrix: d.matrix.map((row) => row.map((e) => e.toUpperCase())),
       offsets: [...d.offsets],
       rounds: d.rounds,
       sbox: d.sbox.kind === 'aes' ? { kind: 'aes' } : { kind: 'table', table: d.sbox.table.map((e) => e.toUpperCase()) },
     };
+    if (d.experimental) out.experimental = true;
+    return out;
   }
   return {
     model: d.model,

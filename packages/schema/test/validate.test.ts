@@ -150,3 +150,19 @@ test('activity bound and evidence labels', () => {
   assert.equal(isEvidenceLabel(nativeCorrectnessLabel(9214)), true);
   assert.equal(isEvidenceLabel('Verified'), false);
 });
+
+test('accepts experimental widths only when marked', () => {
+  const small = {
+    model: 'aes-like/gf256/v1',
+    field: 'gf256',
+    width: 2,
+    matrix: [['03', '02'], ['02', '03']],
+    offsets: [0, 1],
+    rounds: 4,
+    sbox: { kind: 'aes' },
+  };
+  assert.deepEqual(paths(validateAnalysisRequest({ design: small })), ['/design/width']);
+  assert.equal(validateAnalysisRequest({ design: { ...small, experimental: true } }).ok, true);
+  const prog = { field: 'gf256', width: 2, instructions: [{ op: 'add', a: 0, b: 1 }], outputs: [2, 1] };
+  assert.equal(validateAnalysisRequest({ design: { ...small, experimental: true }, program: prog }).ok, true);
+});
