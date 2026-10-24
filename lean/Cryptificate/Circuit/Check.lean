@@ -8,8 +8,8 @@ Certificates never ask the kernel to reason about all inputs of a circuit. The c
 coefficient matrix of the circuit is `M`", a finite comparison of `n²` field elements. This file
 packages that comparison, together with the well-formedness check, as one Boolean function
 `Program.checkEquiv` and proves it sound and complete. A certificate then closes its goal with
-`implements_of_checkEquiv` and a single `decide +kernel` on a concrete program and matrix: the
-kernel computes each coefficient row once, compares, and is done.
+`wellFormed_implements_of_checkEquiv` and a single `decide +kernel` on a concrete program and
+matrix: the kernel computes each coefficient row once, compares, and is done.
 
 Refutation goes the other way. If one specific input `v` (the generator picks a standard basis
 vector, which exposes a wrong coefficient column) gives a circuit output different from `M v`,
@@ -17,6 +17,11 @@ the circuit cannot compute `M` everywhere. `Program.mismatch` states this togeth
 concrete output vectors, so the certificate records exactly what the reference computes, what the
 circuit computes, and that the two differ; all three facts are checked by evaluating the circuit
 and the matrix product on that one input.
+
+Both certified statements also say that the program is well formed
+(`Program.WellFormed`). `eval` reads a register that does not exist yet as zero, so without that
+conjunct the statement about a program with a forward reference or an out-of-range output would
+describe a circuit no implementation runs.
 
 The comparisons are written with `List.all` over `List.finRange n` rather than through the
 `Decidable` instance for equality of functions `Fin n → K`, which goes through `Finset.univ` and
@@ -69,10 +74,17 @@ theorem checkEquiv_iff (p : Program K n) (M : Matrix (Fin n) (Fin n) K) :
   rw [checkEquiv, Bool.and_eq_true, wellFormedb_iff, coeffEqb_iff, implements_iff]
 
 /-- **Equivalence from a passed check.** The certificate form: a concrete `decide` on
-`checkEquiv` yields the statement about all inputs. -/
+`checkEquiv` yields that the program is well formed and computes `M` on every input. The
+well-formedness conjunct is part of what certificates state, because `eval` gives reads of
+registers that do not exist yet a meaning (zero) that an implementation would not share. -/
+theorem wellFormed_implements_of_checkEquiv {p : Program K n} {M : Matrix (Fin n) (Fin n) K}
+    (h : p.checkEquiv M = true) : p.WellFormed ∧ ∀ x, p.eval x = M.mulVec x :=
+  (checkEquiv_iff p M).mp h
+
+/-- The equivalence alone, for callers that do not need well-formedness. -/
 theorem implements_of_checkEquiv {p : Program K n} {M : Matrix (Fin n) (Fin n) K}
     (h : p.checkEquiv M = true) : ∀ x, p.eval x = M.mulVec x :=
-  ((checkEquiv_iff p M).mp h).2
+  (wellFormed_implements_of_checkEquiv h).2
 
 omit [DecidableEq K] in
 /-- One input on which `p` and `M` disagree rules out equivalence. -/
@@ -105,6 +117,22 @@ theorem mismatch {p : Program K n} {M : Matrix (Fin n) (Fin n) K}
   intro heq
   rw [heq] at hne
   simp [vecEqb] at hne
+
+/-- The refutation check of a certificate: `p` is well formed and `mismatchCheck` passes. A
+refutation is only meaningful for a well-formed program, whose `eval` is the program an
+implementation runs; this check makes that part of the certified statement. -/
+def checkRefute (p : Program K n) (M : Matrix (Fin n) (Fin n) K)
+    (v expected actual : Fin n → K) : Bool :=
+  p.wellFormedb && p.mismatchCheck M v expected actual
+
+/-- **Refutation of a well-formed program from a witness.** The certificate form of
+`mismatch`. -/
+theorem refutes_of_checkRefute {p : Program K n} {M : Matrix (Fin n) (Fin n) K}
+    {v expected actual : Fin n → K} (h : p.checkRefute M v expected actual = true) :
+    p.WellFormed ∧ M.mulVec v = expected ∧ p.eval v = actual ∧
+      ¬ ∀ x, p.eval x = M.mulVec x := by
+  rw [checkRefute, Bool.and_eq_true, wellFormedb_iff] at h
+  exact ⟨h.1, mismatch h.2⟩
 
 end Program
 
