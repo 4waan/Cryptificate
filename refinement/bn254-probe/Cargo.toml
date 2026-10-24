@@ -1,0 +1,18 @@
+# Probe: can Charon and Aeneas translate the arkworks BN254 scalar multiplication that
+# crates/kernels re-exports (`ark_bn254::Fr`)? `probe.sh` runs the pinned tools on
+# `src/lib.rs`; the outcome is recorded in ../STATUS.md.
+#
+# This package is not a member of the repository's Cargo workspace.
+
+[package]
+name = "bn254-probe"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[dependencies]
+ark-bn254 = { version = "0.6.0", default-features = false, features = ["scalar_field"] }
+ark-ff = { version = "0.6.0", default-features = false }
+
+[workspace]
