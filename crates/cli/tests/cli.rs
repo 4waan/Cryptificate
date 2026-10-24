@@ -487,3 +487,86 @@ fn search_passes_through() {
     assert_eq!(bad.code, 2);
     assert_eq!(bad.json["error"]["code"], "missing_field");
 }
+
+#[cfg(feature = "native")]
+fn native_request(mode: &str) -> Value {
+    json!({
+        "mode": mode, "field": "gf256", "width": 4, "seed": "01",
+        "matrix": example("designs/aes.json")["matrix"],
+        "programs": [
+            {"id": "known", "origin": "baseline-known", "program": example("programs/aes-known-shared-sum.json")},
+            {"id": "wire", "origin": "user", "program": example("programs/aes-wrong-wire.json")}
+        ]
+    })
+}
+
+#[cfg(feature = "native")]
+#[test]
+fn codegen_passes_through() {
+    let input = json!({
+        "field": "gf256", "width": 4,
+        "programs": [{"id": "known", "program": example("programs/aes-known-shared-sum.json")}]
+    });
+    let out = run(&["codegen"], &input.to_string());
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert_eq!(out.json["kind"], "codegen");
+    assert_eq!(out.json["abi"]["symbol"], "mix_batch");
+    let v = &out.json["variants"][0];
+    assert_eq!(v["id"], "known");
+    assert!(v["source"].as_str().unwrap().contains("mix_batch"));
+    let again = run(&["codegen"], &input.to_string());
+    assert_eq!(v["sourceSha256"], again.json["variants"][0]["sourceSha256"]);
+
+    let bad = run(
+        &["native"],
+        &json!({"field": "gf256", "width": 4}).to_string(),
+    );
+    assert_eq!(bad.code, 2);
+    assert_eq!(bad.json["error"]["code"], "missing_field");
+    let help = Command::new(ENGINE).arg("--help").output().unwrap();
+    let help = String::from_utf8(help.stdout).unwrap();
+    for sub in ["codegen", "native"] {
+        assert!(help
+            .lines()
+            .any(|l| l.split_whitespace().next() == Some(sub)));
+    }
+}
+
+/// Builds the two story circuits as native libraries and checks them: the
+/// known circuit passes every case, the wrong wire fails with the guided
+/// witness.
+#[cfg(feature = "native")]
+#[test]
+#[ignore = "compiles native variants with cargo"]
+fn native_correctness_of_story_circuits() {
+    let work = std::env::temp_dir().join(format!("cryptificate-cli-native-{}", std::process::id()));
+    let work_str = work.to_str().unwrap().to_string();
+    let out = run_in(
+        &repo(),
+        &["native"],
+        &native_request("correctness").to_string(),
+        &[
+            ("CRYPTIFICATE_NATIVE_WORK_DIR", &work_str),
+            ("CRYPTIFICATE_NATIVE_JOBS", "2"),
+        ],
+    );
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let results = out.json["correctness"].as_array().unwrap();
+    let known = results.iter().find(|r| r["id"] == "known").unwrap();
+    assert_eq!(known["passed"], true);
+    assert_eq!(known["failures"], 0);
+    assert!(known["cases"].as_u64().unwrap() >= 1021 + 8192);
+    let wire = results.iter().find(|r| r["id"] == "wire").unwrap();
+    assert_eq!(wire["passed"], false);
+    assert_eq!(
+        wire["witness"],
+        json!({
+            "kind": "distinguishing-input",
+            "input": ["00", "01", "00", "00"],
+            "expected": ["03", "02", "01", "01"],
+            "actual": ["01", "02", "01", "01"],
+            "differing": [0]
+        })
+    );
+    std::fs::remove_dir_all(&work).ok();
+}
