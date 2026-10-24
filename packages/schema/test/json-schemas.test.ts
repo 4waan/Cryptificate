@@ -54,3 +54,21 @@ test('claim schema uses the exact evidence labels and statuses', () => {
   const labels = resolvePointer(claim, '/$defs/evidence/properties/label/anyOf/0/enum') as string[];
   assert.deepEqual([...labels].sort(), Object.values(EVIDENCE_LABELS).sort());
 });
+
+test('the example designs and programs pass the request validators', async () => {
+  const { validateCandidateDesign, validateProgram } = await import('../src/index.js');
+  const root = fileURLToPath(new URL('../../../../examples/', import.meta.url));
+  for (const kind of ['designs', 'programs'] as const) {
+    let files: string[] = [];
+    try {
+      files = readdirSync(join(root, kind)).filter((f) => f.endsWith('.json'));
+    } catch {
+      continue;
+    }
+    for (const f of files) {
+      const doc = JSON.parse(readFileSync(join(root, kind, f), 'utf8')) as unknown;
+      const r = kind === 'designs' ? validateCandidateDesign(doc) : validateProgram(doc);
+      assert.equal(r.ok, true, `${kind}/${f}: ${JSON.stringify(r.ok ? null : r.errors)}`);
+    }
+  }
+});
