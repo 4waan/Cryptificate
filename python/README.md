@@ -2,6 +2,10 @@
 
 Standard-library client for the local Cryptificate service (`cryptificate serve`).
 
+```sh
+pip install ./python          # from the repository root; or: PYTHONPATH=python python -m cryptificate ...
+```
+
 ```python
 from cryptificate import Client, aes_like_design, aes_shared_sum_program
 
