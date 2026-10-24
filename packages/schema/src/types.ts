@@ -337,7 +337,8 @@ export interface SearchHistoryEntry {
 
 export interface SearchSummary {
   seed: string;
-  budget: Record<string, number | string>;
+  /** Budget the search ran under, as reported by the engine. */
+  budget: Record<string, unknown>;
   generated: number;
   history: SearchHistoryEntry[];
   shortlist: string[];
