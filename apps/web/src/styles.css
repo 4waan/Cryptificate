@@ -1891,3 +1891,8 @@ input[type='radio'] {
   text-transform: none;
   letter-spacing: 0;
 }
+
+/* Toolchain line above the two result chains needs room before the chain headings. */
+.results-meta {
+  margin-bottom: var(--space-3);
+}

@@ -198,7 +198,7 @@ export function ProvenanceLine({ report, run }: { report: AnalysisReport | Exper
     lean?.ms !== undefined && lean.state === 'completed' ? `Lean check ${(lean.ms / 1000).toFixed(1)} s` : null,
   ].filter(Boolean);
   return (
-    <p className="small muted" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+    <p className="small muted results-meta" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
       <span>{parts.join(' · ')}</span>
       {p.leanSourceSha256 ? (
         <span className="mono" title={`SHA-256 of the generated Lean source: ${p.leanSourceSha256}`}>
