@@ -1,4 +1,10 @@
 //! GF(2^8) with the AES polynomial x^8 + x^4 + x^3 + x + 1 (0x11B).
+//!
+//! `xtime`, `add` and `mul` are the input of the Rust-source refinement in
+//! `refinement/`: Charon and Aeneas translate this file to Lean, where the
+//! translation is proved equal to the WideTrail specification of GF(2^8). Keep
+//! these functions in the subset those tools handle (`while` loops, no iterators
+//! or closures) and run `refinement/extract.sh --write` after changing them.
 
 /// The reduction polynomial, including the x^8 term.
 pub const POLY: u16 = 0x11B;
