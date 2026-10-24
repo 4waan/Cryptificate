@@ -8,6 +8,7 @@ import type { AcceptanceResult, ExpectedTheorem, LeanOutcome } from './acceptanc
 import type { JobContext, PipelineEnv } from './context.js';
 import type { EngineError } from './engine.js';
 import { LEAN_TIMEOUT_MS, runLean } from './leanrun.js';
+import { firstErrorLine } from './sanitize.js';
 import { sha256Hex } from './toolchain.js';
 
 export interface EmitLeanOutput {
@@ -199,6 +200,10 @@ export async function checkCertificate(env: PipelineEnv, ctx: JobContext, reques
     }
     acceptance.inputsMatch = false;
     acceptance.inputProblems.push(...engineMismatch.map((k) => `${k} differs from the request`));
+  }
+  if (outcome.exitCode !== 0 && !outcome.timedOut && !outcome.cancelled && !outcome.unavailable) {
+    const first = firstErrorLine(log);
+    if (first) for (const v of acceptance.verdicts) v.detail = `${v.detail} First error: ${first.replace(/^\S*Cert\.lean:/, 'Cert.lean:')}`;
   }
   const state = outcome.cancelled ? 'cancelled' : outcome.timedOut ? 'timeout' : outcome.unavailable ? 'failed' : outcome.exitCode === 0 ? 'completed' : 'failed';
   const accepted = acceptance.verdicts.filter((v) => v.accepted).length;

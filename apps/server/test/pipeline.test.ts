@@ -222,3 +222,18 @@ test('refinement is reported only when checked for the current kernel source', a
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('a Lean error fails the run without refuting anything', async () => {
+  const { root, env } = makeFixture();
+  try {
+    const { result, report } = await analyze(env, { design: { ...AES_DESIGN, rounds: 29 } });
+    assert.equal(result.state, 'failed');
+    const mds = claim(report, 'matrix.mds');
+    assert.equal(mds.status, 'not_established');
+    assert.equal(mds.reason, 'lean-failed');
+    assert.match(mds.note, /First error: .*unknown identifier/);
+    assert.ok(report.claims.every((c) => c.status !== 'refuted' && c.status !== 'proved'));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

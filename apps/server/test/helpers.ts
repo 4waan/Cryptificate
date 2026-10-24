@@ -73,6 +73,7 @@ process.stdin.on('end', () => {
     const lines = ['import Cryptificate', 'namespace CryptificateJob'];
     for (const o of out) lines.push('-- OUT: ' + o);
     if (d.rounds === 31) lines.push('-- SLEEP: 30');
+    if (d.rounds === 29) lines.push('-- OUT: /x/Cert.lean:12:4: error: unknown identifier', '-- EXIT: 1');
     lines.push('end CryptificateJob');
     console.log(JSON.stringify({ source: lines.join('\n') + '\n', expect, inputsEcho: { candMatrix: d.matrix, candOffsets: d.offsets, candRounds: d.rounds } }));
     return;

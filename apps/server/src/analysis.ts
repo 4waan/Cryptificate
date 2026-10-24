@@ -201,7 +201,7 @@ export async function runAnalysis(env: PipelineEnv, ctx: JobContext, raw: Analys
   if (ctx.cancelled || leanState?.cancelled) state = 'cancelled';
   else if (leanState?.timedOut) state = 'timeout';
   else if (cert?.emitError && cert.emitError.kind === 'invalid') state = 'invalid';
-  else if (!cert?.emit || leanState?.unavailable) state = 'failed';
+  else if (!cert?.emit || leanState?.unavailable || (leanState && leanState.exitCode !== 0)) state = 'failed';
   ctx.finish('report', 'completed');
   if (state === 'cancelled') ctx.closeRemaining('cancelled');
   else ctx.closeRemaining('not_run');
