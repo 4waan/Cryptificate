@@ -1,0 +1,10 @@
+[package]
+name = "cryptificate-kernels"
+description = "Reference arithmetic and round kernels shared by native variants and the refinement proofs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ark-bn254 = { version = "0.6.0", default-features = false, features = ["scalar_field"] }
+ark-ff = { version = "0.6.0", default-features = false }
