@@ -40,7 +40,9 @@ You change a cipher component: the MixColumns matrix, the circuit that computes 
 
 ## Demo
 
-<!-- demo-video -->
+[![Watch the Cryptificate demo](docs/media/demo-poster.jpg)](docs/media/cryptificate-demo.mp4)
+
+**[Watch the demo (3:37)](docs/media/cryptificate-demo.mp4)**: the wrong wire, the weak matrix, the prime field, the circuit search with native timing, a fresh design checked live, and a bundle replayed with `cryptificate verify`.
 
 The workbench opens on a guided story of four real experiments. Each button loads real inputs, and every result on screen comes from Lean and the native harness.
 
