@@ -18,6 +18,23 @@ Statuses: **proved** (checked by Lean, axioms listed), **trusted** (assumed, not
 | 4. Model = specification | **proved** | **proved** | **proved**, under the hypothesis `size_of::<u8>() = 1` | not established |
 | 5. Specification → named properties | **proved**: WideTrail's field `GF256` (field laws carried to the Rust functions) | **proved** as a conditional theorem: the active-S-box bound for Rust executions, assuming MDS, diffusion-optimal offsets and an injective S-box table | **proved**: equal to WideTrail's multiplier, hence to the kernels' `mul` | not established |
 
+### Axioms and hypotheses of each theorem
+
+What `#print axioms` reports, pinned by `Refinement/Axioms.lean` (the build fails if it changes);
+`claims.json` records the same for every theorem below except the field laws and
+`crateMul_eq_rawMul`. "Standard" is `propext`, `Classical.choice`, `Quot.sound`.
+
+| Theorem | Axioms | Hypotheses |
+| --- | --- | --- |
+| `gf256_xtime_refines`, `gf256_mul_refines`, `gf256_xtime_field`, `gf256_mul_field` | standard | none |
+| `gf256_add_refines`, `gf256_add_field` | `propext`, `Quot.sound` | none |
+| `gf256_mul_comm`, `gf256_mul_assoc`, `gf256_mul_add`, `gf256_mul_two`, `gf256_mul_inv` | standard | `a ≠ 0` for `gf256_mul_inv` |
+| `aes_like_round_refines`, `aes_like_round_eq` | standard | none |
+| `aes_like_encrypt_refines`, `aes_like_encrypt_eq` | standard | at least `rounds` round keys |
+| `aes_like_encrypt_activity_bound` | standard | MDS matrix, diffusion-optimal offsets, S-box table without repeated entries (not proved here), different inputs, at least `r` round keys |
+| `Gf256Crate.crateMul_eq_rawMul` | `propext`, `Quot.sound` | none (bit-level model, no Rust) |
+| `Gf256Crate.gf256crate_mul_refines`, `gf256crate_mul_field`, `gf256crate_mul_eq_kernels` | standard and `gf256_aes.core.mem.size_of`, the uninterpreted function the extraction declares | `SizeOfU8`: `size_of::<u8>()` returns `1` |
+
 ## 1. GF(2⁸) arithmetic of `crates/kernels`
 
 Proof file `Refinement/GF256.lean`, namespace `Cryptificate.Refinement`; `U8` is Aeneas's model of
@@ -90,8 +107,8 @@ theorem aes_like_encrypt_activity_bound (m o t ks)
 ```
 
 The right-hand side counts S-boxes whose inputs differ between the two Rust executions, read
-from what `aes_like.encrypt` returns. All four theorems use `propext`, `Classical.choice`,
-`Quot.sound` only.
+from what `aes_like.encrypt` returns. All five theorems of this section use `propext`,
+`Classical.choice`, `Quot.sound` only.
 
 **Scope.** The hypotheses `hM`, `hoff`, `ht` are stated in the main package's terms (WideTrail's
 `IsMDS`, `DiffusionOptimal`). For a concrete design they are what the main package's per-design
