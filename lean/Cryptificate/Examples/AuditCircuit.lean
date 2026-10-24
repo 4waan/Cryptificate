@@ -13,7 +13,9 @@ depend only on `propext`, `Classical.choice` and `Quot.sound`.
 #cryptificate_audit Cryptificate.Circuit.Program.eval_eq_mulVec
 #cryptificate_audit Cryptificate.Circuit.Program.implements_iff
 #cryptificate_audit Cryptificate.Circuit.Program.checkEquiv_iff
+#cryptificate_audit Cryptificate.Circuit.Program.wellFormed_implements_of_checkEquiv
 #cryptificate_audit Cryptificate.Circuit.Program.implements_of_checkEquiv
+#cryptificate_audit Cryptificate.Circuit.Program.refutes_of_checkRefute
 #cryptificate_audit Cryptificate.Circuit.Program.mismatch
 #cryptificate_audit Cryptificate.Circuit.Program.wellFormedb_iff
 
