@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   aesLikeActivityBound,
   canonicalJson,
+  hadesOuterActivityBound,
   isBnDecimal,
   isEvidenceLabel,
   nativeCorrectnessLabel,
@@ -146,6 +147,7 @@ test('canonical JSON sorts keys and is stable', () => {
 
 test('activity bound and evidence labels', () => {
   assert.deepEqual([4, 6, 10, 32].map(aesLikeActivityBound), [25, 30, 55, 200]);
+  assert.deepEqual([2, 4, 6, 8, 160].map(hadesOuterActivityBound), [2, 8, 10, 16, 320]);
   assert.equal(isEvidenceLabel('Lean-checked proof'), true);
   assert.equal(isEvidenceLabel(nativeCorrectnessLabel(9214)), true);
   assert.equal(isEvidenceLabel('Verified'), false);

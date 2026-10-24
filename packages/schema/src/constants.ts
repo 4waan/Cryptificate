@@ -129,5 +129,19 @@ export function aesLikeActivityBound(rounds: number): number {
   return Math.floor(rounds / 4) * 25 + (rounds % 4 >= 2 ? 5 : 0);
 }
 
+/**
+ * Active S-box lower bound for the full rounds of a width-3 HADES design with
+ * an MDS external matrix, an invertible internal matrix and a bijective power
+ * map. With h = fullRounds / 2 full rounds on each side of the partial rounds,
+ * each side charges 4 (the branch number) per pair of adjacent rounds and 1
+ * for an odd round left over; partial rounds are not counted. This is
+ * `(h / 2 + h / 2) * 4 + h % 2 + h % 2`, the bound of the Lean theorem
+ * `hades_activity`.
+ */
+export function hadesOuterActivityBound(fullRounds: number): number {
+  const h = Math.floor(fullRounds / 2);
+  return 2 * (4 * Math.floor(h / 2) + (h % 2));
+}
+
 /** Plain-language wording for a claim that is not established. */
 export const NOT_ESTABLISHED_TEXT = 'not established by this method';
