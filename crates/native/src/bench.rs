@@ -178,8 +178,10 @@ fn time_calls(f: MixBatch, input: *const u8, output: *mut u8, columns: usize, it
 }
 
 /// Calibration aims this far above the minimum sample time, so that samples
-/// stay above it when the machine gets faster after calibration.
-const CALIBRATION_MARGIN: f64 = 1.5;
+/// stay above it when the machine gets faster after calibration (other
+/// processes finish, caches warm up). Samples that still fall below it are
+/// counted in [`WorkloadRecord::samples_below_minimum`].
+const CALIBRATION_MARGIN: f64 = 2.0;
 
 /// The call count scaled so that a sample of `t` ns becomes `target` ns.
 fn scaled(n: u64, t: u64, target: f64) -> u64 {
@@ -214,7 +216,7 @@ fn calibrate(
     }
     loop {
         let t = time_calls(f, input, output, columns, n);
-        if t as f64 >= min_ns as f64 * 1.2 {
+        if t as f64 >= min_ns as f64 * 1.5 {
             return (n, t);
         }
         n = scaled(n, t, target);
@@ -291,7 +293,7 @@ pub fn run_session<F: NativeWord>(
                 // minimum sample time.
                 for i in 0..k {
                     let low = warm[i].iter().copied().min().unwrap_or(u64::MAX);
-                    if (low as f64) < settings.min_sample_ns as f64 * 1.1 {
+                    if (low as f64) < settings.min_sample_ns as f64 * 1.25 {
                         let target = settings.min_sample_ns as f64 * CALIBRATION_MARGIN;
                         calib[i].0 = scaled(calib[i].0, low, target);
                         recalibrated[i] = true;
