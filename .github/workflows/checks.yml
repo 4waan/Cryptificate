@@ -1,0 +1,74 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lean:
+    name: Lean certificates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          sh elan-init.sh -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Fetch the Mathlib build cache
+        working-directory: lean
+        run: lake exe cache get
+      - name: Build the trusted core
+        working-directory: lean
+        run: lake build
+      - name: Check every certificate example
+        working-directory: lean
+        run: python3 scripts/check_examples.py
+
+  refinement:
+    name: Rust-source refinement proofs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          sh elan-init.sh -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Fetch the Mathlib build cache
+        working-directory: refinement
+        run: lake exe cache get
+      - name: Check the refinement theorems and their axioms
+        working-directory: refinement
+        run: lake build
+
+  rust:
+    name: Rust engine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace
+
+  node:
+    name: Service and workbench
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+  python:
+    name: Python client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s python/tests -t python
