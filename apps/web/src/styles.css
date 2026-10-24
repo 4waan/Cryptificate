@@ -20,6 +20,9 @@
   --accent-soft: rgba(163, 201, 123, 0.14);
   --accent-dim: rgba(163, 201, 123, 0.14);
   --on-accent: #0a0b0a;
+  /* Solid fills that carry on-accent text (primary buttons, selection). */
+  --accent-fill: #a3c97b;
+  --accent-fill-hover: #c3e09f;
   --focus: #a3c97b;
   --invert-bg: #f2f4f1;
   --invert-text: #0a0b0a;
@@ -71,6 +74,8 @@
     --accent-soft: #eaf2e1;
     --accent-dim: #eaf2e1;
     --on-accent: #ffffff;
+    --accent-fill: #4e7530;
+    --accent-fill-hover: #426528;
     --focus: #5f8a3a;
     --invert-bg: #0d0f0d;
     --invert-text: #ffffff;
@@ -108,6 +113,8 @@
   --accent-soft: #eaf2e1;
   --accent-dim: #eaf2e1;
   --on-accent: #ffffff;
+  --accent-fill: #4e7530;
+  --accent-fill-hover: #426528;
   --focus: #5f8a3a;
   --invert-bg: #0d0f0d;
   --invert-text: #ffffff;
@@ -220,7 +227,7 @@ kbd {
   left: var(--space-4);
   top: -48px;
   z-index: 100;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--on-accent);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
@@ -266,13 +273,13 @@ textarea {
   cursor: not-allowed;
 }
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
   color: var(--on-accent);
 }
 .btn-primary:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--accent-fill-hover);
+  border-color: var(--accent-fill-hover);
 }
 .btn-quiet {
   border-color: transparent;
@@ -1415,7 +1422,7 @@ table.data tbody tr:last-child td {
 /* ---------- instrument skin: hairlines, mono labels, one colour ---------- */
 
 ::selection {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--on-accent);
 }
 
@@ -1504,14 +1511,14 @@ table.data thead th {
   border-color: var(--text-muted);
 }
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
   color: var(--on-accent);
   box-shadow: 0 0 0 0 var(--accent-dim);
 }
 .btn-primary:hover {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
+  background: var(--accent-fill-hover);
+  border-color: var(--accent-fill-hover);
   box-shadow: 0 0 0 4px var(--accent-dim);
 }
 .btn-quiet {
