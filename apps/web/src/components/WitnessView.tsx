@@ -54,7 +54,7 @@ export function WitnessView({
   /** Found by an unchecked engine diagnostic, not by a checked certificate. */
   unchecked?: boolean;
 }) {
-  const suffix = preview ? ' (unchecked preview)' : unchecked ? ' (unchecked diagnostic)' : '';
+  const suffix = preview ? ' (computed in the browser)' : unchecked ? ' (engine diagnostic)' : '';
   const heading = `${witnessHeading(witness)}${suffix}`;
   return (
     <figure className="witness" style={{ margin: 0 }} aria-label={heading}>

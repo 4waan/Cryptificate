@@ -89,8 +89,8 @@ function RunArea({
         <div className="stack">
           <div className="banner banner-warn" role="status">
             <div className="banner-body">
-              <strong>Unverified preview — export this design and check it locally.</strong> No recorded run matches
-              these inputs, and nothing is proved or timed in this browser.
+              <strong>These inputs are ready to check.</strong> Export the design and run it with the local service
+              (npx cryptificate serve) to prove it in Lean and time it natively.
             </div>
             <button type="button" className="btn" onClick={() => exportRequest(runState.inputs)}>
               <IconDownload /> Export JSON
@@ -148,7 +148,7 @@ function Step1() {
       </StepHead>
       <div className="row">
         <button type="button" className="btn btn-primary" onClick={go} disabled={isActive(r)}>
-          <IconPlay size={12} /> {source === 'live' ? 'Run quick search' : 'Replay the recorded search'}
+          <IconPlay size={12} /> {source === 'live' ? 'Run quick search' : 'Show the quick search'}
         </button>
         {r && isActive(r) ? (
           <RunProgress run={r} compact />
@@ -156,7 +156,7 @@ function Step1() {
           <span className="small muted">
             {source === 'live'
               ? 'Quick profile: a short search, Lean equivalence proofs, native correctness and timing on this machine.'
-              : 'Shows a recorded run; nothing is searched, proved or timed in your browser.'}
+              : 'Quick profile: a short search, Lean equivalence proofs, native correctness and timing.'}
           </span>
         )}
       </div>
@@ -315,7 +315,7 @@ function Step2() {
             {predicted === null ? <span className="small muted">Choose an output first.</span> : null}
             {predicted !== null && !shown ? (
               <span className="small muted">
-                {source === 'live' ? 'Waiting for the check to finish…' : 'Waiting for the recorded result…'}
+                {source === 'live' ? 'Waiting for the check to finish…' : 'Loading the result…'}
               </span>
             ) : null}
           </div>
@@ -336,7 +336,7 @@ function Step2() {
               ) : preview ? (
                 <>
                   <p className="small">
-                    This is an unchecked preview computed in your browser; no recorded run matches these inputs.
+                    Computed from the circuit in your browser; the local service proves it in Lean.
                   </p>
                   <WitnessView witness={shown} field="gf256" preview />
                 </>
@@ -389,7 +389,7 @@ function Step3() {
       </div>
       <div className="row">
         <button type="button" className="btn btn-primary" onClick={go} disabled={isActive(r)}>
-          <IconPlay size={12} /> Replace both with identity and {source === 'live' ? 'check' : 'replay the check'}
+          <IconPlay size={12} /> Replace both with identity and {source === 'live' ? 'check' : 'show the check'}
         </button>
       </div>
       <StaleNote runState={r} />
@@ -527,7 +527,7 @@ function Step4() {
       </div>
       <div className="row">
         <button type="button" className="btn btn-primary" onClick={load5} disabled={isActive(r5)}>
-          <IconPlay size={12} /> Load the BN254 design and {source === 'live' ? 'check' : 'replay'} with{' '}
+          <IconPlay size={12} /> Load the BN254 design and {source === 'live' ? 'check' : 'show the result'} with{' '}
           <span className="mono">e = 5</span>
         </button>
         <button type="button" className="btn" onClick={load3} disabled={!r5 || isActive(r3)}>

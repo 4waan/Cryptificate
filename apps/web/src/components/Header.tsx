@@ -66,15 +66,12 @@ function Connection({ connection }: { connection: AppState['connection'] }) {
     }
     case 'unreachable':
       text = 'Service offline';
-      detail = 'showing recorded runs';
       break;
     case 'checking':
       text = 'Connecting to service';
       break;
     case 'replay-build':
-      text = 'Recorded runs only';
-      detail = 'static build';
-      break;
+      return null;
   }
   return (
     <span
@@ -115,6 +112,7 @@ export function Header({
   onTheme: (t: Theme) => void;
 }) {
   const o = ORIGIN[origin];
+  const showOrigin = origin === 'live' || origin === 'cached' || origin === 'none-live';
   return (
     <header className="header">
       <div className="header-inner">
@@ -151,12 +149,14 @@ export function Header({
           ))}
         </nav>
         <div className="header-status">
-          <span className={stale && origin !== 'preview' ? 'badge badge-warn' : o.cls} title={o.title}>
-            {o.icon}
-            <span className="visually-hidden">Result origin: </span>
-            {o.text}
-            {stale && origin !== 'preview' ? <span> · earlier version</span> : null}
-          </span>
+          {showOrigin ? (
+            <span className={stale ? 'badge badge-warn' : o.cls} title={o.title}>
+              {o.icon}
+              <span className="visually-hidden">Result origin: </span>
+              {o.text}
+              {stale ? <span> · earlier version</span> : null}
+            </span>
+          ) : null}
           <Connection connection={connection} />
           <button
             type="button"

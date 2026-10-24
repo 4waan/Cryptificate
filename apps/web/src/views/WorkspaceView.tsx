@@ -40,7 +40,7 @@ export function WorkspaceView() {
           disabled={problems.length > 0 || isActive(analysis)}
           onClick={() => startRun('analysis')}
         >
-          <IconPlay size={12} /> {source === 'live' ? 'Check design and circuit' : 'Show recorded check'}
+          <IconPlay size={12} /> {source === 'live' ? 'Check design and circuit' : 'Show the check'}
         </button>
         <button
           type="button"
@@ -48,7 +48,7 @@ export function WorkspaceView() {
           disabled={problems.length > 0 || isActive(experiment)}
           onClick={() => startRun('experiment', 'quick')}
         >
-          {source === 'live' ? 'Run quick experiment' : 'Show recorded experiment'}
+          {source === 'live' ? 'Run quick experiment' : 'Show the quick experiment'}
         </button>
         {analysis?.report && !isActive(analysis) ? (
           <button
@@ -66,9 +66,7 @@ export function WorkspaceView() {
             </span>
           ) : busy ? (
             <RunProgress run={(isActive(analysis) ? analysis : experiment)!} compact />
-          ) : source === 'replay' ? (
-            <span className="muted">Replay mode: results come from recorded runs, never from this browser.</span>
-          ) : (
+          ) : source === 'replay' ? null : (
             <span className="muted">Runs on the local service; Lean and native timing happen on this machine.</span>
           )}
         </div>

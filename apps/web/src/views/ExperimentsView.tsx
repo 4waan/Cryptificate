@@ -160,7 +160,7 @@ function HistoryTable({ report }: { report: ExperimentReport }) {
   return (
     <div className="stack" style={{ gap: 8 }}>
       <p className="small muted">
-        {report.search.generated.toLocaleString('en-US')} circuits generated, {history.length} recorded, seed{' '}
+        {report.search.generated.toLocaleString('en-US')} circuits generated, {history.length} in the history, seed{' '}
         <span className="mono">{report.search.seed}</span>. Search output is untrusted until its equivalence is
         Lean-checked.
       </p>
@@ -377,7 +377,7 @@ export function ExperimentsView() {
           disabled={problems.length > 0 || isActive(run)}
           onClick={() => startRun('experiment', profile)}
         >
-          <IconPlay size={12} /> {source === 'live' ? 'Run experiment on workspace inputs' : 'Show recorded experiment'}
+          <IconPlay size={12} /> {source === 'live' ? 'Run experiment on workspace inputs' : 'Show the quick experiment'}
         </button>
         <div className="actionbar-status">
           {run ? <RunProgress run={run} compact /> : <span className="muted">No experiment yet.</span>}
@@ -395,7 +395,7 @@ export function ExperimentsView() {
       ) : null}
       {run && stale ? (
         run.source === 'replay' ? (
-          <UnverifiedPreview inputs={inputs} reason="The workspace changed since this recorded experiment." />
+          <UnverifiedPreview inputs={inputs} reason="The workspace changed since this experiment." />
         ) : (
           <div className="banner banner-warn" role="status">
             <IconWarning />
@@ -415,7 +415,7 @@ export function ExperimentsView() {
       {run?.state === 'unavailable' ? (
         <UnverifiedPreview
           inputs={inputs}
-          reason="No recorded experiment matches these inputs. Search, native correctness and timing need the local service."
+          reason="Search, native correctness and timing run on the local service (npx cryptificate serve)."
         />
       ) : null}
       {run && report ? (

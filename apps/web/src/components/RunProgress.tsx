@@ -11,7 +11,7 @@ const STATE_TEXT: Record<string, string> = {
   timeout: 'Timed out',
   cancelled: 'Stopped',
   invalid: 'Rejected as invalid input',
-  unavailable: 'No recorded run for these inputs',
+  unavailable: 'No result for these inputs yet',
 };
 
 const STEP_TEXT: Record<string, string> = {
@@ -55,9 +55,6 @@ export function RunProgress({ run, compact = false }: { run: Run; compact?: bool
         {active ? <span className="spinner" aria-hidden="true" /> : null}
         <span>
           <strong>{what}:</strong> {runStateText(run)}
-          {run.source === 'replay' && run.recordingId ? (
-            <span className="muted"> · recorded run “{run.recordingId}”</span>
-          ) : null}
         </span>
         {active ? (
           <button type="button" className="btn btn-sm" onClick={() => void stopRun(run.key)}>

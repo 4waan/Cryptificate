@@ -97,7 +97,7 @@ export function UnverifiedPreview({ inputs, reason }: { inputs: WorkspaceInputs;
       <div className="banner banner-warn" role="status">
         <IconPreview />
         <div className="banner-body">
-          <strong>Unverified preview — export this design and check it locally.</strong> <span>{reason}</span>
+          <strong>These inputs are ready to check: export the design and run it with the local service.</strong> <span>{reason}</span>
         </div>
         <button type="button" className="btn" onClick={() => exportRequest(inputs)}>
           <IconDownload /> Export JSON
@@ -105,14 +105,14 @@ export function UnverifiedPreview({ inputs, reason }: { inputs: WorkspaceInputs;
       </div>
       {items.length ? (
         <div className="grid-2">
-          <Chain title="Design guarantees" subtitle="browser preview, unchecked">
+          <Chain title="Design guarantees" subtitle="computed in the browser">
             {items
               .filter((i) => i.chain === 'design')
               .map((i) => (
                 <PreviewCard key={i.id} item={i} field={field} />
               ))}
           </Chain>
-          <Chain title="Implementation correspondence" subtitle="browser preview, unchecked">
+          <Chain title="Implementation correspondence" subtitle="computed in the browser">
             {items
               .filter((i) => i.chain === 'implementation')
               .map((i) => (
@@ -125,7 +125,7 @@ export function UnverifiedPreview({ inputs, reason }: { inputs: WorkspaceInputs;
           </Chain>
         </div>
       ) : (
-        <p className="muted">Fix the highlighted inputs to see a preview.</p>
+        <p className="muted">Fix the highlighted inputs to see the results.</p>
       )}
     </div>
   );
@@ -264,7 +264,7 @@ export function ResultsPanel({
     return (
       <UnverifiedPreview
         inputs={inputs}
-        reason="No recorded run matches these inputs, and this page never runs Lean or benchmarks in your browser."
+        reason="Lean certificates and native timing run on the local service (npx cryptificate serve)."
       />
     );
   }
@@ -274,7 +274,7 @@ export function ResultsPanel({
         run.source === 'replay' ? (
           <UnverifiedPreview
             inputs={inputs}
-            reason="You changed the inputs of a recorded run. The recorded results below describe the earlier version."
+            reason="You changed the inputs. The results below belong to the earlier version."
           />
         ) : (
           <div className="banner banner-warn" role="status">

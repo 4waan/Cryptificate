@@ -101,8 +101,8 @@ export function MissingClaimCard({ title, reason }: { title: string; reason: str
 }
 
 const OUTCOME_TEXT = {
-  holds: 'Holds in preview',
-  fails: 'Fails in preview',
+  holds: 'Holds',
+  fails: 'Fails',
   unknown: 'Not established by this method',
 } as const;
 
