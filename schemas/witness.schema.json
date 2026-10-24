@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/4waan/Cryptificate/schemas/witness.schema.json",
+  "title": "Witness",
+  "oneOf": [
+    {
+      "title": "Branch-number witness",
+      "type": "object",
+      "required": ["kind", "input", "output", "inputWeight", "outputWeight", "bound"],
+      "properties": {
+        "kind": { "const": "branch" },
+        "input": { "type": "array", "items": { "$ref": "field-element.schema.json#/$defs/any" } },
+        "output": { "type": "array", "items": { "$ref": "field-element.schema.json#/$defs/any" } },
+        "inputWeight": { "type": "integer", "minimum": 0 },
+        "outputWeight": { "type": "integer", "minimum": 0 },
+        "bound": { "type": "integer", "minimum": 0 }
+      }
+    },
+    {
+      "title": "Offset collision",
+      "type": "object",
+      "required": ["kind", "rows", "offset"],
+      "properties": {
+        "kind": { "const": "offset-collision" },
+        "rows": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+        "offset": { "type": "integer", "minimum": 0 }
+      }
+    },
+    {
+      "title": "Distinguishing input",
+      "type": "object",
+      "required": ["kind", "input", "expected", "actual", "differing"],
+      "properties": {
+        "kind": { "const": "distinguishing-input" },
+        "input": { "type": "array", "items": { "$ref": "field-element.schema.json#/$defs/any" } },
+        "expected": { "type": "array", "items": { "$ref": "field-element.schema.json#/$defs/any" } },
+        "actual": { "type": "array", "items": { "$ref": "field-element.schema.json#/$defs/any" } },
+        "differing": { "type": "array", "items": { "type": "integer", "minimum": 0 } }
+      }
+    },
+    {
+      "title": "S-box collision",
+      "type": "object",
+      "required": ["kind", "x1", "x2", "y"],
+      "properties": {
+        "kind": { "const": "sbox-collision" },
+        "x1": { "$ref": "field-element.schema.json#/$defs/gf256" },
+        "x2": { "$ref": "field-element.schema.json#/$defs/gf256" },
+        "y": { "$ref": "field-element.schema.json#/$defs/gf256" }
+      }
+    },
+    {
+      "title": "Power map collision",
+      "type": "object",
+      "required": ["kind", "exponent", "x1", "x2", "note"],
+      "properties": {
+        "kind": { "const": "power-collision" },
+        "exponent": { "type": "integer", "minimum": 1 },
+        "x1": { "$ref": "field-element.schema.json#/$defs/bn254" },
+        "x2": { "$ref": "field-element.schema.json#/$defs/bn254" },
+        "note": { "type": "string" }
+      }
+    }
+  ]
+}

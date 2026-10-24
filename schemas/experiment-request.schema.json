@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/4waan/Cryptificate/schemas/experiment-request.schema.json",
+  "title": "ExperimentRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["design", "profile"],
+  "properties": {
+    "design": { "$ref": "candidate-design.schema.json" },
+    "program": { "$ref": "program.schema.json" },
+    "profile": { "enum": ["quick", "research"] },
+    "seed": { "type": "string", "pattern": "^[0-9A-Fa-f]{1,64}$" }
+  }
+}

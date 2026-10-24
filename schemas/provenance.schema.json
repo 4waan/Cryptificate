@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/4waan/Cryptificate/schemas/provenance.schema.json",
+  "title": "Provenance and execution",
+  "$defs": {
+    "origin": { "enum": ["live", "cached", "recorded"] },
+    "stepState": {
+      "enum": ["pending", "running", "completed", "failed", "timeout", "cancelled", "invalid", "skipped", "not_run"]
+    },
+    "step": {
+      "type": "object",
+      "required": ["name", "state"],
+      "properties": {
+        "name": { "type": "string" },
+        "state": { "$ref": "#/$defs/stepState" },
+        "ms": { "type": "number", "minimum": 0 },
+        "detail": { "type": "string" }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "required": ["state", "steps"],
+      "properties": {
+        "state": { "enum": ["queued", "running", "completed", "failed", "timeout", "cancelled", "invalid"] },
+        "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } }
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "required": ["lean", "mathlib", "widetrail", "rustc"],
+      "properties": {
+        "lean": { "type": "string" },
+        "mathlib": { "type": "string" },
+        "widetrail": { "type": "string" },
+        "rustc": { "type": "string" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["origin", "checker", "toolchain"],
+      "properties": {
+        "origin": { "$ref": "#/$defs/origin" },
+        "checker": { "type": "string" },
+        "toolchain": { "$ref": "#/$defs/toolchain" },
+        "leanSourceSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "cacheKey": { "type": "string" },
+        "cachedFrom": { "type": "string" }
+      }
+    }
+  }
+}

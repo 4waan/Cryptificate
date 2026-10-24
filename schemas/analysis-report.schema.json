@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/4waan/Cryptificate/schemas/analysis-report.schema.json",
+  "title": "AnalysisReport",
+  "type": "object",
+  "required": ["kind", "id", "inputDigest", "inputs", "claims", "execution", "provenance"],
+  "properties": {
+    "kind": { "const": "analysis" },
+    "id": { "type": "string" },
+    "inputDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "inputs": { "$ref": "analysis-request.schema.json" },
+    "claims": { "type": "array", "items": { "$ref": "claim.schema.json" } },
+    "execution": { "$ref": "provenance.schema.json#/$defs/execution" },
+    "provenance": { "$ref": "provenance.schema.json#/$defs/provenance" }
+  }
+}

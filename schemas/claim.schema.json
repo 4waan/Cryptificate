@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/4waan/Cryptificate/schemas/claim.schema.json",
+  "title": "Claim",
+  "type": "object",
+  "required": ["id", "chain", "title", "status", "evidence", "witness", "note"],
+  "properties": {
+    "id": {
+      "enum": [
+        "matrix.mds",
+        "offsets.dispersion",
+        "sbox.bijective",
+        "activity.bound",
+        "external.mds",
+        "internal.invertible",
+        "activity.outer",
+        "circuit.equivalence",
+        "native.correctness",
+        "rust.refinement",
+        "native.timing"
+      ]
+    },
+    "chain": { "enum": ["design", "implementation"] },
+    "title": { "type": "string" },
+    "status": {
+      "description": "A timeout or failed check is not_established, never refuted.",
+      "enum": ["proved", "refuted", "not_established", "unsupported"]
+    },
+    "evidence": { "$ref": "#/$defs/evidence" },
+    "witness": { "oneOf": [{ "$ref": "witness.schema.json" }, { "type": "null" }] },
+    "note": { "type": "string" },
+    "reason": {
+      "description": "Machine-readable reason for a claim that is not established.",
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "required": ["kind", "label"],
+      "properties": {
+        "kind": { "enum": ["lean", "native", "measurement", "refinement", "diagnostic"] },
+        "label": {
+          "anyOf": [
+            {
+              "enum": [
+                "Lean-checked proof",
+                "Lean-checked circuit equivalence",
+                "Lean-checked counterexample",
+                "Rust-source refinement (Aeneas)",
+                "Native timing measured on this machine",
+                "Unchecked diagnostic"
+              ]
+            },
+            { "type": "string", "pattern": "^Generated Rust passed [0-9]+ correctness cases$" }
+          ]
+        },
+        "theorem": { "type": "string" },
+        "type": { "type": "string" },
+        "axioms": { "type": "array", "items": { "type": "string" } },
+        "cases": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

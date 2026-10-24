@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/4waan/Cryptificate/schemas/analysis-request.schema.json",
+  "title": "AnalysisRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["design"],
+  "properties": {
+    "design": { "$ref": "candidate-design.schema.json" },
+    "program": { "$ref": "program.schema.json" },
+    "target": {
+      "description": "Which matrix the program must implement. Defaults to matrix (AES-like) or external (HADES).",
+      "enum": ["matrix", "external", "internal"]
+    }
+  }
+}

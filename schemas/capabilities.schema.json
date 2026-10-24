@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/4waan/Cryptificate/schemas/capabilities.schema.json",
+  "title": "Capabilities",
+  "description": "Response of GET /api/capabilities.",
+  "type": "object",
+  "required": ["name", "version", "checker", "models", "profiles", "limits", "toolchain"],
+  "properties": {
+    "name": { "const": "cryptificate" },
+    "version": { "type": "string" },
+    "checker": { "type": "string" },
+    "models": { "type": "array", "items": { "enum": ["aes-like/gf256/v1", "hades/bn254/v1"] } },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "budget"],
+        "properties": {
+          "id": { "enum": ["quick", "research"] },
+          "label": { "type": "string" },
+          "budget": {
+            "type": "object",
+            "required": ["totalSeconds", "searchMs", "maxCandidates", "shortlist", "sessions"],
+            "properties": {
+              "totalSeconds": { "type": "integer" },
+              "searchMs": { "type": "integer" },
+              "maxCandidates": { "type": "integer" },
+              "shortlist": { "type": "integer" },
+              "sessions": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "required": ["maxBodyBytes", "maxInstructions", "maxQueued", "leanTimeoutSeconds", "analysisBudgetSeconds"],
+      "properties": {
+        "maxBodyBytes": { "type": "integer" },
+        "maxInstructions": { "type": "integer" },
+        "maxQueued": { "type": "integer" },
+        "leanTimeoutSeconds": { "type": "integer" },
+        "analysisBudgetSeconds": { "type": "integer" }
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "required": ["lean", "rust", "engine", "pins"],
+      "properties": {
+        "lean": { "$ref": "#/$defs/tool" },
+        "rust": { "$ref": "#/$defs/tool" },
+        "engine": {
+          "allOf": [{ "$ref": "#/$defs/tool" }],
+          "properties": { "subcommands": { "type": "array", "items": { "type": "string" } } },
+          "required": ["subcommands"]
+        },
+        "pins": { "$ref": "provenance.schema.json#/$defs/toolchain" }
+      }
+    }
+  },
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "required": ["available"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "version": { "type": "string" },
+        "detail": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/4waan/Cryptificate/schemas/job.schema.json",
+  "title": "Job",
+  "description": "Response of GET /api/jobs/:id. POST /api/analyses and POST /api/experiments return {\"job\": {id, kind, state, origin}}.",
+  "type": "object",
+  "required": ["id", "kind", "state", "origin", "steps", "report", "bundle"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "kind": { "enum": ["analysis", "experiment"] },
+    "state": { "enum": ["queued", "running", "completed", "failed", "timeout", "cancelled", "invalid"] },
+    "origin": { "$ref": "provenance.schema.json#/$defs/origin" },
+    "steps": { "type": "array", "items": { "$ref": "provenance.schema.json#/$defs/step" } },
+    "report": {
+      "oneOf": [{ "type": "null" }, { "$ref": "analysis-report.schema.json" }, { "$ref": "experiment-report.schema.json" }]
+    },
+    "queuePosition": { "type": "integer", "minimum": 1 },
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "path": { "type": "string" } }
+    },
+    "bundle": { "type": "boolean" }
+  }
+}
