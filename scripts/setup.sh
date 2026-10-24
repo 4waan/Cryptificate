@@ -144,7 +144,10 @@ setup_rust() {
   if [ "$OFFLINE" -eq 1 ]; then
     flags+=(--offline)
   else
+    # Fetch every locked crate up front: generated native variants are built
+    # later against the same lockfile, possibly without network access.
     note "network: crates from Cargo.lock that are not cached yet"
+    (cd "$ROOT" && cargo fetch --locked) || MISSING+=("cargo fetch")
   fi
   (cd "$ROOT" && cargo build "${flags[@]}" --bin cryptificate-engine) || {
     note "engine build failed"
