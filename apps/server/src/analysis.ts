@@ -3,11 +3,11 @@
  * correctness -> report.
  */
 import { canonicalJson, designClaimsFor, IMPLEMENTATION_CLAIMS, normalizeAnalysisRequest, EVIDENCE_LABELS } from '@cryptificate/schema';
-import type { AnalysisReport, AnalysisRequest, Claim, NotEstablishedReason } from '@cryptificate/schema';
+import type { AnalysisReport, AnalysisRequest, Claim, NotEstablishedReason, Witness } from '@cryptificate/schema';
 import { cacheKey, ProofCache } from './cache.js';
 import { checkCertificate } from './certificate.js';
 import type { CertificateCheck } from './certificate.js';
-import { buildAnalysisClaims } from './claims.js';
+import { buildAnalysisClaims, diagnosticWitness } from './claims.js';
 import type { NativeOutcome } from './claims.js';
 import type { JobContext, PipelineEnv, PipelineResult } from './context.js';
 import { toolchainDocument } from './bundle.js';
@@ -37,6 +37,15 @@ function stripMeta<T>(req: T): T {
   delete copy['inputDigest'];
   delete copy['kind'];
   return copy as T;
+}
+
+/** Inputs of distinguishing-input witnesses, as extra native correctness cases. */
+export function wiringWitnesses(witnesses: ReadonlyArray<Witness | null | undefined>): string[][] {
+  const out: string[][] = [];
+  for (const w of witnesses) {
+    if (w && w.kind === 'distinguishing-input' && !out.some((x) => x.join() === w.input.join())) out.push([...w.input]);
+  }
+  return out;
 }
 
 export function allClaimsNotEstablished(req: AnalysisRequest, reason: NotEstablishedReason, note: string): Claim[] {
@@ -180,12 +189,15 @@ export async function runAnalysis(env: PipelineEnv, ctx: JobContext, raw: Analys
       timeoutMs: 300_000,
       subdir: 'native',
       stepName: 'native',
+      extraCases: wiringWitnesses([...(cert?.emit?.expect ?? []).map((e) => e.witness ?? null), diagnosticWitness(diagnostics, 'circuit.equivalence')]),
     });
     if (nr.unavailable) native = { unavailable: nr.unavailable };
     else if (!nr.ok) native = { unavailable: `Native correctness did not complete: ${nr.error?.message ?? 'unknown error'}.` };
     else {
       const r = nr.correctness.find((c) => c.id === 'user') ?? nr.correctness[0];
-      native = r ? { cases: r.cases, passed: r.passed, ...(r.checksum ? { checksum: r.checksum } : {}), witness: r.witness ?? null, ...(r.detail ? { detail: r.detail } : {}) } : { unavailable: 'The native backend returned no result.' };
+      native = r
+        ? { cases: r.cases, failures: r.failures, passed: r.passed, ...(r.checksum ? { checksum: r.checksum } : {}), witness: r.witness ?? null, ...(r.detail ? { detail: r.detail } : {}) }
+        : { unavailable: 'The native backend returned no result.' };
     }
   } else if (!request.program) {
     ctx.finish('native', 'skipped', 'no circuit submitted');

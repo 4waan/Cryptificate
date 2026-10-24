@@ -25,7 +25,7 @@ import type {
   SearchSummary,
   Workload,
 } from '@cryptificate/schema';
-import { parseValidate } from './analysis.js';
+import { parseValidate, wiringWitnesses } from './analysis.js';
 import { checkCertificate } from './certificate.js';
 import { buildAnalysisClaims } from './claims.js';
 import type { JobContext, PipelineEnv, PipelineResult } from './context.js';
@@ -459,6 +459,7 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
     variants: candidates.map((c) => ({ id: c.id, program: c.program, origin: c.origin })),
     mode: 'correctness',
     seed,
+    extraCases: wiringWitnesses(candidates.map((c) => c.equivalence.witness)),
     timeoutMs: 600_000,
     subdir: 'native',
     stepName: 'native-correctness',

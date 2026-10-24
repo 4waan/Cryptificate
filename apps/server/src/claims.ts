@@ -26,6 +26,8 @@ import type { RefinementStatus } from './refinement.js';
 export interface NativeOutcome {
   /** Correctness cases executed. */
   cases: number;
+  /** Cases with a wrong output. */
+  failures?: number;
   passed: boolean;
   checksum?: string;
   witness?: Witness | null;
@@ -237,12 +239,13 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
             note: `Generated Rust matched the independently computed matrix product on all ${n.cases} test vectors. This is testing, not a proof.`,
           });
         } else {
+          const passedCases = Math.max(0, n.cases - (n.failures ?? n.cases));
           claims.push({
             id: info.id,
             chain: info.chain,
             title: info.title,
             status: 'refuted',
-            evidence: { kind: 'native', label: nativeCorrectnessLabel(n.cases), cases: n.cases },
+            evidence: { kind: 'native', label: nativeCorrectnessLabel(passedCases), cases: n.cases },
             witness: n.witness ?? null,
             note: n.detail ?? 'Generated Rust disagreed with the reference matrix product on a test vector.',
           });

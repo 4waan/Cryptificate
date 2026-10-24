@@ -16,6 +16,8 @@ export interface VariantInput {
 export interface VariantCorrectness {
   id: string;
   cases: number;
+  /** Cases with a wrong output (0 when passed). */
+  failures: number;
   passed: boolean;
   checksum?: string;
   witness?: Witness | null;
@@ -79,7 +81,8 @@ export function parseCorrectness(doc: unknown): VariantCorrectness[] {
     const cases = c['cases'];
     const passed = c['passed'];
     if (typeof cases !== 'number' || typeof passed !== 'boolean') return;
-    const r: VariantCorrectness = { id, cases, passed };
+    const failures = typeof c['failures'] === 'number' ? c['failures'] : passed ? 0 : cases;
+    const r: VariantCorrectness = { id, cases, failures, passed };
     if (typeof c['checksum'] === 'string') r.checksum = c['checksum'];
     const w = c['witness'] ?? c['counterexample'];
     if (w && typeof w === 'object') r.witness = w as Witness;
@@ -121,6 +124,8 @@ export interface NativeOptions {
   stepName: string;
   /** Codegen output from an earlier step, to avoid regenerating. */
   codegen?: CodegenResult | null;
+  /** Additional correctness inputs, e.g. the distinguishing input of a wiring witness. */
+  extraCases?: string[][];
 }
 
 export async function nativeAvailable(env: PipelineEnv): Promise<string | null> {
@@ -163,6 +168,7 @@ export async function runNative(env: PipelineEnv, ctx: JobContext, opts: NativeO
   };
   if (opts.seed !== undefined) input['seed'] = opts.seed;
   if (opts.session !== undefined) input['session'] = opts.session;
+  if (opts.extraCases && opts.extraCases.length > 0) input['extraCases'] = opts.extraCases.slice(0, 256);
   const r = await env.engine.call<unknown>('native', input, {
     signal: ctx.signal,
     timeoutMs: Math.max(1000, Math.min(opts.timeoutMs, ctx.remainingMs())),
