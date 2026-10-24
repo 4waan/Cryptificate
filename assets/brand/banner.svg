@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 220" width="900" height="220" role="img" aria-labelledby="title desc">
+  <title id="title">How Cryptificate works</title>
+  <desc id="desc">Your change to a matrix, circuit, row offsets, S-box or prime-field layer goes to Lean-checked claims (circuit equivalence, MDS, row offsets, activity bound), then to native Rust measurements, and ends in a replayable evidence bundle.</desc>
+  <style>
+    text{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif}
+    .ttl{font-size:15px;font-weight:600;fill:#13213A}
+    .sub{font-size:13.5px;fill:#4A566D}
+    .card{fill:#F6F8FA;stroke:#D0D7DE}
+    .arrow{fill:none;stroke:#8C959F;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .a{fill:#E4572E}.c{fill:#13213A}.t{fill:#BEC6D3}
+    @media (prefers-color-scheme:dark){
+      .ttl{fill:#E8ECF2}.sub{fill:#A3AEC0}
+      .card{fill:#161B22;stroke:#30363D}
+      .a{fill:#F26A45}.c{fill:#E8ECF2}.t{fill:#3B4760}
+    }
+  </style>
+  <g>
+    <rect class="card" x="0.5" y="18.5" width="203" height="182" rx="6"/>
+    <rect class="a" x="20" y="40" width="12" height="12" rx="0.75"/><rect class="t" x="36" y="40" width="12" height="12" rx="0.75"/><rect class="t" x="52" y="40" width="12" height="12" rx="0.75"/><rect class="t" x="68" y="40" width="12" height="12" rx="0.75"/><rect class="t" x="20" y="56" width="12" height="12" rx="0.75"/><rect class="t" x="36" y="56" width="12" height="12" rx="0.75"/><rect class="t" x="52" y="56" width="12" height="12" rx="0.75"/><rect class="t" x="68" y="56" width="12" height="12" rx="0.75"/><rect class="t" x="20" y="72" width="12" height="12" rx="0.75"/><rect class="t" x="36" y="72" width="12" height="12" rx="0.75"/><rect class="t" x="52" y="72" width="12" height="12" rx="0.75"/><rect class="t" x="68" y="72" width="12" height="12" rx="0.75"/><rect class="t" x="20" y="88" width="12" height="12" rx="0.75"/><rect class="t" x="36" y="88" width="12" height="12" rx="0.75"/><rect class="t" x="52" y="88" width="12" height="12" rx="0.75"/><rect class="t" x="68" y="88" width="12" height="12" rx="0.75"/>
+    <text class="ttl" x="20" y="132">Your change</text>
+    <text class="sub" y="156"><tspan x="20" dy="0">matrix, circuit, offsets,</tspan><tspan x="20" dy="19">S-box or field layer</tspan></text>
+  </g>
+  <path class="arrow" d="M210 70H226M221 65l5 5-5 5"/>
+  <g>
+    <rect class="card" x="232.5" y="18.5" width="203" height="182" rx="6"/>
+    <rect class="a" x="252" y="40" width="12" height="12" rx="0.75"/><rect class="t" x="268" y="40" width="12" height="12" rx="0.75"/><rect class="t" x="284" y="40" width="12" height="12" rx="0.75"/><rect class="t" x="300" y="40" width="12" height="12" rx="0.75"/><rect class="c" x="252" y="56" width="12" height="12" rx="0.75"/><rect class="t" x="268" y="56" width="12" height="12" rx="0.75"/><rect class="t" x="284" y="56" width="12" height="12" rx="0.75"/><rect class="t" x="300" y="56" width="12" height="12" rx="0.75"/><rect class="c" x="252" y="72" width="12" height="12" rx="0.75"/><rect class="t" x="268" y="72" width="12" height="12" rx="0.75"/><rect class="t" x="284" y="72" width="12" height="12" rx="0.75"/><rect class="t" x="300" y="72" width="12" height="12" rx="0.75"/><rect class="c" x="252" y="88" width="12" height="12" rx="0.75"/><rect class="t" x="268" y="88" width="12" height="12" rx="0.75"/><rect class="t" x="284" y="88" width="12" height="12" rx="0.75"/><rect class="t" x="300" y="88" width="12" height="12" rx="0.75"/>
+    <text class="ttl" x="252" y="132">Lean-checked claims</text>
+    <text class="sub" y="156"><tspan x="252" dy="0">equivalence · MDS</tspan><tspan x="252" dy="19">offsets · activity</tspan></text>
+  </g>
+  <path class="arrow" d="M442 70H458M453 65l5 5-5 5"/>
+  <g>
+    <rect class="card" x="464.5" y="18.5" width="203" height="182" rx="6"/>
+    <rect class="t" x="484" y="40" width="12" height="12" rx="0.75"/><rect class="c" x="500" y="40" width="12" height="12" rx="0.75"/><rect class="t" x="516" y="40" width="12" height="12" rx="0.75"/><rect class="t" x="532" y="40" width="12" height="12" rx="0.75"/><rect class="t" x="484" y="56" width="12" height="12" rx="0.75"/><rect class="c" x="500" y="56" width="12" height="12" rx="0.75"/><rect class="c" x="516" y="56" width="12" height="12" rx="0.75"/><rect class="t" x="532" y="56" width="12" height="12" rx="0.75"/><rect class="c" x="484" y="72" width="12" height="12" rx="0.75"/><rect class="c" x="500" y="72" width="12" height="12" rx="0.75"/><rect class="c" x="516" y="72" width="12" height="12" rx="0.75"/><rect class="t" x="532" y="72" width="12" height="12" rx="0.75"/><rect class="c" x="484" y="88" width="12" height="12" rx="0.75"/><rect class="c" x="500" y="88" width="12" height="12" rx="0.75"/><rect class="c" x="516" y="88" width="12" height="12" rx="0.75"/><rect class="c" x="532" y="88" width="12" height="12" rx="0.75"/>
+    <text class="ttl" x="484" y="132">Rust measurements</text>
+    <text class="sub" y="156"><tspan x="484" dy="0">paired native timings</tspan><tspan x="484" dy="19">on the recorded machine</tspan></text>
+  </g>
+  <path class="arrow" d="M674 70H690M685 65l5 5-5 5"/>
+  <g>
+    <rect class="card" x="696.5" y="18.5" width="203" height="182" rx="6"/>
+    <rect class="c" x="716" y="40" width="12" height="12" rx="0.75"/><rect class="c" x="732" y="40" width="12" height="12" rx="0.75"/><rect class="c" x="748" y="40" width="12" height="12" rx="0.75"/><rect class="c" x="764" y="40" width="12" height="12" rx="0.75"/><rect class="c" x="716" y="56" width="12" height="12" rx="0.75"/><rect class="c" x="732" y="56" width="12" height="12" rx="0.75"/><rect class="c" x="748" y="56" width="12" height="12" rx="0.75"/><rect class="c" x="764" y="56" width="12" height="12" rx="0.75"/><rect class="c" x="716" y="72" width="12" height="12" rx="0.75"/><rect class="c" x="732" y="72" width="12" height="12" rx="0.75"/><rect class="c" x="748" y="72" width="12" height="12" rx="0.75"/><rect class="c" x="764" y="72" width="12" height="12" rx="0.75"/><rect class="c" x="716" y="88" width="12" height="12" rx="0.75"/><rect class="c" x="732" y="88" width="12" height="12" rx="0.75"/><rect class="c" x="748" y="88" width="12" height="12" rx="0.75"/><rect class="c" x="764" y="88" width="12" height="12" rx="0.75"/>
+    <text class="ttl" x="716" y="132">Replayable bundle</text>
+    <text class="sub" y="156"><tspan x="716" dy="0">inputs, proofs, pins and</tspan><tspan x="716" dy="19">raw timings in one file</tspan></text>
+  </g>
+</svg>
