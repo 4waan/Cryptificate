@@ -195,6 +195,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cryptificate-search"
+version = "0.1.0"
+dependencies = [
+ "cryptificate-core",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
