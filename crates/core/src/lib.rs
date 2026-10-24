@@ -6,11 +6,13 @@
 //! * [`canonical`]: canonical JSON and `sha256:` digests.
 //! * [`circuit`]: evaluation, coefficient matrices and cost measures of programs.
 //! * [`report`]: claims, evidence, witnesses and report documents.
+//! * [`diagnostics`]: unchecked analysis used to choose certificates.
 //! * [`linalg`], [`limits`]: small helpers and the enforced input limits.
 
 pub mod canonical;
 pub mod circuit;
 pub mod design;
+pub mod diagnostics;
 pub mod error;
 pub mod field;
 pub mod limits;
