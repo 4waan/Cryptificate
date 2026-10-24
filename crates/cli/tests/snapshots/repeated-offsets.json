@@ -1,0 +1,80 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": false,
+      "bound": 25,
+      "claim": "activity.bound",
+      "reason": "not established by this method: the bound needs an MDS matrix and distinct offsets",
+      "rounds": 4
+    },
+    "claims": [
+      {
+        "claim": "matrix.mds",
+        "holds": true,
+        "note": "all 69 square minors of the matrix are nonzero, so its branch number is 5",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "offsets.dispersion",
+        "holds": false,
+        "note": "rows 1 and 2 share offset 1, so two bytes of a column stay in one column",
+        "predicted": "refuted",
+        "witness": {
+          "kind": "offset-collision",
+          "offset": 1,
+          "rows": [
+            1,
+            2
+          ]
+        }
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "the AES S-box has an inverse table",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.bound",
+        "holds": null,
+        "note": "not established by this method: the bound needs an MDS matrix and distinct offsets",
+        "predicted": "not_established",
+        "witness": null
+      }
+    ],
+    "matrix": {
+      "branchWitness": null,
+      "determinant": "01",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 69,
+      "zeroMinors": 0
+    },
+    "model": "aes-like/gf256/v1",
+    "offsets": {
+      "collision": {
+        "offset": 1,
+        "rows": [
+          1,
+          2
+        ]
+      },
+      "distinct": false,
+      "offsets": [
+        0,
+        1,
+        1,
+        3
+      ]
+    },
+    "sbox": {
+      "bijective": true,
+      "collision": null,
+      "source": "aes"
+    },
+    "target": "matrix"
+  },
+  "inputDigest": "sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f"
+}

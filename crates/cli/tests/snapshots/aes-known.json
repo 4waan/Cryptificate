@@ -1,0 +1,115 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": true,
+      "bound": 25,
+      "claim": "activity.bound",
+      "reason": "the matrix is MDS and the offsets are distinct, so the wide trail bound applies",
+      "rounds": 4
+    },
+    "claims": [
+      {
+        "claim": "matrix.mds",
+        "holds": true,
+        "note": "all 69 square minors of the matrix are nonzero, so its branch number is 5",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "offsets.dispersion",
+        "holds": true,
+        "note": "the row offsets are distinct, so each column spreads over all columns",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "the AES S-box has an inverse table",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.bound",
+        "holds": true,
+        "note": "the matrix is MDS and the offsets are distinct, so the wide trail bound applies",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "circuit.equivalence",
+        "holds": true,
+        "note": "the program's coefficient matrix equals the design matrix",
+        "predicted": "proved",
+        "witness": null
+      }
+    ],
+    "matrix": {
+      "branchWitness": null,
+      "determinant": "01",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 69,
+      "zeroMinors": 0
+    },
+    "model": "aes-like/gf256/v1",
+    "offsets": {
+      "collision": null,
+      "distinct": true,
+      "offsets": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "program": {
+      "coefficientMatrix": [
+        [
+          "02",
+          "03",
+          "01",
+          "01"
+        ],
+        [
+          "01",
+          "02",
+          "03",
+          "01"
+        ],
+        [
+          "01",
+          "01",
+          "02",
+          "03"
+        ],
+        [
+          "03",
+          "01",
+          "01",
+          "02"
+        ]
+      ],
+      "distinguisher": null,
+      "equivalent": true,
+      "firstMismatch": null,
+      "identityHash": "sha256:aa6cff98c900c861788669ad6e28a0d3fd7c81e7a7f8ad65c85e677df1bd2874",
+      "stats": {
+        "depth": 4,
+        "ops": {
+          "add": 15,
+          "mul": 4,
+          "xtime": 4
+        },
+        "temps": 5
+      }
+    },
+    "sbox": {
+      "bijective": true,
+      "collision": null,
+      "source": "aes"
+    },
+    "target": "matrix"
+  },
+  "inputDigest": "sha256:3b901035c88235e7808a4cff554cc441ba05a7d3e59aa4f432d89107fc9f12f4"
+}

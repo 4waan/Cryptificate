@@ -1,0 +1,67 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": true,
+      "bound": 25,
+      "claim": "activity.bound",
+      "reason": "the matrix is MDS and the offsets are distinct, so the wide trail bound applies",
+      "rounds": 4
+    },
+    "claims": [
+      {
+        "claim": "matrix.mds",
+        "holds": true,
+        "note": "all 69 square minors of the matrix are nonzero, so its branch number is 5",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "offsets.dispersion",
+        "holds": true,
+        "note": "the row offsets are distinct, so each column spreads over all columns",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "the AES S-box has an inverse table",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.bound",
+        "holds": true,
+        "note": "the matrix is MDS and the offsets are distinct, so the wide trail bound applies",
+        "predicted": "proved",
+        "witness": null
+      }
+    ],
+    "matrix": {
+      "branchWitness": null,
+      "determinant": "02",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 69,
+      "zeroMinors": 0
+    },
+    "model": "aes-like/gf256/v1",
+    "offsets": {
+      "collision": null,
+      "distinct": true,
+      "offsets": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "sbox": {
+      "bijective": true,
+      "collision": null,
+      "source": "aes"
+    },
+    "target": "matrix"
+  },
+  "inputDigest": "sha256:4faff93bf6a984be438efc09eee74722b04c289d09b5a598922bc10d9fc5c564"
+}

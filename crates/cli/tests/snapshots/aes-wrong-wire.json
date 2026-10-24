@@ -1,0 +1,165 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": true,
+      "bound": 25,
+      "claim": "activity.bound",
+      "reason": "the matrix is MDS and the offsets are distinct, so the wide trail bound applies",
+      "rounds": 4
+    },
+    "claims": [
+      {
+        "claim": "matrix.mds",
+        "holds": true,
+        "note": "all 69 square minors of the matrix are nonzero, so its branch number is 5",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "offsets.dispersion",
+        "holds": true,
+        "note": "the row offsets are distinct, so each column spreads over all columns",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "the AES S-box has an inverse table",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.bound",
+        "holds": true,
+        "note": "the matrix is MDS and the offsets are distinct, so the wide trail bound applies",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "circuit.equivalence",
+        "holds": false,
+        "note": "coefficient (0, 1) of the program is 01 where the design matrix has 03; on basis input e1 the outputs differ at [0]",
+        "predicted": "refuted",
+        "witness": {
+          "actual": [
+            "01",
+            "02",
+            "01",
+            "01"
+          ],
+          "differing": [
+            0
+          ],
+          "expected": [
+            "03",
+            "02",
+            "01",
+            "01"
+          ],
+          "input": [
+            "00",
+            "01",
+            "00",
+            "00"
+          ],
+          "kind": "distinguishing-input"
+        }
+      }
+    ],
+    "matrix": {
+      "branchWitness": null,
+      "determinant": "01",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 69,
+      "zeroMinors": 0
+    },
+    "model": "aes-like/gf256/v1",
+    "offsets": {
+      "collision": null,
+      "distinct": true,
+      "offsets": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "program": {
+      "coefficientMatrix": [
+        [
+          "02",
+          "01",
+          "03",
+          "01"
+        ],
+        [
+          "01",
+          "02",
+          "03",
+          "01"
+        ],
+        [
+          "01",
+          "01",
+          "02",
+          "03"
+        ],
+        [
+          "03",
+          "01",
+          "01",
+          "02"
+        ]
+      ],
+      "distinguisher": {
+        "actual": [
+          "01",
+          "02",
+          "01",
+          "01"
+        ],
+        "differing": [
+          0
+        ],
+        "expected": [
+          "03",
+          "02",
+          "01",
+          "01"
+        ],
+        "input": [
+          "00",
+          "01",
+          "00",
+          "00"
+        ]
+      },
+      "equivalent": false,
+      "firstMismatch": {
+        "actual": "01",
+        "col": 1,
+        "expected": "03",
+        "row": 0
+      },
+      "identityHash": "sha256:f0504a90ebac2de0a5623a741fb228f399487906ac12773c1d1e21a8068d622b",
+      "stats": {
+        "depth": 4,
+        "ops": {
+          "add": 15,
+          "mul": 4,
+          "xtime": 4
+        },
+        "temps": 5
+      }
+    },
+    "sbox": {
+      "bijective": true,
+      "collision": null,
+      "source": "aes"
+    },
+    "target": "matrix"
+  },
+  "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698"
+}

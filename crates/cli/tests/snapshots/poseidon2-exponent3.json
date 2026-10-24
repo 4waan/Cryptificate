@@ -1,0 +1,116 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": false,
+      "bound": null,
+      "claim": "activity.outer",
+      "reason": "not established by this method: the full-round bound needs an MDS external matrix and a bijective power map",
+      "rounds": 8
+    },
+    "claims": [
+      {
+        "claim": "external.mds",
+        "holds": true,
+        "note": "all 19 square minors of the external matrix are nonzero, so its branch number is 4",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "internal.invertible",
+        "holds": true,
+        "note": "the internal matrix has determinant 7",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": false,
+        "note": "gcd(3, p-1) = 3, so x^3 identifies 1 with a nontrivial root of unity",
+        "predicted": "refuted",
+        "witness": {
+          "exponent": 3,
+          "kind": "power-collision",
+          "note": "omega^3 = 1 = 1^3, where omega = 3^((p-1)/3) is not 1",
+          "x1": "1",
+          "x2": "4407920970296243842393367215006156084916469457145843978461"
+        }
+      },
+      {
+        "claim": "activity.outer",
+        "holds": null,
+        "note": "not established by this method: the full-round bound needs an MDS external matrix and a bijective power map",
+        "predicted": "not_established",
+        "witness": null
+      },
+      {
+        "claim": "circuit.equivalence",
+        "holds": true,
+        "note": "the program's coefficient matrix equals the external matrix",
+        "predicted": "proved",
+        "witness": null
+      }
+    ],
+    "external": {
+      "branchWitness": null,
+      "determinant": "4",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 19,
+      "zeroMinors": 0
+    },
+    "internal": {
+      "branchWitness": null,
+      "determinant": "7",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 19,
+      "zeroMinors": 0
+    },
+    "model": "hades/bn254/v1",
+    "power": {
+      "bijective": false,
+      "collision": {
+        "base": 3,
+        "omega": "4407920970296243842393367215006156084916469457145843978461"
+      },
+      "exponent": 3,
+      "gcd": 3,
+      "inverseExponent": null,
+      "k": null
+    },
+    "program": {
+      "coefficientMatrix": [
+        [
+          "2",
+          "1",
+          "1"
+        ],
+        [
+          "1",
+          "2",
+          "1"
+        ],
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "distinguisher": null,
+      "equivalent": true,
+      "firstMismatch": null,
+      "identityHash": "sha256:510eb4d3ef8b0b609a6b7b154de0804ddfd1284703589918d306015fa2077372",
+      "stats": {
+        "depth": 3,
+        "ops": {
+          "add": 5,
+          "mul": 0,
+          "xtime": 0
+        },
+        "temps": 3
+      }
+    },
+    "target": "external"
+  },
+  "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4"
+}

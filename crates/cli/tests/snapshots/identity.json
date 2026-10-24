@@ -1,0 +1,154 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": false,
+      "bound": 25,
+      "claim": "activity.bound",
+      "reason": "not established by this method: the bound needs an MDS matrix and distinct offsets",
+      "rounds": 4
+    },
+    "claims": [
+      {
+        "claim": "matrix.mds",
+        "holds": false,
+        "note": "54 of 69 square minors of the matrix are zero; a nonzero input of weight 1 maps to an output of weight 1, 2 in total, below the 5 an MDS matrix guarantees",
+        "predicted": "refuted",
+        "witness": {
+          "bound": 5,
+          "input": [
+            "01",
+            "00",
+            "00",
+            "00"
+          ],
+          "inputWeight": 1,
+          "kind": "branch",
+          "output": [
+            "01",
+            "00",
+            "00",
+            "00"
+          ],
+          "outputWeight": 1
+        }
+      },
+      {
+        "claim": "offsets.dispersion",
+        "holds": true,
+        "note": "the row offsets are distinct, so each column spreads over all columns",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "the AES S-box has an inverse table",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.bound",
+        "holds": null,
+        "note": "not established by this method: the bound needs an MDS matrix and distinct offsets",
+        "predicted": "not_established",
+        "witness": null
+      },
+      {
+        "claim": "circuit.equivalence",
+        "holds": true,
+        "note": "the program's coefficient matrix equals the design matrix",
+        "predicted": "proved",
+        "witness": null
+      }
+    ],
+    "matrix": {
+      "branchWitness": {
+        "bound": 5,
+        "input": [
+          "01",
+          "00",
+          "00",
+          "00"
+        ],
+        "inputWeight": 1,
+        "output": [
+          "01",
+          "00",
+          "00",
+          "00"
+        ],
+        "outputWeight": 1,
+        "support": [
+          0
+        ],
+        "zeroOutputs": [
+          1
+        ]
+      },
+      "determinant": "01",
+      "kernelVector": null,
+      "mds": false,
+      "minorCount": 69,
+      "zeroMinors": 54
+    },
+    "model": "aes-like/gf256/v1",
+    "offsets": {
+      "collision": null,
+      "distinct": true,
+      "offsets": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "program": {
+      "coefficientMatrix": [
+        [
+          "01",
+          "00",
+          "00",
+          "00"
+        ],
+        [
+          "00",
+          "01",
+          "00",
+          "00"
+        ],
+        [
+          "00",
+          "00",
+          "01",
+          "00"
+        ],
+        [
+          "00",
+          "00",
+          "00",
+          "01"
+        ]
+      ],
+      "distinguisher": null,
+      "equivalent": true,
+      "firstMismatch": null,
+      "identityHash": "sha256:40876b4d7e0d4448503ae9736b6208da3e8ee4dfb749ec4547168a01a5671ec9",
+      "stats": {
+        "depth": 0,
+        "ops": {
+          "add": 0,
+          "mul": 0,
+          "xtime": 0
+        },
+        "temps": 0
+      }
+    },
+    "sbox": {
+      "bijective": true,
+      "collision": null,
+      "source": "aes"
+    },
+    "target": "matrix"
+  },
+  "inputDigest": "sha256:e55f3e07cf131691b0cd8aca16972ba3ea957bb50d043f3bd76de552b5171616"
+}

@@ -1,0 +1,107 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": true,
+      "bound": null,
+      "claim": "activity.outer",
+      "reason": "the external matrix is MDS and the power map is a bijection, so the full-round bound applies",
+      "rounds": 8
+    },
+    "claims": [
+      {
+        "claim": "external.mds",
+        "holds": true,
+        "note": "all 19 square minors of the external matrix are nonzero, so its branch number is 4",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "internal.invertible",
+        "holds": true,
+        "note": "the internal matrix has determinant 7",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "gcd(5, p-1) = 1, so x^5 is inverted by x^d with d = 17510594297471420177797124596205820070838691520332827474958563349260646796493",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.outer",
+        "holds": true,
+        "note": "the external matrix is MDS and the power map is a bijection, so the full-round bound applies",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "circuit.equivalence",
+        "holds": true,
+        "note": "the program's coefficient matrix equals the external matrix",
+        "predicted": "proved",
+        "witness": null
+      }
+    ],
+    "external": {
+      "branchWitness": null,
+      "determinant": "4",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 19,
+      "zeroMinors": 0
+    },
+    "internal": {
+      "branchWitness": null,
+      "determinant": "7",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 19,
+      "zeroMinors": 0
+    },
+    "model": "hades/bn254/v1",
+    "power": {
+      "bijective": true,
+      "collision": null,
+      "exponent": 5,
+      "gcd": 1,
+      "inverseExponent": "17510594297471420177797124596205820070838691520332827474958563349260646796493",
+      "k": 4
+    },
+    "program": {
+      "coefficientMatrix": [
+        [
+          "2",
+          "1",
+          "1"
+        ],
+        [
+          "1",
+          "2",
+          "1"
+        ],
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "distinguisher": null,
+      "equivalent": true,
+      "firstMismatch": null,
+      "identityHash": "sha256:510eb4d3ef8b0b609a6b7b154de0804ddfd1284703589918d306015fa2077372",
+      "stats": {
+        "depth": 3,
+        "ops": {
+          "add": 5,
+          "mul": 0,
+          "xtime": 0
+        },
+        "temps": 3
+      }
+    },
+    "target": "external"
+  },
+  "inputDigest": "sha256:c8e531007afef9c8148d6ff531f919f55b9b57fe9b722b0cca0bda3abdb58a13"
+}
