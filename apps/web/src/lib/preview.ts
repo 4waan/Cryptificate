@@ -32,7 +32,7 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
       ? {
           id: 'matrix.mds',
           chain: 'design',
-          title: 'Matrix is MDS (branch number 5)',
+          title: `Matrix is MDS (branch number ${d.width + 1})`,
           outcome: 'fails',
           witness: {
             kind: 'branch',
@@ -40,17 +40,17 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
             output: bw.output,
             inputWeight: weight(f, bw.input),
             outputWeight: weight(f, bw.output),
-            bound: 5,
+            bound: d.width + 1,
           },
           note: 'A square submatrix is singular, which gives a low-weight input.',
         }
       : {
           id: 'matrix.mds',
           chain: 'design',
-          title: 'Matrix is MDS (branch number 5)',
+          title: `Matrix is MDS (branch number ${d.width + 1})`,
           outcome: 'holds',
           witness: null,
-          note: 'All 69 square submatrices are nonsingular.',
+          note: 'Every square submatrix is nonsingular.',
         };
     const seen = new Map<number, number>();
     let collision: Witness | null = null;
@@ -87,7 +87,7 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
       witness: sboxWitness,
       note: sboxWitness ? 'Two inputs share an output.' : 'All 256 outputs are distinct.',
     };
-    const holds = mds.outcome === 'holds' && offsets.outcome === 'holds';
+    const holds = d.width === 4 && mds.outcome === 'holds' && offsets.outcome === 'holds';
     const activity: PreviewItem = {
       id: 'activity.bound',
       chain: 'design',
@@ -96,7 +96,9 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
       witness: null,
       note: holds
         ? `Wide trail bound: ${activityFormula(d.rounds)}.`
-        : 'Not established by this method: the bound needs an MDS matrix and distinct offsets.',
+        : d.width !== 4
+          ? 'Not established by this method: the bound is stated for width 4.'
+          : 'Not established by this method: the bound needs an MDS matrix and distinct offsets.',
     };
     return [mds, offsets, sbox, activity];
   }

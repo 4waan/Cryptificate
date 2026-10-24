@@ -38,8 +38,10 @@ function int(x: unknown, path: string): number {
 export function coerceDesign(x: unknown, path = ''): CandidateDesign {
   if (!isObj(x)) fail(path, 'expected a design object');
   if (x.model === 'aes-like/gf256/v1') {
+    const width = x.width === undefined ? 4 : int(x.width, `${path}/width`);
+    if (![2, 3, 4].includes(width)) fail(`${path}/width`, 'expected 4 (or the experimental 2 or 3)');
     const offsets = x.offsets;
-    if (!Array.isArray(offsets) || offsets.length !== 4) fail(`${path}/offsets`, 'expected 4 offsets');
+    if (!Array.isArray(offsets) || offsets.length !== width) fail(`${path}/offsets`, `expected ${width} offsets`);
     const sbox = x.sbox;
     if (!isObj(sbox)) fail(`${path}/sbox`, 'expected an S-box object');
     let parsedSbox: { kind: 'aes' } | { kind: 'table'; table: string[] };
@@ -53,8 +55,9 @@ export function coerceDesign(x: unknown, path = ''): CandidateDesign {
     return {
       model: 'aes-like/gf256/v1',
       field: 'gf256',
-      width: 4,
-      matrix: stringMatrix(x.matrix, 4, `${path}/matrix`),
+      width,
+      ...(width !== 4 ? { experimental: true } : {}),
+      matrix: stringMatrix(x.matrix, width, `${path}/matrix`),
       offsets: offsets.map((o, i) => int(o, `${path}/offsets/${i}`)),
       rounds: int(x.rounds, `${path}/rounds`),
       sbox: parsedSbox,

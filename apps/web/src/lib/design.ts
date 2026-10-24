@@ -40,11 +40,16 @@ function matrixIssues(
 export function validateDesign(d: CandidateDesign): DesignIssue[] {
   const issues: DesignIssue[] = [];
   if (d.model === 'aes-like/gf256/v1') {
-    issues.push(...matrixIssues('matrix', 'Matrix', d.matrix, 4, 'gf256'));
-    if (d.offsets.length !== 4) issues.push({ path: '/offsets', message: 'Give one offset per row.' });
+    const w = d.width;
+    if (![2, 3, 4].includes(w)) {
+      issues.push({ path: '/width', message: 'AES-like designs have width 4 (2 and 3 are experimental).' });
+      return issues;
+    }
+    issues.push(...matrixIssues('matrix', 'Matrix', d.matrix, w, 'gf256'));
+    if (d.offsets.length !== w) issues.push({ path: '/offsets', message: 'Give one offset per row.' });
     d.offsets.forEach((o, i) => {
-      if (!Number.isInteger(o) || o < 0 || o > 3) {
-        issues.push({ path: `/offsets/${i}`, message: `Row ${i} offset must be 0, 1, 2 or 3.` });
+      if (!Number.isInteger(o) || o < 0 || o >= w) {
+        issues.push({ path: `/offsets/${i}`, message: `Row ${i} offset must be between 0 and ${w - 1}.` });
       }
     });
     if (!Number.isInteger(d.rounds) || d.rounds < ROUNDS_MIN || d.rounds > ROUNDS_MAX) {

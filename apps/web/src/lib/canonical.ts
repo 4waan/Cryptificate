@@ -27,10 +27,10 @@ export function digestOf(value: unknown): string {
 export function normalizeDesign(design: CandidateDesign): CandidateDesign {
   if (design.model === 'aes-like/gf256/v1') {
     const f = fieldOps('gf256');
-    return {
+    const out: CandidateDesign = {
       model: design.model,
       field: 'gf256',
-      width: 4,
+      width: design.width,
       matrix: design.matrix.map((row) => row.map((x) => f.canonical(x))),
       offsets: [...design.offsets],
       rounds: design.rounds,
@@ -39,6 +39,8 @@ export function normalizeDesign(design: CandidateDesign): CandidateDesign {
           ? { kind: 'aes' }
           : { kind: 'table', table: design.sbox.table.map((x) => f.canonical(x)) },
     };
+    if (design.width !== 4) out.experimental = true;
+    return out;
   }
   const f = fieldOps('bn254');
   return {

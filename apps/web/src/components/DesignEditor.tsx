@@ -102,7 +102,7 @@ function AesFields({ design }: { design: AesLikeDesign }) {
                   update({ offsets: design.offsets.map((x, i) => (i === r ? Number(e.target.value) : x)) })
                 }
               >
-                {[0, 1, 2, 3].map((v) => (
+                {Array.from({ length: design.width }, (_, v) => v).map((v) => (
                   <option key={v} value={v}>
                     {v}
                   </option>
