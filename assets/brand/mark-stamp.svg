@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Cryptificate">
+  <title>Cryptificate</title>
+  <!-- Strict one colour, no tints: the active byte is framed, its column solid, the rest of the state dotted -->
+  <g fill="currentColor">
+    <path fill-rule="evenodd" d="M2.0 2.0h12.0v12.0h-12.0z M4.0 4.0v8h8v-8z"/><rect x="6.0" y="6.0" width="4" height="4"/>
+    <rect x="22.0" y="6.0" width="4" height="4"/>
+    <rect x="38.0" y="6.0" width="4" height="4"/>
+    <rect x="54.0" y="6.0" width="4" height="4"/>
+    <rect x="2.0" y="18.0" width="12.0" height="12.0"/>
+    <rect x="22.0" y="22.0" width="4" height="4"/>
+    <rect x="38.0" y="22.0" width="4" height="4"/>
+    <rect x="54.0" y="22.0" width="4" height="4"/>
+    <rect x="2.0" y="34.0" width="12.0" height="12.0"/>
+    <rect x="22.0" y="38.0" width="4" height="4"/>
+    <rect x="38.0" y="38.0" width="4" height="4"/>
+    <rect x="54.0" y="38.0" width="4" height="4"/>
+    <rect x="2.0" y="50.0" width="12.0" height="12.0"/>
+    <rect x="22.0" y="54.0" width="4" height="4"/>
+    <rect x="38.0" y="54.0" width="4" height="4"/>
+    <rect x="54.0" y="54.0" width="4" height="4"/>
+  </g>
+</svg>
