@@ -20,7 +20,7 @@ client.bundle(job["id"], "evidence.tar.gz")
 Command line (the service must be running):
 
 ```sh
-python -m cryptificate check examples/designs/aes.json --program examples/programs/aes-shared-sum.json
+python -m cryptificate check examples/designs/aes.json --program examples/programs/aes-known-shared-sum.json
 python -m cryptificate experiment examples/designs/aes.json --profile quick
 python -m cryptificate capabilities
 ```
