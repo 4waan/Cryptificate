@@ -53,9 +53,10 @@ export interface ProfileBudget {
   sessions: number;
 }
 
+/** Mirrors the engine's profile budgets (crates/search); totalSeconds bounds the whole experiment. */
 export const PROFILE_BUDGETS: Record<ExperimentProfile, ProfileBudget> = {
-  quick: { totalSeconds: 900, searchMs: 20_000, maxCandidates: 400, shortlist: 2, sessions: 3 },
-  research: { totalSeconds: 3600, searchMs: 120_000, maxCandidates: 4000, shortlist: 5, sessions: 3 },
+  quick: { totalSeconds: 180, searchMs: 10_000, maxCandidates: 8, shortlist: 1, sessions: 3 },
+  research: { totalSeconds: 900, searchMs: 60_000, maxCandidates: 64, shortlist: 3, sessions: 3 },
 };
 
 export function experimentBudgetMs(profile: ExperimentProfile): number {
@@ -348,15 +349,16 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
   let stop = stopState();
   if (stop) return finish(stop);
   ctx.start('search', `profile ${request.profile}`);
-  const searchInput = {
+  const searchInput: Record<string, unknown> & { synthMs: number } = {
     matrix: targetMatrix(design, target),
     field: design.field,
     width: design.width,
     profile: request.profile,
     seed,
     maxCandidates: budget.maxCandidates,
-    synthMs: Math.min(budget.searchMs, Math.max(1000, ctx.remainingMs() - 5000)),
+    synthMs: Math.min(budget.searchMs, Math.max(1000, Math.floor(ctx.remainingMs() / 4))),
   };
+  if (request.program) searchInput['program'] = request.program;
   const s = await env.engine.call<unknown>('search', searchInput, {
     signal: ctx.signal,
     timeoutMs: Math.min(searchInput.synthMs + 60_000, Math.max(1000, ctx.remainingMs())),
@@ -365,14 +367,16 @@ export async function runExperiment(env: PipelineEnv, ctx: JobContext, raw: Expe
   });
   const parsed = s.ok ? parseSearch(s.value) : null;
   if (s.ok && parsed) {
-    ctx.writeJson('search/history.json', parsed.history);
+    const rawHistory = (s.value as Record<string, unknown>)['history'];
+    ctx.writeJson('search/history.json', Array.isArray(rawHistory) ? rawHistory : parsed.history);
     ctx.writeJson('search/seeds.json', { seed, sessions: [1, 2, 3].map((n) => ({ session: n, seed: sessionSeed(seed, n) })) });
     ctx.writeJson('search/search.json', s.value);
     const passing = parsed.candidates.filter((c) => c.symbolic === 'pass');
     const shortlist = (parsed.shortlist ?? [...passing].sort((a, b) => a.cost - b.cost || (a.id < b.id ? -1 : 1)).map((c) => c.id)).slice(0, budget.shortlist);
+    const engineBudget = (s.value as Record<string, unknown>)['budget'];
     search = {
       seed,
-      budget: { ...budget },
+      budget: engineBudget && typeof engineBudget === 'object' && !Array.isArray(engineBudget) ? (engineBudget as Record<string, unknown>) : { ...budget },
       generated: parsed.generated ?? parsed.candidates.length,
       history: parsed.history,
       shortlist,
