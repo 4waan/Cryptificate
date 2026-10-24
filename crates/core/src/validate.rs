@@ -124,28 +124,39 @@ pub fn validate_experiment_request(v: &Value) -> Result<ExperimentRequest> {
 }
 
 fn program_for_design(v: &Value, path: &str, design: &CandidateDesign) -> Result<AnyProgram> {
-    let program = program_at(v, path)?;
-    if program.field() != design.field() {
-        return Err(err(
+    // Compare field and width with the design before the program's own
+    // checks, so that a program written for another design is reported as
+    // such rather than through a downstream symptom (e.g. output count).
+    let field_mismatch = |f: FieldKind| {
+        err(
             ErrorCode::FieldMismatch,
             at(path, "field"),
-            format!(
-                "program field {} differs from design field {}",
-                program.field(),
-                design.field()
-            ),
-        ));
-    }
-    if program.width() != design.width() {
-        return Err(err(
+            format!("program field {f} differs from design field {}", design.field()),
+        )
+    };
+    let width_mismatch = |w: usize| {
+        err(
             ErrorCode::BadDimension,
             at(path, "width"),
-            format!(
-                "program width {} differs from design width {}",
-                program.width(),
-                design.width()
-            ),
-        ));
+            format!("program width {w} differs from design width {}", design.width()),
+        )
+    };
+    if let Some(f) = v.get("field").and_then(Value::as_str).and_then(FieldKind::parse) {
+        if f != design.field() {
+            return Err(field_mismatch(f));
+        }
+        if let Some(w) = v.get("width").and_then(Value::as_u64) {
+            if w != design.width() as u64 {
+                return Err(width_mismatch(usize::try_from(w).unwrap_or(usize::MAX)));
+            }
+        }
+    }
+    let program = program_at(v, path)?;
+    if program.field() != design.field() {
+        return Err(field_mismatch(program.field()));
+    }
+    if program.width() != design.width() {
+        return Err(width_mismatch(program.width()));
     }
     Ok(program)
 }
