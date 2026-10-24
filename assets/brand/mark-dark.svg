@@ -1,20 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Cryptificate">
   <title>Cryptificate</title>
   <!-- Wide trail: one active byte (the change), its column after MixColumns (1 + 4 = branch number 5), the full 4x4 state -->
-  <rect x="2" y="2" width="12" height="12" rx="0.75" fill="#F26A45"/>
-  <rect x="18" y="2" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="34" y="2" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="50" y="2" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="2" y="18" width="12" height="12" rx="0.75" fill="#E8ECF2"/>
-  <rect x="18" y="18" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="34" y="18" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="50" y="18" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="2" y="34" width="12" height="12" rx="0.75" fill="#E8ECF2"/>
-  <rect x="18" y="34" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="34" y="34" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="50" y="34" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="2" y="50" width="12" height="12" rx="0.75" fill="#E8ECF2"/>
-  <rect x="18" y="50" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="34" y="50" width="12" height="12" rx="0.75" fill="#323D53"/>
-  <rect x="50" y="50" width="12" height="12" rx="0.75" fill="#323D53"/>
+  <rect x="2" y="2" width="12" height="12" rx="0.75" fill="#A3C97B"/>
+  <rect x="18" y="2" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="34" y="2" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="50" y="2" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="2" y="18" width="12" height="12" rx="0.75" fill="#F2F4F1"/>
+  <rect x="18" y="18" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="34" y="18" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="50" y="18" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="2" y="34" width="12" height="12" rx="0.75" fill="#F2F4F1"/>
+  <rect x="18" y="34" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="34" y="34" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="50" y="34" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="2" y="50" width="12" height="12" rx="0.75" fill="#F2F4F1"/>
+  <rect x="18" y="50" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="34" y="50" width="12" height="12" rx="0.75" fill="#353B35"/>
+  <rect x="50" y="50" width="12" height="12" rx="0.75" fill="#353B35"/>
 </svg>

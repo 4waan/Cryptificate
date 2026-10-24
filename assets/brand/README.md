@@ -34,16 +34,16 @@ The mark is a 4x4 AES-like state read as a wide trail: one active byte (the rese
 
 | Role | Light | Dark |
 |---|---|---|
-| Ink: wordmark, active column, ∎ | `#13213A` | `#E8ECF2` |
-| Accent: the active byte and the first i dot | `#E4572E` | `#F26A45` |
-| State tint | `#BEC6D3` (1.7:1 on white) | `#323D53` (1.7:1 on `#0B1220`) |
-| State tint, favicon and small sizes | `#BEC6D3` | `#3B4760` |
-| Secondary text | `#4A566D` | `#A3AEC0` |
-| Background | `#FFFFFF`, paper `#F6F7F9` | `#0B1220` |
-| Accent as text (light only) | `#C9461F` (4.8:1 on white) | `#F26A45` |
+| Ink: wordmark, active column, ∎ | `#0D0F0D` | `#F2F4F1` |
+| Accent (matcha): the active byte and the first i dot | `#7FA65A` | `#A3C97B` |
+| State tint | `#C9CEC6` (1.6:1 on white) | `#353B35` (1.7:1 on `#0A0B0A`) |
+| State tint, favicon and small sizes | `#C9CEC6` | `#3A3F3A` |
+| Secondary text | `#4A5048` | `#B9BFB7` |
+| Background | `#FFFFFF`, paper `#F6F7F4` | `#0A0B0A` |
+| Accent as text (light only) | `#4E7530` (5.4:1 on white) | `#A3C97B` (10.5:1 on `#0A0B0A`) |
 
-- Vermilion always means the researcher's change, the active input. It never means an error. Counterexamples and failures use the interface's status colours, never the brand accent.
-- `#E4572E` on white is 3.7:1. That is fine for the byte and the i dot, but use `#C9461F` for any small text.
+- The identity is black, white and neutral greys plus one colour, matcha. Matcha always means the researcher's change, the active input, or a proved result. It never means an error. Counterexamples and failures are shown in high-contrast black and white with an icon and a word, never in a second hue.
+- `#7FA65A` on white is 2.8:1. That is fine for the byte and the i dot, which sit next to the full-contrast ink, but use `#4E7530` for any small text.
 - The accent appears in the wordmark only on the dot of the first i, and nowhere else.
 
 ## Construction

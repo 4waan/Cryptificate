@@ -2,7 +2,7 @@
   <title>Cryptificate</title>
   <!-- Pixel-snapped: 3 px bytes on a 4 px pitch, anchored top-left (the free pixel row and column fall right and bottom).
        Crisp at 16, 32 and 48 px. Colours follow the system light or dark setting. -->
-  <style>.a{fill:#E4572E}.c{fill:#13213A}.t{fill:#BEC6D3}@media (prefers-color-scheme:dark){.a{fill:#F26A45}.c{fill:#E8ECF2}.t{fill:#3B4760}}</style>
+  <style>.a{fill:#7FA65A}.c{fill:#0D0F0D}.t{fill:#C9CEC6}@media (prefers-color-scheme:dark){.a{fill:#A3C97B}.c{fill:#F2F4F1}.t{fill:#3A3F3A}}</style>
   <rect class="a" x="0" y="0" width="3" height="3"/>
   <rect class="t" x="4" y="0" width="3" height="3"/>
   <rect class="t" x="8" y="0" width="3" height="3"/>

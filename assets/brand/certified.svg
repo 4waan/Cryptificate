@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Certified">
   <title>Certified</title>
   <!-- Completion mark: every byte of the state in ink, the end-of-proof square. Not a logo; use it for "proof checked". -->
-  <style>.a{fill:#E4572E}.c{fill:#13213A}.t{fill:#BEC6D3}@media (prefers-color-scheme:dark){.a{fill:#F26A45}.c{fill:#E8ECF2}.t{fill:#3B4760}}</style>
+  <style>.a{fill:#7FA65A}.c{fill:#0D0F0D}.t{fill:#C9CEC6}@media (prefers-color-scheme:dark){.a{fill:#A3C97B}.c{fill:#F2F4F1}.t{fill:#3A3F3A}}</style>
   <rect x="2" y="2" width="12" height="12" rx="0.75" class="c"/>
   <rect x="18" y="2" width="12" height="12" rx="0.75" class="c"/>
   <rect x="34" y="2" width="12" height="12" rx="0.75" class="c"/>

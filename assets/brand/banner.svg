@@ -3,15 +3,15 @@
   <desc id="desc">Your change to a matrix, circuit, row offsets, S-box or prime-field layer goes to Lean-checked claims (circuit equivalence, MDS, row offsets, activity bound), then to native Rust measurements, and ends in a replayable evidence bundle.</desc>
   <style>
     text{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif}
-    .ttl{font-size:15px;font-weight:600;fill:#13213A}
-    .sub{font-size:13.5px;fill:#4A566D}
-    .card{fill:#F6F8FA;stroke:#D0D7DE}
-    .arrow{fill:none;stroke:#8C959F;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-    .a{fill:#E4572E}.c{fill:#13213A}.t{fill:#BEC6D3}
+    .ttl{font-size:15px;font-weight:600;fill:#0D0F0D}
+    .sub{font-size:13.5px;fill:#4A5048}
+    .card{fill:#F6F7F4;stroke:#DFE3DC}
+    .arrow{fill:none;stroke:#8A9187;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .a{fill:#7FA65A}.c{fill:#0D0F0D}.t{fill:#C9CEC6}
     @media (prefers-color-scheme:dark){
-      .ttl{fill:#E8ECF2}.sub{fill:#A3AEC0}
-      .card{fill:#161B22;stroke:#30363D}
-      .a{fill:#F26A45}.c{fill:#E8ECF2}.t{fill:#3B4760}
+      .ttl{fill:#F2F4F1}.sub{fill:#B9BFB7}
+      .card{fill:#111311;stroke:#262A26}
+      .a{fill:#A3C97B}.c{fill:#F2F4F1}.t{fill:#3A3F3A}
     }
   </style>
   <g>

@@ -31,12 +31,12 @@ WORDMARK_FONT = INTER_DIR / "InterDisplay-SemiBold.otf"
 TAGLINE_FONT = INTER_DIR / "Inter-Regular.otf"
 
 PALETTE = {
-    "light": dict(ink="#13213A", accent="#E4572E", tint="#BEC6D3", fav_tint="#BEC6D3", bg="#FFFFFF"),
-    "dark": dict(ink="#E8ECF2", accent="#F26A45", tint="#323D53", fav_tint="#3B4760", bg="#0B1220"),
+    "light": dict(ink="#0D0F0D", accent="#7FA65A", tint="#C9CEC6", fav_tint="#C9CEC6", bg="#FFFFFF"),
+    "dark": dict(ink="#F2F4F1", accent="#A3C97B", tint="#353B35", fav_tint="#3A3F3A", bg="#0A0B0A"),
 }
-ACCENT_TEXT = "#C9461F"  # the accent when it has to carry small text on light backgrounds
-MUTED = {"light": "#4A566D", "dark": "#A3AEC0"}  # secondary text
-PAPER = "#F6F7F9"  # social card background
+ACCENT_TEXT = "#4E7530"  # the accent when it has to carry small text on light backgrounds
+MUTED = {"light": "#4A5048", "dark": "#B9BFB7"}  # secondary text
+PAPER = "#F6F7F4"  # social card background
 
 PITCH, CELL, PAD = 16, 12, 2  # mark units
 RX = 0.75  # byte corner radius in mark units: a paper state diagram, not an app grid
@@ -302,12 +302,12 @@ def banner_svg():
     text{{font-family:{SANS}}}
     .ttl{{font-size:15px;font-weight:600;fill:{L['ink']}}}
     .sub{{font-size:13.5px;fill:{MUTED['light']}}}
-    .card{{fill:#F6F8FA;stroke:#D0D7DE}}
-    .arrow{{fill:none;stroke:#8C959F;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}}
+    .card{{fill:#F6F7F4;stroke:#DFE3DC}}
+    .arrow{{fill:none;stroke:#8A9187;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}}
     .a{{fill:{L['accent']}}}.c{{fill:{L['ink']}}}.t{{fill:{L['tint']}}}
     @media (prefers-color-scheme:dark){{
       .ttl{{fill:{D['ink']}}}.sub{{fill:{MUTED['dark']}}}
-      .card{{fill:#161B22;stroke:#30363D}}
+      .card{{fill:#111311;stroke:#262A26}}
       .a{{fill:{D['accent']}}}.c{{fill:{D['ink']}}}.t{{fill:{D['fav_tint']}}}
     }}
   </style>
