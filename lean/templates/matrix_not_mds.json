@@ -1,0 +1,14 @@
+{
+  "name": "matrix_not_mds",
+  "kind": "claim",
+  "claim": "matrix.mds",
+  "status": "refuted",
+  "theorem": "CryptificateJob.matrix_not_mds",
+  "expectedType": "¬IsMDS CryptificateJob.candMatrix",
+  "placeholders": [],
+  "requires": [
+    "const_matrix_gf256",
+    "const_witness_vector_gf256"
+  ],
+  "field": "gf256"
+}

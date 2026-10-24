@@ -1,0 +1,16 @@
+{
+  "name": "sbox_not_injective",
+  "kind": "claim",
+  "claim": "sbox.bijective",
+  "status": "refuted",
+  "theorem": "CryptificateJob.sbox_not_injective",
+  "expectedType": "¬Function.Injective CryptificateJob.candSboxTable",
+  "placeholders": [
+    "X1",
+    "X2"
+  ],
+  "requires": [
+    "const_sbox_table"
+  ],
+  "field": "gf256"
+}

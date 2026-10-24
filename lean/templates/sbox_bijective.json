@@ -1,0 +1,14 @@
+{
+  "name": "sbox_bijective",
+  "kind": "claim",
+  "claim": "sbox.bijective",
+  "status": "proved",
+  "theorem": "CryptificateJob.sbox_bijective",
+  "expectedType": "Function.Bijective CryptificateJob.candSboxTable",
+  "placeholders": [],
+  "requires": [
+    "const_sbox_table",
+    "const_sbox_inv"
+  ],
+  "field": "gf256"
+}

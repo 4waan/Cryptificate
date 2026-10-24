@@ -1,0 +1,17 @@
+{
+  "name": "activity_bound",
+  "kind": "claim",
+  "claim": "activity.bound",
+  "status": "proved",
+  "theorem": "CryptificateJob.activity_bound",
+  "expectedType": "∀ (sbox : GF256 → GF256), Function.Injective sbox → ∀ (keys : ℕ → Fin 16 → GF256) (x y : Fin 16 → GF256), x ≠ y → (CryptificateJob.candRounds / 4 * 25 + if 2 ≤ CryptificateJob.candRounds % 4 then 5 else 0) ≤ Cryptificate.activeSboxes CryptificateJob.candMatrix CryptificateJob.candOffsets sbox keys x y CryptificateJob.candRounds",
+  "placeholders": [],
+  "requires": [
+    "const_matrix_gf256",
+    "const_offsets",
+    "const_rounds",
+    "matrix_mds",
+    "offsets_optimal"
+  ],
+  "field": "gf256"
+}

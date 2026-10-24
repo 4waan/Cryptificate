@@ -1,0 +1,15 @@
+{
+  "name": "const_offsets",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "OFFSETS"
+  ],
+  "requires": [
+    "header"
+  ],
+  "field": "gf256"
+}

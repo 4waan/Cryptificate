@@ -1,0 +1,13 @@
+{
+  "name": "matrix_mds",
+  "kind": "claim",
+  "claim": "matrix.mds",
+  "status": "proved",
+  "theorem": "CryptificateJob.matrix_mds",
+  "expectedType": "IsMDS CryptificateJob.candMatrix",
+  "placeholders": [],
+  "requires": [
+    "const_matrix_gf256"
+  ],
+  "field": "gf256"
+}

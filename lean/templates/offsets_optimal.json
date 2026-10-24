@@ -1,0 +1,13 @@
+{
+  "name": "offsets_optimal",
+  "kind": "claim",
+  "claim": "offsets.dispersion",
+  "status": "proved",
+  "theorem": "CryptificateJob.offsets_optimal",
+  "expectedType": "DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 CryptificateJob.candOffsets)",
+  "placeholders": [],
+  "requires": [
+    "const_offsets"
+  ],
+  "field": "gf256"
+}

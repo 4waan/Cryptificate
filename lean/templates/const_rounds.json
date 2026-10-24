@@ -1,0 +1,15 @@
+{
+  "name": "const_rounds",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "ROUNDS"
+  ],
+  "requires": [
+    "header"
+  ],
+  "field": "any"
+}

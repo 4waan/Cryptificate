@@ -1,0 +1,15 @@
+{
+  "name": "const_sbox_inv",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "SBOX_INV"
+  ],
+  "requires": [
+    "header"
+  ],
+  "field": "gf256"
+}

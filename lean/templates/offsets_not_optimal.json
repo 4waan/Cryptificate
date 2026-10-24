@@ -1,0 +1,16 @@
+{
+  "name": "offsets_not_optimal",
+  "kind": "claim",
+  "claim": "offsets.dispersion",
+  "status": "refuted",
+  "theorem": "CryptificateJob.offsets_not_optimal",
+  "expectedType": "¬DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 CryptificateJob.candOffsets)",
+  "placeholders": [
+    "ROW_I",
+    "ROW_J"
+  ],
+  "requires": [
+    "const_offsets"
+  ],
+  "field": "gf256"
+}

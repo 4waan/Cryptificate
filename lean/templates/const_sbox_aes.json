@@ -1,0 +1,13 @@
+{
+  "name": "const_sbox_aes",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [],
+  "requires": [
+    "header"
+  ],
+  "field": "gf256"
+}
