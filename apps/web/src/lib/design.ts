@@ -11,7 +11,13 @@ export const ROUNDS_MAX = 32;
 export const EXPONENT_MAX = 65535;
 export const HADES_TOTAL_ROUNDS_MAX = 160;
 
-function matrixIssues(name: string, label: string, m: string[][], width: number, field: 'gf256' | 'bn254'): DesignIssue[] {
+function matrixIssues(
+  name: string,
+  label: string,
+  m: string[][],
+  width: number,
+  field: 'gf256' | 'bn254',
+): DesignIssue[] {
   const f = fieldOps(field);
   const issues: DesignIssue[] = [];
   if (m.length !== width || m.some((row) => row.length !== width)) {
@@ -21,7 +27,10 @@ function matrixIssues(name: string, label: string, m: string[][], width: number,
   m.forEach((row, i) =>
     row.forEach((x, j) => {
       if (!f.isValid(x)) {
-        issues.push({ path: `/${name}/${i}/${j}`, message: `${label} row ${i + 1}, column ${j + 1}: enter ${f.syntax}.` });
+        issues.push({
+          path: `/${name}/${i}/${j}`,
+          message: `${label} row ${i + 1}, column ${j + 1}: enter ${f.syntax}.`,
+        });
       }
     }),
   );
@@ -44,7 +53,10 @@ export function validateDesign(d: CandidateDesign): DesignIssue[] {
     if (d.sbox.kind === 'table') {
       const f = fieldOps('gf256');
       if (d.sbox.table.length !== 256) {
-        issues.push({ path: '/sbox/table', message: `The S-box table needs 256 entries (it has ${d.sbox.table.length}).` });
+        issues.push({
+          path: '/sbox/table',
+          message: `The S-box table needs 256 entries (it has ${d.sbox.table.length}).`,
+        });
       } else {
         const bad = d.sbox.table.findIndex((x) => !f.isValid(x));
         if (bad >= 0) issues.push({ path: `/sbox/table/${bad}`, message: `S-box entry ${bad} must be ${f.syntax}.` });

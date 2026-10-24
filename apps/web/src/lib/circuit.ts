@@ -118,7 +118,10 @@ export function validateProgram(p: Program, designWidth?: number): ProgramIssue[
   const issues: ProgramIssue[] = [];
   const f = fieldOps(p.field);
   if (designWidth !== undefined && p.width !== designWidth) {
-    issues.push({ path: '/width', message: `The circuit has ${p.width} inputs but the design has width ${designWidth}.` });
+    issues.push({
+      path: '/width',
+      message: `The circuit has ${p.width} inputs but the design has width ${designWidth}.`,
+    });
   }
   if (p.instructions.length > MAX_INSTRUCTIONS) {
     issues.push({ path: '/instructions', message: `At most ${MAX_INSTRUCTIONS} instructions are allowed.` });
@@ -134,7 +137,10 @@ export function validateProgram(p: Program, designWidth?: number): ProgramIssue[
       }
     }
     if (ins.op === 'mul' && !f.isValid(ins.k)) {
-      issues.push({ path: `/instructions/${i}/k`, message: `${registerName(p, reg)}: the constant must be ${f.syntax}.` });
+      issues.push({
+        path: `/instructions/${i}/k`,
+        message: `${registerName(p, reg)}: the constant must be ${f.syntax}.`,
+      });
     }
   });
   if (p.outputs.length !== p.width) {

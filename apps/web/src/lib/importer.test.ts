@@ -15,9 +15,9 @@ describe('JSON import', () => {
     const bad = aesDesign() as unknown as { matrix: unknown[] };
     bad.matrix[1] = [2, 3, 1, 1];
     expect(() => parseImport(JSON.stringify({ design: bad }))).toThrow('/design/matrix/1/0');
-    expect(() => parseImport('{"field":"gf256","width":4,"instructions":[{"op":"sub","a":0,"b":1}],"outputs":[]}')).toThrow(
-      '/instructions/0/op',
-    );
+    expect(() =>
+      parseImport('{"field":"gf256","width":4,"instructions":[{"op":"sub","a":0,"b":1}],"outputs":[]}'),
+    ).toThrow('/instructions/0/op');
     expect(() => parseImport('not json')).toThrow('not valid JSON');
   });
 });

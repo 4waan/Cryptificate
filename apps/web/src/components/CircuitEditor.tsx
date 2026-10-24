@@ -113,7 +113,7 @@ export function CircuitEditor({
 }) {
   const id = useId();
   const [selected, setSelected] = useState<number | null>(highlight[0] ?? null);
-  const [showDiagram, setShowDiagram] = useState(!compact);
+  const [showDiagram, setShowDiagram] = useState(true);
   const rowRefs = useRef<(HTMLLIElement | null)[]>([]);
   const f = fieldOps(p.field);
   const issues = useMemo(() => validateProgram(p, designWidth), [p, designWidth]);
@@ -137,7 +137,8 @@ export function CircuitEditor({
     let next: Instruction;
     if (kind === 'add') next = { op: 'add', a, b: ins.op === 'add' ? ins.b : a === 0 ? Math.min(1, reg - 1) : 0 };
     else if (kind === 'xtime') next = { op: 'mul', k: '02', a };
-    else next = { op: 'mul', k: ins.op === 'mul' && !isXtime(p.field, ins) ? ins.k : p.field === 'gf256' ? '03' : '2', a };
+    else
+      next = { op: 'mul', k: ins.op === 'mul' && !isXtime(p.field, ins) ? ins.k : p.field === 'gf256' ? '03' : '2', a };
     onChange(updateInstruction(p, i, next));
   };
 
@@ -163,7 +164,7 @@ export function CircuitEditor({
               Registers x0–x{p.width - 1} are inputs; each instruction defines the next register.
             </span>
           </div>
-          <ol className="instr-list" aria-labelledby={`${id}-list`}>
+          <ol className={`instr-list${compact ? ' instr-list-compact' : ''}`} aria-labelledby={`${id}-list`}>
             {p.instructions.map((ins, i) => {
               const reg = p.width + i;
               const kind = opKind(p, ins);
@@ -191,9 +192,9 @@ export function CircuitEditor({
                     aria-label={`${name} operation`}
                     onChange={(e) => setOp(i, e.target.value as OpKind)}
                   >
-                    <option value="add">{p.field === 'gf256' ? '⊕ add' : '+ add'}</option>
+                    <option value="add">add</option>
                     {p.field === 'gf256' ? <option value="xtime">xtime</option> : null}
-                    <option value="mul">· mul by k</option>
+                    <option value="mul">mul by k</option>
                   </select>
                   <span className="instr-ops">
                     {kind === 'mul' && ins.op === 'mul' ? (
@@ -232,6 +233,8 @@ export function CircuitEditor({
                       </>
                     ) : null}
                     {kind === 'xtime' ? <span className="mono muted">)</span> : null}
+                  </span>
+                  <span className="instr-meta">
                     <span className="instr-expr" title={expressionOf(p, reg)}>
                       = {expressionOf(p, reg, 3)}
                     </span>
@@ -363,7 +366,12 @@ export function CircuitEditor({
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <h3 className="field-label">Wire diagram</h3>
             {compact ? (
-              <button type="button" className="btn btn-sm" aria-expanded={showDiagram} onClick={() => setShowDiagram((v) => !v)}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                aria-expanded={showDiagram}
+                onClick={() => setShowDiagram((v) => !v)}
+              >
                 {showDiagram ? 'Hide diagram' : 'Show diagram'}
               </button>
             ) : null}

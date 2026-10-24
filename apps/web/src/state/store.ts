@@ -104,7 +104,11 @@ export function subscribe(listener: Listener): () => void {
 }
 
 export function useAppState<T>(selector: (s: AppState) => T): T {
-  return useSyncExternalStore(subscribe, () => selector(state), () => selector(state));
+  return useSyncExternalStore(
+    subscribe,
+    () => selector(state),
+    () => selector(state),
+  );
 }
 
 export function isReplayBuild(): boolean {

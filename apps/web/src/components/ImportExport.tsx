@@ -53,7 +53,12 @@ export function ImportExport({ inputs }: { inputs: WorkspaceInputs }) {
           <button
             type="button"
             className="btn btn-sm"
-            onClick={() => downloadJson('cryptificate-design.json', safe(() => normalizeDesign(inputs.design), inputs.design))}
+            onClick={() =>
+              downloadJson(
+                'cryptificate-design.json',
+                safe(() => normalizeDesign(inputs.design), inputs.design),
+              )
+            }
           >
             <IconDownload size={14} /> Design
           </button>
@@ -88,7 +93,12 @@ export function ImportExport({ inputs }: { inputs: WorkspaceInputs }) {
               onChange={(e) => setText(e.target.value)}
             />
             <div className="row">
-              <button type="button" className="btn btn-sm btn-primary" disabled={!text.trim()} onClick={() => apply(text)}>
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                disabled={!text.trim()}
+                onClick={() => apply(text)}
+              >
                 Load into workspace
               </button>
               <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()}>

@@ -6,15 +6,7 @@ import { WitnessView } from './WitnessView';
 
 const ALLOWED_AXIOMS = new Set(['propext', 'Classical.choice', 'Quot.sound']);
 
-export function ClaimCard({
-  claim,
-  field,
-  rounds,
-}: {
-  claim: Claim;
-  field: FieldName;
-  rounds?: number;
-}) {
+export function ClaimCard({ claim, field, rounds }: { claim: Claim; field: FieldName; rounds?: number }) {
   const ev = claim.evidence;
   const hasProofDetails = Boolean(ev.theorem || ev.type || (ev.axioms && ev.axioms.length));
   const unchecked = ev.kind === 'diagnostic';
@@ -92,7 +84,11 @@ export function MissingClaimCard({ title, reason }: { title: string; reason: str
   );
 }
 
-const OUTCOME_TEXT = { holds: 'Holds in preview', fails: 'Fails in preview', unknown: 'Not established by this method' } as const;
+const OUTCOME_TEXT = {
+  holds: 'Holds in preview',
+  fails: 'Fails in preview',
+  unknown: 'Not established by this method',
+} as const;
 
 /** An unchecked browser computation. Never shown with a proof status. */
 export function PreviewCard({ item, field }: { item: PreviewItem; field: FieldName }) {

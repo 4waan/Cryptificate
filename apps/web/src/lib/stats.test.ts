@@ -8,7 +8,14 @@ describe('measurement helpers', () => {
   });
 
   it('keeps per-column samples and rescales per-sample totals', () => {
-    const perColumn = { bytes: 65536, columns: 16384, samples: [1.1, 1.0, 1.2], medianNsPerColumn: 1.1, iqr: 0.1, mibPerSec: 1 };
+    const perColumn = {
+      bytes: 65536,
+      columns: 16384,
+      samples: [1.1, 1.0, 1.2],
+      medianNsPerColumn: 1.1,
+      iqr: 0.1,
+      mibPerSec: 1,
+    };
     expect(samplesPerColumn(perColumn)).toEqual([1.1, 1.0, 1.2]);
     const totals = { ...perColumn, samples: [5.5e7, 5e7, 6e7] };
     expect(samplesPerColumn(totals).map((x) => +x.toFixed(6))).toEqual([1.1, 1.0, 1.2]);

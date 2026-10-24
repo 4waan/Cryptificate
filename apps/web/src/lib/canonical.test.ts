@@ -15,7 +15,9 @@ describe('sha256', () => {
 
 describe('canonicalJson', () => {
   it('sorts keys at every level and drops undefined members', () => {
-    expect(canonicalJson({ b: 1, a: { d: [3, { y: 1, x: 2 }], c: undefined } })).toBe('{"a":{"d":[3,{"x":2,"y":1}]},"b":1}');
+    expect(canonicalJson({ b: 1, a: { d: [3, { y: 1, x: 2 }], c: undefined } })).toBe(
+      '{"a":{"d":[3,{"x":2,"y":1}]},"b":1}',
+    );
   });
   it('gives equal digests for equal meaning', () => {
     expect(digestOf({ a: 1, b: 2 })).toBe(digestOf({ b: 2, a: 1 }));

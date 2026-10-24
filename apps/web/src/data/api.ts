@@ -67,7 +67,8 @@ export async function createJob(kind: JobKind, body: AnalysisRequest | Experimen
     body: JSON.stringify(body),
   });
   const job = res.job ?? (res as JobSummary);
-  if (!job || typeof job.id !== 'string') throw new ApiError('The service did not return a job id', 200, 'bad_response');
+  if (!job || typeof job.id !== 'string')
+    throw new ApiError('The service did not return a job id', 200, 'bad_response');
   return job;
 }
 

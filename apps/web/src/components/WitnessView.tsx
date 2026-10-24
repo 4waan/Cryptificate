@@ -40,7 +40,15 @@ function nonzero(values: readonly string[]): number[] {
   return values.map((v, i) => (/^0+$/.test(v) ? -1 : i)).filter((i) => i >= 0);
 }
 
-export function WitnessView({ witness, field, preview = false }: { witness: Witness; field: FieldName; preview?: boolean }) {
+export function WitnessView({
+  witness,
+  field,
+  preview = false,
+}: {
+  witness: Witness;
+  field: FieldName;
+  preview?: boolean;
+}) {
   const heading = `${witnessHeading(witness)}${preview ? ' (unchecked preview)' : ''}`;
   return (
     <figure className="witness" style={{ margin: 0 }} aria-label={heading}>
@@ -70,13 +78,7 @@ function WitnessBody({ witness: w, field }: { witness: Witness; field: FieldName
           <span className="witness-label">Input x (weight {w.inputWeight})</span>
           <Cells field={field} values={w.input} highlight={nonzero(w.input)} highlightLabel="nonzero" prefix="x" />
           <span className="witness-label">Image M·x (weight {w.outputWeight})</span>
-          <Cells
-            field={field}
-            values={w.output}
-            highlight={nonzero(w.output)}
-            highlightLabel="nonzero"
-            prefix="y"
-          />
+          <Cells field={field} values={w.output} highlight={nonzero(w.output)} highlightLabel="nonzero" prefix="y" />
           <span className="witness-label">Total</span>
           <span className="mono">
             {w.inputWeight} + {w.outputWeight} = {w.inputWeight + w.outputWeight} &lt; {w.bound}

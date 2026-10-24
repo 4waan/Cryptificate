@@ -60,19 +60,15 @@ export function exportRequest(inputs: WorkspaceInputs): void {
       normalizeAnalysisRequest({ design: inputs.design, program: inputs.program ?? undefined, target: inputs.target }),
     );
   } catch {
-    downloadJson('cryptificate-request.json', { design: inputs.design, program: inputs.program, target: inputs.target });
+    downloadJson('cryptificate-request.json', {
+      design: inputs.design,
+      program: inputs.program,
+      target: inputs.target,
+    });
   }
 }
 
-function Chain({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
+function Chain({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
     <section className="chain" aria-label={title}>
       <div className="chain-head">
@@ -101,8 +97,7 @@ export function UnverifiedPreview({ inputs, reason }: { inputs: WorkspaceInputs;
       <div className="banner banner-warn" role="status">
         <IconPreview />
         <div className="banner-body">
-          <strong>Unverified preview — export this design and check it locally.</strong>{' '}
-          <span>{reason}</span>
+          <strong>Unverified preview — export this design and check it locally.</strong> <span>{reason}</span>
         </div>
         <button type="button" className="btn" onClick={() => exportRequest(inputs)}>
           <IconDownload /> Export JSON
@@ -149,7 +144,9 @@ export function ClaimChains({
 }) {
   const field = report.inputs?.design?.field ?? inputs.design.field;
   const rounds =
-    report.inputs?.design && report.inputs.design.model === 'aes-like/gf256/v1' ? report.inputs.design.rounds : undefined;
+    report.inputs?.design && report.inputs.design.model === 'aes-like/gf256/v1'
+      ? report.inputs.design.rounds
+      : undefined;
   const byId = new Map<string, Claim>(report.claims.map((c) => [c.id, c]));
   const render = (spec: { id: ClaimId; title: string }) => {
     if (only && !only.includes(spec.id)) return null;
@@ -157,7 +154,11 @@ export function ClaimChains({
     return claim ? (
       <ClaimCard key={spec.id} claim={claim} field={field} rounds={rounds} />
     ) : (
-      <MissingClaimCard key={spec.id} title={spec.title} reason={missingReason(spec.id, report.inputs ?? inputs, experiment ?? null)} />
+      <MissingClaimCard
+        key={spec.id}
+        title={spec.title}
+        reason={missingReason(spec.id, report.inputs ?? inputs, experiment ?? null)}
+      />
     );
   };
   const extra = report.claims.filter(
@@ -251,8 +252,8 @@ export function ResultsPanel({
           <div className="banner banner-warn" role="status">
             <IconWarning />
             <div className="banner-body">
-              <strong>These results are from an earlier version of the inputs.</strong> They no longer describe what
-              is in the editor.
+              <strong>These results are from an earlier version of the inputs.</strong> They no longer describe what is
+              in the editor.
             </div>
             <button type="button" className="btn btn-primary" onClick={() => startRun('analysis')}>
               <IconRefresh /> Re-check

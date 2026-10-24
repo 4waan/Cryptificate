@@ -31,7 +31,8 @@
   --radius: 8px;
   --radius-sm: 6px;
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-mono:
+    ui-monospace, 'SF Mono', 'Cascadia Mono', 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -230,7 +231,9 @@ textarea {
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
 }
 .btn:hover {
   background: var(--surface-2);
@@ -316,6 +319,8 @@ textarea {
 
 .segmented {
   display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -359,7 +364,7 @@ textarea {
   margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: var(--space-5);
+  gap: var(--space-4);
   padding: var(--space-2) var(--space-5);
   min-height: 56px;
   flex-wrap: wrap;
@@ -409,6 +414,11 @@ textarea {
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
+}
+@media (max-width: 1240px) {
+  .conn-detail {
+    display: none;
+  }
 }
 
 .badge {
@@ -534,12 +544,19 @@ textarea {
 }
 .grid-inputs {
   display: grid;
-  grid-template-columns: minmax(340px, 5fr) minmax(0, 7fr);
+  grid-template-columns: minmax(330px, 4fr) minmax(0, 7fr);
   gap: var(--space-5);
   align-items: start;
 }
-@media (max-width: 1100px) {
-  .grid-inputs {
+.grid-story {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .grid-inputs,
+  .grid-story {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -904,7 +921,7 @@ table.data tbody tr:last-child td {
 }
 .instr {
   display: grid;
-  grid-template-columns: 44px 88px minmax(0, 1fr) auto;
+  grid-template-columns: 40px 84px auto minmax(0, 1fr) auto;
   gap: var(--space-2);
   align-items: center;
   padding: 3px var(--space-2);
@@ -930,7 +947,6 @@ table.data tbody tr:last-child td {
   display: flex;
   gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
   min-width: 0;
 }
 .instr-ops .select {
@@ -943,6 +959,12 @@ table.data tbody tr:last-child td {
   width: 7.5em;
   font-family: var(--font-mono);
 }
+.instr-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
 .instr-expr {
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -950,7 +972,12 @@ table.data tbody tr:last-child td {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 22ch;
+  min-width: 0;
+}
+.instr-list-compact {
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 .instr-actions {
   display: flex;
@@ -1050,7 +1077,7 @@ table.data tbody tr:last-child td {
   display: grid;
   gap: 2px;
 }
-.story-nav button {
+.story-nav ol button {
   width: 100%;
   text-align: left;
   border: 0;
@@ -1064,10 +1091,10 @@ table.data tbody tr:last-child td {
   cursor: pointer;
   color: var(--text-2);
 }
-.story-nav button:hover {
+.story-nav ol button:hover {
   background: var(--surface-2);
 }
-.story-nav button[aria-current='step'] {
+.story-nav ol button[aria-current='step'] {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 600;
@@ -1077,7 +1104,7 @@ table.data tbody tr:last-child td {
   font-weight: 650;
   color: var(--text-muted);
 }
-.story-nav button[aria-current='step'] .story-num {
+.story-nav ol button[aria-current='step'] .story-num {
   color: var(--accent);
 }
 .story-title {

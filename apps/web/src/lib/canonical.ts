@@ -1,13 +1,6 @@
 import { fieldOps } from './field';
 import { sha256Hex } from './sha256';
-import type {
-  AnalysisRequest,
-  CandidateDesign,
-  ExperimentRequest,
-  Instruction,
-  Program,
-  ProgramTarget,
-} from './types';
+import type { AnalysisRequest, CandidateDesign, ExperimentRequest, Instruction, Program, ProgramTarget } from './types';
 
 /**
  * Canonical JSON: object keys sorted by code unit, no whitespace, arrays in

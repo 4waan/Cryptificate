@@ -9,7 +9,10 @@ export function quantile(sorted: readonly number[], q: number): number {
 }
 
 export function median(values: readonly number[]): number {
-  return quantile([...values].sort((a, b) => a - b), 0.5);
+  return quantile(
+    [...values].sort((a, b) => a - b),
+    0.5,
+  );
 }
 
 /**
@@ -35,7 +38,13 @@ export interface Summary {
 
 export function summarize(values: readonly number[]): Summary {
   const s = [...values].sort((a, b) => a - b);
-  return { median: quantile(s, 0.5), q1: quantile(s, 0.25), q3: quantile(s, 0.75), min: s[0] ?? NaN, max: s[s.length - 1] ?? NaN };
+  return {
+    median: quantile(s, 0.5),
+    q1: quantile(s, 0.25),
+    q3: quantile(s, 0.75),
+    min: s[0] ?? NaN,
+    max: s[s.length - 1] ?? NaN,
+  };
 }
 
 /** Round tick values covering [min, max]. */

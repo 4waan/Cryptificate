@@ -13,7 +13,8 @@ export function parseSboxTable(text: string): { table: string[] | null; error: s
     .split(/[\s,;[\]"']+/)
     .map((t) => t.replace(/^0x/i, ''))
     .filter(Boolean);
-  if (tokens.length !== 256) return { table: null, error: `Found ${tokens.length} entries; a table needs exactly 256.` };
+  if (tokens.length !== 256)
+    return { table: null, error: `Found ${tokens.length} entries; a table needs exactly 256.` };
   const bad = tokens.findIndex((t) => !isGfHex(t.padStart(2, '0')) || t.length > 2);
   if (bad >= 0) return { table: null, error: `Entry ${bad} (“${tokens[bad]}”) is not a hex byte.` };
   return { table: tokens.map((t) => t.padStart(2, '0').toUpperCase()), error: null };
@@ -63,7 +64,11 @@ function AesFields({ design }: { design: AesLikeDesign }) {
         />
         <div className="row">
           <span className="small muted">Load:</span>
-          <button type="button" className="btn btn-sm" onClick={() => update({ matrix: AES_MIXCOLUMNS.map((r) => [...r]) })}>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => update({ matrix: AES_MIXCOLUMNS.map((r) => [...r]) })}
+          >
             AES MixColumns
           </button>
           <button
@@ -93,7 +98,9 @@ function AesFields({ design }: { design: AesLikeDesign }) {
                 className="select mono"
                 value={o}
                 aria-label={`Row ${r} offset`}
-                onChange={(e) => update({ offsets: design.offsets.map((x, i) => (i === r ? Number(e.target.value) : x)) })}
+                onChange={(e) =>
+                  update({ offsets: design.offsets.map((x, i) => (i === r ? Number(e.target.value) : x)) })
+                }
               >
                 {[0, 1, 2, 3].map((v) => (
                   <option key={v} value={v}>
@@ -190,7 +197,9 @@ function AesFields({ design }: { design: AesLikeDesign }) {
                 type="button"
                 className="btn btn-sm"
                 onClick={() => {
-                  const { table, error } = parseSboxTable(tableText || (design.sbox.kind === 'table' ? design.sbox.table.join(' ') : ''));
+                  const { table, error } = parseSboxTable(
+                    tableText || (design.sbox.kind === 'table' ? design.sbox.table.join(' ') : ''),
+                  );
                   setTableError(error);
                   if (table) update({ sbox: { kind: 'table', table } });
                 }}
@@ -319,14 +328,20 @@ function HadesFields({ design, target }: { design: HadesDesign; target: ProgramT
               <input
                 type="checkbox"
                 checked={on}
-                onChange={(e) => update({ partialMask: design.partialMask.map((x, j) => (j === i ? e.target.checked : x)) })}
+                onChange={(e) =>
+                  update({ partialMask: design.partialMask.map((x, j) => (j === i ? e.target.checked : x)) })
+                }
               />
               x{i}
             </label>
           ))}
         </div>
         <span className="field-hint">
-          Round constants: {design.constants.kind === 'reference' ? 'reference constants' : `${design.constants.values.length} explicit rows`} (import JSON to change).
+          Round constants:{' '}
+          {design.constants.kind === 'reference'
+            ? 'reference constants'
+            : `${design.constants.values.length} explicit rows`}{' '}
+          (import JSON to change).
         </span>
       </fieldset>
     </div>
@@ -342,9 +357,12 @@ export function DesignEditor({ design, target }: { design: CandidateDesign; targ
       </div>
       <div className="stack-lg">
         <ProfileSwitch design={design} />
-        {design.model === 'aes-like/gf256/v1' ? <AesFields design={design} /> : <HadesFields design={design} target={target} />}
+        {design.model === 'aes-like/gf256/v1' ? (
+          <AesFields design={design} />
+        ) : (
+          <HadesFields design={design} target={target} />
+        )}
       </div>
     </section>
   );
 }
-

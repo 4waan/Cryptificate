@@ -107,8 +107,8 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
         <div id={`${id}-errors`} className="error-text" role="alert">
           <IconWarning />
           <span>
-            {errors.length === 1 ? 'Cell' : 'Cells'}{' '}
-            {errors.map((e) => `(${e.r + 1}, ${e.c + 1})`).join(', ')}: enter {f.syntax}.
+            {errors.length === 1 ? 'Cell' : 'Cells'} {errors.map((e) => `(${e.r + 1}, ${e.c + 1})`).join(', ')}: enter{' '}
+            {f.syntax}.
           </span>
         </div>
       ) : null}

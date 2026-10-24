@@ -4,7 +4,16 @@ import { normalizeAnalysisRequest, normalizeExperimentRequest, type WorkspaceInp
 import { validateProgram } from '../lib/circuit';
 import { validateDesign } from '../lib/design';
 import type { CandidateDesign, ExperimentProfile, JobKind, Program, ProgramTarget } from '../lib/types';
-import { dataSource, getState, isReplayBuild, setState, updateRun, workspaceInputs, type Run, type View } from './store';
+import {
+  dataSource,
+  getState,
+  isReplayBuild,
+  setState,
+  updateRun,
+  workspaceInputs,
+  type Run,
+  type View,
+} from './store';
 
 let counter = 0;
 const pollers = new Map<string, number>();
@@ -12,6 +21,9 @@ const POLL_MS = 800;
 
 export function setView(view: View): void {
   setState({ view });
+  if (typeof window !== 'undefined' && !window.location.hash.startsWith(`#/${view}`)) {
+    window.location.hash = view === 'story' ? `#/story/${getState().storyStep}` : `#/${view}`;
+  }
 }
 
 export function setDesign(design: CandidateDesign): void {
@@ -138,7 +150,10 @@ async function runReplay(run: Run): Promise<void> {
   }
   const report = match.report;
   updateRun(run.key, {
-    state: report.execution?.state === 'running' || report.execution?.state === 'queued' ? 'completed' : (report.execution?.state ?? 'completed'),
+    state:
+      report.execution?.state === 'running' || report.execution?.state === 'queued'
+        ? 'completed'
+        : (report.execution?.state ?? 'completed'),
     steps: report.execution?.steps ?? [],
     report,
     recordingId: match.entry.id,
