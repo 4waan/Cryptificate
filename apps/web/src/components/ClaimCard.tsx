@@ -16,7 +16,10 @@ export function ClaimCard({ claim, field, rounds }: { claim: Claim; field: Field
         <h4 className="claim-title" id={`claim-${claim.id}`}>
           {claim.title}
         </h4>
-        <StatusPill status={claim.status} />
+        <StatusPill
+          status={claim.status}
+          byMethod={claim.id.startsWith('activity') || claim.reason === 'precondition-failed'}
+        />
       </div>
       <p className="evidence">
         {unchecked ? <IconInfo /> : null}

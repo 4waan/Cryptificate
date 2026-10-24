@@ -187,8 +187,21 @@ export function StatusIcon({ status, size }: { status: ClaimStatus; size?: numbe
   }
 }
 
-export function StatusPill({ status, short = false }: { status: ClaimStatus; short?: boolean }) {
-  const text = short && status === 'not_established' ? 'Not established' : STATUS_TEXT[status];
+/**
+ * Status with icon and text. "Not established" carries "by this method" when
+ * the method itself does not apply (the activity bound without MDS), so it is
+ * never read as a refutation.
+ */
+export function StatusPill({
+  status,
+  short = false,
+  byMethod = false,
+}: {
+  status: ClaimStatus;
+  short?: boolean;
+  byMethod?: boolean;
+}) {
+  const text = status === 'not_established' && (short || !byMethod) ? 'Not established' : STATUS_TEXT[status];
   return (
     <span className={`status status-${status}`}>
       <StatusIcon status={status} />

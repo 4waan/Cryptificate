@@ -186,6 +186,34 @@ export function ClaimChains({
   );
 }
 
+/** Who checked the result and with which pinned toolchain, plus the evidence bundle. */
+export function ProvenanceLine({ report, run }: { report: AnalysisReport | ExperimentReport; run: Run }) {
+  const p = report.provenance;
+  const lean = report.execution?.steps.find((s) => s.name === 'lean');
+  const parts = [
+    p.checker,
+    p.toolchain?.lean ? `Lean ${p.toolchain.lean}` : null,
+    p.toolchain?.widetrail ? `WideTrail ${p.toolchain.widetrail.slice(0, 10)}` : null,
+    p.toolchain?.rustc && p.toolchain.rustc !== 'unavailable' ? p.toolchain.rustc : null,
+    lean?.ms !== undefined && lean.state === 'completed' ? `Lean check ${(lean.ms / 1000).toFixed(1)} s` : null,
+  ].filter(Boolean);
+  return (
+    <p className="small muted" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      <span>{parts.join(' · ')}</span>
+      {p.leanSourceSha256 ? (
+        <span className="mono" title={`SHA-256 of the generated Lean source: ${p.leanSourceSha256}`}>
+          Lean source {p.leanSourceSha256.slice(0, 12)}…
+        </span>
+      ) : null}
+      {run.bundleUrl && run.state !== 'unavailable' ? (
+        <a href={run.bundleUrl} download>
+          <IconDownload size={12} /> Evidence bundle
+        </a>
+      ) : null}
+    </p>
+  );
+}
+
 export function ExecutionProblems({ report, run }: { report: AnalysisReport | ExperimentReport | null; run: Run }) {
   const state = report?.execution?.state ?? run.state;
   if (!['failed', 'timeout', 'cancelled', 'invalid'].includes(state)) return null;
@@ -270,6 +298,7 @@ export function ResultsPanel({
       {report ? (
         <div className={stale ? 'stale' : undefined} aria-label={stale ? 'Results from an earlier version' : undefined}>
           {stale ? <p className="stale-label">From an earlier version</p> : null}
+          <ProvenanceLine report={report} run={run} />
           <ClaimChains report={report} inputs={run.inputs} experiment={experiment} />
         </div>
       ) : null}
