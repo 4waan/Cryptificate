@@ -1,0 +1,14 @@
+{
+  "name": "power_not_injective",
+  "kind": "claim",
+  "claim": "sbox.bijective",
+  "status": "refuted",
+  "theorem": "CryptificateJob.power_not_injective",
+  "expectedType": "¬Function.Injective fun x => x ^ CryptificateJob.candExponent",
+  "placeholders": [],
+  "requires": [
+    "const_exponent",
+    "const_witness_power_bn254"
+  ],
+  "field": "bn254"
+}

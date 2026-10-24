@@ -1,0 +1,16 @@
+{
+  "name": "power_bijective",
+  "kind": "claim",
+  "claim": "sbox.bijective",
+  "status": "proved",
+  "theorem": "CryptificateJob.power_bijective",
+  "expectedType": "Function.Bijective fun x => x ^ CryptificateJob.candExponent",
+  "placeholders": [
+    "INV_EXPONENT",
+    "K"
+  ],
+  "requires": [
+    "const_exponent"
+  ],
+  "field": "bn254"
+}
