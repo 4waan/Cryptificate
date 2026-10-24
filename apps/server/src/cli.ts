@@ -37,6 +37,9 @@ Commands:
         Re-derive a bundle's claims with the installed engine and Lean checker.
 
 <design.json> may hold a CandidateDesign or a full request object.
+Exit status: 0 when the run completed (whatever the claims say) or every re-checked claim
+matched; 1 when a run failed, timed out or was stopped, or verify found a difference;
+2 for invalid input or usage.
 Environment: CRYPTIFICATE_HOME (state directory), CRYPTIFICATE_ENGINE, CRYPTIFICATE_LAKE.
 `;
 
