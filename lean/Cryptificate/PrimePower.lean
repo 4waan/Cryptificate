@@ -18,8 +18,10 @@ certificates that the kernel can check without enumerating the field:
   primitive cube root of unity.
 
 The collision check has to compute `w ^ e` in the kernel, and `e` may be as large as `65535`.
-`Monoid.npow` on `ZMod p` multiplies `e` times; for `e = 65535` the kernel check did not finish
-within two minutes. `fastPow` is square-and-multiply, so it takes about `2 log₂ e` multiplications;
+`Monoid.npow` on `ZMod p` multiplies `e` times, one level of recursion per factor. For
+`e = 65535`, under the options and the memory limit that certificates run with, `decide` stops
+at the recursion limit and a kernel-only check (`decide +kernel`) runs out of memory.
+`fastPow` is square-and-multiply, so it takes about `2 log₂ e` multiplications;
 `fastPow_eq` identifies it with `Monoid.npow` once, for every monoid, so certificates state
 their results with the ordinary `^`.
 -/
