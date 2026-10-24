@@ -126,10 +126,12 @@ export function formatExperiment(r: ExperimentReport, style: Style): string {
   );
   if (r.measurements) {
     lines.push('');
+    const primary = r.measurements.comparisons.filter((c) => c.primary ?? (c.bytes === undefined || c.bytes === 65536));
     lines.push(
+      'Speed-up at the primary workload (64 KiB); ratio above 1 means the candidate is faster:',
       table(
         ['session', 'candidate', 'baseline', 'ratio', '95% CI'],
-        r.measurements.comparisons.map((c) => [
+        primary.map((c) => [
           String(c.session),
           c.candidate,
           c.baseline,
