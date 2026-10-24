@@ -9,8 +9,7 @@ basis input `[0,0,1]` the matrix gives its third column `[1,1,3]` and the circui
 `[1,1,2]`, so the certificate refutes the equivalence and records both outputs.
 
 Instantiated by `scripts/instantiate.py` from the fragments `header`, `const_program_bn254`,
-`circuit_mismatch_bn254_internal` and `footer`, with `candInternal` supplied by a stand-in
-constant fragment of the same shape as the other matrix constants.
+`const_internal_bn254`, `circuit_mismatch_bn254_internal` and `footer`.
 -/
 
 set_option autoImplicit false
@@ -27,7 +26,8 @@ def candProgram : Circuit.Program Poseidon2.BN254.F 3 :=
 
 #eval Audit.echoInput "candProgram" candProgram
 
-/-- The candidate's internal matrix over the BN254 scalar field, row-major as submitted. -/
+/-- The candidate's internal matrix over the BN254 scalar field, row-major as submitted. HADES
+mixes with it in every partial round. -/
 def candInternal : Matrix (Fin 3) (Fin 3) Poseidon2.BN254.F :=
   bnMat3 2 1 1 1 2 1 1 1 3
 

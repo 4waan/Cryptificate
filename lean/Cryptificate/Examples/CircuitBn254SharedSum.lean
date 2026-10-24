@@ -9,8 +9,7 @@ the all-ones matrix, so it costs one shared sum and three additions: `s = x₀ +
 every input.
 
 Instantiated by `scripts/instantiate.py` from the fragments `header`, `const_program_bn254`,
-`circuit_equivalence_bn254_external` and `footer`, with `candExternal` supplied by a stand-in
-constant fragment of the same shape as the other matrix constants.
+`const_external_bn254`, `circuit_equivalence_bn254_external` and `footer`.
 -/
 
 set_option autoImplicit false
@@ -27,7 +26,8 @@ def candProgram : Circuit.Program Poseidon2.BN254.F 3 :=
 
 #eval Audit.echoInput "candProgram" candProgram
 
-/-- The candidate's external matrix over the BN254 scalar field, row-major as submitted. -/
+/-- The candidate's external matrix over the BN254 scalar field, row-major as submitted. HADES
+mixes with it in every full round and, as Poseidon2 does, once before the first round. -/
 def candExternal : Matrix (Fin 3) (Fin 3) Poseidon2.BN254.F :=
   bnMat3 2 1 1 1 2 1 1 1 2
 
