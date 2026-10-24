@@ -83,7 +83,10 @@ mod tests {
     #[test]
     fn keys_sorted_and_compact() {
         let v = json!({"b": 1, "a": {"z": [1, "x"], "y": null}, "A": true});
-        assert_eq!(canonical_string(&v), r#"{"A":true,"a":{"y":null,"z":[1,"x"]},"b":1}"#);
+        assert_eq!(
+            canonical_string(&v),
+            r#"{"A":true,"a":{"y":null,"z":[1,"x"]},"b":1}"#
+        );
     }
 
     #[test]

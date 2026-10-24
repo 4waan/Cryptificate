@@ -77,9 +77,15 @@ impl CandidateDesign {
     /// The matrix selected by `target`, or `None` if the model has no such matrix.
     pub fn target_matrix(&self, target: Target) -> Option<AnyMatrix> {
         match (self, target) {
-            (CandidateDesign::AesLike(d), Target::Matrix) => Some(AnyMatrix::Gf256(d.matrix.clone())),
-            (CandidateDesign::Hades(d), Target::External) => Some(AnyMatrix::Bn254(d.external.clone())),
-            (CandidateDesign::Hades(d), Target::Internal) => Some(AnyMatrix::Bn254(d.internal.clone())),
+            (CandidateDesign::AesLike(d), Target::Matrix) => {
+                Some(AnyMatrix::Gf256(d.matrix.clone()))
+            }
+            (CandidateDesign::Hades(d), Target::External) => {
+                Some(AnyMatrix::Bn254(d.external.clone()))
+            }
+            (CandidateDesign::Hades(d), Target::Internal) => {
+                Some(AnyMatrix::Bn254(d.internal.clone()))
+            }
             _ => None,
         }
     }
@@ -348,7 +354,11 @@ impl HadesDesign {
                 format!("fullRounds must be at least {}", limits::MIN_FULL_ROUNDS),
             ));
         }
-        if self.full_rounds.checked_add(self.partial_rounds).is_none_or(|t| t > limits::MAX_HADES_ROUNDS) {
+        if self
+            .full_rounds
+            .checked_add(self.partial_rounds)
+            .is_none_or(|t| t > limits::MAX_HADES_ROUNDS)
+        {
             return Err(ValidationError::new(
                 ErrorCode::RoundsOutOfRange,
                 at(base, "partialRounds"),
@@ -505,7 +515,11 @@ mod tests {
 
     #[test]
     fn reference_designs_check() {
-        CandidateDesign::AesLike(AesLikeDesign::aes(10)).check_at("").unwrap();
-        CandidateDesign::Hades(HadesDesign::poseidon2_reference()).check_at("").unwrap();
+        CandidateDesign::AesLike(AesLikeDesign::aes(10))
+            .check_at("")
+            .unwrap();
+        CandidateDesign::Hades(HadesDesign::poseidon2_reference())
+            .check_at("")
+            .unwrap();
     }
 }

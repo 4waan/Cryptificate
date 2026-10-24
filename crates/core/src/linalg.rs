@@ -37,7 +37,11 @@ pub fn mat_vec<F: Field>(m: &[Vec<F>], x: &[F]) -> Vec<F> {
 /// The `n x n` identity matrix.
 pub fn identity<F: Field>(n: usize) -> Matrix<F> {
     (0..n)
-        .map(|i| (0..n).map(|j| if i == j { F::one() } else { F::zero() }).collect())
+        .map(|i| {
+            (0..n)
+                .map(|j| if i == j { F::one() } else { F::zero() })
+                .collect()
+        })
         .collect()
 }
 
@@ -48,7 +52,9 @@ pub fn weight<F: Field>(v: &[F]) -> usize {
 
 /// The `i`-th standard basis vector of length `n`.
 pub fn basis<F: Field>(n: usize, i: usize) -> Vec<F> {
-    (0..n).map(|j| if i == j { F::one() } else { F::zero() }).collect()
+    (0..n)
+        .map(|j| if i == j { F::one() } else { F::zero() })
+        .collect()
 }
 
 /// Canonical string encodings of a vector.

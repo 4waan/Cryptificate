@@ -39,8 +39,14 @@ fn gate_02_times_80_is_1b() {
 #[test]
 fn gate_aes_mixcolumns_columns() {
     let m = aes_mixcolumns();
-    assert_eq!(mat_vec(&m, &bytes(&[0x01, 0, 0, 0])), bytes(&[0x02, 0x01, 0x01, 0x03]));
-    assert_eq!(mat_vec(&m, &bytes(&[0x80, 0, 0, 0])), bytes(&[0x1B, 0x80, 0x80, 0x9B]));
+    assert_eq!(
+        mat_vec(&m, &bytes(&[0x01, 0, 0, 0])),
+        bytes(&[0x02, 0x01, 0x01, 0x03])
+    );
+    assert_eq!(
+        mat_vec(&m, &bytes(&[0x80, 0, 0, 0])),
+        bytes(&[0x1B, 0x80, 0x80, 0x9B])
+    );
 }
 
 #[test]

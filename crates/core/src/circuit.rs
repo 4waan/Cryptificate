@@ -61,7 +61,11 @@ pub struct Distinguisher<F> {
 impl<F: Field> Program<F> {
     /// Values of every register (inputs first) on the given input.
     pub fn evaluate_registers(&self, inputs: &[F]) -> Vec<F> {
-        assert_eq!(inputs.len(), self.width, "input length must equal the program width");
+        assert_eq!(
+            inputs.len(),
+            self.width,
+            "input length must equal the program width"
+        );
         let mut regs = Vec::with_capacity(self.register_count());
         regs.extend_from_slice(inputs);
         for ins in &self.instructions {
@@ -111,7 +115,12 @@ impl<F: Field> Program<F> {
         for (row, (got, want)) in m.iter().zip(target).enumerate() {
             for (col, (&actual, &expected)) in got.iter().zip(want).enumerate() {
                 if actual != expected {
-                    return Some(CoefficientMismatch { row, col, expected, actual });
+                    return Some(CoefficientMismatch {
+                        row,
+                        col,
+                        expected,
+                        actual,
+                    });
                 }
             }
         }
@@ -132,7 +141,12 @@ impl<F: Field> Program<F> {
             .filter(|(_, (e, a))| e != a)
             .map(|(i, _)| i)
             .collect();
-        Some(Distinguisher { input, expected, actual, differing })
+        Some(Distinguisher {
+            input,
+            expected,
+            actual,
+            differing,
+        })
     }
 
     /// Operation counts (see [`OpCounts`]).

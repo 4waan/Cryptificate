@@ -391,11 +391,24 @@ mod tests {
         assert_eq!(v["evidence"]["type"], "T");
         assert_eq!(v["witness"]["kind"], "branch");
         assert_eq!(v["witness"]["inputWeight"], 1);
-        let w = serde_json::to_value(Witness::OffsetCollision { rows: vec![1, 2], offset: 1 }).unwrap();
-        assert_eq!(w, json!({"kind": "offset-collision", "rows": [1, 2], "offset": 1}));
+        let w = serde_json::to_value(Witness::OffsetCollision {
+            rows: vec![1, 2],
+            offset: 1,
+        })
+        .unwrap();
+        assert_eq!(
+            w,
+            json!({"kind": "offset-collision", "rows": [1, 2], "offset": 1})
+        );
         let none = Claim { witness: None, ..c };
         assert!(serde_json::to_value(&none).unwrap()["witness"].is_null());
-        assert_eq!(serde_json::to_value(Verdict::LocallyConfirmed).unwrap(), "locally confirmed");
-        assert_eq!(serde_json::to_value(CandidateOrigin::BaselineKnown).unwrap(), "baseline-known");
+        assert_eq!(
+            serde_json::to_value(Verdict::LocallyConfirmed).unwrap(),
+            "locally confirmed"
+        );
+        assert_eq!(
+            serde_json::to_value(CandidateOrigin::BaselineKnown).unwrap(),
+            "baseline-known"
+        );
     }
 }

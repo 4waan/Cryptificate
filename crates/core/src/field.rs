@@ -363,7 +363,8 @@ impl Field for Bn254 {
                 "value is not below the BN254 scalar field modulus",
             ));
         }
-        let n = BigUint::from_str(s).map_err(|_| DecodeError::new(format!("invalid number {s:?}")))?;
+        let n =
+            BigUint::from_str(s).map_err(|_| DecodeError::new(format!("invalid number {s:?}")))?;
         if &n >= bn254_modulus() {
             return Err(DecodeError::new(
                 "value is not below the BN254 scalar field modulus",
@@ -450,7 +451,8 @@ mod tests {
 
     #[test]
     fn bn254_canonical_strings() {
-        let p_minus_1 = "21888242871839275222246405745257275088548364400416034343698204186575808495616";
+        let p_minus_1 =
+            "21888242871839275222246405745257275088548364400416034343698204186575808495616";
         assert_eq!(Bn254::decode("0").unwrap(), Bn254::zero());
         assert_eq!(Bn254::decode("1").unwrap(), Bn254::one());
         assert_eq!(Bn254::decode(p_minus_1).unwrap(), -Bn254::one());

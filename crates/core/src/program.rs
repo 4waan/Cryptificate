@@ -119,7 +119,10 @@ impl<F: Field> Program<F> {
                 return Err(ValidationError::new(
                     ErrorCode::BadReference,
                     at(&outputs_path, j),
-                    format!("output {j} refers to register {r}, but only 0..{} exist", regs - 1),
+                    format!(
+                        "output {j} refers to register {r}, but only 0..{} exist",
+                        regs - 1
+                    ),
                 ));
             }
         }

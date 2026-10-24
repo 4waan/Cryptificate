@@ -76,7 +76,11 @@ pub fn validate_analysis_request(v: &Value) -> Result<AnalysisRequest> {
             target
         }
     };
-    Ok(AnalysisRequest { design, program, target })
+    Ok(AnalysisRequest {
+        design,
+        program,
+        target,
+    })
 }
 
 /// Validates and normalizes an experiment request.
@@ -111,16 +115,18 @@ pub fn validate_experiment_request(v: &Value) -> Result<ExperimentRequest> {
                 return Err(err(
                     ErrorCode::BadSeed,
                     path,
-                    format!(
-                        "seed must be 1..{} hex digits",
-                        limits::MAX_SEED_HEX_DIGITS
-                    ),
+                    format!("seed must be 1..{} hex digits", limits::MAX_SEED_HEX_DIGITS),
                 ));
             }
             Some(s.to_ascii_lowercase())
         }
     };
-    Ok(ExperimentRequest { design, program, profile, seed })
+    Ok(ExperimentRequest {
+        design,
+        program,
+        profile,
+        seed,
+    })
 }
 
 fn program_for_design(v: &Value, path: &str, design: &CandidateDesign) -> Result<AnyProgram> {
@@ -131,17 +137,27 @@ fn program_for_design(v: &Value, path: &str, design: &CandidateDesign) -> Result
         err(
             ErrorCode::FieldMismatch,
             at(path, "field"),
-            format!("program field {f} differs from design field {}", design.field()),
+            format!(
+                "program field {f} differs from design field {}",
+                design.field()
+            ),
         )
     };
     let width_mismatch = |w: usize| {
         err(
             ErrorCode::BadDimension,
             at(path, "width"),
-            format!("program width {w} differs from design width {}", design.width()),
+            format!(
+                "program width {w} differs from design width {}",
+                design.width()
+            ),
         )
     };
-    if let Some(f) = v.get("field").and_then(Value::as_str).and_then(FieldKind::parse) {
+    if let Some(f) = v
+        .get("field")
+        .and_then(Value::as_str)
+        .and_then(FieldKind::parse)
+    {
         if f != design.field() {
             return Err(field_mismatch(f));
         }
@@ -168,10 +184,13 @@ fn program_for_design(v: &Value, path: &str, design: &CandidateDesign) -> Result
 fn design_at(v: &Value, base: &str) -> Result<CandidateDesign> {
     let map = obj_map(v, base)?;
     let model_path = at(base, "model");
-    let model = map
-        .get("model")
-        .filter(|m| !m.is_null())
-        .ok_or_else(|| err(ErrorCode::MissingField, &model_path, "missing member \"model\""))?;
+    let model = map.get("model").filter(|m| !m.is_null()).ok_or_else(|| {
+        err(
+            ErrorCode::MissingField,
+            &model_path,
+            "missing member \"model\"",
+        )
+    })?;
     let mut design = match str_at(model, &model_path)? {
         MODEL_AES_LIKE => CandidateDesign::AesLike(aes_like_at(v, base)?),
         MODEL_HADES => CandidateDesign::Hades(hades_at(v, base)?),
@@ -205,10 +224,23 @@ fn aes_like_at(v: &Value, base: &str) -> Result<AesLikeDesign> {
     let o = Obj::new(
         v,
         base,
-        &["model", "field", "width", "matrix", "offsets", "rounds", "sbox", "experimental"],
+        &[
+            "model",
+            "field",
+            "width",
+            "matrix",
+            "offsets",
+            "rounds",
+            "sbox",
+            "experimental",
+        ],
     )?;
     let field = field_member(&o, FieldKind::Gf256)?;
-    let width = usize_at(o.req("width")?, &o.path("width"), ErrorCode::UnsupportedWidth)?;
+    let width = usize_at(
+        o.req("width")?,
+        &o.path("width"),
+        ErrorCode::UnsupportedWidth,
+    )?;
     let matrix = matrix_at::<Gf256>(o.req("matrix")?, &o.path("matrix"))?;
     let offsets_path = o.path("offsets");
     let offsets = array_at(o.req("offsets")?, &offsets_path)?
@@ -216,14 +248,26 @@ fn aes_like_at(v: &Value, base: &str) -> Result<AesLikeDesign> {
         .enumerate()
         .map(|(i, x)| usize_at(x, &at(&offsets_path, i), ErrorCode::OffsetOutOfRange))
         .collect::<Result<Vec<_>>>()?;
-    let rounds = u32_at(o.req("rounds")?, &o.path("rounds"), ErrorCode::RoundsOutOfRange)?;
+    let rounds = u32_at(
+        o.req("rounds")?,
+        &o.path("rounds"),
+        ErrorCode::RoundsOutOfRange,
+    )?;
     let sbox = sbox_at(o.req("sbox")?, &o.path("sbox"))?;
     if let Some(e) = o.opt("experimental") {
         // Accepted so that normalized output can be fed back; the value is
         // recomputed from the width by normalization.
         bool_at(e, &o.path("experimental"))?;
     }
-    Ok(AesLikeDesign { field, width, matrix, offsets, rounds, sbox, experimental: false })
+    Ok(AesLikeDesign {
+        field,
+        width,
+        matrix,
+        offsets,
+        rounds,
+        sbox,
+        experimental: false,
+    })
 }
 
 fn hades_at(v: &Value, base: &str) -> Result<HadesDesign> {
@@ -244,12 +288,23 @@ fn hades_at(v: &Value, base: &str) -> Result<HadesDesign> {
         ],
     )?;
     let field = field_member(&o, FieldKind::Bn254)?;
-    let width = usize_at(o.req("width")?, &o.path("width"), ErrorCode::UnsupportedWidth)?;
+    let width = usize_at(
+        o.req("width")?,
+        &o.path("width"),
+        ErrorCode::UnsupportedWidth,
+    )?;
     let external = matrix_at::<Bn254>(o.req("external")?, &o.path("external"))?;
     let internal = matrix_at::<Bn254>(o.req("internal")?, &o.path("internal"))?;
-    let full_rounds = u32_at(o.req("fullRounds")?, &o.path("fullRounds"), ErrorCode::RoundsOutOfRange)?;
-    let partial_rounds =
-        u32_at(o.req("partialRounds")?, &o.path("partialRounds"), ErrorCode::RoundsOutOfRange)?;
+    let full_rounds = u32_at(
+        o.req("fullRounds")?,
+        &o.path("fullRounds"),
+        ErrorCode::RoundsOutOfRange,
+    )?;
+    let partial_rounds = u32_at(
+        o.req("partialRounds")?,
+        &o.path("partialRounds"),
+        ErrorCode::RoundsOutOfRange,
+    )?;
     let sbox = sbox_at(o.req("sbox")?, &o.path("sbox"))?;
     let partial_mask = match o.opt("partialMask") {
         None => HadesDesign::default_partial_mask(width),
@@ -303,8 +358,11 @@ fn sbox_at(v: &Value, base: &str) -> Result<SboxSpec> {
         }
         "power" => {
             let o = Obj::new(v, base, &["kind", "exponent"])?;
-            let exponent =
-                u32_at(o.req("exponent")?, &o.path("exponent"), ErrorCode::ExponentOutOfRange)?;
+            let exponent = u32_at(
+                o.req("exponent")?,
+                &o.path("exponent"),
+                ErrorCode::ExponentOutOfRange,
+            )?;
             Ok(SboxSpec::Power { exponent })
         }
         other => Err(err(
@@ -339,7 +397,11 @@ fn constants_at(v: &Value, base: &str) -> Result<ConstantsSpec> {
 // ---------------------------------------------------------------------------
 
 fn program_at(v: &Value, base: &str) -> Result<AnyProgram> {
-    let o = Obj::new(v, base, &["field", "width", "name", "instructions", "outputs"])?;
+    let o = Obj::new(
+        v,
+        base,
+        &["field", "width", "name", "instructions", "outputs"],
+    )?;
     let path = o.path("field");
     let s = str_at(o.req("field")?, &path)?;
     let program = match FieldKind::parse(s) {
@@ -358,7 +420,11 @@ fn program_at(v: &Value, base: &str) -> Result<AnyProgram> {
 }
 
 fn program_body<F: Field>(o: &Obj) -> Result<Program<F>> {
-    let width = usize_at(o.req("width")?, &o.path("width"), ErrorCode::UnsupportedWidth)?;
+    let width = usize_at(
+        o.req("width")?,
+        &o.path("width"),
+        ErrorCode::UnsupportedWidth,
+    )?;
     let name = match o.opt("name") {
         None => None,
         Some(n) => Some(str_at(n, &o.path("name"))?.to_owned()),
@@ -387,7 +453,12 @@ fn program_body<F: Field>(o: &Obj) -> Result<Program<F>> {
         .enumerate()
         .map(|(j, r)| usize_at(r, &at(&outputs_path, j), ErrorCode::BadReference))
         .collect::<Result<Vec<_>>>()?;
-    Ok(Program { width, name, instructions, outputs })
+    Ok(Program {
+        width,
+        name,
+        instructions,
+        outputs,
+    })
 }
 
 fn instruction_at<F: Field>(v: &Value, base: &str) -> Result<Instruction<F>> {
@@ -440,7 +511,10 @@ impl<'a> Obj<'a> {
                 format!("unknown member {k:?}"),
             ));
         }
-        Ok(Obj { map, base: base.to_owned() })
+        Ok(Obj {
+            map,
+            base: base.to_owned(),
+        })
     }
 
     fn path(&self, key: &str) -> String {
@@ -449,7 +523,11 @@ impl<'a> Obj<'a> {
 
     fn req(&self, key: &str) -> Result<&'a Value> {
         self.opt(key).ok_or_else(|| {
-            err(ErrorCode::MissingField, self.path(key), format!("missing member {key:?}"))
+            err(
+                ErrorCode::MissingField,
+                self.path(key),
+                format!("missing member {key:?}"),
+            )
         })
     }
 
@@ -471,25 +549,41 @@ fn type_name(v: &Value) -> &'static str {
 
 fn obj_map<'a>(v: &'a Value, path: &str) -> Result<&'a Map<String, Value>> {
     v.as_object().ok_or_else(|| {
-        err(ErrorCode::BadType, path, format!("expected an object, got {}", type_name(v)))
+        err(
+            ErrorCode::BadType,
+            path,
+            format!("expected an object, got {}", type_name(v)),
+        )
     })
 }
 
 fn array_at<'a>(v: &'a Value, path: &str) -> Result<&'a Vec<Value>> {
     v.as_array().ok_or_else(|| {
-        err(ErrorCode::BadType, path, format!("expected an array, got {}", type_name(v)))
+        err(
+            ErrorCode::BadType,
+            path,
+            format!("expected an array, got {}", type_name(v)),
+        )
     })
 }
 
 fn str_at<'a>(v: &'a Value, path: &str) -> Result<&'a str> {
     v.as_str().ok_or_else(|| {
-        err(ErrorCode::BadType, path, format!("expected a string, got {}", type_name(v)))
+        err(
+            ErrorCode::BadType,
+            path,
+            format!("expected a string, got {}", type_name(v)),
+        )
     })
 }
 
 fn bool_at(v: &Value, path: &str) -> Result<bool> {
     v.as_bool().ok_or_else(|| {
-        err(ErrorCode::BadType, path, format!("expected a boolean, got {}", type_name(v)))
+        err(
+            ErrorCode::BadType,
+            path,
+            format!("expected a boolean, got {}", type_name(v)),
+        )
     })
 }
 
@@ -503,7 +597,11 @@ fn u64_at(v: &Value, path: &str, range_code: ErrorCode) -> Result<u64> {
             } else if let Some(x) = n.as_i64() {
                 Err(err(range_code, path, format!("{x} is negative")))
             } else {
-                Err(err(ErrorCode::BadType, path, format!("expected an integer, got {n}")))
+                Err(err(
+                    ErrorCode::BadType,
+                    path,
+                    format!("expected an integer, got {n}"),
+                ))
             }
         }
         _ => Err(err(
