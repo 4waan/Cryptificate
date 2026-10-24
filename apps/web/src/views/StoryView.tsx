@@ -6,6 +6,7 @@ import { MatrixView } from '../components/MatrixEditor';
 import { ClaimChains, ExecutionProblems, exportRequest } from '../components/ResultsPanel';
 import { RunProgress, isActive } from '../components/RunProgress';
 import { WitnessView } from '../components/WitnessView';
+import { BN254_P, invMod } from '../lib/bn254';
 import { isStale } from '../lib/canonical';
 import { expressionOf } from '../lib/circuit';
 import { previewDesign, previewEquivalence } from '../lib/preview';
@@ -425,6 +426,33 @@ function Step3() {
 
 /* ---------------- Step 4 ---------------- */
 
+/** The inverse-exponent identity behind a proved power map, recomputed here for display. */
+function InverseExponent({ exponent }: { exponent: number }) {
+  const pm1 = BN254_P - 1n;
+  const d = invMod(BigInt(exponent), pm1);
+  if (d === null) return null;
+  const k = (BigInt(exponent) * d - 1n) / pm1;
+  return (
+    <section className="witness" aria-label="Inverse-exponent certificate">
+      <span className="witness-label">Inverse-exponent certificate</span>
+      <div className="witness-rows">
+        <span className="witness-label">e</span>
+        <span className="mono">{exponent}</span>
+        <span className="witness-label">d</span>
+        <span className="mono" style={{ wordBreak: 'break-all' }}>
+          {d.toString()}
+        </span>
+        <span className="witness-label">k</span>
+        <span className="mono">{k.toString()}</span>
+      </div>
+      <p className="witness-sentence">
+        e·d = (p − 1)·k + 1, so x ↦ x^d undoes x ↦ x^{exponent}. The Lean kernel checks this identity between natural
+        numbers inside the certificate; the numbers are recomputed here only for display.
+      </p>
+    </section>
+  );
+}
+
 function HadesResult({ slot, exponent }: { slot: string; exponent: number }) {
   const r = useStoryRun(slot);
   const preview = useMemo(() => {
@@ -450,6 +478,7 @@ function HadesResult({ slot, exponent }: { slot: string; exponent: number }) {
                 const c = claimOf(report, id);
                 return c ? <ClaimCard key={id} claim={c} field="bn254" /> : null;
               })}
+              {claimOf(report, 'sbox.bijective')?.status === 'proved' ? <InverseExponent exponent={exponent} /> : null}
             </div>
           ) : null
         }
