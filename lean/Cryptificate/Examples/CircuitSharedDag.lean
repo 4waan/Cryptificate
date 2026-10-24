@@ -38,10 +38,11 @@ def candMatrix : Matrix (Fin 4) (Fin 4) GF256 :=
 
 #eval Audit.echoInput "candMatrix" candMatrix
 
-/-- The submitted circuit computes the candidate matrix on every input: its coefficient
-matrix, computed once per register, equals `candMatrix`. -/
-theorem circuit_equivalence : ∀ x, candProgram.eval x = candMatrix.mulVec x :=
-  Circuit.Program.implements_of_checkEquiv (by decide +kernel)
+/-- The submitted circuit is well formed and computes the candidate matrix on every input: its
+coefficient matrix, computed once per register, equals `candMatrix`. -/
+theorem circuit_equivalence :
+    candProgram.WellFormed ∧ ∀ x, candProgram.eval x = candMatrix.mulVec x :=
+  Circuit.Program.wellFormed_implements_of_checkEquiv (by decide +kernel)
 
 end CryptificateJob
 #cryptificate_audit CryptificateJob.circuit_equivalence

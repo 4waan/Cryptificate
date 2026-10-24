@@ -33,10 +33,11 @@ def candExternal : Matrix (Fin 3) (Fin 3) Poseidon2.BN254.F :=
 
 #eval Audit.echoInput "candExternal" candExternal
 
-/-- The submitted circuit computes the candidate's external matrix on every input: its
-coefficient matrix, computed once per register, equals `candExternal`. -/
-theorem circuit_equivalence : ∀ x, candProgram.eval x = candExternal.mulVec x :=
-  Circuit.Program.implements_of_checkEquiv (by decide +kernel)
+/-- The submitted circuit is well formed and computes the candidate's external matrix on every
+input: its coefficient matrix, computed once per register, equals `candExternal`. -/
+theorem circuit_equivalence :
+    candProgram.WellFormed ∧ ∀ x, candProgram.eval x = candExternal.mulVec x :=
+  Circuit.Program.wellFormed_implements_of_checkEquiv (by decide +kernel)
 
 end CryptificateJob
 #cryptificate_audit CryptificateJob.circuit_equivalence

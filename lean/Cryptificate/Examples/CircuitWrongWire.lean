@@ -46,13 +46,14 @@ def witnessActual : Fin 4 → GF256 := gfVec4 0x01 0x02 0x01 0x01
 #eval Audit.echoInput "witnessExpected" witnessExpected
 #eval Audit.echoInput "witnessActual" witnessActual
 
-/-- On `witnessInput` the candidate matrix gives `witnessExpected` and the submitted circuit
-gives `witnessActual`; they differ, so the circuit does not compute the matrix. -/
+/-- The submitted circuit is well formed, and on `witnessInput` the candidate matrix gives
+`witnessExpected` while the circuit gives `witnessActual`; they differ, so the circuit does not
+compute the matrix. -/
 theorem circuit_mismatch :
-    candMatrix.mulVec witnessInput = witnessExpected ∧
+    candProgram.WellFormed ∧ candMatrix.mulVec witnessInput = witnessExpected ∧
       candProgram.eval witnessInput = witnessActual ∧
       ¬ ∀ x, candProgram.eval x = candMatrix.mulVec x :=
-  Circuit.Program.mismatch (by decide +kernel)
+  Circuit.Program.refutes_of_checkRefute (by decide +kernel)
 
 end CryptificateJob
 #cryptificate_audit CryptificateJob.circuit_mismatch

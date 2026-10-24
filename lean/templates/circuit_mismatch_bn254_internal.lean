@@ -12,10 +12,11 @@ def witnessActual : Fin 3 → Poseidon2.BN254.F := bnVec3 {{WITNESS_ACTUAL}}
 #eval Audit.echoInput "witnessExpected" witnessExpected
 #eval Audit.echoInput "witnessActual" witnessActual
 
-/-- On `witnessInput` the internal matrix gives `witnessExpected` and the submitted circuit
-gives `witnessActual`; they differ, so the circuit does not compute the matrix. -/
+/-- The submitted circuit is well formed, and on `witnessInput` the internal matrix gives
+`witnessExpected` while the circuit gives `witnessActual`; they differ, so the circuit does not
+compute the matrix. -/
 theorem circuit_mismatch :
-    candInternal.mulVec witnessInput = witnessExpected ∧
+    candProgram.WellFormed ∧ candInternal.mulVec witnessInput = witnessExpected ∧
       candProgram.eval witnessInput = witnessActual ∧
       ¬ ∀ x, candProgram.eval x = candInternal.mulVec x :=
-  Circuit.Program.mismatch (by decide +kernel)
+  Circuit.Program.refutes_of_checkRefute (by decide +kernel)

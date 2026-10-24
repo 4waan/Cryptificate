@@ -4,7 +4,7 @@
   "claim": "circuit.equivalence",
   "status": "refuted",
   "theorem": "CryptificateJob.circuit_mismatch",
-  "expectedType": "CryptificateJob.candInternal.mulVec CryptificateJob.witnessInput = CryptificateJob.witnessExpected ∧ CryptificateJob.candProgram.eval CryptificateJob.witnessInput = CryptificateJob.witnessActual ∧ ¬∀ (x : Fin 3 → Poseidon2.BN254.F), CryptificateJob.candProgram.eval x = CryptificateJob.candInternal.mulVec x",
+  "expectedType": "CryptificateJob.candProgram.WellFormed ∧ CryptificateJob.candInternal.mulVec CryptificateJob.witnessInput = CryptificateJob.witnessExpected ∧ CryptificateJob.candProgram.eval CryptificateJob.witnessInput = CryptificateJob.witnessActual ∧ ¬∀ (x : Fin 3 → Poseidon2.BN254.F), CryptificateJob.candProgram.eval x = CryptificateJob.candInternal.mulVec x",
   "placeholders": [
     "WITNESS_INPUT",
     "WITNESS_EXPECTED",
