@@ -271,12 +271,18 @@ fn bn254_source(id: &str, p: &Program<Bn254>, identity: &str) -> String {
     out
 }
 
-/// The build workspace manifest: the kernels crate and every variant as
-/// members, the repository's shared package metadata, and [`PROFILE`].
-pub fn workspace_manifest() -> String {
-    let mut out = String::from(
+/// The build workspace manifest: the kernels crate and the given variant
+/// packages (under `variants/`) as members, the repository's shared package
+/// metadata, and [`PROFILE`]. Variant crates of earlier runs that are still
+/// on disk are not members, so they never affect a build.
+pub fn workspace_manifest<S: AsRef<str>>(packages: &[S]) -> String {
+    let mut members = String::from("\"kernels\"");
+    for p in packages {
+        let _ = write!(members, ", \"variants/{}\"", p.as_ref());
+    }
+    let mut out = format!(
         "# Build workspace for Cryptificate native variants.\n\
-         [workspace]\nresolver = \"2\"\nmembers = [\"kernels\", \"variants/*\"]\n\n",
+         [workspace]\nresolver = \"2\"\nmembers = [{members}]\n\n"
     );
     for section in ["workspace.package", "workspace.dependencies"] {
         if let Some(text) = toml_section(embedded::WORKSPACE_MANIFEST, section) {
@@ -374,8 +380,8 @@ mod tests {
 
     #[test]
     fn workspace_manifest_has_profile_and_package_metadata() {
-        let m = workspace_manifest();
-        assert!(m.contains("members = [\"kernels\", \"variants/*\"]"));
+        let m = workspace_manifest(&["cfv-00", "cfv-01"]);
+        assert!(m.contains("members = [\"kernels\", \"variants/cfv-00\", \"variants/cfv-01\"]"));
         assert!(m.contains("[workspace.package]"));
         assert!(m.contains("codegen-units = 1"));
         assert!(m.contains("panic = \"abort\""));

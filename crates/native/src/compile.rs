@@ -1,9 +1,9 @@
 //! Building variant crates with cargo.
 //!
-//! All variants of a run live in one build workspace (`<work>/Cargo.toml`)
-//! next to a copy of `cryptificate-kernels` and a copy of the repository's
-//! lockfile, so every variant uses the same kernels and the same pinned
-//! dependency versions. Each variant is still compiled on its own
+//! The variants of a run are the members of one build workspace
+//! (`<work>/Cargo.toml`), next to a copy of `cryptificate-kernels` and a copy
+//! of the repository's lockfile, so every variant uses the same kernels and
+//! the same pinned dependency versions. Each variant is still compiled on its own
 //! (`cargo build -p <variant>`), with the same release profile and no
 //! `RUSTFLAGS`. A shared `CARGO_TARGET_DIR` lets dependencies be reused
 //! across variants and runs. The built library is copied into
@@ -96,13 +96,20 @@ fn write_if_changed(path: &Path, contents: &str) -> Result<()> {
     fs::write(path, contents).with_context(|| format!("writing {}", path.display()))
 }
 
-/// Creates or refreshes the build workspace: manifest, lockfile (only when
-/// absent, since cargo trims it), and the kernels crate.
-pub fn prepare_workspace(work_dir: &Path) -> Result<()> {
-    write_if_changed(&work_dir.join("Cargo.toml"), &workspace_manifest())?;
+/// Creates or refreshes the build workspace for the given variant packages:
+/// manifest, lockfile and the kernels crate. Cargo trims the lockfile to
+/// the packages in use, so it is rewritten only when the embedded lockfile
+/// changed since it was last written (recorded in `.lock-source`).
+pub fn prepare_workspace<S: AsRef<str>>(work_dir: &Path, packages: &[S]) -> Result<()> {
+    write_if_changed(&work_dir.join("Cargo.toml"), &workspace_manifest(packages))?;
     let lock = work_dir.join("Cargo.lock");
-    if !lock.exists() {
-        write_if_changed(&lock, embedded::WORKSPACE_LOCK)?;
+    let marker = work_dir.join(".lock-source");
+    let digest = sha256_hex(embedded::WORKSPACE_LOCK.as_bytes());
+    if !lock.exists() || fs::read_to_string(&marker).ok().as_deref() != Some(digest.as_str()) {
+        fs::create_dir_all(work_dir)?;
+        fs::write(&lock, embedded::WORKSPACE_LOCK)
+            .with_context(|| format!("writing {}", lock.display()))?;
+        fs::write(&marker, &digest)?;
     }
     for (rel, text) in embedded::KERNEL_FILES {
         write_if_changed(&work_dir.join("kernels").join(rel), text)?;

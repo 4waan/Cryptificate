@@ -88,11 +88,18 @@ impl NativeError {
 /// ```
 pub fn codegen_json(input: &Value) -> Result<Value, ValidationError> {
     let req = parse_codegen_request(input)?;
+    let generated: Vec<codegen::VariantSource> = req
+        .variants
+        .iter()
+        .map(|spec| codegen::generate_variant(&spec.id, &spec.program))
+        .collect();
+    let packages: Vec<&str> = generated.iter().map(|v| v.package.as_str()).collect();
+    let manifest = codegen::workspace_manifest(&packages);
     let variants: Vec<Value> = req
         .variants
         .iter()
-        .map(|spec| {
-            let v = codegen::generate_variant(&spec.id, &spec.program);
+        .zip(&generated)
+        .map(|(spec, v)| {
             json!({
                 "id": spec.id,
                 "origin": spec.origin,
@@ -113,7 +120,7 @@ pub fn codegen_json(input: &Value) -> Result<Value, ValidationError> {
         "abi": protocol::Abi::new(req.field, req.width),
         "flags": codegen::flags(),
         "workspace": {
-            "manifest": codegen::workspace_manifest(),
+            "manifest": manifest,
             "kernelsSha256": codegen::kernels_sha256(),
             "lockSha256": codegen::lock_sha256(),
         },

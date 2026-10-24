@@ -270,7 +270,8 @@ pub fn run_native(req: &NativeRequest, opts: &NativeOptions) -> Result<NativeRep
     };
     let correctness_seed = derive_seed(&master, "correctness");
 
-    compile::prepare_workspace(&opts.build.work_dir)?;
+    let packages: Vec<&str> = sources.iter().map(|v| v.package.as_str()).collect();
+    compile::prepare_workspace(&opts.build.work_dir, &packages)?;
     let mut excluded = Vec::new();
     let mut builds = Vec::new();
     let mut loaded: Vec<Loaded> = Vec::new();
