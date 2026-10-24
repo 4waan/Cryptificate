@@ -1,0 +1,33 @@
+# The gf256 crate (crates.io, version 0.3.1) configured for the AES field.
+#
+# `src/lib.rs` declares one Galois-field type with the crate's `gf` macro for
+# the polynomial 0x11B. With the crate features `no-tables` and `no-xmul` the
+# macro selects Barrett reduction (`barret` mode) over the crate's polynomial
+# types, whose carry-less multiplication then uses the bitwise loops instead of
+# hardware instructions. `expand.sh` expands this configuration into one Rust
+# file, `../rust/gf256_aes_expanded.rs`, which is the input of the extraction.
+#
+# This package is not a member of the repository's Cargo workspace.
+
+[package]
+name = "gf256-aes-config"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+gf256 = { version = "=0.3.1", default-features = false, features = ["no-tables", "no-xmul"] }
+
+[[test]]
+name = "expanded_matches_crate"
+path = "tests/expanded_matches_crate.rs"
+
+[dev-dependencies]
+gf256-aes-expanded = { path = "expanded" }
+
+[workspace]

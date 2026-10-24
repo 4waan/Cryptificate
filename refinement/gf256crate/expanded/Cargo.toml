@@ -1,0 +1,15 @@
+# The expanded source `../../rust/gf256_aes_expanded.rs` as a crate of its own,
+# so that the test in `../tests` can compare it with the gf256 crate it was
+# expanded from.
+
+[package]
+name = "gf256-aes-expanded"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lib]
+name = "gf256_aes_expanded"
+path = "../../rust/gf256_aes_expanded.rs"
+doctest = false

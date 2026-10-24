@@ -1,0 +1,5 @@
+# The expansion and the extraction both use the nightly that Charon is built
+# against (see ../TOOLCHAIN.md).
+[toolchain]
+channel = "nightly-2026-09-17"
+profile = "minimal"
