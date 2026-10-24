@@ -6,8 +6,8 @@ import Cryptificate
 Design certificates cite a few generic theorems from the diffusion modules, and their axioms
 are part of every design claim. The first block prints the audit line of each, in the form the
 service parses. The second block checks every declaration of `Cryptificate.Diffusion`, its
-submodules (other than `Diffusion.Minors3`, which belongs to the HADES certificates),
-`Cryptificate.Bridge` and `Cryptificate.Sbox`, and fails unless all of them depend only on
+submodules (other than `Diffusion.Minors3`, which is audited with the certificates that use
+it), `Cryptificate.Bridge` and `Cryptificate.Sbox`, and fails unless all of them depend only on
 `propext`, `Classical.choice` and `Quot.sound`.
 -/
 
