@@ -80,6 +80,7 @@ export function derivedEcho(req: AnalysisRequest): Record<string, unknown> {
     out['candExponent'] = d.sbox.exponent;
     out['candFullRounds'] = d.fullRounds;
     out['candPartialRounds'] = d.partialRounds;
+    out['candPartialMask'] = d.partialMask;
   }
   if (req.program) {
     // the display name is not part of the certificate
