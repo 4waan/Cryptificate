@@ -1,0 +1,26 @@
+# build outputs
+/target/
+**/target/
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+lean/.lake/
+refinement/.lake/
+refinement/**/.lake/
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# local runtime state
+.cryptificate/
+/var/
+*.log
+
+# editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
