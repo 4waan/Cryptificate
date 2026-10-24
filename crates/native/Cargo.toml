@@ -1,0 +1,17 @@
+[package]
+name = "cryptificate-native"
+description = "Native code generation, correctness checks and the timing protocol for linear circuits"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cryptificate-core = { path = "../core" }
+cryptificate-kernels = { path = "../kernels" }
+cryptificate-search = { path = "../search" }
+anyhow = "1"
+libloading = "0.8"
+rand = "0.8"
+rand_chacha = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
