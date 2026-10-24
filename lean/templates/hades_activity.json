@@ -1,0 +1,19 @@
+{
+  "name": "hades_activity",
+  "kind": "claim",
+  "claim": "activity.outer",
+  "status": "proved",
+  "theorem": "CryptificateJob.hades_activity",
+  "expectedType": "∀ (mask : Finset (Fin 3)) (constants : ℕ → Fin 3 → Poseidon2.BN254.F) (x y : Fin 3 → Poseidon2.BN254.F), x ≠ y → (CryptificateJob.candFullRounds / 2 / 2 + CryptificateJob.candFullRounds / 2 / 2) * 4 + CryptificateJob.candFullRounds / 2 % 2 + CryptificateJob.candFullRounds / 2 % 2 ≤ CryptificateJob.candDesign.outerActivity mask constants x y",
+  "placeholders": [],
+  "requires": [
+    "const_external_bn254",
+    "const_internal_bn254",
+    "const_exponent",
+    "const_rounds_hades",
+    "external_mds",
+    "internal_invertible",
+    "power_bijective"
+  ],
+  "field": "bn254"
+}
