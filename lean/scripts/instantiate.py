@@ -19,6 +19,10 @@ engine:
 Audit names without a dot are taken in the ``CryptificateJob`` namespace. An
 optional ``"doc"`` string becomes the module docstring of the generated file,
 placed after its imports; the committed examples use it to say what they show.
+An optional ``"inputs"`` object maps echo keys to the values Lean must print
+for them, in the request's canonical encoding, e.g.
+``{"candMatrix": [["02","03","01","01"], ...]}``; ``--check`` then compares
+every ``CRYPTIFICATE_INPUT`` line with it, as the service does.
 
 Usage:
 
@@ -32,13 +36,16 @@ Usage:
 With ``--run`` or ``--check`` the ``CRYPTIFICATE_AUDIT`` and
 ``CRYPTIFICATE_INPUT`` lines Lean prints are copied to standard output, and the
 wall time is reported on standard error. ``--check`` also fails when a claim
-is missing, when its statement differs from the sidecar's ``expectedType``, or
-when it depends on an axiom outside propext, Classical.choice and Quot.sound.
+is missing, when its statement differs from the sidecar's ``expectedType``,
+when it depends on an axiom outside propext, Classical.choice and Quot.sound,
+when a key is echoed twice, or when an echoed value differs from ``"inputs"``.
 
-Placeholder values are pasted into Lean source, so they are restricted to
-letters, digits, ``_``, spaces, commas and dots: enough for numerals, ``0xHH``
-bytes, instruction lists such as ``.add 0 1, .mul 0x02 4`` and constant names,
-and not enough to end a term or start a comment.
+Placeholder values are pasted into Lean source, so every value must be a list
+of tokens separated by spaces or commas, each token a decimal numeral, a
+``0x`` hex numeral, ``.add`` or ``.mul``. That covers numerals, ``0xHH`` bytes
+and instruction lists such as ``.add 0 1, .mul 0x02 4``, and nothing else: no
+identifier or keyword can appear, so a value can neither end the term it is
+pasted into nor start a command such as ``set_option``.
 
 Only the Python standard library is used.
 """
@@ -62,7 +69,7 @@ TEMPLATE_DIR = LEAN_DIR / "templates"
 NAMESPACE = "CryptificateJob"
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 PLACEHOLDER = re.compile(r"\{\{([A-Z][A-Z0-9_]*)\}\}")
-SAFE_VALUE = re.compile(r"[A-Za-z0-9_ ,.]*")
+VALUE_TOKEN = re.compile(r"[0-9]+|0x[0-9A-Fa-f]+|\.add|\.mul")
 AUDIT_PREFIX = "CRYPTIFICATE_AUDIT "
 INPUT_PREFIX = "CRYPTIFICATE_INPUT "
 SIDECAR_KEYS = {
@@ -97,6 +104,14 @@ def full_name(theorem: str) -> str:
     return theorem if "." in theorem else f"{NAMESPACE}.{theorem}"
 
 
+def safe_value(value: str) -> bool:
+    """A placeholder value is tokens separated by spaces and commas, each one a numeral or
+    an instruction name (see the module docstring)."""
+    if not re.fullmatch(r"[0-9A-Za-z ,.]*", value):
+        return False
+    return all(VALUE_TOKEN.fullmatch(tok) for tok in re.split(r"[ ,]+", value) if tok)
+
+
 def substitute(text: str, values: dict[str, str], used: set[str], where: str) -> str:
     def repl(m: re.Match[str]) -> str:
         key = m.group(1)
@@ -129,14 +144,17 @@ def build(spec: dict, dirs: list[Path]) -> tuple[str, list[dict]]:
     if not isinstance(values, dict):
         raise SpecError("spec.values must be an object")
     for key, value in values.items():
-        if not isinstance(value, str) or not SAFE_VALUE.fullmatch(value):
-            raise SpecError(f"value for {key} must be a string of [A-Za-z0-9_ ,.]")
+        if not isinstance(value, str) or not safe_value(value):
+            raise SpecError(f"value for {key} must be numerals, 0x numerals, .add and .mul "
+                            "separated by spaces or commas")
     audit = spec.get("audit", [])
     if not isinstance(audit, list) or not all(isinstance(a, str) for a in audit):
         raise SpecError("spec.audit must be a list of theorem names")
     for a in audit:
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.']*", a):
             raise SpecError(f"invalid theorem name {a!r}")
+    if not isinstance(spec.get("inputs", {}), dict):
+        raise SpecError("spec.inputs must be an object")
 
     parts: list[str] = []
     sidecars: list[dict] = []
@@ -146,6 +164,9 @@ def build(spec: dict, dirs: list[Path]) -> tuple[str, list[dict]]:
         parts.append(substitute(path.read_text(encoding="utf-8"), values, used, name))
         meta = load_sidecar(path)
         if meta is not None:
+            if isinstance(meta.get("expectedType"), str):
+                meta = dict(meta, expectedType=substitute(
+                    meta["expectedType"], values, used, f"{name}.json"))
             sidecars.append(meta)
     unused = sorted(set(values) - used)
     if unused:
@@ -235,6 +256,23 @@ def check_audits(audits: list[dict], sidecars: list[dict], requested: list[str])
     return problems
 
 
+def check_inputs(inputs: list[tuple[str, object]], expected: dict) -> list[str]:
+    """Compare echoed values with the expected ones exactly, so a value in a non-canonical
+    encoding (lowercase hex, a number for a field element) is a difference."""
+    problems: list[str] = []
+    seen: dict[str, object] = {}
+    for key, value in inputs:
+        if key in seen:
+            problems.append(f"{key}: echoed twice")
+        seen[key] = value
+    for key, want in expected.items():
+        if key not in seen:
+            problems.append(f"{key}: not echoed")
+        elif seen[key] != want:
+            problems.append(f"{key}: echoed {json.dumps(seen[key])}, expected {json.dumps(want)}")
+    return problems
+
+
 def lint(dirs: list[Path]) -> list[str]:
     """Check every fragment against its sidecar."""
     problems: list[str] = []
@@ -317,7 +355,7 @@ def main(argv: list[str]) -> int:
     except SpecError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
-    audits, _inputs, malformed, other = parse_output(stdout)
+    audits, inputs, malformed, other = parse_output(stdout)
     for line in stdout.splitlines():
         if line.startswith(AUDIT_PREFIX) or line.startswith(INPUT_PREFIX):
             print(line)
@@ -334,6 +372,7 @@ def main(argv: list[str]) -> int:
     if args.check:
         problems = [f"malformed report line: {line}" for line in malformed]
         problems += check_audits(audits, sidecars, spec.get("audit", []))
+        problems += check_inputs(inputs, spec.get("inputs", {}))
         for p in problems:
             print(f"error: {p}", file=sys.stderr)
         if problems:
