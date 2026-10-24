@@ -183,20 +183,30 @@ def run_lean(path: Path, timeout: float) -> tuple[int | None, str, str, float]:
     return proc.returncode, proc.stdout, proc.stderr, time.monotonic() - start
 
 
-def parse_output(stdout: str) -> tuple[list[dict], list[tuple[str, object]], list[str]]:
-    """Split Lean's output into audit records, echoed inputs and other lines."""
+def parse_output(stdout: str) -> tuple[list[dict], list[tuple[str, object]], list[str], list[str]]:
+    """Split Lean's output into audit records, echoed inputs, malformed report lines and the
+    remaining lines."""
     audits: list[dict] = []
     inputs: list[tuple[str, object]] = []
+    malformed: list[str] = []
     other: list[str] = []
     for line in stdout.splitlines():
-        if line.startswith(AUDIT_PREFIX):
-            audits.append(json.loads(line[len(AUDIT_PREFIX):]))
-        elif line.startswith(INPUT_PREFIX):
-            key, _, payload = line[len(INPUT_PREFIX):].partition(" ")
-            inputs.append((key, json.loads(payload)))
-        elif line.strip():
-            other.append(line)
-    return audits, inputs, other
+        try:
+            if line.startswith(AUDIT_PREFIX):
+                record = json.loads(line[len(AUDIT_PREFIX):])
+                if not (isinstance(record, dict) and isinstance(record.get("theorem"), str)
+                        and isinstance(record.get("type"), str)
+                        and isinstance(record.get("axioms"), list)):
+                    raise ValueError("missing fields")
+                audits.append(record)
+            elif line.startswith(INPUT_PREFIX):
+                key, _, payload = line[len(INPUT_PREFIX):].partition(" ")
+                inputs.append((key, json.loads(payload)))
+            elif line.strip():
+                other.append(line)
+        except ValueError:
+            malformed.append(line)
+    return audits, inputs, malformed, other
 
 
 def check_audits(audits: list[dict], sidecars: list[dict], requested: list[str]) -> list[str]:
@@ -307,7 +317,7 @@ def main(argv: list[str]) -> int:
     except SpecError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
-    audits, inputs, other = parse_output(stdout)
+    audits, _inputs, malformed, other = parse_output(stdout)
     for line in stdout.splitlines():
         if line.startswith(AUDIT_PREFIX) or line.startswith(INPUT_PREFIX):
             print(line)
@@ -322,7 +332,8 @@ def main(argv: list[str]) -> int:
             print(stderr.rstrip(), file=sys.stderr)
         return 1
     if args.check:
-        problems = check_audits(audits, sidecars, spec.get("audit", []))
+        problems = [f"malformed report line: {line}" for line in malformed]
+        problems += check_audits(audits, sidecars, spec.get("audit", []))
         for p in problems:
             print(f"error: {p}", file=sys.stderr)
         if problems:
