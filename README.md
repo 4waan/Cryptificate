@@ -52,9 +52,9 @@ git clone https://github.com/4waan/Cryptificate && cd Cryptificate && npm start
 
 ## Demo
 
-[![Watch the Cryptificate demo](docs/media/demo-poster.jpg)](docs/media/cryptificate-demo.mp4)
+[![Watch the Cryptificate demo](docs/media/demo-poster.jpg)](https://youtu.be/aPrDzEGmKto)
 
-**[Watch the demo (2:40)](docs/media/cryptificate-demo.mp4)**: the wrong wire, the weak matrix, the prime field, the circuit search with native timing, a fresh design checked live, and a bundle replayed with `cryptificate verify`.
+**[Watch the demo on YouTube (2:40)](https://youtu.be/aPrDzEGmKto)** ([MP4 in the repository](docs/media/cryptificate-demo.mp4)): the wrong wire, the weak matrix, the prime field, the circuit search with native timing, a fresh design checked live, and a bundle replayed with `cryptificate verify`.
 
 The workbench opens on a guided story of four real experiments. Each button loads real inputs, and every result on screen comes from Lean and the native harness.
 
