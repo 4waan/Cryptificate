@@ -1,8 +1,7 @@
 import { useId, useState } from 'react';
 import { activityBound, activityFormula, EXPONENT_MAX, ROUNDS_MAX, ROUNDS_MIN, validateDesign } from '../lib/design';
 import { aesSbox, formatGfHex, isGfHex } from '../lib/gf256';
-import { AES_MIXCOLUMNS, aesDesign, aesSharedSum, hadesDesign, hadesSharedSum } from '../lib/presets';
-import { identityMatrix } from '../lib/design';
+import { aesDesign, aesSharedSum, hadesDesign, hadesSharedSum } from '../lib/presets';
 import type { AesLikeDesign, CandidateDesign, HadesDesign, ProgramTarget } from '../lib/types';
 import { loadInputs, setDesign, setTarget } from '../state/actions';
 import { MatrixEditor } from './MatrixEditor';
@@ -47,7 +46,8 @@ function AesFields({ design }: { design: AesLikeDesign }) {
   const id = useId();
   const [tableText, setTableText] = useState('');
   const [tableError, setTableError] = useState<string | null>(null);
-  const update = (patch: Partial<AesLikeDesign>) => setDesign({ ...design, ...patch });
+  const update = (patch: Partial<AesLikeDesign>, group: string | null = `design:${Object.keys(patch).join(',')}`) =>
+    setDesign({ ...design, ...patch }, { group });
   const issues = validateDesign(design);
   const roundsInvalid = issues.some((i) => i.path === '/rounds');
   const distinct = new Set(design.offsets).size === design.offsets.length;
@@ -60,32 +60,12 @@ function AesFields({ design }: { design: AesLikeDesign }) {
           label="MixColumns matrix M (y = M·x)"
           field="gf256"
           values={design.matrix}
-          onChange={(matrix) => update({ matrix })}
+          exportName="M"
+          onChange={(matrix, cell) => update({ matrix }, cell ? `design:matrix:${cell}` : null)}
         />
-        <div className="row">
-          <span className="small muted">Load:</span>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={() => update({ matrix: AES_MIXCOLUMNS.map((r) => [...r]) })}
-          >
-            AES MixColumns
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={() => {
-              const m = AES_MIXCOLUMNS.map((r) => [...r]);
-              m[0] = ['04', '06', '02', '02'];
-              update({ matrix: m });
-            }}
-          >
-            Row-scaled AES
-          </button>
-          <button type="button" className="btn btn-sm" onClick={() => update({ matrix: identityMatrix(4, 'gf256') })}>
-            Identity
-          </button>
-        </div>
+        <p className="field-hint">
+          More matrices, from AES InvMixColumns to circulants that are not MDS, are in the Presets search above.
+        </p>
       </div>
 
       <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
@@ -222,7 +202,8 @@ function AesFields({ design }: { design: AesLikeDesign }) {
 
 function HadesFields({ design, target }: { design: HadesDesign; target: ProgramTarget }) {
   const id = useId();
-  const update = (patch: Partial<HadesDesign>) => setDesign({ ...design, ...patch });
+  const update = (patch: Partial<HadesDesign>, group: string | null = `design:${Object.keys(patch).join(',')}`) =>
+    setDesign({ ...design, ...patch }, { group });
   const issues = validateDesign(design);
   const has = (p: string) => issues.find((i) => i.path === p)?.message;
   return (
@@ -232,14 +213,16 @@ function HadesFields({ design, target }: { design: HadesDesign; target: ProgramT
         label="External matrix (full rounds)"
         field="bn254"
         values={design.external}
-        onChange={(external) => update({ external })}
+        exportName="M_E"
+        onChange={(external, cell) => update({ external }, cell ? `design:external:${cell}` : null)}
       />
       <MatrixEditor
         id={`${id}-int`}
         label="Internal matrix (partial rounds)"
         field="bn254"
         values={design.internal}
-        onChange={(internal) => update({ internal })}
+        exportName="M_I"
+        onChange={(internal, cell) => update({ internal }, cell ? `design:internal:${cell}` : null)}
       />
       <div className="field">
         <span className="field-label" id={`${id}-target`}>
