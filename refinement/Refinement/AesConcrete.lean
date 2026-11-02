@@ -171,6 +171,19 @@ theorem diffusionOptimal_of_offsetsDistinct {o : Std.Array U8 4#usize}
     DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 (offsetsOf o)) :=
   diffusionOptimal_of_injective (of_decide_eq_true h)
 
+/-! ### The checks reject designs that fail them
+
+The checks are evaluated, not assumed. The kernel rejects the all-ones matrix (its `2 × 2`
+minors vanish), the offsets `0, 1, 2, 5` (`5` and `1` agree modulo `4`) and a constant
+table. -/
+
+example : minors4Ok (matrixOf (Array.repeat 16#usize 1#u8)) = false := by decide +kernel
+
+example : offsetsDistinct (Array.make 4#usize [0#u8, 1#u8, 2#u8, 5#u8] (by rfl)) = false := by
+  decide +kernel
+
+example : tableCovers (Array.repeat 256#usize 0#u8) = false := by decide +kernel
+
 /-! ### The activity bound under the three checks -/
 
 /-- **The activity bound for the Rust kernel, for every design that passes the checks.** If the
