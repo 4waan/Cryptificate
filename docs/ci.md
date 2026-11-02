@@ -42,7 +42,7 @@ What the action does, in order:
 
 1. Restores its caches from the repository's Actions cache: `~/.elan` (keyed on `lean/lean-toolchain`), the Mathlib cache archives in `~/.cache/mathlib` (keyed on `lean/lake-manifest.json`), the Cryptificate and WideTrail Lean builds (keyed on the manifest and the Lean sources), the cargo registry and engine build (keyed on `Cargo.lock` and `rustc -V`) and the npm cache (keyed on `package-lock.json`).
 2. Installs elan and the toolchain pinned in `lean/lean-toolchain`, runs `lake exe cache get` and `lake build Cryptificate` in `lean/`, builds `cryptificate-engine` with `cargo build --release --locked`, and builds the command with `npm ci` and `npm run build`.
-3. Runs `cryptificate check <inputs> --fail-on <policy> --format json --output result.json --bundle-dir bundles` in `working-directory`. Without `inputs` it runs `cryptificate check --format json --output result.json --bundle-dir bundles`, which reads the nearest `cryptificate.json` (in `working-directory` or a parent); `--fail-on` is added only when `fail-on` is set, and the file's `format`, `output` and `bundleDir` are replaced by the action's result files. The text report goes to the job log and the Markdown report to the job summary. `cryptificate report` then renders the same result as SARIF and JUnit, with the same policy.
+3. Runs `cryptificate check <inputs> --fail-on <policy> --format json --output result.json --bundle-dir bundles` in `working-directory`. Without `inputs` it runs `cryptificate check --format json --output result.json --bundle-dir bundles`, which reads the nearest `cryptificate.json` (in `working-directory` or a parent); `--fail-on` is added only when `fail-on` is set, and the file's `format`, `output` and `bundleDir` are replaced by the action's result files. The text report goes to the job log and the Markdown report to the job summary, and a warning is logged when the policy in force is `none`. `cryptificate report` then renders the same result as SARIF and JUnit, with the same policy, resolving the input paths against the directory recorded in `result.json` (see [Project configuration](#project-configuration)); the SARIF locations are made relative to the repository root with `--uri-base "$GITHUB_WORKSPACE"`, as code scanning reads them.
 4. Uploads the SARIF log with `github/codeql-action/upload-sarif@v3` and the directory with `result.json`, `cryptificate.sarif`, `cryptificate.junit.xml` and one evidence bundle per input with `actions/upload-artifact@v4`, as artifact `cryptificate-evidence`.
 5. Fails the job with the exit status of `check` (below).
 
@@ -53,10 +53,10 @@ A cold run downloads the Mathlib cache archives (about 0.9 GB for the pinned Mat
 | Input | Default | Meaning |
 | --- | --- | --- |
 | `inputs` | empty | Design or request files, or patterns, separated by spaces or new lines, relative to `working-directory`. Patterns support `*`, `?`, `[..]` and `**`, are expanded by `cryptificate` itself, and must each match at least one file. Paths with spaces are not supported. Empty: the inputs of the nearest `cryptificate.json`; without such a file the job fails with exit status 2. |
-| `fail-on` | empty | `none`, `refuted`, `not-established` or `any` (see [Policy](#policy)). Empty: the `failOn` of `cryptificate.json` when `inputs` is empty (`none` if the file has none), otherwise `refuted`. |
+| `fail-on` | empty | `none`, `refuted`, `not-established` or `any` (see [Policy](#policy)). Empty: `refuted`, or the `failOn` of `cryptificate.json` when `inputs` is empty and the file sets one. |
 | `claims` | empty | Comma-separated claim ids the policy is restricted to, for example `matrix.mds,offsets.dispersion,sbox.bijective`. An unknown id, or one an input's report does not carry, is an error (see [Policy](#policy)). Empty: the `claims` of `cryptificate.json` when `inputs` is empty, otherwise every claim the run attempts. |
 | `target` | from each file | `matrix`, `external` or `internal`, applied to every input (overrides the `target` of `cryptificate.json`). |
-| `working-directory` | `.` | Directory for `inputs` and for the relative paths in the SARIF log. Keep it at the repository root (or a path inside the checkout) so code scanning can place the annotations. |
+| `working-directory` | `.` | Directory the command runs in: `inputs` are relative to it, and without `inputs` the nearest `cryptificate.json` is looked up from it. It must be inside the checkout. The SARIF locations are relative to the repository root (`$GITHUB_WORKSPACE`) whatever it is, so code scanning places the annotations. |
 | `upload-sarif` | `true` | Upload to code scanning. Needs `security-events: write`; code scanning must be available for the repository. |
 | `sarif-category` | `cryptificate` | Category of the SARIF upload, to keep several gates apart. |
 | `upload-artifacts` | `true` | Upload the bundles and result files. |
@@ -97,7 +97,7 @@ GitLab, Jenkins and Buildkite read the JUnit file: each claim is a test case, a 
 | Key | Command-line option | Meaning |
 | --- | --- | --- |
 | `inputs` | input arguments | Required. Design or request files, or patterns; each must match at least one file. |
-| `failOn` | `--fail-on` | Policy, `none` when absent. |
+| `failOn` | `--fail-on` | Policy, `refuted` when absent (without a `cryptificate.json` the command-line default is `none`). |
 | `claims` | `--claims` | Claim ids the policy is restricted to; every id must be one of the claim ids listed under [SARIF](#sarif). |
 | `target` | `--target` | Circuit target applied to every input. |
 | `format` | `--format` | Output format, `text` when absent. |
@@ -105,7 +105,7 @@ GitLab, Jenkins and Buildkite read the JUnit file: each claim is a test case, a 
 | `bundleDir` | `--bundle-dir` | Directory for one evidence bundle per input. |
 | `$schema` | | Ignored; lets editors validate the file. |
 
-Relative paths in the file (`inputs`, `output`, `bundleDir`) are relative to the directory that holds it, and the input paths in the result, the SARIF locations included, are relative to that directory too. An option given on the command line overrides the file, and a path given as an option stays relative to the working directory. The command names the file it uses on stderr (`config: ../cryptificate.json`) unless `-q` is given. A file that is not valid JSON, has an unknown key or a value of the wrong kind, or names an unknown claim id is a usage error (exit 2), and every problem is listed with its JSON Pointer:
+Relative paths in the file (`inputs`, `output`, `bundleDir`) are relative to the directory that holds it, and the input paths in the result, the SARIF locations included, are relative to that directory too (unless `--uri-base` is given). A `check --format json` result records as `base` (an absolute path) the directory its input paths are relative to (this one, or the working directory for inputs given on the command line), and `report` resolves the input paths of a saved result against it, so it finds the files, and places the SARIF locations, from any working directory; the results it writes name the inputs relative to its own working directory. An option given on the command line overrides the file, and a path given as an option stays relative to the working directory. The command names the file it uses on stderr (`config: ../cryptificate.json`) unless `-q` is given. A file that is not valid JSON, has an unknown key or a value of the wrong kind, or names an unknown claim id is a usage error (exit 2), and every problem is listed with its JSON Pointer:
 
 ```text
 cryptificate: cryptificate.json is not a valid project configuration (2 problems; schema: schemas/project-config.schema.json):
@@ -123,9 +123,10 @@ cryptificate: cryptificate.json is not a valid project configuration (2 problems
 | --- | --- |
 | `--format text\|json\|sarif\|junit\|markdown` | Output format, `text` by default. |
 | `--output FILE` | Write the formatted result to `FILE` (creating its directory); the text report then goes to stdout. Without it the formatted result goes to stdout. Progress always goes to stderr. |
-| `--fail-on none\|refuted\|not-established\|any` | Policy, `none` by default. `report` keeps the policy recorded in a saved `check` or `verify` result unless `--fail-on` or `--claims` is given. |
+| `--fail-on none\|refuted\|not-established\|any` | Policy, `none` by default (for `check` with a `cryptificate.json`, the file's `failOn`, else `refuted`). `report` keeps the policy recorded in a saved `check` or `verify` result unless `--fail-on` or `--claims` is given. |
 | `--claims ID[,ID...]` | Restrict the policy to these claim ids (repeatable). An id that is not one of the claim ids listed under [SARIF](#sarif) (a typo, or the wrong case) is a usage error. |
 | `--no-step-summary` | Do not append Markdown to `$GITHUB_STEP_SUMMARY`. When that variable is set (as it is in GitHub Actions), the Markdown report is appended to the file it names, whatever `--format` is. |
+| `--uri-base DIR` | Make the file locations in a SARIF log relative to `DIR` (relative to the working directory), by default the working directory; a file outside it gets a `file://` URI. Code scanning reads relative locations from the repository root, so pass the root (`$GITHUB_WORKSPACE`) when the command runs elsewhere. |
 
 `check` takes one or more design or request files or patterns, or none to read `cryptificate.json` ([Project configuration](#project-configuration)); `--config FILE` names that file. `--program`, `--json` and `--bundle` need a single input; with several, put `program` (and `target`) in each request file, use `--format json --output FILE` for the results and `--bundle-dir DIR` for one bundle per input (named after the input file). `verify` takes one or more bundles or patterns. `report` takes saved results: `check --format json` or `verify --format json` output, a `report.json`, or a bundle.
 
@@ -181,7 +182,7 @@ Locations point into the file you wrote, with a line and column:
 | `circuit.equivalence` | the first differing output of the circuit when refuted, otherwise the circuit |
 | other implementation claims | the circuit, or the top of the file when there is none |
 
-The design is found at the top of a bare design file or under `design` in a request file; the circuit under `program`, or in the `--program` file. Paths are relative to the working directory, which is what code scanning expects when it is the repository root. For `verify`, results point at the bundle file, without a line. A failed input, an input that lacks a requested claim, and a bundle that could not be re-checked (with the reason) are reported as tool execution notifications with level `error`.
+The design is found at the top of a bare design file or under `design` in a request file; the circuit under `program`, or in the `--program` file. Paths are relative to the working directory, or to the `--uri-base` directory when it is given; code scanning expects them relative to the repository root. For `verify`, results point at the bundle file, without a line. A failed input, an input that lacks a requested claim, and a bundle that could not be re-checked (with the reason) are reported as tool execution notifications with level `error`.
 
 GitHub code scanning shows `fail` results as alerts. How it presents `pass`, `open` and `notApplicable` results is up to GitHub; the job's pass or fail is decided by the exit status, not by the upload.
 
