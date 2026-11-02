@@ -55,6 +55,13 @@ describe('RunProgress', () => {
     expect(html).toContain('attempt 2 of 6');
   });
 
+  it('leaves the error of an ended run to the execution banner', () => {
+    const ended = run({ state: 'failed', finishedAt: 20_000, attempts: 6, error: 'The service stayed busy for all 6 attempts.' });
+    expect(renderToStaticMarkup(<RunProgress now={30_000} run={ended} />)).not.toContain('stayed busy');
+    const stopFailed = run({ error: 'Stop request failed.' });
+    expect(renderToStaticMarkup(<RunProgress now={12_000} run={stopFailed} />)).toContain('Stop request failed.');
+  });
+
   it('names auto-checks, and has no timing for replayed runs', () => {
     expect(renderToStaticMarkup(<RunProgress now={11_000} run={run({ auto: true })} />)).toContain('Auto-check:');
     expect(runTiming(run({ source: 'replay' }), 11_000, caps, {})).toBeNull();

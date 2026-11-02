@@ -238,6 +238,16 @@ export function ProvenanceLine({ report, run }: { report: AnalysisReport | Exper
   );
 }
 
+/** What a run that ended without any report did, in words. */
+export function noReportText(run: Run): string {
+  const started = run.source !== 'live' || run.jobId !== undefined;
+  if (!started) {
+    if (run.state === 'cancelled') return 'Stopped before the service started it, so nothing was checked.';
+    return 'The service never started this run, so nothing was checked.';
+  }
+  return `${EXECUTION_TEXT[run.state] ?? 'The run ended.'} It ended before producing a report, so nothing was checked.`;
+}
+
 export function ExecutionProblems({ report, run }: { report: AnalysisReport | ExperimentReport | null; run: Run }) {
   const state = report?.execution?.state ?? run.state;
   if (!['failed', 'timeout', 'cancelled', 'invalid'].includes(state)) return null;
@@ -247,15 +257,22 @@ export function ExecutionProblems({ report, run }: { report: AnalysisReport | Ex
     <section className="banner banner-bad" aria-label="Execution problems">
       <IconWarning />
       <div className="banner-body">
-        <strong>Execution: {state}.</strong> {EXECUTION_TEXT[state] ?? ''}{' '}
+        <strong>Execution: {state}.</strong> {report ? (EXECUTION_TEXT[state] ?? '') : noReportText(run)}{' '}
+        {run.error ? (
+          <span className="block">
+            {run.error}
+            {run.errorPath ? <span className="mono"> ({run.errorPath})</span> : null}
+          </span>
+        ) : null}
         {bad.length ? (
           <span>
             Affected step{bad.length > 1 ? 's' : ''}: {bad.map((s) => `${s.name} (${s.state})`).join(', ')}.
           </span>
         ) : null}{' '}
         <span>
-          This is an execution outcome, not a mathematical result: claims that did not finish are reported as not
-          established, never as refuted.
+          {report
+            ? 'This is an execution outcome, not a mathematical result: claims that did not finish are reported as not established, never as refuted.'
+            : 'This is an execution outcome, not a mathematical result.'}
         </span>
       </div>
     </section>
@@ -355,6 +372,18 @@ export function ResultsPanel({
         />
       ) : null}
       <ExecutionProblems report={report} run={run} />
+      {!active && !stale && !report ? (
+        <LivePreview
+          items={items}
+          field={field}
+          note="Computed in this browser. Lean did not check these inputs: the run ended before a result."
+          action={
+            <button type="button" className="btn btn-primary" onClick={() => checkNow()} aria-keyshortcuts="Control+Enter Meta+Enter">
+              <IconPlay size={12} /> {source === 'live' ? 'Check again' : checkLabel}
+            </button>
+          }
+        />
+      ) : null}
       {report ? (
         <div className={stale ? 'stale' : undefined} aria-label={stale ? 'Results from an earlier version' : undefined}>
           {stale ? <p className="stale-label">From an earlier version</p> : null}

@@ -430,6 +430,7 @@ export function ExperimentsView() {
           </div>
         )
       ) : null}
+      {run && !report && !isActive(run) && run.state !== 'unavailable' ? <ExecutionProblems report={null} run={run} /> : null}
       {run?.state === 'unavailable' ? (
         <UnverifiedPreview
           inputs={inputs}

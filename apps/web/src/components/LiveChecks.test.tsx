@@ -85,4 +85,38 @@ describe('ResultsPanel live preview', () => {
     expect(html).toContain('data-live-preview');
     expect(html.indexOf('data-live-preview')).toBeLessThan(html.indexOf('From an earlier version'));
   });
+
+  it('shows why a run that ended without a report checked nothing, and keeps the preview', () => {
+    const busy = run({
+      state: 'failed',
+      report: null,
+      attempts: 6,
+      error: 'The service stayed busy for all 6 attempts, so nothing was checked. Try again when its current job finishes.',
+    });
+    const html = renderToStaticMarkup(<ResultsPanel run={busy} inputs={inputs} source="live" />);
+    expect(html).toContain('stayed busy for all 6 attempts');
+    expect(html).toContain('The service never started this run');
+    expect(html).not.toContain('failed before every claim was checked');
+    expect(html).toContain('data-live-preview');
+    expect(html).toContain('Lean did not check these inputs');
+    expect(html).toContain('Check again');
+    expect(html).not.toMatch(/status-(proved|refuted|not_established)/);
+  });
+
+  it('shows a rejected request with the path the service named', () => {
+    const invalid = run({ state: 'invalid', report: null, error: 'Rounds must be at most 32.', errorPath: '/design/rounds' });
+    const html = renderToStaticMarkup(<ResultsPanel run={invalid} inputs={inputs} source="live" />);
+    expect(html).toContain('Rounds must be at most 32.');
+    expect(html).toContain('/design/rounds');
+  });
+
+  it('says a check stopped while queued locally never ran', () => {
+    const html = renderToStaticMarkup(<ResultsPanel run={run({ state: 'cancelled', report: null })} inputs={inputs} source="live" />);
+    expect(html).toContain('Stopped before the service started it, so nothing was checked.');
+    expect(html).toContain('data-live-preview');
+    const started = renderToStaticMarkup(
+      <ResultsPanel run={run({ state: 'timeout', report: null, jobId: 'j1' })} inputs={inputs} source="live" />,
+    );
+    expect(started).toContain('The run hit its time limit. It ended before producing a report');
+  });
 });

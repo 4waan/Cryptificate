@@ -152,7 +152,8 @@ export function RunProgress({ run, compact = false, now: fixedNow }: { run: Run;
           {(run.attempts ?? 0) + 1} of {BUSY_MAX_ATTEMPTS}).
         </p>
       ) : null}
-      {run.error ? (
+      {/* Once the run has ended, ExecutionProblems shows the error with what it means. */}
+      {active && run.error ? (
         <p className="error-text">
           {run.error}
           {run.errorPath ? <span className="mono"> ({run.errorPath})</span> : null}
