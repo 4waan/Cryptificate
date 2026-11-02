@@ -17,6 +17,7 @@ Statuses: **proved** (checked by Lean, axioms listed), **trusted** (assumed, not
 | 3. Aeneas model compiles in Lean | yes | yes | yes | — |
 | 4. Model = specification | **proved** | **proved** | **proved**, under the hypothesis `size_of::<u8>() = 1` | not established |
 | 5. Specification → named properties | **proved**: WideTrail's field `GF256` (field laws carried to the Rust functions) | **proved** as a conditional theorem: the active-S-box bound for Rust executions, assuming MDS, diffusion-optimal offsets and an injective S-box table | **proved**: equal to WideTrail's multiplier, hence to the kernels' `mul` | not established |
+| 5′. Same, for a concrete design | — | **proved without design hypotheses** for byte arrays that pass three checks the kernel evaluates, and for AES: at least `activityBound r` active S-boxes (`55` for ten rounds) for any two different inputs and at least `r` round keys (section 2.1) | — | not established |
 
 ### Axioms and hypotheses of each theorem
 
@@ -31,7 +32,11 @@ What `#print axioms` reports, pinned by `Refinement/Axioms.lean` (the build fail
 | `gf256_mul_comm`, `gf256_mul_assoc`, `gf256_mul_add`, `gf256_mul_two`, `gf256_mul_inv` | standard | `a ≠ 0` for `gf256_mul_inv` |
 | `aes_like_round_refines`, `aes_like_round_eq` | standard | none |
 | `aes_like_encrypt_refines`, `aes_like_encrypt_eq` | standard | at least `rounds` round keys |
-| `aes_like_encrypt_activity_bound` | standard | MDS matrix, diffusion-optimal offsets, S-box table without repeated entries (not proved here), different inputs, at least `r` round keys |
+| `aes_like_encrypt_activity_bound` | standard | MDS matrix, diffusion-optimal offsets, S-box table without repeated entries, different inputs, at least `r` round keys |
+| `aes_like_encrypt_activity_bound_of_checks` | standard | `minors4Ok (matrixOf m)`, `offsetsDistinct o`, `tableCovers t` (Boolean checks on the bytes), different input arrays, at least `r` round keys |
+| `sboxOf_injective_iff`, `sboxOf_injective_of_tableCovers` | standard | `tableCovers t` for the second |
+| `matrixOf_aesMatrixBytes`, `offsetsOf_aesOffsetBytes`, `sboxOf_aesSboxBytes` | standard | none |
+| `aes_rust_activity_bound`, `aes_rust_activity_bound_exists`, `aes_rust_activity_bound_10`, `aes_rust_activity_bound_4` | standard | different input arrays, at least `r` (resp. `10`, `4`) round keys; no design hypothesis |
 | `Gf256Crate.crateMul_eq_rawMul` | `propext`, `Quot.sound` | none (bit-level model, no Rust) |
 | `Gf256Crate.gf256crate_mul_refines`, `gf256crate_mul_field`, `gf256crate_mul_eq_kernels` | standard and `gf256_aes.core.mem.size_of`, the uninterpreted function the extraction declares | `SizeOfU8`: `size_of::<u8>()` returns `1` |
 
@@ -112,10 +117,79 @@ from what `aes_like.encrypt` returns. All five theorems of this section use `pro
 
 **Scope.** The hypotheses `hM`, `hoff`, `ht` are stated in the main package's terms (WideTrail's
 `IsMDS`, `DiffusionOptimal`). For a concrete design they are what the main package's per-design
-certificates prove (`matrix.mds`, `offsets.dispersion`, `sbox.bijective`), but those
-certificates are checked by the main package on Lean `v4.33.1`; combining a certificate with
-this theorem in one Lean environment is not done here. The model has no special last round
-(as in `Bridge.lean`).
+certificates prove (`matrix.mds`, `offsets.dispersion`, `sbox.bijective`). Those generated
+certificates are checked by the main package on Lean `v4.33.1` and are not imported here;
+section 2.1 instead compiles the checks they are built on in this package and discharges the
+hypotheses for concrete byte arrays. The model has no special last round (as in `Bridge.lean`).
+
+## 2.1 Concrete designs and AES, without design hypotheses
+
+Proof file `Refinement/AesConcrete.lean`. The refinement package also compiles, from the main
+package's source files and under Lean and Mathlib `v4.35.0`, `lean/Cryptificate/Encoding.lean`,
+`Sbox.lean`, `Diffusion/Minors4.lean` and `Diffusion/Offsets.lean` (roots of
+`CryptificateBridge`; `claims.json` records their SHA-256). Three Boolean checks on the Rust
+byte arrays then replace the design hypotheses of `aes_like_encrypt_activity_bound`:
+
+* `minors4Ok (matrixOf m)`: the `69` canonical minors of the matrix are nonzero, hence `IsMDS`
+  (`isMDS_of_minors4Ok` of the main package);
+* `offsetsDistinct o`: the four offsets are distinct modulo `4`, hence diffusion-optimal
+  (`diffusionOptimal_of_injective`);
+* `tableCovers t`: every byte value occurs among the `256` entries of the table (one pass that
+  sets bit `t[x]` of a mask and compares it with `2 ^ 256 - 1`). Then `sboxOf t` is surjective,
+  hence injective on the finite field, hence the table has no repeated entry
+  (`sboxOf_injective_iff`: injectivity of `sboxOf t` is equivalent to the hypothesis `ht`).
+
+```lean
+theorem aes_like_encrypt_activity_bound_of_checks (m o t ks)
+    (hM : minors4Ok (matrixOf m) = true) (hoff : offsetsDistinct o = true)
+    (ht : tableCovers t = true)
+    (x y) (hxy : x ≠ y) (r) (hr : r ≤ ks.length) (outX outY : ℕ → Array U8 16)
+    (hX : ∀ n : Usize, n.val < r → aes_like.encrypt x m o t ks n = ok (outX n.val))
+    (hY : ∀ n : Usize, n.val < r → aes_like.encrypt y m o t ks n = ok (outY n.val)) :
+    activityBound r ≤ ∑ n ∈ range r,
+      #{p | stateOf (outX n) p + keysOf ks n p ≠ stateOf (outY n) p + keysOf ks n p}
+```
+
+The inputs are now different byte arrays (`x ≠ y`; `stateOf_injective`). For concrete bytes
+each check is closed by `decide +kernel`, an evaluation by the Lean kernel (not
+`native_decide`), so a design whose bytes pass the checks gets the bound with no hypothesis left.
+
+**AES.** `aesMatrixBytes`, `aesOffsetBytes` and `aesSboxBytes` are the AES `MixColumns` matrix
+`[02 03 01 01 / 01 02 03 01 / 01 01 02 03 / 03 01 01 02]` (row-major), the offsets `[0, 1, 2, 3]`
+and the FIPS 197 S-box table, written in `AesConcrete.lean` as values of Aeneas's types for
+`[u8; 16]`, `[u8; 4]` and `[u8; 256]`, the argument types of `aes_like::encrypt`. They are not
+extracted from a Rust constant (the Rust crate defines the AES constants only in its tests).
+`matrixOf_aesMatrixBytes` (`= gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2`),
+`offsetsOf_aesOffsetBytes` (`= offsets4 0 1 2 3`) and `sboxOf_aesSboxBytes` (`= AES.sbox`,
+WideTrail's algebraic S-box, through the main package's `aes_sbox_eq_table`) identify them.
+
+```lean
+theorem aes_rust_activity_bound_exists (ks) (x y) (hxy : x ≠ y) (r) (hr : r ≤ ks.length) :
+    ∃ outX outY,
+      (∀ n : Usize, n.val < r → aes_like.encrypt x aesMatrixBytes aesOffsetBytes aesSboxBytes ks n = ok (outX n.val)) ∧
+      (∀ n : Usize, n.val < r → aes_like.encrypt y aesMatrixBytes aesOffsetBytes aesSboxBytes ks n = ok (outY n.val)) ∧
+      activityBound r ≤ ∑ n ∈ range r,
+        #{p | stateOf (outX n) p + keysOf ks n p ≠ stateOf (outY n) p + keysOf ks n p}
+theorem aes_rust_activity_bound_10 (ks) (x y) (hxy : x ≠ y) (hr : 10 ≤ ks.length) :
+    ∃ outX outY, (… as above with r = 10 …) ∧ 55 ≤ ∑ n ∈ range 10, #{…}
+theorem aes_rust_activity_bound_4 (ks) (x y) (hxy : x ≠ y) (hr : 4 ≤ ks.length) :
+    ∃ outX outY, (… as above with r = 4 …) ∧ 25 ≤ ∑ n ∈ range 4, #{…}
+```
+
+`aes_rust_activity_bound` is the same bound in the form of section 2 (for given `outX`, `outY`
+with `hX`, `hY`). The only hypotheses are different inputs and enough round keys: the
+executions are shown to return normally, and the bound covers every key schedule, not only the
+AES key expansion. All theorems of this section use `propext`, `Classical.choice`, `Quot.sound`
+only.
+
+**Scope.** These are statements about the Aeneas model of `aes_like::encrypt` (Charon and Aeneas
+trusted, as above), counting S-boxes with different inputs in two executions under the same
+keys, which is the wide-trail activity bound, not a bound on differential or linear trail
+probabilities. AES here has no special last round: every round adds the key, substitutes,
+shifts rows and mixes columns, as in `aes_like.rs`, so `aes_rust_activity_bound_10` is about
+ten such rounds, not about the AES-128 cipher with its final round and key expansion. The
+analysis service does not yet instantiate `aes_like_encrypt_activity_bound_of_checks` for
+submitted designs.
 
 ## 3. The gf256 crate (crates.io, version 0.3.1)
 
