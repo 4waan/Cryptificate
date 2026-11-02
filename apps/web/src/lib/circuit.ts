@@ -261,3 +261,71 @@ export function expressionOf(p: Program, r: number, limit = 6): string {
   const text = go(r, limit);
   return text.startsWith('(') && text.endsWith(')') ? text.slice(1, -1) : text;
 }
+
+/**
+ * A straight-line program that computes y = M·x term by term: for each row,
+ * products k·x_j for the nonzero coefficients (x_j itself for 1, xtime for
+ * 02 in GF(2^8)), then a chain of additions. A product used by several rows
+ * is computed once. This is a correct baseline, not an optimized circuit.
+ * Requires every entry of `matrix` to be a valid element of `field`.
+ */
+export function naiveCircuit(matrix: string[][], field: FieldName, name = 'term-by-term'): Program {
+  const f = fieldOps(field);
+  const width = matrix.length;
+  const instructions: Instruction[] = [];
+  const products = new Map<string, number>();
+  const push = (ins: Instruction): number => {
+    instructions.push(ins);
+    return width + instructions.length - 1;
+  };
+  const product = (k: string, j: number): number => {
+    if (k === f.one) return j;
+    const key = `${k}:${j}`;
+    const known = products.get(key);
+    if (known !== undefined) return known;
+    const reg = push({ op: 'mul', k, a: j });
+    products.set(key, reg);
+    return reg;
+  };
+  const outputs = matrix.map((row) => {
+    const terms = row
+      .map((x, j) => ({ k: f.canonical(x), j }))
+      .filter((t) => !f.isZero(t.k))
+      .map((t) => product(t.k, t.j));
+    if (!terms.length) return product(f.zero, 0);
+    let acc = terms[0]!;
+    for (const t of terms.slice(1)) acc = push({ op: 'add', a: acc, b: t });
+    return acc;
+  });
+  return { field, width, name, instructions, outputs };
+}
+
+export interface MatrixCellDiff {
+  row: number;
+  col: number;
+  /** Coefficient the design asks for. */
+  want: string;
+  /** Coefficient the circuit computes. */
+  got: string;
+}
+
+/**
+ * Coefficients where the circuit's matrix differs from the target matrix,
+ * in row-major order. Both are compared in canonical form. Returns null
+ * when either cannot be computed (invalid program, invalid entries, or
+ * mismatched sizes).
+ */
+export function matrixDiff(want: string[][], p: Program): { got: string[][]; cells: MatrixCellDiff[] } | null {
+  const f = fieldOps(p.field);
+  if (validateProgram(p).length || want.length !== p.width) return null;
+  if (want.some((row) => row.length !== p.width || row.some((x) => !f.isValid(x)))) return null;
+  const got = coefficientMatrix(p);
+  const cells: MatrixCellDiff[] = [];
+  want.forEach((row, i) =>
+    row.forEach((x, j) => {
+      const w = f.canonical(x);
+      if (w !== got[i]![j]!) cells.push({ row: i, col: j, want: w, got: got[i]![j]! });
+    }),
+  );
+  return { got, cells };
+}
