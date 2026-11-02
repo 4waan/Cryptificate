@@ -46,7 +46,7 @@ of the table alone, not a bound on any linear trail or hull. -/
 theorem sbox_linearity :
     linearity candSboxTable = 32 ∧ gf 72 ≠ 0 ∧
       (walsh candSboxTable (gf 1) (gf 72)).natAbs = 32 :=
-  linearity_tableSbox (by decide) (by decide) (by decide) (by decide +kernel)
+  linearity_tableSbox (by decide) (by decide) (by decide) (by decide) (by decide +kernel)
     (by decide +kernel)
 
 end CryptificateJob

@@ -7,5 +7,5 @@ of the table alone, not a bound on any linear trail or hull. -/
 theorem sbox_linearity :
     linearity candSboxTable = {{LIN}} ∧ gf {{LIN_B}} ≠ 0 ∧
       (walsh candSboxTable (gf {{LIN_A}}) (gf {{LIN_B}})).natAbs = {{LIN}} :=
-  linearity_tableSbox (by decide) (by decide) (by decide) (by decide +kernel)
+  linearity_tableSbox (by decide) (by decide) (by decide) (by decide) (by decide +kernel)
     (by decide +kernel)

@@ -35,13 +35,14 @@ performs with GMP, and each one is proved equal to, or sound for, the definition
   counters of ten bits (`ddtCounts_eq`). One addition and one mask then test every counter
   of the row against the bound at once (`ddtRowBounded`, `count_le_of_ddtRowBounded`): a
   counter above `u` is exactly one that sets bit `9` of its field after `511 - u` is added.
-* **Walsh coefficients.** A Boolean function on bytes is spread into one number with one
-  bit in every ninth position (`spreadOf`). The xor of two spread numbers is the spread of the
-  pointwise xor (`spreadOf_xor`), and the remainder modulo `511 = 2⁹ - 1` counts its ones
-  (`spreadOf_mod`), so `#{x : a · x ≠ b · F x}`, which determines `walsh F a b`, costs an xor
-  and a remainder. The spread functions `x ↦ a · x` and `x ↦ b · F x` for all `a` and `b` are
-  reached by a walk over the subsets of the eight bit positions, one xor of a basis function
-  per step (`xorWalk`, `xorSel_basis`).
+* **Walsh coefficients.** For an output mask `b`, the Boolean function `x ↦ b · F x` becomes a
+  row of `256` counters (`spreadOf`), and a fast Walsh-Hadamard transform in counting form
+  turns it, in eight butterfly stages of a few operations each on the whole row, into the
+  number of inputs on which `b · F x` and `a · x` differ, for every input mask `a` at once
+  (`fwhtStage_eq`, `tIter_eight`). That number `c` gives `walsh F a b = 256 - 2c`, and the
+  same add-and-mask test bounds all `256` of them. The output masks are visited by a walk over
+  the subsets of the eight bit positions, one xor of a basis function per step (`xorWalk`,
+  `xorSel_basis`).
 
 `differentialUniformity_tableSbox` and `linearity_tableSbox` turn a successful check and a
 witness `(a, b)`, recounted directly, into the exact value. The AES S-box values are checked
@@ -126,6 +127,7 @@ theorem nat_land (a b : ℕ) : Nat.land a b = a &&& b := rfl
 theorem nat_mod (a b : ℕ) : Nat.mod a b = a % b := rfl
 theorem nat_sub (a b : ℕ) : Nat.sub a b = a - b := rfl
 theorem nat_pow (a b : ℕ) : Nat.pow a b = a ^ b := rfl
+theorem nat_div (a b : ℕ) : Nat.div a b = a / b := rfl
 theorem nat_beq (a b : ℕ) : Nat.beq a b = decide (a = b) := by
   cases h : Nat.beq a b
   · exact (decide_eq_false (Nat.ne_of_beq_eq_false h)).symm
@@ -218,6 +220,76 @@ theorem testBit_fields {n : ℕ} (he : ∀ i < n, e i < 2 ^ w) {j r : ℕ} (hr :
             (le_trans (Nat.mul_le_mul_left w (by omega)) (Nat.le_add_right _ _))
 
 end Fields
+
+/-! Rows of `256` ten-bit fields, the layout of every packed computation below. Bitwise and
+arithmetic operations act field by field as long as no field overflows. -/
+
+/-- The number whose ten-bit field `p < 256` holds `e p`. -/
+abbrev row10 (e : ℕ → ℕ) : ℕ := ∑ p ∈ range 256, e p * 2 ^ (10 * p)
+
+theorem testBit_row10 {e : ℕ → ℕ} (he : ∀ p < 256, e p < 2 ^ 10) {q r : ℕ} (hr : r < 10) :
+    (row10 e).testBit (10 * q + r) = (decide (q < 256) && (e q).testBit r) :=
+  testBit_fields 10 e he hr
+
+/-- A number whose bit `10 q + r` is bit `r` of `e q` (zero for `q ≥ 256`) is `row10 e`. -/
+theorem eq_row10 {X : ℕ} {e : ℕ → ℕ} (he : ∀ p < 256, e p < 2 ^ 10)
+    (h : ∀ q r, r < 10 → X.testBit (10 * q + r) = (decide (q < 256) && (e q).testBit r)) :
+    X = row10 e := by
+  apply Nat.eq_of_testBit_eq
+  intro i
+  have hi : i = 10 * (i / 10) + i % 10 := (Nat.div_add_mod i 10).symm
+  have hr : i % 10 < 10 := Nat.mod_lt _ (by norm_num)
+  rw [hi, h _ _ hr, testBit_row10 he hr]
+
+theorem land_row10 {a b : ℕ → ℕ} (ha : ∀ p < 256, a p < 2 ^ 10) (hb : ∀ p < 256, b p < 2 ^ 10) :
+    row10 a &&& row10 b = row10 fun p => a p &&& b p := by
+  refine eq_row10 (fun p hp => Nat.and_lt_two_pow _ (hb p hp)) fun q r hr => ?_
+  rw [Nat.testBit_and, testBit_row10 ha hr, testBit_row10 hb hr, Nat.testBit_and]
+  cases decide (q < 256) <;> simp
+
+theorem shiftRight_row10 {a : ℕ → ℕ} (ha : ∀ p < 256, a p < 2 ^ 10) (s : ℕ) :
+    row10 a >>> (10 * s) = row10 fun p => if p + s < 256 then a (p + s) else 0 := by
+  refine eq_row10 (fun p _ => ?_) fun q r hr => ?_
+  · split
+    · exact ha _ (by assumption)
+    · norm_num
+  · rw [Nat.testBit_shiftRight, show 10 * s + (10 * q + r) = 10 * (q + s) + r by ring,
+      testBit_row10 ha hr]
+    by_cases h : q + s < 256
+    · simp [h, show q < 256 by omega]
+    · simp [h]
+
+theorem shiftLeft_row10 {d : ℕ → ℕ} (hd : ∀ p < 256, d p < 2 ^ 10) (s : ℕ)
+    (hz : ∀ p < 256, 256 ≤ p + s → d p = 0) :
+    row10 d <<< (10 * s) = row10 fun p => if s ≤ p then d (p - s) else 0 := by
+  refine eq_row10 (fun p hp => ?_) fun q r hr => ?_
+  · split
+    · exact hd _ (by omega)
+    · norm_num
+  · rw [Nat.testBit_shiftLeft]
+    by_cases hqs : s ≤ q
+    · rw [show 10 * q + r - 10 * s = 10 * (q - s) + r by omega, testBit_row10 hd hr]
+      by_cases hq : q < 256
+      · simp [hqs, hq, show q - s < 256 by omega, show 10 * s ≤ 10 * q + r by omega]
+      · by_cases hqs' : q - s < 256
+        · rw [hz _ hqs' (by omega)]
+          simp
+        · simp [hqs', hq]
+    · simp [hqs, show ¬ (10 * s ≤ 10 * q + r) by omega]
+
+theorem add_row10 (a b : ℕ → ℕ) : row10 a + row10 b = row10 fun p => a p + b p := by
+  simp only [row10, ← sum_add_distrib, add_mul]
+
+theorem sub_row10 {a b : ℕ → ℕ} (h : ∀ p < 256, b p ≤ a p) :
+    row10 a - row10 b = row10 fun p => a p - b p := by
+  simp only [row10]
+  rw [← Finset.sum_tsub_distrib]
+  · exact sum_congr rfl fun p _ => (Nat.sub_mul _ _ _).symm
+  · exact fun p hp => Nat.mul_le_mul_right _ (h p (mem_range.mp hp))
+
+theorem row10_congr {a b : ℕ → ℕ} (h : ∀ p < 256, a p = b p) : row10 a = row10 b :=
+  sum_congr rfl fun p hp => by rw [h p (mem_range.mp hp)]
+
 
 /-- A number of fields that each count how many of the `x < m` take the value `i`, written as a
 sum over the `x`. -/
@@ -321,11 +393,14 @@ def ddtCounts (T a : ℕ) : ℕ :=
 /-- `∑ i < 256, 2 ^ (10 i)`: a one in every ten-bit field. -/
 def fieldOnes : ℕ := natIter (fun i R => Nat.add R (Nat.shiftLeft 1 (Nat.mul 10 i))) 256 0
 
-/-- Every counter of row `a` is at most `u`: adding `511 - u` to every field sets bit `9` of
-exactly the fields that exceed `u`, so the row passes when none of those bits is set. -/
-def ddtRowBounded (T u a : ℕ) : Bool :=
-  Nat.beq (Nat.land (Nat.add (ddtCounts T a) (Nat.mul (Nat.sub 511 u) fieldOnes))
-    (Nat.mul 512 fieldOnes)) 0
+/-- Every ten-bit field of `X` is at most `u`, for fields at most `256`: adding `511 - u` to
+every field sets bit `9` of exactly the fields that exceed `u`, so `X` passes when none of
+those bits is set. -/
+def fieldsAtMost (X u : ℕ) : Bool :=
+  Nat.beq (Nat.land (Nat.add X (Nat.mul (Nat.sub 511 u) fieldOnes)) (Nat.mul 512 fieldOnes)) 0
+
+/-- Every counter of row `a` is at most `u`. -/
+def ddtRowBounded (T u a : ℕ) : Bool := fieldsAtMost (ddtCounts T a) u
 
 /-- Every row `a = 1, …, 255` of the difference table of `T` is bounded by `u`. -/
 def ddtRowsBounded (T u : ℕ) : Bool := allBelow (fun i => ddtRowBounded T u (Nat.add i 1)) 255
@@ -334,6 +409,40 @@ def ddtRowsBounded (T u : ℕ) : Bool := allBelow (fun i => ddtRowBounded T u (N
 def ddtCountAt (T a b : ℕ) : ℕ :=
   natIter (fun x c => Nat.add c
     (Bool.toNat (Nat.beq (Nat.xor (byteAt T (Nat.xor x a)) (byteAt T x)) b))) 256 0
+
+theorem fieldOnes_eq : fieldOnes = row10 fun _ => 1 := by
+  rw [fieldOnes, natIter_add (fun i => Nat.shiftLeft 1 (Nat.mul 10 i)), Nat.zero_add]
+  refine sum_congr rfl fun i _ => ?_
+  rw [nat_shiftLeft, Nat.mul_eq]
+
+theorem mul_row10 (c : ℕ) (e : ℕ → ℕ) : c * row10 e = row10 fun p => c * e p := by
+  simp only [row10, mul_sum, mul_assoc]
+
+/-- **The packed bound test is sound**: if `fieldsAtMost` passes, every field is at most
+`u`. -/
+theorem le_of_fieldsAtMost {e : ℕ → ℕ} (he : ∀ i < 256, e i ≤ 256) {u : ℕ} (hu : u ≤ 511)
+    (h : fieldsAtMost (row10 e) u = true) : ∀ i < 256, e i ≤ u := by
+  intro b hb
+  by_contra hgt
+  have h0 : ((row10 e + (511 - u) * fieldOnes) &&& (512 * fieldOnes)) = 0 :=
+    Nat.eq_of_beq_eq_true h
+  rw [fieldOnes_eq, mul_row10, mul_row10, add_row10] at h0
+  have hY := testBit_row10 (e := fun i => e i + (511 - u) * 1)
+    (fun i hi => by have := he i hi; norm_num; omega) (q := b) (r := 9) (by norm_num)
+  have hZ := testBit_row10 (e := fun _ => 512 * 1) (fun _ _ => by norm_num) (q := b) (r := 9)
+    (by norm_num)
+  have hbit := congrArg (fun m => m.testBit (10 * b + 9)) h0
+  simp only [Nat.testBit_and, Nat.zero_testBit] at hbit
+  rw [hY, hZ] at hbit
+  have hd : (e b + (511 - u) * 1).testBit 9 = true := by
+    rw [Nat.testBit_eq_decide_div_mod_eq]
+    have hlo : 2 ^ 9 ≤ e b + (511 - u) * 1 := by norm_num; omega
+    have hhi : e b + (511 - u) * 1 < 2 * 2 ^ 9 := by have := he b hb; norm_num; omega
+    rw [Nat.div_eq_of_lt_le (by omega) hhi]
+    rfl
+  have h512 : (512 * 1).testBit 9 = true := by decide
+  rw [hd, h512, decide_eq_true hb] at hbit
+  exact Bool.false_ne_true hbit.symm
 
 section Ddt
 
@@ -366,44 +475,12 @@ theorem ddtCounts_eq {T : ℕ} (hT : ∀ x < 256, byteAt T x = s x) (hs : ∀ x 
     rfl)]
   exact sum_pow_eq_fields 10 256 256 _ (fun x hx => outDiff_lt hs ha hx)
 
-theorem fieldOnes_eq : fieldOnes = ∑ i ∈ range 256, 1 * 2 ^ (10 * i) := by
-  rw [fieldOnes, natIter_add (fun i => Nat.shiftLeft 1 (Nat.mul 10 i)), Nat.zero_add]
-  refine sum_congr rfl fun i _ => ?_
-  rw [nat_shiftLeft, Nat.mul_eq]
-
 theorem count_le_of_ddtRowBounded {T u : ℕ} (hT : ∀ x < 256, byteAt T x = s x)
     (hs : ∀ x < 256, s x < 256) (ha : a < 256) (hu : u ≤ 256)
     (h : ddtRowBounded T u a = true) {b : ℕ} (hb : b < 256) : ddtCount s a b ≤ u := by
-  by_contra hgt
-  have hgt : u < ddtCount s a b := by omega
-  have h0 : ((ddtCounts T a + (511 - u) * fieldOnes) &&& (512 * fieldOnes)) = 0 :=
-    Nat.eq_of_beq_eq_true h
-  have hYeq : ddtCounts T a + (511 - u) * fieldOnes =
-      ∑ i ∈ range 256, (ddtCount s a i + (511 - u) * 1) * 2 ^ (10 * i) := by
-    rw [ddtCounts_eq hT hs ha, fieldOnes_eq, mul_sum, ← sum_add_distrib]
-    exact sum_congr rfl fun i _ => by ring
-  have hZeq : 512 * fieldOnes = ∑ i ∈ range 256, (512 * 1) * 2 ^ (10 * i) := by
-    rw [fieldOnes_eq, mul_sum]
-    exact sum_congr rfl fun i _ => by ring
-  rw [hYeq, hZeq] at h0
-  have hY := testBit_fields 10 (fun b => ddtCount s a b + (511 - u) * 1)
-    (n := 256) (fun i _ => by have := ddtCount_le (s := s) (a := a) i; norm_num; omega)
-    (j := b) (r := 9) (by norm_num)
-  have hZ := testBit_fields 10 (fun _ => 512 * 1) (n := 256) (fun _ _ => by norm_num)
-    (j := b) (r := 9) (by norm_num)
-  have hbit := congrArg (fun m => m.testBit (10 * b + 9)) h0
-  simp only [Nat.testBit_and, Nat.zero_testBit] at hbit
-  rw [hY, hZ] at hbit
-  have hd : (ddtCount s a b + (511 - u) * 1).testBit 9 = true := by
-    rw [Nat.testBit_eq_decide_div_mod_eq]
-    have hlo : 2 ^ 9 ≤ ddtCount s a b + (511 - u) * 1 := by norm_num; omega
-    have hhi : ddtCount s a b + (511 - u) * 1 < 2 * 2 ^ 9 := by
-      have := ddtCount_le (s := s) (a := a) b; norm_num; omega
-    rw [Nat.div_eq_of_lt_le (by omega) hhi]
-    rfl
-  have h512 : (512 * 1).testBit 9 = true := by decide
-  rw [hd, h512, decide_eq_true hb] at hbit
-  exact Bool.false_ne_true hbit.symm
+  unfold ddtRowBounded at h
+  rw [ddtCounts_eq hT hs ha] at h
+  exact le_of_fieldsAtMost (fun i _ => ddtCount_le i) (by omega) h b hb
 
 end Ddt
 
@@ -456,22 +533,21 @@ theorem differentialUniformity_tableSbox {f : ℕ → ℕ} {u a b : ℕ} (hu : u
 
 /-! ### Walsh coefficients -/
 
-/-- The Boolean function `g` on the bytes `x < 256`, spread into one number with bit `9x` equal
-to `g x` and every other bit zero. -/
+/-- The Boolean function `g` on the bytes `x < 256` as a row of `0`/`1` counters: ten-bit
+field `x` holds `g x`. -/
 def spreadOf (g : ℕ → Bool) : ℕ :=
-  natIter (fun x S => Nat.add S (Nat.shiftLeft (Bool.toNat (g x)) (Nat.mul 9 x))) 256 0
+  natIter (fun x S => Nat.add S (Nat.shiftLeft (Bool.toNat (g x)) (Nat.mul 10 x))) 256 0
 
-theorem spreadOf_eq (g : ℕ → Bool) :
-    spreadOf g = ∑ x ∈ range 256, (g x).toNat * 2 ^ (9 * x) := by
-  rw [spreadOf, natIter_add (fun x => Nat.shiftLeft (Bool.toNat (g x)) (Nat.mul 9 x)),
+theorem spreadOf_eq (g : ℕ → Bool) : spreadOf g = row10 fun x => (g x).toNat := by
+  rw [spreadOf, natIter_add (fun x => Nat.shiftLeft (Bool.toNat (g x)) (Nat.mul 10 x)),
     Nat.zero_add]
   refine sum_congr rfl fun x _ => ?_
   rw [nat_shiftLeft, Nat.mul_eq]
 
-theorem toNat_lt_two_pow_nine (c : Bool) : c.toNat < 2 ^ 9 := by
+theorem toNat_lt_two_pow_ten (c : Bool) : c.toNat < 2 ^ 10 := by
   cases c <;> norm_num
 
-theorem testBit_toNat (c : Bool) {r : ℕ} (hr : r < 9) :
+theorem testBit_toNat (c : Bool) {r : ℕ} (hr : r < 10) :
     c.toNat.testBit r = (decide (r = 0) && c) := by
   cases c
   · simp
@@ -481,41 +557,24 @@ theorem testBit_toNat (c : Bool) {r : ℕ} (hr : r < 9) :
         (lt_of_lt_of_le (by norm_num : 1 < 2) (Nat.le_self_pow (by omega) 2))]
       simp
 
-theorem testBit_spreadOf (g : ℕ → Bool) (i : ℕ) :
-    (spreadOf g).testBit i = (decide (i / 9 < 256) && (decide (i % 9 = 0) && g (i / 9))) := by
-  conv_lhs => rw [spreadOf_eq, ← Nat.div_add_mod i 9]
-  rw [testBit_fields 9 (fun x => (g x).toNat) (fun x _ => toNat_lt_two_pow_nine _)
-      (Nat.mod_lt _ (by norm_num)),
-    testBit_toNat _ (Nat.mod_lt _ (by norm_num))]
-
 /-- The xor of two spread functions is the spread of their pointwise xor. -/
 theorem spreadOf_xor (g h : ℕ → Bool) :
     spreadOf g ^^^ spreadOf h = spreadOf fun x => g x ^^ h x := by
-  apply Nat.eq_of_testBit_eq
-  intro i
-  rw [Nat.testBit_xor, testBit_spreadOf, testBit_spreadOf, testBit_spreadOf]
-  cases decide (i / 9 < 256) <;> cases decide (i % 9 = 0) <;> simp
+  rw [spreadOf_eq, spreadOf_eq, spreadOf_eq]
+  refine eq_row10 (fun x _ => toNat_lt_two_pow_ten _) fun q r hr => ?_
+  rw [Nat.testBit_xor, testBit_row10 (fun x _ => toNat_lt_two_pow_ten _) hr,
+    testBit_row10 (fun x _ => toNat_lt_two_pow_ten _) hr, testBit_toNat _ hr, testBit_toNat _ hr,
+    testBit_toNat _ hr]
+  cases decide (q < 256) <;> cases decide (r = 0) <;> simp
 
 theorem spreadOf_congr {g h : ℕ → Bool} (hgh : ∀ x < 256, g x = h x) :
     spreadOf g = spreadOf h := by
   rw [spreadOf_eq, spreadOf_eq]
-  exact sum_congr rfl fun x hx => by rw [hgh x (mem_range.mp hx)]
+  exact row10_congr fun x hx => by rw [hgh x hx]
 
 theorem spreadOf_false : spreadOf (fun _ => false) = 0 := by
   rw [spreadOf_eq]
   simp
-
-/-- The remainder of a spread function modulo `2⁹ - 1` counts its ones. -/
-theorem spreadOf_mod (g : ℕ → Bool) : spreadOf g % 511 = ∑ x ∈ range 256, (g x).toNat := by
-  have hsum : ∑ x ∈ range 256, (g x).toNat ≤ 256 := by
-    calc ∑ x ∈ range 256, (g x).toNat ≤ ∑ _x ∈ range 256, 1 :=
-          sum_le_sum fun x _ => Bool.toNat_le _
-      _ = 256 := by simp
-  rw [spreadOf_eq, Finset.sum_nat_mod]
-  rw [sum_congr rfl (g := fun x => (g x).toNat % 511) (fun x _ => by
-    rw [Nat.mul_mod, pow_mul, Nat.pow_mod]
-    norm_num)]
-  rw [← Finset.sum_nat_mod, Nat.mod_eq_of_lt (by omega)]
 
 /-- `xorWalk B check k i v` checks `check (i + j) (v ^^^ xorSel B k j)` for every `j < 2 ^ k`,
 reaching each value from the previous one with a single xor. -/
@@ -579,26 +638,280 @@ theorem xorSel_basis (h : ℕ → ℕ) (k i : ℕ) :
       rw [spreadOf_xor]
     · simp only [hb, Bool.false_eq_true, if_false, Bool.false_and, Bool.xor_false, Nat.xor_zero]
 
-/-- Whether `lo ≤ c ≤ hi`. -/
-def inRange (lo hi c : ℕ) : Bool := and (Nat.ble lo c) (Nat.ble c hi)
-
 /-- The spread function `x ↦ bit j of entry x` of a packed table, for the output masks. -/
 def outBasis (T j : ℕ) : ℕ := spreadOf fun x => Nat.testBit (byteAt T x) j
 
-/-- The spread function `x ↦ bit j of x`, for the input masks. -/
-def inBasis (j : ℕ) : ℕ := spreadOf fun x => Nat.testBit x j
+/-! Facts about one bit of a byte, checked over all bytes. -/
+
+theorem bit_clear_add : ∀ k < 8, ∀ q < 256, q.testBit k = false →
+    q + 2 ^ k < 256 ∧ q + 2 ^ k = q ^^^ 2 ^ k := by decide +kernel
+
+theorem bit_clear_sub : ∀ k < 8, ∀ q < 256, q.testBit k = false → 2 ^ k ≤ q →
+    (q - 2 ^ k).testBit k = true := by decide +kernel
+
+theorem bit_clear_hi : ∀ k < 8, ∀ q < 256, q.testBit k = false →
+    q - q % 2 ^ (k + 1) = q - q % 2 ^ k ∧
+      (q ^^^ 2 ^ k) - (q ^^^ 2 ^ k) % 2 ^ k = q - q % 2 ^ k + 2 ^ k := by decide +kernel
+
+theorem bit_set_sub : ∀ k < 8, ∀ q < 256, q.testBit k = true →
+    2 ^ k ≤ q ∧ q - 2 ^ k = q ^^^ 2 ^ k := by decide +kernel
+
+theorem bit_set_hi : ∀ k < 8, ∀ q < 256, q.testBit k = true →
+    q - q % 2 ^ (k + 1) = (q ^^^ 2 ^ k) - (q ^^^ 2 ^ k) % 2 ^ k ∧
+      q - q % 2 ^ (k + 1) + 2 ^ k = q - q % 2 ^ k := by decide +kernel
+
+
+theorem xor_two_pow_lt {k q : ℕ} (hk : k < 8) (hq : q < 256) : q ^^^ 2 ^ k < 256 :=
+  Nat.xor_lt_two_pow (n := 8) hq (Nat.pow_lt_pow_right (by norm_num) hk)
+
+theorem testBit_xor_two_pow_self (q k : ℕ) : (q ^^^ 2 ^ k).testBit k = !q.testBit k := by
+  rw [Nat.testBit_xor, Nat.testBit_two_pow]; simp
+
+theorem testBit_xor_two_pow_low (q : ℕ) {k j : ℕ} (hj : j < k) :
+    (q ^^^ 2 ^ k).testBit j = q.testBit j := by
+  rw [Nat.testBit_xor, Nat.testBit_two_pow]; simp [show k ≠ j by omega]
+
+theorem xor_two_pow_xor (q k : ℕ) : q ^^^ 2 ^ k ^^^ 2 ^ k = q := by
+  rw [Nat.xor_assoc, Nat.xor_self, Nat.xor_zero]
+
+/-! ### Fast Walsh-Hadamard transform on packed counters
+
+For one output mask `b`, start from the counters `F x = b · S(x)` and apply eight butterfly
+stages. Stage `k` pairs the fields `p` and `p + 2 ^ k` (bit `k` of `p` clear): the low one
+becomes the sum of the pair and the high one `2 ^ k` plus the difference, so every counter stays
+a natural number (`tStage`). After all eight stages field `a` holds the number of inputs on
+which `b · S(x)` and `a · x` differ (`tIter_eight`), for all `256` input masks at once, and one
+stage costs a few operations on the whole row (`fwhtStage_eq`). -/
+
+/-- `c` in every ten-bit field `p < 256` whose index has bit `k` clear, `0` elsewhere. -/
+def lowMask (k c : ℕ) : ℕ :=
+  natIter (fun p M => Nat.add M (Nat.shiftLeft (cond (Nat.testBit p k) 0 c) (Nat.mul 10 p))) 256 0
+
+theorem lowMask_eq (k c : ℕ) : lowMask k c = row10 fun p => if p.testBit k then 0 else c := by
+  rw [lowMask, natIter_add (fun p => Nat.shiftLeft (cond (Nat.testBit p k) 0 c) (Nat.mul 10 p)),
+    Nat.zero_add]
+  refine sum_congr rfl fun p _ => ?_
+  rw [nat_shiftLeft, Nat.mul_eq]
+  cases h : p.testBit k <;> simp [h]
+
+/-- One butterfly stage, on all `128` pairs of fields `p`, `p + 2 ^ k` at once. -/
+def fwhtStage (k E : ℕ) : ℕ :=
+  let s := Nat.mul 10 (Nat.pow 2 k)
+  let P := Nat.land E (lowMask k 1023)
+  let Q := Nat.land (Nat.shiftRight E s) (lowMask k 1023)
+  Nat.add (Nat.add P Q) (Nat.shiftLeft (Nat.sub (Nat.add P (lowMask k (Nat.pow 2 k))) Q) s)
+
+/-- What a stage does to the counters. -/
+def tStage (t : ℕ → ℕ) (k p : ℕ) : ℕ :=
+  if p.testBit k then t (p ^^^ 2 ^ k) + 2 ^ k - t p else t p + t (p ^^^ 2 ^ k)
+
+theorem fwhtStage_eq {k : ℕ} (hk : k < 8) {t : ℕ → ℕ} (ht : ∀ p < 256, t p ≤ 2 ^ k) :
+    fwhtStage k (row10 t) = row10 (tStage t k) := by
+  have hk7 : 2 ^ k ≤ 2 ^ 7 := Nat.pow_le_pow_right (by norm_num) (by omega)
+  have ht' : ∀ p < 256, t p < 2 ^ 10 := fun p hp => by have := ht p hp; omega
+  have htx : ∀ p < 256, t (p ^^^ 2 ^ k) ≤ 2 ^ k := fun p hp => ht _ (xor_two_pow_lt hk hp)
+  have hmask : ∀ p < 256, (if p.testBit k then 0 else 1023) < 2 ^ 10 := fun p _ => by
+    split <;> norm_num
+  have keep : ∀ p < 256, t p &&& 1023 = t p := fun p hp => by
+    rw [show (1023 : ℕ) = 2 ^ 10 - 1 by norm_num, Nat.and_two_pow_sub_one_eq_mod,
+      Nat.mod_eq_of_lt (ht' p hp)]
+  have hP : row10 t &&& lowMask k 1023 = row10 fun p => if p.testBit k then 0 else t p := by
+    rw [lowMask_eq, land_row10 ht' hmask]
+    refine row10_congr fun p hp => ?_
+    split
+    · exact Nat.and_zero _
+    · exact keep p hp
+  have hQ : (row10 t >>> (10 * 2 ^ k)) &&& lowMask k 1023 =
+      row10 fun p => if p.testBit k then 0 else t (p ^^^ 2 ^ k) := by
+    rw [shiftRight_row10 ht', lowMask_eq, land_row10 _ hmask]
+    · refine row10_congr fun p hp => ?_
+      cases hb : p.testBit k
+      · have := bit_clear_add k hk p hp hb
+        simp only [this.1, Bool.false_eq_true, if_true, if_false]
+        rw [keep _ this.1, this.2]
+      · simp
+    · intro p _
+      split
+      · exact ht' _ (by assumption)
+      · norm_num
+  have hC : lowMask k (2 ^ k) = row10 fun p => if p.testBit k then 0 else 2 ^ k := lowMask_eq k _
+  -- the stage, in the usual notation
+  have hstage : fwhtStage k (row10 t) =
+      ((row10 t &&& lowMask k 1023) + ((row10 t >>> (10 * 2 ^ k)) &&& lowMask k 1023)) +
+        (((row10 t &&& lowMask k 1023) + lowMask k (2 ^ k) -
+          ((row10 t >>> (10 * 2 ^ k)) &&& lowMask k 1023)) <<< (10 * 2 ^ k)) := rfl
+  rw [hstage, hP, hQ, hC, add_row10, add_row10, sub_row10]
+  · rw [shiftLeft_row10 (s := 2 ^ k)]
+    · rw [add_row10]
+      refine row10_congr fun p hp => ?_
+      unfold tStage
+      cases hb : p.testBit k
+      · -- bit k clear: the low field of a pair
+        simp only [Bool.false_eq_true, if_false]
+        split
+        · next hle =>
+          have := bit_clear_sub k hk p hp hb hle
+          simp [this]
+        · simp
+      · -- bit k set: the high field of a pair
+        obtain ⟨hle, hsub⟩ := bit_set_sub k hk p hp hb
+        have hq : (p ^^^ 2 ^ k).testBit k = false := by rw [testBit_xor_two_pow_self, hb]; rfl
+        simp only [if_true, if_pos hle, hsub, hq, Bool.false_eq_true, if_false,
+          xor_two_pow_xor, Nat.zero_add]
+    · intro p hp
+      have := htx p hp
+      have := ht p hp
+      have h128 : 2 ^ k ≤ 128 := by simpa using hk7
+      cases p.testBit k
+      · simp only [Bool.false_eq_true, if_false]
+        omega
+      · simp
+    · intro p hp hge
+      cases hb : p.testBit k
+      · have := (bit_clear_add k hk p hp hb).1
+        omega
+      · simp
+  · intro p hp
+    have := htx p hp
+    cases p.testBit k
+    · simp only [Bool.false_eq_true, if_false]
+      omega
+    · simp
+
+
+/-- The counters after `k` stages, starting from `F` as `0`/`1` counters. -/
+def tIter (F : ℕ → Bool) : ℕ → ℕ → ℕ
+  | 0, p => (F p).toNat
+  | k + 1, p => tStage (tIter F k) k p
+
+theorem bitDot_congr {k a a' x x' : ℕ} (ha : ∀ j < k, a.testBit j = a'.testBit j)
+    (hx : ∀ j < k, x.testBit j = x'.testBit j) : bitDot k a x = bitDot k a' x' := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+    simp only [bitDot]
+    rw [ih (fun j hj => ha j (by omega)) (fun j hj => hx j (by omega)), ha k (by omega),
+      hx k (by omega)]
+
+theorem toNat_xor_xor_true (c d : Bool) : (c ^^ (d ^^ true)).toNat = 1 - (c ^^ d).toNat := by
+  cases c <;> cases d <;> rfl
+
+/-- **The counters after `k` stages.** Counter `p` counts the `z < 2 ^ k` on which
+`F (block + z)` and `bitDot k p z` differ, where the block is `p` with its low `k` bits
+cleared: the low bits of `p` are the input mask so far, the high bits still index inputs. -/
+theorem tIter_eq (F : ℕ → Bool) {k : ℕ} (hk : k ≤ 8) {p : ℕ} (hp : p < 256) :
+    tIter F k p = ∑ z ∈ range (2 ^ k), (F (p - p % 2 ^ k + z) ^^ bitDot k p z).toNat := by
+  induction k generalizing p with
+  | zero => simp [tIter, bitDot, Nat.mod_one]
+  | succ k ih =>
+    have hk' : k < 8 := by omega
+    have hpx := xor_two_pow_lt hk' hp
+    have hlow : ∀ j < k, (p ^^^ 2 ^ k).testBit j = p.testBit j :=
+      fun j hj => testBit_xor_two_pow_low p hj
+    have hz : ∀ z < 2 ^ k, ∀ j < k, (2 ^ k + z).testBit j = z.testBit j :=
+      fun z _ j hj => Nat.testBit_two_pow_add_gt hj z
+    have hzk : ∀ z < 2 ^ k, (2 ^ k + z).testBit k = true := fun z hz' => by
+      rw [Nat.testBit_two_pow_add_eq, Nat.testBit_lt_two_pow hz']; rfl
+    have bound : ∀ q < 256, tIter F k q ≤ 2 ^ k := fun q hq => by
+      rw [ih (by omega) hq]
+      calc ∑ z ∈ range (2 ^ k), _ ≤ ∑ _z ∈ range (2 ^ k), 1 :=
+            sum_le_sum fun z _ => Bool.toNat_le _
+        _ = 2 ^ k := by simp
+    rw [show range (2 ^ (k + 1)) = range (2 ^ k + 2 ^ k) by rw [pow_succ, mul_two], sum_range_add]
+    simp only [tIter, tStage, bitDot]
+    cases hb : p.testBit k
+    · -- the low field of a pair: both halves count agreements as before
+      obtain ⟨hhi, hhi'⟩ := bit_clear_hi k hk' p hp hb
+      simp only [Bool.false_eq_true, if_false, Bool.false_and, Bool.xor_false]
+      rw [ih (by omega) hp, ih (by omega) hpx, hhi]
+      congr 1
+      refine sum_congr rfl fun z hz' => ?_
+      have hz' := mem_range.mp hz'
+      rw [hhi', bitDot_congr hlow (fun j hj => (hz z hz' j hj).symm), Nat.add_assoc]
+    · -- the high field of a pair: the upper half flips every term
+      obtain ⟨hhi, hhi'⟩ := bit_set_hi k hk' p hp hb
+      simp only [if_true, Bool.true_and]
+      have hfirst : ∑ z ∈ range (2 ^ k),
+          (F (p - p % 2 ^ (k + 1) + z) ^^ (bitDot k p z ^^ z.testBit k)).toNat =
+          tIter F k (p ^^^ 2 ^ k) := by
+        rw [ih (by omega) hpx, hhi]
+        refine sum_congr rfl fun z hz' => ?_
+        rw [Nat.testBit_lt_two_pow (mem_range.mp hz'), Bool.xor_false,
+          bitDot_congr (fun j hj => (hlow j hj).symm) (fun _ _ => rfl)]
+      have hsecond : ∑ z ∈ range (2 ^ k),
+          (F (p - p % 2 ^ (k + 1) + (2 ^ k + z)) ^^
+            (bitDot k p (2 ^ k + z) ^^ (2 ^ k + z).testBit k)).toNat =
+          2 ^ k - tIter F k p := by
+        rw [ih (by omega) hp]
+        rw [sum_congr rfl (g := fun z => 1 - (F (p - p % 2 ^ k + z) ^^ bitDot k p z).toNat)
+          (fun z hz' => by
+            have hz' := mem_range.mp hz'
+            rw [hzk z hz', bitDot_congr (fun _ _ => rfl) (hz z hz'), ← Nat.add_assoc, hhi',
+              toNat_xor_xor_true])]
+        rw [Finset.sum_tsub_distrib _ (fun z _ => Bool.toNat_le _)]
+        simp
+      rw [hfirst, hsecond, Nat.add_sub_assoc (bound p hp)]
+
+theorem tIter_le (F : ℕ → Bool) {k : ℕ} (hk : k ≤ 8) {p : ℕ} (hp : p < 256) :
+    tIter F k p ≤ 2 ^ k := by
+  rw [tIter_eq F hk hp]
+  calc ∑ z ∈ range (2 ^ k), _ ≤ ∑ _z ∈ range (2 ^ k), 1 := sum_le_sum fun z _ => Bool.toNat_le _
+    _ = 2 ^ k := by simp
+
+/-- After all eight stages, counter `a` counts the inputs on which `F` and `x ↦ a · x`
+differ. -/
+theorem tIter_eight (F : ℕ → Bool) {a : ℕ} (ha : a < 256) :
+    tIter F 8 a = ∑ x ∈ range 256, (F x ^^ bitDot 8 a x).toNat := by
+  rw [tIter_eq F le_rfl ha]
+  refine sum_congr (by norm_num) fun x _ => ?_
+  rw [Nat.mod_eq_of_lt (by simpa using ha), Nat.sub_self, Nat.zero_add]
+
+/-- The first `n` stages. -/
+def fwhtUpTo (n E : ℕ) : ℕ := Nat.rec (motive := fun _ => ℕ) E (fun k ih => fwhtStage k ih) n
+
+theorem fwhtUpTo_eq (F : ℕ → Bool) {n : ℕ} (hn : n ≤ 8) :
+    fwhtUpTo n (row10 fun p => (F p).toNat) = row10 (tIter F n) := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    change fwhtStage n (fwhtUpTo n _) = _
+    rw [ih (by omega), fwhtStage_eq (by omega) (fun p hp => tIter_le F (by omega) hp)]
+    rfl
+
+/-- For the counters `E` of one output mask: after the transform every field lies between `lo`
+and `hi`, tested with `fieldsAtMost` on the fields and on their complements to `256`. -/
+def latRow (lo hi E : ℕ) : Bool :=
+  let W := fwhtUpTo 8 E
+  and (fieldsAtMost W hi) (fieldsAtMost (Nat.sub (Nat.mul 256 fieldOnes) W) (Nat.sub 256 lo))
 
 /-- Every output mask `b ≠ 0` and input mask `a` of the packed table `T` have between `lo` and
-`hi` inputs on which `a · x` and `b · T[x]` differ: the outer walk visits every output mask, the
-inner one every input mask, and each pair costs one xor, one remainder and two comparisons. -/
+`hi` inputs on which `a · x` and `b · T[x]` differ: a walk visits every output mask with one xor
+per step, and the transform handles all input masks of it at once. -/
 def latCheck (T lo hi : ℕ) : Bool :=
-  xorWalk (outBasis T) (fun b G => or (Nat.beq b 0)
-    (xorWalk inBasis (fun _ V => inRange lo hi (Nat.mod (Nat.xor G V) 511)) 8 0 0)) 8 0 0
+  xorWalk (outBasis T) (fun b G => or (Nat.beq b 0) (latRow lo hi G)) 8 0 0
 
 /-- Every Walsh coefficient `256 - 2c` of the packed table `T` at an output mask `b ≠ 0` is at
 most `L` in absolute value, i.e. `c` lies between `(257 - L) / 2` and `(256 + L) / 2`. -/
 def latBounded (T L : ℕ) : Bool :=
   latCheck T (Nat.div (Nat.sub 257 L) 2) (Nat.div (Nat.add 256 L) 2)
+
+theorem range_of_latRow (F : ℕ → Bool) {lo hi : ℕ} (hlo : lo ≤ 256) (hhi : hi ≤ 511)
+    (h : latRow lo hi (spreadOf F) = true) :
+    ∀ a < 256, lo ≤ tIter F 8 a ∧ tIter F 8 a ≤ hi := by
+  have hle : ∀ a < 256, tIter F 8 a ≤ 256 := fun a ha => tIter_le F le_rfl ha
+  simp only [latRow, Bool.and_eq_true] at h
+  rw [spreadOf_eq, fwhtUpTo_eq F le_rfl] at h
+  obtain ⟨h1, h2⟩ := h
+  have hcomp : Nat.sub (Nat.mul 256 fieldOnes) (row10 (tIter F 8)) =
+      row10 fun a => 256 - tIter F 8 a := by
+    change 256 * fieldOnes - row10 (tIter F 8) = _
+    rw [fieldOnes_eq, mul_row10, sub_row10 (fun a ha => by have := hle a ha; omega)]
+  rw [hcomp, nat_sub] at h2
+  intro a ha
+  have u := le_of_fieldsAtMost hle hhi h1 a ha
+  have l := le_of_fieldsAtMost (fun a _ => Nat.sub_le _ _) (by omega) h2 a ha
+  have := hle a ha
+  omega
 
 /-- The number of inputs `x < 256` on which `a · x` and `b · T[x]` differ, counted directly. -/
 def latCountAt (T a b : ℕ) : ℕ :=
@@ -628,19 +941,12 @@ theorem latCountAt_eq {T : ℕ} {s : ℕ → ℕ} (hT : ∀ x < 256, byteAt T x 
     Nat.zero_add]
   exact sum_congr rfl fun x hx => by rw [hT x (mem_range.mp hx)]
 
-theorem natAbs_le_of_inRange {L c : ℕ}
-    (h : inRange (Nat.div (Nat.sub 257 L) 2) (Nat.div (Nat.add 256 L) 2) c = true) :
-    ((256 : ℤ) - 2 * (c : ℤ)).natAbs ≤ L := by
-  simp only [inRange, Bool.and_eq_true, nat_ble, decide_eq_true_eq] at h
-  rw [nat_sub, Nat.add_eq] at h
-  change (257 - L) / 2 ≤ c ∧ c ≤ (256 + L) / 2 at h
-  omega
-
 /-- **Exact linearity of a table S-box.** If every Walsh coefficient of the packed table at a
 nonzero output mask passes `latBounded` and the coefficient at `(a, b)` has absolute value `l`,
 the linearity is exactly `l`, attained at `(a, b)`. -/
-theorem linearity_tableSbox {f : ℕ → ℕ} {l a b : ℕ} (ha : a < 256) (hb0 : b ≠ 0) (hb : b < 256)
-    (hbound : latBounded (packTable f) l = true) (hw : walshAbsAt (packTable f) a b = l) :
+theorem linearity_tableSbox {f : ℕ → ℕ} {l a b : ℕ} (hl : l ≤ 256) (ha : a < 256) (hb0 : b ≠ 0)
+    (hb : b < 256) (hbound : latBounded (packTable f) l = true)
+    (hw : walshAbsAt (packTable f) a b = l) :
     linearity (tableSbox f) = l ∧ gf b ≠ 0 ∧ (walsh (tableSbox f) (gf a) (gf b)).natAbs = l := by
   have hT : ∀ x < 256, byteAt (packTable f) x = f x % 256 := fun x hx => byteAt_packTable f hx
   have hwit : (walsh (tableSbox f) (gf a) (gf b)).natAbs = l := by
@@ -659,25 +965,18 @@ theorem linearity_tableSbox {f : ℕ → ℕ} {l a b : ℕ} (ha : a < 256) (hb0 
     unfold latBounded latCheck at hbound
     have outer := of_xorWalk hbound b'.val.toNat (by norm_num; exact hb'')
     simp only [Nat.zero_add, Nat.zero_xor] at outer
-    have inner : xorWalk inBasis (fun _ V => inRange (Nat.div (Nat.sub 257 l) 2)
-        (Nat.div (Nat.add 256 l) 2)
-        (Nat.mod (Nat.xor (xorSel (outBasis (packTable f)) 8 b'.val.toNat) V) 511)) 8 0 0
-        = true := by
-      have hne : Nat.beq b'.val.toNat 0 = false := by rw [nat_beq]; simpa using hb0'
-      simpa [hne] using outer
-    have hpair := of_xorWalk inner a'.val.toNat (by norm_num; exact ha')
-    simp only [Nat.zero_xor] at hpair
+    have hne : Nat.beq b'.val.toNat 0 = false := by rw [nat_beq]; simpa using hb0'
+    rw [hne, Bool.false_or] at outer
     have hG : xorSel (outBasis (packTable f)) 8 b'.val.toNat =
         spreadOf fun x => bitDot 8 b'.val.toNat (f x % 256) := by
       have hB : outBasis (packTable f) = fun j => spreadOf fun x => (f x % 256).testBit j :=
         funext fun j => spreadOf_congr fun x hx => by rw [hT x hx]
       rw [hB, xorSel_basis]
-    have hL : xorSel inBasis 8 a'.val.toNat = spreadOf fun x => bitDot 8 a'.val.toNat x :=
-      xorSel_basis (fun x => x) 8 a'.val.toNat
-    rw [hG, hL] at hpair
-    change inRange _ _ ((spreadOf _ ^^^ spreadOf _) % 511) = true at hpair
-    rw [spreadOf_xor, spreadOf_mod] at hpair
-    exact natAbs_le_of_inRange hpair
+    rw [hG] at outer
+    rw [nat_sub, Nat.add_eq, nat_div, nat_div] at outer
+    have hr := range_of_latRow _ (by omega) (by omega) outer a'.val.toNat ha'
+    rw [tIter_eight _ ha'] at hr
+    omega
   exact ⟨linearity_eq hall (gf_ne_zero hb0 hb) hwit, gf_ne_zero hb0 hb, hwit⟩
 
 /-! ### The AES S-box
@@ -709,8 +1008,8 @@ mask `48`. -/
 theorem aes_sbox_linearity :
     linearity AES.sbox = 32 ∧ gf 72 ≠ 0 ∧ (walsh AES.sbox (gf 1) (gf 72)).natAbs = 32 := by
   rw [aes_sbox_eq_tableSbox]
-  exact linearity_tableSbox (by norm_num) (by norm_num) (by norm_num) aes_latBounded
-    (by decide +kernel)
+  exact linearity_tableSbox (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    aes_latBounded (by decide +kernel)
 
 end Cryptificate
 
