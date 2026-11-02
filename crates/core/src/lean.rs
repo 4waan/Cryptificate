@@ -28,13 +28,14 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
-use crate::design::{CandidateDesign, SboxSpec, Target};
+use crate::design::{CandidateDesign, HadesDesign, SboxSpec, Target};
 use crate::diagnostics::{
-    AesLikeDiagnostics, ClaimPrediction, Diagnostics, HadesDiagnostics, ModelDiagnostics,
-    PartialBypass, ProgramAnalysis, SboxSource,
+    AesLikeDiagnostics, ClaimPrediction, Diagnostics, HadesDiagnostics, HadesPrimeDiagnostics,
+    ModelDiagnostics, PartialBypass, ProgramAnalysis, SboxSource,
 };
 use crate::field::{Bn254, Field, FieldKind};
 use crate::limits;
+use crate::prime::{pratt_flat, Fp};
 use crate::program::{Instruction, Program};
 use crate::report::{claim_ids, Status, Witness};
 use crate::request::AnalysisRequest;
@@ -79,13 +80,15 @@ pub struct FragmentMeta {
     /// Fragments that must appear earlier in the certificate.
     #[serde(default)]
     pub requires: Vec<String>,
-    /// `gf256`, `bn254` or `any`.
+    /// `gf256`, `bn254`, `prime` (every field of `hades/prime/v1`) or `any`.
     pub field: String,
 }
 
 impl FragmentMeta {
     fn field_matches(&self, field: FieldKind) -> bool {
-        self.field == "any" || self.field == field.as_str()
+        self.field == "any"
+            || self.field == field.as_str()
+            || (self.field == "prime" && field.is_prime64())
     }
 }
 
@@ -254,12 +257,18 @@ pub enum EmitError {
 // ---------------------------------------------------------------------------
 
 /// The Lean literal of a field element: `0xHH` for a byte, the canonical
-/// decimal for a BN254 element. Both are read by the `gf`/`bn` helpers.
+/// decimal for an element of a prime field. They are read by the `gf`, `bn`
+/// and `pf` helpers.
 pub fn lean_literal<F: Field>(x: &F) -> String {
     match F::KIND {
         FieldKind::Gf256 => format!("0x{}", x.encode()),
-        FieldKind::Bn254 => x.encode(),
+        _ => x.encode(),
     }
+}
+
+/// Comma-separated literals, the form of a Lean list literal's contents.
+fn lean_list<F: Field>(v: &[F]) -> String {
+    v.iter().map(lean_literal).collect::<Vec<_>>().join(", ")
 }
 
 /// Space-separated literals of a vector (or of a matrix, row-major).
@@ -371,9 +380,55 @@ impl Values<'_> {
                 };
                 hades_value(d, h, role(meta, self.req.target), name).or_else(from_program)
             }
+            (CandidateDesign::HadesPrime(d), ModelDiagnostics::HadesPrime(h), _) => {
+                prime_value(d, h, name)
+            }
             _ => None,
         }
     }
+}
+
+/// Placeholder values of the `hades/prime/v1` fragments. Matrices, vectors
+/// and the Pratt certificate are written as comma-separated numerals, the
+/// contents of a Lean list literal.
+fn prime_value(d: &HadesDesign<Fp>, hp: &HadesPrimeDiagnostics, name: &str) -> Option<String> {
+    let h = &hp.hades;
+    let entries = |m: &[Vec<Fp>]| lean_list(&m.concat());
+    let bypass = h.partial.bypass.as_ref();
+    let invariant = || bypass.filter(|b| b.invariant());
+    Some(match name {
+        "MODULUS" => hp.prime.modulus.to_string(),
+        "PRATT" => list(pratt_flat(&hp.prime.pratt).into_iter()),
+        "EXTERNAL_ENTRIES" => entries(&d.external),
+        "INTERNAL_ENTRIES" => entries(&d.internal),
+        // `1` at a masked position, `0` elsewhere.
+        "MASK_ENTRIES" => list(d.partial_mask.iter().map(|&b| u8::from(b))),
+        "VECTOR_ENTRIES" => lean_list(&h.external.branch_witness.as_ref()?.input),
+        "KERNEL_ENTRIES" => lean_list(h.internal.kernel_vector.as_ref()?),
+        "EXPONENT" => h.power.exponent.to_string(),
+        "INV_EXPONENT" => h.power.inverse_exponent.as_ref()?.to_str_radix(10),
+        "K" => h.power.k?.to_string(),
+        "OMEGA" => lean_literal(&h.power.collision?.omega),
+        "FULL_ROUNDS" => d.full_rounds.to_string(),
+        "PARTIAL_ROUNDS" => d.partial_rounds.to_string(),
+        "OBS_LENGTH" => h.partial.window?.to_string(),
+        "OBS_POWERS" => {
+            h.partial.window?;
+            list(h.partial.rows.iter().map(|r| r.power))
+        }
+        "OBS_COORDS" => {
+            h.partial.window?;
+            list(h.partial.rows.iter().map(|r| r.position))
+        }
+        // A bypass that only survives the design's few partial rounds.
+        "BYPASS_ENTRIES" => lean_list(&bypass.filter(|b| !b.invariant())?.difference),
+        // An invariant-subspace bypass: its basis, starting with the
+        // difference, and the internal matrix's coefficients on it.
+        "BYPASS_DIM" => invariant()?.invariant_basis.len().to_string(),
+        "BYPASS_BASIS_ENTRIES" => entries(&invariant()?.invariant_basis),
+        "BYPASS_COEFF_ENTRIES" => entries(&invariant()?.coefficients),
+        _ => return None,
+    })
 }
 
 fn aes_value(rounds: u32, offsets: &[usize], a: &AesLikeDiagnostics, name: &str) -> Option<String> {
@@ -576,6 +631,24 @@ fn echo_value(req: &AnalysisRequest, diag: &Diagnostics, key: &str) -> Option<Va
             "witnessActual" => to(&h.program.as_ref()?.distinguisher.as_ref()?.actual),
             _ => return None,
         }),
+        (CandidateDesign::HadesPrime(d), ModelDiagnostics::HadesPrime(hp)) => {
+            let h = &hp.hades;
+            Some(match key {
+                // A decimal string, as in the request.
+                "candModulus" => to(&hp.prime.modulus),
+                "candExternal" => to(&d.external),
+                "candInternal" => to(&d.internal),
+                "candExponent" => json!(h.power.exponent),
+                "candFullRounds" => json!(d.full_rounds),
+                "candPartialRounds" => json!(d.partial_rounds),
+                "candPartialMask" => json!(d.partial_mask),
+                "witnessVector" => to(&h.external.branch_witness.as_ref()?.input),
+                "witnessKernel" => to(h.internal.kernel_vector.as_ref()?),
+                "witnessRoot" => to(&h.power.collision?.omega),
+                "witnessBypass" => to(&h.partial.bypass.as_ref()?.difference),
+                _ => return None,
+            })
+        }
         _ => None,
     }
 }
@@ -588,6 +661,36 @@ fn to(x: &impl Serialize) -> Value {
 // Fragment selection
 // ---------------------------------------------------------------------------
 
+/// The fragments of a `hades/prime/v1` claim: the `_prime` fragments, with
+/// the width in the name where the proof depends on it.
+fn prime_fragment_candidates(
+    width: usize,
+    h: &HadesPrimeDiagnostics,
+    claim: &str,
+    holds: bool,
+) -> Vec<String> {
+    let per_width = |base: &str| vec![format!("{base}_prime{width}")];
+    let fixed = |name: &str| vec![name.to_string()];
+    match (claim, holds) {
+        (claim_ids::FIELD_PRIME, true) => fixed("field_prime"),
+        (claim_ids::EXTERNAL_MDS, true) => per_width("external_mds"),
+        (claim_ids::EXTERNAL_MDS, false) => fixed("external_not_mds_prime"),
+        (claim_ids::INTERNAL_INVERTIBLE, true) => per_width("internal_invertible"),
+        (claim_ids::INTERNAL_INVERTIBLE, false) => fixed("internal_singular_prime"),
+        (claim_ids::SBOX_BIJECTIVE, true) => fixed("power_bijective_prime"),
+        (claim_ids::SBOX_BIJECTIVE, false) => fixed("power_not_injective_prime"),
+        (claim_ids::ACTIVITY_OUTER, _) => per_width("hades_activity"),
+        (claim_ids::ACTIVITY_PARTIAL, true) => per_width("partial_active"),
+        (claim_ids::ACTIVITY_PARTIAL, false) => match &h.hades.partial.bypass {
+            Some(b) if b.invariant() => fixed("partial_bypass_prime"),
+            Some(_) => fixed("partial_bypass_short_prime"),
+            None => Vec::new(),
+        },
+        (claim_ids::ACTIVITY_TOTAL, _) => per_width("hades_total_activity"),
+        _ => Vec::new(),
+    }
+}
+
 /// The fragment names that certify a claim with the given outcome, in order
 /// of preference.
 fn fragment_candidates(
@@ -596,6 +699,9 @@ fn fragment_candidates(
     claim: &str,
     holds: bool,
 ) -> Vec<String> {
+    if let ModelDiagnostics::HadesPrime(h) = &diag.details {
+        return prime_fragment_candidates(req.design.width(), h, claim, holds);
+    }
     let names: &[&str] = match (claim, holds) {
         (claim_ids::MATRIX_MDS, true) => &["matrix_mds"],
         (claim_ids::MATRIX_MDS, false) => &["matrix_not_mds"],
@@ -617,7 +723,7 @@ fn fragment_candidates(
                     Some(_) => vec!["partial_bypass_short".into()],
                     None => Vec::new(),
                 },
-                ModelDiagnostics::AesLike(_) => Vec::new(),
+                ModelDiagnostics::AesLike(_) | ModelDiagnostics::HadesPrime(_) => Vec::new(),
             };
         }
         (claim_ids::ACTIVITY_TOTAL, _) => &["hades_total_activity"],
@@ -630,6 +736,7 @@ fn fragment_candidates(
                 (ModelDiagnostics::AesLike(_), false) => vec!["sbox_not_injective".into()],
                 (ModelDiagnostics::Hades(_), true) => vec!["power_bijective".into()],
                 (ModelDiagnostics::Hades(_), false) => vec!["power_not_injective".into()],
+                (ModelDiagnostics::HadesPrime(_), _) => Vec::new(),
             };
         }
         (claim_ids::CIRCUIT_EQUIVALENCE, holds) => {
@@ -642,6 +749,8 @@ fn fragment_candidates(
                 FieldKind::Gf256 => vec![format!("{base}_gf256")],
                 // The BN254 fragments are specific to the matrix they compare with.
                 FieldKind::Bn254 => vec![format!("{base}_bn254_{}", req.target.as_str())],
+                // Programs over the other prime fields are rejected by validation.
+                _ => Vec::new(),
             };
         }
         _ => &[],
@@ -677,6 +786,14 @@ fn always_constants(req: &AnalysisRequest) -> Vec<&'static str> {
             }
             v
         }
+        CandidateDesign::HadesPrime(_) => vec![
+            "const_modulus_prime",
+            "const_external_prime",
+            "const_internal_prime",
+            "const_exponent",
+            "const_rounds_hades",
+            "const_mask_prime",
+        ],
     }
 }
 

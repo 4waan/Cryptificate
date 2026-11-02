@@ -266,6 +266,11 @@ impl<'de> Deserialize<'de> for AnyProgram {
         match field {
             FieldKind::Gf256 => serde_json::from_value(v).map(AnyProgram::Gf256),
             FieldKind::Bn254 => serde_json::from_value(v).map(AnyProgram::Bn254),
+            other => {
+                return Err(D::Error::custom(format!(
+                    "programs over field {other} are not supported (gf256 or bn254 only)"
+                )))
+            }
         }
         .map_err(D::Error::custom)
     }
