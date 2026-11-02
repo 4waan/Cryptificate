@@ -12,7 +12,7 @@
  * Nothing is written when one of these files exists, unless --force is given.
  */
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import type { FailOn } from './policy.js';
 import { CONFIG_FILE, CONFIG_SCHEMA_URL } from './project.js';
 import type { ProjectConfig } from './project.js';
@@ -67,24 +67,60 @@ export function findGitRoot(dir: string): string | null {
   }
 }
 
-/** main, or master when the repository has a master branch and no main branch. */
+function readText(path: string): string | null {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The git directory of the repository at `gitRoot` and its common directory
+ * (where the refs are). `.git` is a directory, or for a linked worktree or a
+ * submodule a file holding `gitdir: <path>`.
+ */
+export function gitDirs(gitRoot: string): { gitDir: string; commonDir: string } | null {
+  const dotGit = join(gitRoot, '.git');
+  let gitDir = dotGit;
+  try {
+    if (!statSync(dotGit).isDirectory()) {
+      const m = /^gitdir:\s*(.+?)\s*$/m.exec(readText(dotGit) ?? '');
+      if (!m) return null;
+      gitDir = resolve(gitRoot, m[1]!);
+    }
+  } catch {
+    return null;
+  }
+  const common = readText(join(gitDir, 'commondir'));
+  return { gitDir, commonDir: common === null ? gitDir : resolve(gitDir, common.trim()) };
+}
+
+/**
+ * The branch the workflow's push trigger names: the default branch of the
+ * origin remote when it is recorded (refs/remotes/origin/HEAD), else main or
+ * master when the repository has one, else the branch checked out, else main.
+ */
 export function defaultBranch(gitRoot: string | null): string {
-  if (!gitRoot) return 'main';
-  const git = join(gitRoot, '.git');
-  try {
-    if (!statSync(git).isDirectory()) return 'main';
-  } catch {
-    return 'main';
-  }
-  let packed = '';
-  try {
-    packed = readFileSync(join(git, 'packed-refs'), 'utf8');
-  } catch {
-    // no packed refs
-  }
-  const has = (b: string): boolean => existsSync(join(git, 'refs', 'heads', b)) || packed.includes(` refs/heads/${b}\n`);
+  const dirs = gitRoot ? gitDirs(gitRoot) : null;
+  if (!dirs) return 'main';
+  const { gitDir, commonDir } = dirs;
+  const symbolic = (text: string | null, prefix: string): string | null => {
+    const m = text === null ? null : new RegExp(`^ref:\\s*${prefix}(\\S+)\\s*$`).exec(text.trim());
+    return m ? m[1]! : null;
+  };
+  const origin = symbolic(readText(join(commonDir, 'refs', 'remotes', 'origin', 'HEAD')), 'refs/remotes/origin/');
+  if (origin) return origin;
+  const packed = readText(join(commonDir, 'packed-refs')) ?? '';
+  const has = (b: string): boolean => existsSync(join(commonDir, 'refs', 'heads', b)) || packed.split('\n').some((l) => l.endsWith(` refs/heads/${b}`));
   if (has('main')) return 'main';
-  return has('master') ? 'master' : 'main';
+  if (has('master')) return 'master';
+  return symbolic(readText(join(gitDir, 'HEAD')), 'refs/heads/') ?? 'main';
+}
+
+/** A YAML double-quoted scalar (a JSON string is one). */
+function yamlString(s: string): string {
+  return JSON.stringify(s);
 }
 
 function isScalar(v: unknown): boolean {
@@ -139,11 +175,11 @@ export function workflowFor(c: InitChoices, gitRoot: string | null): string {
     'on:',
     '  pull_request:',
     '    paths:',
-    `      - "${prefix}cryptificate.json"`,
-    `      - "${prefix}cryptificate/**"`,
+    `      - ${yamlString(`${prefix}cryptificate.json`)}`,
+    `      - ${yamlString(`${prefix}cryptificate/**`)}`,
     '      - ".github/workflows/cryptificate.yml"',
     '  push:',
-    `    branches: [${branch}]`,
+    `    branches: [${yamlString(branch)}]`,
     '  workflow_dispatch:',
     '',
     'permissions:',
@@ -161,7 +197,7 @@ export function workflowFor(c: InitChoices, gitRoot: string | null): string {
     '        with:',
     '          upload-sarif: "true"',
   ];
-  if (sub !== '.') lines.push(`          working-directory: ${sub}`);
+  if (sub !== '.') lines.push(`          working-directory: ${yamlString(sub)}`);
   return `${lines.join('\n')}\n`;
 }
 

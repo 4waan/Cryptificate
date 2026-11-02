@@ -5,13 +5,15 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { validateAnalysisRequest, validateCandidateDesign, validateProgram } from '@cryptificate/schema';
 import type { Input } from '../src/cli-main.js';
-import { prettyJson } from '../src/init.js';
+import { defaultBranch, prettyJson, workflowFor } from '../src/init.js';
+import type { InitChoices } from '../src/init.js';
 import { PRESETS, defaultClaims } from '../src/presets.js';
 import { loadConfig } from '../src/project.js';
 import type { CheckRun } from '../src/report-formats.js';
@@ -173,9 +175,9 @@ test('init in a subdirectory of a git repository puts the workflow at the reposi
     const wf = read(join(repoRoot, '.github', 'workflows', 'cryptificate.yml'));
     assert.ok(!existsSync(join(repoRoot, 'crypto', '.github')));
     assert.match(wf, /- "crypto\/cryptificate\.json"\n {6}- "crypto\/cryptificate\/\*\*"/);
-    assert.match(wf, /branches: \[master\]/);
+    assert.match(wf, /branches: \["master"\]/);
     assert.match(wf, /- uses: 4waan\/Cryptificate@0123456789abcdef0123456789abcdef01234567\n/, 'a pinned SHA gets no pin reminder');
-    assert.match(wf, / {10}working-directory: crypto\n$/);
+    assert.match(wf, / {10}working-directory: "crypto"\n$/);
     assert.match(r.stdout, /\.\.\/\.github\/workflows\/cryptificate\.yml/);
     assert.doesNotMatch(r.stdout, /Pin the action/);
   });
@@ -203,4 +205,64 @@ test('init usage errors (exit 2)', async () => {
     }
     assert.ok(!existsSync(join(fx.root, 'cryptificate.json')));
   });
+});
+
+test('the push trigger names the default branch: origin/HEAD, then main or master, then the checked-out branch', () => {
+  const root = mkdtempSync(join(tmpdir(), 'cryptificate-git-'));
+  try {
+    const git = join(root, 'repo', '.git');
+    mkdirSync(join(git, 'refs', 'heads'), { recursive: true });
+    writeFileSync(join(git, 'HEAD'), 'ref: refs/heads/develop\n');
+    writeFileSync(join(git, 'refs', 'heads', 'develop'), '0'.repeat(40));
+    assert.equal(defaultBranch(join(root, 'repo')), 'develop', 'neither main nor master: the branch checked out');
+    writeFileSync(join(git, 'packed-refs'), `# pack-refs with: peeled fully-peeled sorted\n${'1'.repeat(40)} refs/heads/master\n`);
+    assert.equal(defaultBranch(join(root, 'repo')), 'master', 'a packed master branch');
+    mkdirSync(join(git, 'refs', 'remotes', 'origin'), { recursive: true });
+    writeFileSync(join(git, 'refs', 'remotes', 'origin', 'HEAD'), 'ref: refs/remotes/origin/trunk\n');
+    assert.equal(defaultBranch(join(root, 'repo')), 'trunk', "the remote's default branch wins");
+
+    // a linked worktree: .git is a file naming its git directory, whose commondir holds the refs
+    const wt = join(git, 'worktrees', 'feature');
+    mkdirSync(wt, { recursive: true });
+    writeFileSync(join(wt, 'HEAD'), 'ref: refs/heads/feature\n');
+    writeFileSync(join(wt, 'commondir'), '../..\n');
+    mkdirSync(join(root, 'feature'));
+    writeFileSync(join(root, 'feature', '.git'), `gitdir: ${wt}\n`);
+    assert.equal(defaultBranch(join(root, 'feature')), 'trunk');
+    rmSync(join(git, 'refs', 'remotes'), { recursive: true });
+    assert.equal(defaultBranch(join(root, 'feature')), 'master');
+    rmSync(join(git, 'packed-refs'));
+    assert.equal(defaultBranch(join(root, 'feature')), 'feature', 'the branch checked out in the worktree');
+
+    assert.equal(defaultBranch(null), 'main');
+    mkdirSync(join(root, 'b'));
+    writeFileSync(join(root, 'b', '.git'), 'nonsense');
+    assert.equal(defaultBranch(join(root, 'b')), 'main');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the workflow quotes the subdirectory, so YAML-significant directory names stay one string', () => {
+  const root = mkdtempSync(join(tmpdir(), 'cryptificate-git-'));
+  try {
+    mkdirSync(join(root, '.git'));
+    const sub = '*odd #dir: "x" [y]';
+    const c: InitChoices = { dir: join(root, sub), model: 'aes-like', preset: PRESETS[0]!, circuit: false, failOn: 'refuted', ci: 'github', action: '4waan/Cryptificate@main' };
+    const wf = workflowFor(c, root);
+    const scalar = (prefix: string): unknown => {
+      const line = wf.split('\n').find((l) => l.startsWith(prefix));
+      assert.ok(line, prefix);
+      return JSON.parse(line.slice(prefix.length));
+    };
+    assert.equal(scalar('          working-directory: '), sub);
+    const paths = wf.split('\n').filter((l) => l.startsWith('      - "'));
+    assert.deepEqual(
+      paths.map((l) => JSON.parse(l.slice('      - '.length))),
+      [`${sub}/cryptificate.json`, `${sub}/cryptificate/**`, '.github/workflows/cryptificate.yml'],
+    );
+    assert.match(wf, /branches: \["main"\]/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
