@@ -1,0 +1,30 @@
+# Build outputs and dependencies are rebuilt inside the image.
+**/.lake
+**/target
+**/node_modules
+**/dist
+**/dist-replay
+**/*.tsbuildinfo
+**/.vite
+apps/web/public/brand
+
+# Runtime state and evidence bundles: recorded bundles stay out of the image
+# (mount them to verify them); apps/web/public/recorded is kept for the workbench.
+.cryptificate
+examples/bundles
+examples/measurements
+*.tar.gz
+
+# Not used by the image.
+.git
+.github
+refinement/*
+!refinement/extract.sha256
+python
+docs
+schemas
+**/__pycache__
+**/*.log
+.DS_Store
+.idea
+.vscode
