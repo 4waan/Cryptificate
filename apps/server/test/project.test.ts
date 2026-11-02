@@ -157,7 +157,7 @@ test('an invalid or missing configuration is a usage error (exit 2) with every p
   await withProject(async (fx) => {
     const none = await runCli(fx, ['check']);
     assert.equal(none.code, 2);
-    assert.match(none.stderr, /check needs at least one design file, or a cryptificate\.json in this directory or a parent/);
+    assert.match(none.stderr, /check needs at least one design file, or a cryptificate\.json in this directory or a parent \(cryptificate init writes one\)/);
 
     writeConfig(fx, { inputs: ['designs/*.json'], failOn: 'sometimes', claims: ['matrix.mdss'], extra: 1 });
     const bad = await runCli(fx, ['check'], { cwd: join(fx.root, 'sub') });

@@ -1,10 +1,10 @@
 /**
- * The `cryptificate` command: serve | check | experiment | verify | report.
+ * The `cryptificate` command: init | check | serve | experiment | verify | report.
  * The executable is cli.ts; this module holds the commands so tests can call
  * main() with their own pipeline environment and output streams.
  */
 import { randomBytes } from 'node:crypto';
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
@@ -20,8 +20,13 @@ import { NoMatchError, expandInputs } from './glob.js';
 import { JobManager } from './jobs.js';
 import { makeEnv } from './env.js';
 import { resolvePaths } from './paths.js';
-import { EXIT_ERROR, UsageError, parseClaimList, parseFailOn } from './policy.js';
+import { EXIT_ERROR, FAIL_ON, UsageError, parseClaimList, parseFailOn } from './policy.js';
 import type { FailOn } from './policy.js';
+import { DEFAULT_ACTION, planInit, posixRelative, writePlan } from './init.js';
+import type { CiChoice } from './init.js';
+import { DEFAULT_PRESET, MODEL_IDS, PRESETS, findPreset } from './presets.js';
+import type { ModelChoice, Preset } from './presets.js';
+import { choose, confirm, makeAsker } from './prompt.js';
 import { killAll } from './proc.js';
 import { CONFIG_FILE, findConfig, loadConfig } from './project.js';
 import type { LoadedConfig } from './project.js';
@@ -52,6 +57,11 @@ import type { VerifyResult } from './verify.js';
 const USAGE = `Usage: cryptificate <command> [options]
 
 Commands:
+  init [dir] [--model aes-like|hades] [--preset NAME] [--circuit|--no-circuit]
+        [--fail-on POLICY] [--ci github|none] [--action OWNER/REPO@REF] [--yes] [--force]
+        Scaffold cryptificate.json, a starting design under cryptificate/ and a GitHub
+        workflow. Asks on a terminal unless --yes; never overwrites a file without --force.
+        Presets: ${PRESETS.map((p) => `${p.id} (${p.model})`).join(', ')}.
   check [<design.json|glob>...] [--config cryptificate.json] [--program p.json]
         [--target matrix|external|internal] [--json out.json] [--bundle out.tar.gz]
         [--bundle-dir DIR] [--no-cache] [GATE OPTIONS]
@@ -87,6 +97,7 @@ that could re-check nothing or whose mismatch came from a missing tool, or, unde
 an in-scope claim left unchecked because the engine, Lean or the native toolchain was
 unavailable, a --claims id an input does not carry, or (verify) an in-scope claim verify
 does not re-check. experiment: 0 completed, 1 failed, timed out or stopped, 2 invalid.
+init: 0 written, 1 declined at the prompt, 2 usage error or a file exists (nothing written).
 Environment: CRYPTIFICATE_HOME (state directory), CRYPTIFICATE_ENGINE, CRYPTIFICATE_LAKE,
 GITHUB_STEP_SUMMARY.
 `;
@@ -96,11 +107,17 @@ export interface Output {
   isTTY?: boolean;
 }
 
+export interface Input extends NodeJS.ReadableStream {
+  isTTY?: boolean;
+}
+
 export interface CliDeps {
   /** Pipeline environment factory (default: this checkout). */
   env?: () => PipelineEnv;
   stdout?: Output;
   stderr?: Output;
+  /** Where init reads its answers (default process.stdin). */
+  stdin?: () => Input;
   /** Environment variables consulted (GITHUB_STEP_SUMMARY). */
   environ?: Record<string, string | undefined>;
   cwd?: string;
@@ -112,6 +129,7 @@ interface Io {
   env: () => PipelineEnv;
   stdout: Output;
   stderr: Output;
+  stdin: () => Input;
   environ: Record<string, string | undefined>;
   cwd: string;
   signals: boolean;
@@ -327,7 +345,7 @@ async function cmdCheck(argv: string[], io: Io): Promise<number> {
     if (found) project = loadConfig(found, relative(io.cwd, found) || CONFIG_FILE);
   }
   if (positionals.length === 0 && !project) {
-    fail(`check needs at least one design file, or a ${CONFIG_FILE} in this directory or a parent\n\n${USAGE}`);
+    fail(`check needs at least one design file, or a ${CONFIG_FILE} in this directory or a parent (cryptificate init writes one)\n\n${USAGE}`);
   }
   const cfg = project?.config;
   // Inputs from the command line are relative to the working directory; inputs
@@ -564,6 +582,133 @@ async function cmdReport(argv: string[], io: Io): Promise<number> {
   return run.exitCode;
 }
 
+// ---------------------------------------------------------------------------
+// init
+
+const MODEL_CHOICES = Object.keys(MODEL_IDS) as ModelChoice[];
+const CI_CHOICES: readonly CiChoice[] = ['github', 'none'];
+
+async function cmdInit(argv: string[], io: Io): Promise<number> {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      model: { type: 'string' },
+      preset: { type: 'string' },
+      circuit: { type: 'boolean' },
+      'no-circuit': { type: 'boolean' },
+      'fail-on': { type: 'string' },
+      ci: { type: 'string' },
+      action: { type: 'string' },
+      yes: { type: 'boolean', short: 'y' },
+      force: { type: 'boolean' },
+    },
+  });
+  if (positionals.length > 1) fail('init takes at most one directory');
+  const dir = resolve(io.cwd, positionals[0] ?? '.');
+  if (existsSync(dir) && !statSync(dir).isDirectory()) fail(`${positionals[0]} is not a directory`);
+  let model = values.model as ModelChoice | undefined;
+  if (model !== undefined && !MODEL_CHOICES.includes(model)) fail(`--model must be one of ${MODEL_CHOICES.join(', ')} (got "${values.model}")`);
+  let preset: Preset | undefined;
+  if (values.preset !== undefined) {
+    preset = findPreset(values.preset);
+    if (!preset) fail(`unknown preset "${values.preset}"; the presets are ${PRESETS.map((p) => `${p.id} (${p.model})`).join(', ')}`);
+    if (model && preset.model !== model) fail(`preset ${preset.id} is a ${preset.model} design, not ${model}`);
+  }
+  if (values.circuit && values['no-circuit']) fail('--circuit and --no-circuit exclude each other');
+  let failOn = values['fail-on'] === undefined ? undefined : parseFailOn(values['fail-on']);
+  let ci = values.ci as CiChoice | undefined;
+  if (ci !== undefined && !CI_CHOICES.includes(ci)) fail(`--ci must be one of ${CI_CHOICES.join(', ')} (got "${values.ci}")`);
+  const action = values.action ?? DEFAULT_ACTION;
+  if (!/^[\w.-]+\/[\w.-]+(\/[\w./-]+)?@[\w./-]+$/.test(action) && !action.startsWith('./')) fail(`--action must look like OWNER/REPO@REF (got "${action}")`);
+
+  const stdin = io.stdin();
+  const interactive = Boolean(stdin.isTTY) && !values.yes;
+  const asker = interactive ? makeAsker(stdin, io.stdout) : null;
+  const cancelled = (): number => {
+    io.stderr.write('\ncryptificate: init cancelled; nothing was written\n');
+    return EXIT_ERROR;
+  };
+  try {
+    if (asker) {
+      io.stdout.write(`Set up Cryptificate in ${dir}\n`);
+      if (!model && !preset) {
+        const a = await choose(asker, 'Design model: aes-like (GF(2^8) SPN) or hades (Poseidon2-style over BN254)', MODEL_CHOICES, 'aes-like', io.stdout);
+        if (a === null) return cancelled();
+        model = a as ModelChoice;
+      }
+      if (!preset) {
+        const m = model ?? 'aes-like';
+        const ids = PRESETS.filter((p) => p.model === m).map((p) => p.id);
+        const a = await choose(asker, 'Starting design', ids, DEFAULT_PRESET[m], io.stdout);
+        if (a === null) return cancelled();
+        preset = findPreset(a);
+      }
+    }
+    model ??= preset?.model ?? 'aes-like';
+    preset ??= findPreset(DEFAULT_PRESET[model])!;
+    let circuit = values.circuit ? true : values['no-circuit'] ? false : undefined;
+    if (circuit && !preset.program) fail(`preset ${preset.id} has no reference circuit; add "program" to the design file yourself, or use --no-circuit`);
+    if (circuit === undefined && asker && preset.program) {
+      const a = await confirm(asker, `Also check the reference circuit ${preset.program.name ?? 'of this preset'} (adds circuit equivalence and native correctness)?`, false, io.stdout);
+      if (a === null) return cancelled();
+      circuit = a;
+    }
+    circuit ??= false;
+    if (failOn === undefined && asker) {
+      const a = await choose(asker, 'Fail the check on', FAIL_ON, 'refuted', io.stdout);
+      if (a === null) return cancelled();
+      failOn = a as FailOn;
+    }
+    failOn ??= 'refuted';
+    if (ci === undefined && asker) {
+      const a = await confirm(asker, 'Write a GitHub Actions workflow (code scanning upload of the SARIF result)?', true, io.stdout);
+      if (a === null) return cancelled();
+      ci = a ? 'github' : 'none';
+    }
+    ci ??= 'github';
+
+    const plan = planInit({ dir, model, preset, circuit, failOn, ci, action });
+    const shown = (p: string): string => posixRelative(io.cwd, p);
+    const existing = plan.files.filter((f) => f.exists);
+    if (existing.length > 0 && !values.force) {
+      io.stderr.write(`cryptificate: init would overwrite ${existing.map((f) => shown(f.path)).join(', ')}; nothing was written (use --force to overwrite)\n`);
+      return EXIT_ERROR;
+    }
+    if (asker) {
+      io.stdout.write(`\nFiles to write:\n${plan.files.map((f) => `  ${shown(f.path)}${f.exists ? ' (overwrite)' : ''}`).join('\n')}\n`);
+      const a = await confirm(asker, 'Write these files?', true, io.stdout);
+      if (a === null) return cancelled();
+      if (!a) {
+        io.stderr.write('cryptificate: nothing was written\n');
+        return 1;
+      }
+    }
+    writePlan(plan);
+    const design = shown(join(dir, ...plan.designFile.split('/')));
+    const config = shown(join(dir, CONFIG_FILE));
+    const workflow = plan.files.find((f) => f.path.endsWith(join('.github', 'workflows', 'cryptificate.yml')));
+    const lines = [
+      `${asker ? '\n' : ''}Wrote ${preset.id} (${MODEL_IDS[model]})${circuit ? ' with its circuit' : ''}, policy --fail-on ${failOn}:`,
+      ...plan.files.map((f) => `  ${shown(f.path)}${f.exists ? ' (overwritten)' : ''}`),
+      '',
+      'Next steps:',
+      `  1. Edit ${design} to describe your design${circuit ? ' and circuit' : ''}.`,
+      `  2. Run cryptificate doctor, then cryptificate check${posixRelative(io.cwd, dir) === '.' ? '' : ` in ${shown(dir)}`}: it reads ${config} and exits`,
+      '     0 when the policy holds, 1 when a claim violates it, 2 when a design could not be checked.',
+      workflow
+        ? `  3. Commit ${config}, ${shown(join(dir, 'cryptificate'))}/ and ${shown(workflow.path)}; pull requests that change them run the check and show refuted claims in code scanning.`
+        : `  3. Commit ${config} and ${shown(join(dir, 'cryptificate'))}/.`,
+    ];
+    if (workflow && !plan.gitRoot) lines.push(`  Note: ${shown(dir) === '.' ? 'this directory' : shown(dir)} is not in a git repository yet; GitHub reads workflows from .github/workflows at the repository root.`);
+    if (workflow && /@main$/.test(action)) lines.push(`  Pin the action to a commit SHA in ${shown(workflow.path)} (or rerun with --action OWNER/REPO@SHA) for a reproducible gate.`);
+    io.stdout.write(`${lines.join('\n')}\n`);
+    return 0;
+  } finally {
+    asker?.close();
+  }
+}
+
 async function cmdServe(argv: string[]): Promise<number> {
   const { values } = parseArgs({
     args: argv,
@@ -638,6 +783,7 @@ export async function main(argv: string[], deps: CliDeps = {}): Promise<number> 
     env: deps.env ?? (() => makeEnv()),
     stdout: deps.stdout ?? process.stdout,
     stderr: deps.stderr ?? process.stderr,
+    stdin: deps.stdin ?? (() => process.stdin),
     environ: deps.environ ?? process.env,
     cwd: deps.cwd ?? process.cwd(),
     signals: deps.signals ?? true,
@@ -645,6 +791,8 @@ export async function main(argv: string[], deps: CliDeps = {}): Promise<number> 
   const [cmd, ...rest] = argv;
   try {
     switch (cmd) {
+      case 'init':
+        return await cmdInit(rest, io);
       case 'serve':
         return await cmdServe(rest);
       case 'check':
