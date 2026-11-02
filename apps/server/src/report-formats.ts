@@ -1,7 +1,8 @@
 /**
  * Machine-readable and summary renderings of `check` and `verify` results:
- * text, JSON, SARIF 2.1.0, JUnit XML and Markdown. Pure functions: file
- * contents (for SARIF regions) are read through an injected reader.
+ * text, JSON, SARIF 2.1.0, JUnit XML, Markdown and a self-contained HTML
+ * evidence report. Pure functions: file contents (for SARIF regions) are
+ * read through an injected reader.
  *
  * The renderings never upgrade a status. A claim that is not established is
  * never shown as a failure of the design, only as a failure of the chosen
@@ -10,8 +11,8 @@
 import { createHash } from 'node:crypto';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { IMPLEMENTATION_CLAIMS, designClaimsFor } from '@cryptificate/schema';
-import type { AnalysisReport, Claim, ExecutionState } from '@cryptificate/schema';
+import { IMPLEMENTATION_CLAIMS, designClaimsFor, htmlDocument, htmlElement as h, htmlFragment, reportArticle, reportTitle } from '@cryptificate/schema';
+import type { AnalysisReport, Claim, ExecutionState, HtmlChild, HtmlToolchain } from '@cryptificate/schema';
 import { formatAnalysis, table, witnessText } from './format.js';
 import type { Style } from './format.js';
 import { locateJson, positionOf } from './json-locate.js';
@@ -722,4 +723,118 @@ export function verifyToSarif(run: VerifyRun, opts: SarifOptions): Record<string
 
 export function toSarifText(log: Record<string, unknown>): string {
   return `${JSON.stringify(log, null, 2)}\n`;
+}
+
+// ---------------------------------------------------------------------------
+// HTML evidence report
+
+export interface HtmlOptions {
+  /** Toolchain document recorded with an input (a bundle's toolchain.json), by input file. */
+  toolchains?: ReadonlyMap<string, HtmlToolchain>;
+}
+
+const OUTCOME_CLASS: Record<string, string> = { pass: 'proved', 'policy-failure': 'refuted', error: 'not-established' };
+
+function gateHtml(run: GateRun, lines: HtmlChild[]): HtmlChild {
+  return h(
+    'section',
+    { class: 'gate', id: 'gate', 'aria-labelledby': 'gate-h' },
+    h('h2', { id: 'gate-h' }, `Cryptificate ${run.command}`),
+    h('p', null, 'Result: ', h('span', { class: `badge badge-${OUTCOME_CLASS[run.outcome] ?? 'other'}` }, outcomeText(run)), ` (policy ${policyText(run).replace(/^no policy \((.*)\)$/, '$1')}, exit ${run.exitCode}).`),
+    lines.length ? h('ul', null, lines.map((l) => h('li', null, l))) : null,
+  );
+}
+
+/**
+ * A `check` result as one HTML document: the policy outcome, then the full
+ * evidence report of every input. A single completed input renders as that
+ * input's report alone when no policy applies.
+ */
+export function checkToHtml(run: CheckRun, opts: HtmlOptions = {}): string {
+  const only = run.claims ? new Set(run.claims) : null;
+  const lines: HtmlChild[] = [];
+  for (const e of run.results) {
+    if (!e.report) {
+      lines.push(htmlFragment(h('code', null, e.input.file), `: error: ${e.error ?? 'not checked'}`));
+      continue;
+    }
+    const why = e.outcome === 'error' ? (e.error ?? (e.state !== 'completed' ? `run ${e.state}` : checkProblems(e).join('; '))) : '';
+    const scope = e.report.claims.filter((c) => !inScope(c, only)).map((c) => c.id);
+    lines.push(
+      htmlFragment(
+        h('code', null, e.input.file),
+        `: ${e.outcome}`,
+        why ? ` (${why})` : '',
+        e.violations.length ? `; rejected by the policy: ${e.violations.join(', ')}` : '',
+        run.failOn !== 'none' && scope.length ? `; outside the policy: ${scope.join(', ')}` : '',
+      ),
+    );
+  }
+  const articles = run.results.filter((e) => e.report).map((e) => reportArticle(e.report as AnalysisReport, {
+      context: e.input.file,
+      toolchain: opts.toolchains?.get(e.input.file) ?? null,
+      ...(/\.(tar\.gz|tgz)$/i.test(e.input.file) ? { bundleName: e.input.file } : {}),
+    }));
+  const one = run.results.length === 1 ? run.results[0]!.report : null;
+  return htmlDocument(one ? reportTitle(one) : 'Cryptificate check', [run.failOn !== 'none' || !one ? gateHtml(run, lines) : null, ...articles]);
+}
+
+/** A `verify` result as one HTML document: the policy outcome and, per bundle, recorded against recomputed statuses. */
+export function verifyToHtml(run: VerifyRun): string {
+  const lines: HtmlChild[] = run.results.map((e) =>
+    htmlFragment(
+      h('code', null, e.bundle),
+      `: ${e.outcome}`,
+      e.error ? ` (${e.error})` : '',
+      e.problems.length ? ` (${e.problems.join('; ')})` : '',
+      e.violations.length ? `; rejected by the policy: ${e.violations.join(', ')}` : '',
+    ),
+  );
+  const articles = run.results.map((e) => {
+    if (!e.result) return h('article', { class: 'report' }, h('h2', null, h('code', null, e.bundle)), h('p', null, `Error: ${e.error ?? 'not verified'}`));
+    const r = e.result;
+    return h(
+      'article',
+      { class: 'report' },
+      h('header', { class: 'report-head' }, h('p', { class: 'eyebrow' }, 'Cryptificate verify'), h('h1', null, h('code', null, e.bundle))),
+      h(
+        'dl',
+        { class: 'kv' },
+        h('dt', null, 'Bundle'),
+        h('dd', null, `${r.kind} `, h('code', null, r.id)),
+        h('dt', null, 'Inputs recorded'),
+        h('dd', null, h('code', { class: 'digest' }, r.inputDigest.recorded)),
+        h('dt', null, 'Inputs recomputed'),
+        h('dd', null, r.inputDigest.recomputed ? h('code', { class: 'digest' }, r.inputDigest.recomputed) : 'not recomputed'),
+        h('dt', null, 'Re-run'),
+        h('dd', null, r.state),
+      ),
+      e.problems.length ? h('p', { class: 'warn' }, `Error: ${e.problems.join('; ')}.`) : null,
+      h(
+        'table',
+        null,
+        h('thead', null, h('tr', null, ['Subject', 'Claim', 'Recorded', 'Recomputed', 'Result'].map((c) => h('th', { scope: 'col' }, c)))),
+        h(
+          'tbody',
+          null,
+          r.rows.map((row) => {
+            const violated = e.violations.includes(`${row.subject} ${row.claim}`);
+            const cls = row.result === 'match' ? 'proved' : row.result === 'mismatch' ? 'refuted' : 'other';
+            return h(
+              'tr',
+              null,
+              h('td', null, row.subject),
+              h('td', null, h('code', null, row.claim)),
+              h('td', null, statusWord(row.recorded), row.reason ? ` (${row.reason})` : ''),
+              h('td', null, statusWord(row.recomputed), row.recomputedReason ? ` (${row.recomputedReason})` : ''),
+              h('td', null, h('span', { class: `badge badge-${cls}` }, row.result), violated ? ' rejected by the policy' : ''),
+            );
+          }),
+        ),
+      ),
+      r.notes.length ? h('ul', null, r.notes.map((n) => h('li', null, n))) : null,
+      h('p', null, h('strong', null, verdictLine(r))),
+    );
+  });
+  return htmlDocument('Cryptificate verify', [gateHtml(run, lines), ...articles]);
 }

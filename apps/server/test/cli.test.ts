@@ -6,12 +6,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { main } from '../src/cli-main.js';
 import type { CliDeps } from '../src/cli-main.js';
 import type { CheckRun, VerifyRun } from '../src/report-formats.js';
 import { AES_DESIGN, IDENTITY_DESIGN, IDENTITY_PROGRAM, makeFixture } from './helpers.js';
 import type { Fixture } from './helpers.js';
+
+/** apps/server/dist/test -> repository root */
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 interface Ran {
   code: number;
@@ -89,7 +93,7 @@ test('check exit code 2: unusable input, usage errors, failed runs and missing t
       [['check', 'broken.json', '-q'], /broken\.json is not valid JSON/],
       [['check', 'bad-rounds.json', '-q'], /the engine rejected the request: \/design\/rounds: rounds 5 rejected/],
       [['check', 'designs/aes.json', '--fail-on', 'sometimes'], /--fail-on must be one of none, refuted, not-established, any/],
-      [['check', 'designs/aes.json', '--format', 'html'], /--format must be one of/],
+      [['check', 'designs/aes.json', '--format', 'pdf'], /--format must be one of/],
       [['check', 'designs/aes.json', '--frobnicate'], /Unknown option/],
       [['check', 'designs/*.yaml'], /no file matches designs\/\*\.yaml/],
       [['check'], /check needs at least one design file/],
@@ -263,6 +267,56 @@ test('verify exit code 2 when Lean is missing, whatever the bundle records', asy
     },
     { noLake: true },
   );
+});
+
+test('--format html: check, verify and report write one self-contained evidence report', async () => {
+  await withFixture(async (fx) => {
+    const checked = await run(fx, ['check', 'designs/identity.json', '-q', '--bundle', 'identity.tar.gz', '--format', 'html', '--output', 'out/identity.html']);
+    assert.equal(checked.code, 0, checked.stderr);
+    assert.match(checked.stderr, /html: .*out\/identity\.html/);
+    const page = readFileSync(join(fx.root, 'out', 'identity.html'), 'utf8');
+    assert.match(page, /^<!DOCTYPE html>\n/);
+    assert.match(page, /<title>Cryptificate evidence report: analysis [0-9a-f]{32}<\/title>/);
+    assert.ok(page.includes('id="claim-matrix.mds"') && page.includes('Counterexample'));
+    assert.ok(!/<script|src=/i.test(page));
+
+    // a policy adds its outcome; the exit status is unchanged by the format
+    const gated = await run(fx, ['check', 'designs/identity.json', '-q', '--fail-on', 'refuted', '--format', 'html']);
+    assert.equal(gated.code, 1);
+    assert.match(gated.stdout, /policy failed<\/span> \(policy --fail-on refuted, exit 1\)/);
+
+    // report renders a bundle again, with the toolchain recorded in it, without running anything
+    const noTools = { ...fx, env: { ...fx.env, lake: null } };
+    const again = await run(noTools, ['report', 'identity.tar.gz', '--format', 'html']);
+    assert.equal(again.code, 0, again.stderr);
+    assert.ok(again.stdout.includes('Recorded toolchain (toolchain.json)'));
+    assert.ok(again.stdout.includes('npx cryptificate verify identity.tar.gz'));
+
+    const verified = await run(fx, ['verify', 'identity.tar.gz', '--format', 'html']);
+    assert.equal(verified.code, 0, verified.stderr);
+    assert.match(verified.stdout, /<h2 id="gate-h">Cryptificate verify<\/h2>/);
+    assert.match(verified.stdout, /All re-checked claims match\./);
+  });
+});
+
+test('report --format html renders experiment reports and bundles; other formats refuse them', async () => {
+  await withFixture(async (fx) => {
+    const src = join(ROOT, 'examples', 'bundles', 'beat-the-reference');
+    const exReport = readFileSync(join(src, 'report.json'));
+    writeFileSync(join(fx.root, 'experiment.json'), exReport);
+    writeFileSync(join(fx.root, 'experiment.tar.gz'), readFileSync(join(src, 'beat-the-reference.tar.gz')));
+    for (const file of ['experiment.json', 'experiment.tar.gz']) {
+      const r = await run(fx, ['report', file, '--format', 'html']);
+      assert.equal(r.code, 0, r.stderr);
+      assert.match(r.stdout, /<title>Cryptificate evidence report: experiment [0-9a-f]{32}<\/title>/);
+      assert.ok(r.stdout.includes('95% interval'));
+    }
+    for (const args of [['--format', 'markdown'], ['--format', 'html', '--fail-on', 'refuted'], []]) {
+      const r = await run(fx, ['report', 'experiment.json', ...args]);
+      assert.equal(r.code, 2, args.join(' '));
+      assert.match(r.stderr, /report renders experiment reports only with --format html/);
+    }
+  });
 });
 
 test('help and unknown commands', async () => {

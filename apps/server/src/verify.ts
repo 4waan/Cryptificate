@@ -1,8 +1,9 @@
 /**
  * `cryptificate verify <bundle>`: re-derive the claims of a bundle with the
  * installed engine, templates and Lean checker. Only inputs.json and
- * report.json are read from the bundle; bundled Lean, Rust and shell files
- * are never executed.
+ * report.json are read from the bundle; everything else (report.html,
+ * VERIFY.md, toolchain.json, bundled Lean, Rust and shell files) is neither
+ * read as input nor executed.
  */
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

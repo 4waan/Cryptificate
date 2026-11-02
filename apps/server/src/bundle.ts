@@ -5,7 +5,8 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Report } from '@cryptificate/schema';
+import { renderReportHtml } from '@cryptificate/schema';
+import type { HtmlToolchain, Report } from '@cryptificate/schema';
 import type { Paths } from './paths.js';
 import { listFiles } from './toolchain.js';
 import type { ToolchainInfo } from './toolchain.js';
@@ -56,6 +57,8 @@ export function verifyMarkdown(report: Report, tc: ToolchainInfo): string {
     '- `report.json`: claims, witnesses, execution steps and provenance as reported.',
     '- `lean/`: the generated Lean certificate(s) and the checker output (`audit.txt`).',
     '- `toolchain.json`: Lean toolchain, Lake manifest pins, Cargo.lock digest and `rustc -V`.',
+    '- `report.html`: a self-contained, printable rendering of `report.json` (no scripts, no external requests).',
+    '  It is a view of the report, not evidence, and `verify` does not read it.',
     '- `native/` (when a circuit ran natively): generated Rust, the shared kernels, the harness source, native correctness',
     '  results and raw measurements; `native/SOURCES.md` describes the layout.',
   ];
@@ -70,7 +73,7 @@ export function verifyMarkdown(report: Report, tc: ToolchainInfo): string {
     'npx cryptificate verify <this-bundle>.tar.gz',
     '```',
     '',
-    '`verify` reads only `inputs.json` and `report.json`. It regenerates the Lean certificate with the installed',
+    '`verify` reads only `inputs.json` and `report.json` (never `report.html`). It regenerates the Lean certificate with the installed',
     'engine and templates, runs the installed Lean checker, recomputes the claims and prints a table comparing them',
     'with the claims recorded here. It never runs Lean, Rust or shell code from the bundle. Timings in `report.json`',
     'are historical measurements from the machine that produced the bundle and are reported as such.',
@@ -112,11 +115,15 @@ export function bundleEntries(src: BundleSource): TarEntry[] {
   const entries: TarEntry[] = [];
   const inputs = src.inputs ?? (report.kind === 'analysis' ? report.inputs : report.inputs ?? null);
   entries.push({ path: 'inputs.json', data: scrub(json(inputs), paths) });
-  entries.push({ path: 'report.json', data: scrub(json(report), paths) });
+  const reportJson = scrub(json(report), paths);
+  entries.push({ path: 'report.json', data: reportJson });
   // Pins recorded when the job ran; the current checkout only as a fallback.
   const recorded = readIf(join(jobDir, 'toolchain.json'));
-  entries.push({ path: 'toolchain.json', data: recorded ?? json(toolchainDocument(toolchain)) });
+  const toolchainJson = recorded ?? Buffer.from(json(toolchainDocument(toolchain)));
+  entries.push({ path: 'toolchain.json', data: toolchainJson });
   entries.push({ path: 'VERIFY.md', data: verifyMarkdown(report, toolchain) });
+  // Rendered from the bundled (scrubbed) report and pins, so it shows exactly what they say.
+  entries.push({ path: 'report.html', data: reportHtml(reportJson, toolchainJson) });
 
   const leanDir = join(jobDir, 'lean');
   if (existsSync(leanDir)) {
@@ -142,6 +149,18 @@ export function bundleEntries(src: BundleSource): TarEntry[] {
   const diag = readIf(join(jobDir, 'engine', 'diagnose.json'));
   if (diag) entries.push({ path: 'engine/diagnose.json', data: scrub(diag.toString('utf8'), paths) });
   return entries;
+}
+
+/** The bundle's report.html: a rendering of its report.json and toolchain.json. */
+export function reportHtml(reportJson: string, toolchainJson: Buffer | string): string {
+  let tc: HtmlToolchain | null = null;
+  try {
+    const doc = JSON.parse(toolchainJson.toString()) as unknown;
+    if (doc && typeof doc === 'object' && !Array.isArray(doc)) tc = doc as HtmlToolchain;
+  } catch {
+    tc = null;
+  }
+  return renderReportHtml(JSON.parse(reportJson) as Report, { toolchain: tc, context: 'evidence bundle', bundleName: '<this-bundle>.tar.gz' });
 }
 
 export function buildBundle(src: BundleSource): Buffer {

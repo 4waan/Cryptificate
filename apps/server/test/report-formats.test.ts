@@ -20,6 +20,7 @@ import { KNOWN_CLAIM_IDS, parseClaimList, parseFailOn, violates } from '../src/p
 import type { FailOn } from '../src/policy.js';
 import {
   artifactUri,
+  checkToHtml,
   checkToJUnit,
   checkToMarkdown,
   checkToSarif,
@@ -28,6 +29,7 @@ import {
   evaluateVerifyEntry,
   makeCheckRun,
   makeVerifyRun,
+  verifyToHtml,
   verifyToJUnit,
   verifyToMarkdown,
   verifyToSarif,
@@ -205,6 +207,38 @@ test('verify: text, markdown, JUnit and SARIF renderings (snapshots)', () => {
   const log = verifyToSarif(run, { cwd: ROOT, read });
   assertSarifEssentials(log);
   snapshot('verify.sarif.json', `${JSON.stringify(log, null, 2)}\n`);
+});
+
+test('verify: HTML rendering (snapshot)', () => {
+  // The style sheet is the shared renderer's and is pinned by its own snapshots in packages/schema.
+  const html = verifyToHtml(verifyRun('refuted'));
+  assert.match(html, /<style>[\s\S]+?<\/style>/);
+  snapshot('verify.html', html.replace(/<style>[\s\S]*?<\/style>/, '<style>/* report style sheet */</style>'));
+});
+
+test('check: HTML is one inert document with the policy outcome and every report', () => {
+  const run = checkRun(CHECK_EXAMPLES, 'refuted', true);
+  const html = checkToHtml(run);
+  assert.ok(html.startsWith('<!DOCTYPE html>\n'));
+  assert.ok(!/<script|<img|<link|src=/i.test(html));
+  assert.match(html, /<h2 id="gate-h">Cryptificate check<\/h2>/);
+  assert.match(html, /Result: <span class="badge badge-not-established">error<\/span> \(policy --fail-on refuted, exit 2\)/);
+  assert.ok(html.includes('<code>examples/designs/missing.json</code>: error: cannot read examples/designs/missing.json: ENOENT'));
+  assert.ok(html.includes('rejected by the policy: circuit.equivalence, native.correctness'));
+  for (const name of CHECK_EXAMPLES) {
+    const { report } = exampleReport(name);
+    assert.ok(html.includes(`<code class="id">${report.id}</code>`), name);
+  }
+  assert.equal((html.match(/<article class="report">/g) ?? []).length, CHECK_EXAMPLES.length);
+
+  // a single report without a policy is that report alone, under its own title
+  const one = checkToHtml(checkRun(['identity'], 'none'));
+  assert.ok(!one.includes('id="gate"'));
+  assert.match(one, /<title>Cryptificate evidence report: analysis [0-9a-f]{32}<\/title>/);
+  // the toolchain of a bundle input is shown when the caller has it
+  const file = 'examples/bundles/identity/report.json';
+  const withTc = checkToHtml(checkRun(['identity'], 'none'), { toolchains: new Map([[file, { leanToolchain: 'leanprover/lean4:v4.33.1' }]]) });
+  assert.ok(withTc.includes('Recorded toolchain (toolchain.json)') && withTc.includes('leanprover/lean4:v4.33.1'));
 });
 
 // ---------------------------------------------------------------------------
