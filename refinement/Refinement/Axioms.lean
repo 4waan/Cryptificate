@@ -4,6 +4,7 @@ Copyright (c) Cryptificate contributors. Released under the MIT license.
 import Refinement.GF256
 import Refinement.AesLike
 import Refinement.Gf256Crate
+import Refinement.BN254Mont
 
 /-!
 # Axiom audit
@@ -139,3 +140,67 @@ info: 'Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels' depends on 
 -/
 #guard_msgs in
 #print axioms Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels
+
+/--
+info: 'Cryptificate.Refinement.BN254Mont.bn254_mont_mul_refines' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.BN254Mont.bn254_mont_mul_refines
+
+/--
+info: 'Cryptificate.Refinement.BN254Mont.bn254_mont_add_refines' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.BN254Mont.bn254_mont_add_refines
+
+/--
+info: 'Cryptificate.Refinement.BN254Mont.bn254_mont_sub_refines' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.BN254Mont.bn254_mont_sub_refines
+
+/--
+info: 'Cryptificate.Refinement.BN254Mont.bn254_mont_to_mont_refines' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.BN254Mont.bn254_mont_to_mont_refines
+
+/--
+info: 'Cryptificate.Refinement.BN254Mont.bn254_mont_from_mont_refines' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.BN254Mont.bn254_mont_from_mont_refines
+
+/--
+info: 'Cryptificate.Refinement.BN254Mont.bn254_mont_mul_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.BN254Mont.bn254_mont_mul_eq
+
+/--
+info: 'Cryptificate.Refinement.BN254Mont.bn254_mont_add_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.BN254Mont.bn254_mont_add_eq
+
+/--
+info: 'Cryptificate.Refinement.BN254Mont.bn254_mont_sub_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.BN254Mont.bn254_mont_sub_eq
+
+/--
+info: 'Cryptificate.Refinement.BN254Mont.toField_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.BN254Mont.toField_injective
+
+/--
+info: 'Cryptificate.Refinement.BN254Mont.Rinv_spec' depends on axioms: [propext]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.BN254Mont.Rinv_spec
