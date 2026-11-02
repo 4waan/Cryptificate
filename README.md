@@ -138,7 +138,7 @@ Every report labels its origin: **Live** or **Cached exact result**. Editing any
 | 256-instruction circuit with heavy sharing | 4.4–8.5 s |
 | MDS, offsets and activity bound for a fresh matrix | 3.3–8.5 s |
 | HADES: external MDS, internal invertibility, exponent, activity | 3.9–4.4 s |
-| Differential uniformity and linearity of a submitted byte table | 17–18 s |
+| Differential uniformity and linearity of a submitted byte table | 10.5–11.5 s |
 
 **Every push re-checks everything.** [CI](https://github.com/4waan/Cryptificate/actions/workflows/checks.yml) rebuilds the Lean library, runs every certificate example, re-checks the refinement proofs on Lean 4.35 and runs the Rust, Node and Python test suites.
 
