@@ -13,7 +13,7 @@ export interface SavedWorkspace {
   inputs: Snapshot;
   /** The user changed the workspace since the last story step loaded it. */
   dirty: boolean;
-  /** Edits a story step replaced, kept so they can be restored. */
+  /** Edits a story step or a share link replaced, kept so they can be restored. */
   replaced?: { inputs: Snapshot; by: string };
 }
 

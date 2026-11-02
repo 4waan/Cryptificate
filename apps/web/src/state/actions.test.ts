@@ -11,6 +11,7 @@ import {
   redo,
   restoreReplaced,
   restoreWorkspace,
+  SHARED_LINK,
   setDesign,
   setProgram,
   startPersistence,
@@ -168,6 +169,46 @@ describe('share links', () => {
     expect(s.notice?.kind).toBe('info');
     undo();
     expect(getState().design).toEqual(aesDesign());
+  });
+
+  it('keeps edits a share link replaces, across a reload, until restored', async () => {
+    const storage = memoryStorage();
+    const stop = startPersistence(storage);
+    editCell(1, 1, '07');
+    const token = await encodeShare({ design: hadesDesign(7), program: hadesSharedSum(), target: 'external' });
+    await openShareLink(token);
+    expect(getState().design.model).toBe('hades/bn254/v1');
+    expect(getState().replaced?.by).toBe(SHARED_LINK);
+    // The banner says what happened, so no second notice.
+    expect(getState().notice).toBeUndefined();
+    stop(); // flushes the pending save, as leaving the page does
+
+    // A fresh visit: no undo history, but the kept edits come back with the saved workspace.
+    setState(initialState());
+    expect(restoreWorkspace(storage)).toBe(true);
+    expect(getState().history.past).toHaveLength(0);
+    expect(getState().design.model).toBe('hades/bn254/v1');
+    expect(getState().replaced?.by).toBe(SHARED_LINK);
+    restoreReplaced();
+    expect(cell(1, 1)).toBe('07');
+    expect(getState().replaced).toBeUndefined();
+  });
+
+  it('treats the shared inputs as the user workspace', async () => {
+    editCell(0, 0, '07');
+    await openShareLink(await encodeShare({ design: hadesDesign(5), program: hadesSharedSum(), target: 'external' }));
+    expect(getState().dirty).toBe(true);
+    // A later story step keeps the shared inputs, not the older edits.
+    loadInputs({ design: identityDesign(), program: identityProgram() }, { origin: 'story', label: 'Story step 3' });
+    expect(getState().replaced?.by).toBe('Story step 3');
+    expect(getState().replaced?.inputs.design.model).toBe('hades/bn254/v1');
+  });
+
+  it('says so when a link holds the inputs already open', async () => {
+    await openShareLink(await encodeShare({ design: aesDesign(), program: aesSharedSum(), target: 'matrix' }));
+    expect(getState().notice).toBeUndefined();
+    expect(getState().history.past).toHaveLength(0);
+    expect(getState().announcement.text).toMatch(/already in your workspace/);
   });
 
   it('leaves the workspace alone when a link is broken', async () => {

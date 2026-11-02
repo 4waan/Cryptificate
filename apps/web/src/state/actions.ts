@@ -36,11 +36,15 @@ export function setView(view: View): void {
 }
 
 /**
- * Who changed the workspace: the user (editors, presets, imports, share
- * links) or a story step. Story changes never count as user edits; when one
- * replaces user edits, those edits are kept in `replaced` and can be restored.
+ * Who changed the workspace: the user (editors, presets, imports), a share
+ * link, or a story step. Story changes never count as user edits. When a
+ * story step or a share link replaces user edits, those edits are kept in
+ * `replaced` (and saved with the workspace) so they can be restored.
  */
-export type Origin = 'user' | 'story';
+export type Origin = 'user' | 'story' | 'shared';
+
+/** `replaced.by` for edits a share link replaced. */
+export const SHARED_LINK = 'A shared link';
 
 export interface EditOptions {
   origin?: Origin;
@@ -63,6 +67,10 @@ function commit(next: Snapshot, { origin = 'user', group = null, label }: EditOp
   if (origin === 'story') {
     if (s.dirty) patch.replaced = { inputs: before, by: label ?? 'A story step' };
     patch.dirty = false;
+  } else if (origin === 'shared') {
+    // The shared inputs become the user's workspace; earlier edits stay restorable.
+    if (s.dirty) patch.replaced = { inputs: before, by: label ?? SHARED_LINK };
+    patch.dirty = true;
   } else {
     patch.dirty = true;
   }
@@ -215,8 +223,21 @@ export async function makeShareLink(): Promise<string> {
 export async function openShareLink(token: string): Promise<void> {
   try {
     const inputs = await decodeShare(token);
-    loadInputs(inputs);
-    setState({ notice: { kind: 'info', text: 'Loaded the design and circuit from a shared link. Undo returns to your previous workspace.' } });
+    const before = getState();
+    loadInputs(inputs, { origin: 'shared' });
+    const after = getState();
+    if (after.history === before.history) {
+      setState({ notice: undefined });
+      announce('The shared link holds the inputs already in your workspace.');
+      return;
+    }
+    // With edits kept, the "Restore my edits" banner says what happened; otherwise a notice offers Undo.
+    setState({
+      notice:
+        after.replaced && after.replaced !== before.replaced
+          ? undefined
+          : { kind: 'info', text: 'Loaded the design and circuit from a shared link. Undo returns to your previous workspace.' },
+    });
   } catch (e) {
     const why = e instanceof ShareError ? e.message : 'The link could not be read.';
     setState({ notice: { kind: 'error', text: `This share link could not be opened. ${why} Your workspace is unchanged.` } });

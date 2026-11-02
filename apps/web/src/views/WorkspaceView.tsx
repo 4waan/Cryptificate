@@ -14,6 +14,7 @@ import {
   clearNotice,
   dismissReplaced,
   inputProblems,
+  SHARED_LINK,
   restoreReplaced,
   setProgram,
   setView,
@@ -63,7 +64,7 @@ function WorkspaceNotices() {
             Restore my edits
           </button>
           <button type="button" className="btn btn-sm btn-quiet" onClick={dismissReplaced}>
-            Keep the story inputs
+            {replaced.by === SHARED_LINK ? 'Keep the shared inputs' : 'Keep the story inputs'}
           </button>
         </div>
       ) : null}

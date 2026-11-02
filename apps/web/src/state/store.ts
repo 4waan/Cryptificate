@@ -57,7 +57,7 @@ export interface AppState {
   history: History<Snapshot>;
   /** The user changed the workspace since a story step last loaded it. */
   dirty: boolean;
-  /** Workspace edits a story step replaced, kept so they can be restored. */
+  /** Workspace edits a story step or a share link replaced, kept so they can be restored. */
   replaced?: { inputs: Snapshot; by: string };
   /** A message for the workspace: a loaded share link, or why one failed. */
   notice?: { kind: 'info' | 'error'; text: string };
