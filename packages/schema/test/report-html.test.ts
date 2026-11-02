@@ -128,6 +128,14 @@ test('a report shows inputs, digests, exact Lean statements, axioms, counterexam
   assert.equal(reportHtmlFileName(r), `cryptificate-${r.id}.html`);
 });
 
+test('the legend scopes the statement and axiom checks to Lean certificates and names what refinement trusts', () => {
+  const html = renderReportHtml(example('aes-wrong-wire'));
+  assert.ok(html.includes('A Lean certificate (evidence kind <code>lean</code>) is accepted only when its printed statement equals the expected statement'));
+  assert.ok(!html.includes('A Lean proof is accepted only when'));
+  assert.ok(html.includes('For <code>rust.refinement</code> it is an Aeneas refinement proof, checked by Lean'));
+  assert.ok(html.includes('it does not depend on the submitted values and it trusts the Charon/Aeneas translation'));
+});
+
 test('axioms outside the accepted set are pointed out, not hidden', () => {
   const r = example<AnalysisReport>('identity');
   const forged: AnalysisReport = JSON.parse(JSON.stringify(r));
