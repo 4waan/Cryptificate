@@ -1,7 +1,8 @@
 /**
  * The "Check the inputs" step of action.yml, run with bash -e (as Actions
  * runs it) against the built command, the fixture checkout and its fake
- * engine and Lean.
+ * engine and Lean. With empty inputs it applies cryptificate.json; with
+ * inputs it keeps the default policy refuted.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -96,6 +97,41 @@ test('the action step records the exit status of check and still writes SARIF an
     assert.equal(failed.result.failOn, 'refuted');
     assert.match(failed.outputs['sarif-file']!, /cryptificate\.sarif$/);
     assert.ok(failed.junit.includes('<failure type="refuted"'), 'the JUnit file is written although report exits 1');
+  } finally {
+    rmSync(fx.root, { recursive: true, force: true });
+  }
+});
+
+test('the action step reads cryptificate.json when inputs is empty, and defaults to refuted otherwise', () => {
+  const fx = makeFixture();
+  try {
+    const project = join(fx.root, 'project');
+    mkdirSync(join(project, 'designs'), { recursive: true });
+    writeFileSync(join(project, 'designs', 'aes.json'), JSON.stringify(AES_DESIGN));
+    writeFileSync(join(project, 'designs', 'identity.json'), JSON.stringify(IDENTITY_DESIGN));
+    writeFileSync(join(project, 'cryptificate.json'), JSON.stringify({ inputs: ['designs/aes.json'], failOn: 'not-established', claims: ['matrix.mds', 'offsets.dispersion'], format: 'text', bundleDir: 'local' }));
+
+    // empty inputs: the inputs, the policy and the scope of cryptificate.json
+    const fromConfig = runStep(project, fx, {});
+    assert.equal(fromConfig.outputs['exit-code'], '0', fromConfig.log);
+    assert.equal(fromConfig.outputs['outcome'], 'pass');
+    assert.deepEqual([fromConfig.result.failOn, fromConfig.result.claims], ['not-established', ['matrix.mds', 'offsets.dispersion']]);
+    assert.deepEqual(fromConfig.result.results.map((e) => e.input.file), ['designs/aes.json']);
+    assert.match(fromConfig.outputs['sarif-file']!, /cryptificate\.sarif$/);
+
+    // the fail-on input overrides the file
+    writeFileSync(join(project, 'cryptificate.json'), JSON.stringify({ inputs: ['designs/*.json'], failOn: 'none' }));
+    const relaxed = runStep(project, fx, {});
+    assert.equal(relaxed.outputs['exit-code'], '0', relaxed.log);
+    assert.equal(relaxed.result.failOn, 'none');
+    const strict = runStep(project, fx, { INPUT_FAIL_ON: 'refuted' });
+    assert.equal(strict.outputs['exit-code'], '1', strict.log);
+    assert.equal(strict.outputs['outcome'], 'policy-failure');
+
+    // explicit inputs and no fail-on: refuted, as before cryptificate.json existed
+    const explicit = runStep(project, fx, { INPUT_PATTERNS: 'designs/identity.json' });
+    assert.equal(explicit.outputs['exit-code'], '1', explicit.log);
+    assert.equal(explicit.result.failOn, 'refuted');
   } finally {
     rmSync(fx.root, { recursive: true, force: true });
   }

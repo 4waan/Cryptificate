@@ -12,12 +12,16 @@ inputs:
     description: >-
       Design or request files, or patterns (*, ?, [..], **), relative to working-directory and
       separated by spaces or new lines. A request file may hold "design", "program" and "target".
-    required: true
+      Leave it empty to take the inputs, the policy and the claim scope from the nearest
+      cryptificate.json (working-directory or a parent), as cryptificate init writes it.
+    default: ""
   fail-on:
-    description: "Claim statuses that fail the job: none, refuted, not-established or any."
-    default: refuted
+    description: >-
+      Claim statuses that fail the job: none, refuted, not-established or any. Empty: the failOn
+      of cryptificate.json when inputs is empty, otherwise refuted.
+    default: ""
   claims:
-    description: Comma-separated claim ids the policy is restricted to (default every claim the run attempts). An unknown id, or an id an input's report does not carry, fails the job with exit status 2.
+    description: Comma-separated claim ids the policy is restricted to (default the claims of cryptificate.json when inputs is empty, otherwise every claim the run attempts). An unknown id, or an id an input's report does not carry, fails the job with exit status 2.
     default: ""
   target:
     description: "Circuit target for every input: matrix, external or internal (default from each file)."
@@ -205,7 +209,14 @@ runs:
         set -f
         read -r -d '' -a patterns <<< "$INPUT_PATTERNS" || true
         set +f
-        args=(check "${patterns[@]}" --fail-on "$INPUT_FAIL_ON" --format json --output "$out/result.json" --bundle-dir "$out/bundles")
+        # Without inputs, check reads cryptificate.json; its format, output and bundleDir
+        # are replaced by the result files below.
+        args=(check "${patterns[@]}" --format json --output "$out/result.json" --bundle-dir "$out/bundles")
+        if [ -n "$INPUT_FAIL_ON" ]; then
+          args+=(--fail-on "$INPUT_FAIL_ON")
+        elif [ "${#patterns[@]}" -gt 0 ]; then
+          args+=(--fail-on refuted)
+        fi
         [ -n "$INPUT_CLAIMS" ] && args+=(--claims "$INPUT_CLAIMS")
         [ -n "$INPUT_TARGET" ] && args+=(--target "$INPUT_TARGET")
         [ "$INPUT_STEP_SUMMARY" = "true" ] || args+=(--no-step-summary)
