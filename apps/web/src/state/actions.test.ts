@@ -131,7 +131,9 @@ describe('persistence', () => {
     stop();
 
     setState(initialState());
+    expect(getState().storage).toBe('idle');
     expect(restoreWorkspace(storage)).toBe(true);
+    expect(getState().storage).toBe('saved');
     expect(cell(0, 0)).toBe('0A');
     expect(getState().dirty).toBe(true);
   });

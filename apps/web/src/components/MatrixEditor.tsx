@@ -364,7 +364,8 @@ function CopyMenu({ values, field, name, label }: { values: string[][]; field: F
         aria-expanded={open}
         aria-controls={open ? `${id}-menu` : undefined}
         disabled={!valid}
-        title={valid ? `Copy ${label} for code or Sage` : 'Fix the invalid cells to copy the matrix'}
+        title={valid ? `Copy ${label} for code or Sage` : undefined}
+        aria-describedby={valid ? undefined : `${id}-why`}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' && !open) {
@@ -397,6 +398,11 @@ function CopyMenu({ values, field, name, label }: { values: string[][]; field: F
       <span className="small muted" role="status">
         {status}
       </span>
+      {valid ? null : (
+        <span className="small muted" id={`${id}-why`}>
+          Fix the invalid cells to copy.
+        </span>
+      )}
     </div>
   );
 }

@@ -176,7 +176,8 @@ function savedOf(s: AppState): SavedWorkspace {
 export function restoreWorkspace(storage: Pick<Storage, 'getItem'> | null = browserStorage()): boolean {
   const saved = readSavedWorkspace(storage);
   if (!saved) return false;
-  setState({ ...saved.inputs, dirty: saved.dirty, replaced: saved.replaced });
+  // What is on screen now is what this browser holds, so the toolbar can say it is saved.
+  setState({ ...saved.inputs, dirty: saved.dirty, replaced: saved.replaced, storage: 'saved' });
   return true;
 }
 

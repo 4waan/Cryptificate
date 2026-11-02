@@ -43,14 +43,14 @@ function ShareLinkButton({ disabled, reason }: { disabled: boolean; reason?: str
         type="button"
         className="btn btn-sm"
         disabled={disabled}
-        title={disabled ? reason : 'Copy a link that opens this design and circuit'}
+        title={disabled ? undefined : 'Copy a link that opens this design and circuit'}
         aria-describedby={`${id}-status`}
         onClick={() => void share()}
       >
         <IconLink size={14} /> Copy share link
       </button>
       <span id={`${id}-status`} className="small muted share-status" role="status">
-        {status}
+        {disabled ? reason : status}
       </span>
       {manual ? (
         <input
@@ -102,7 +102,9 @@ export function WorkspaceToolbar({ field, problems }: { field: FieldName; proble
       <span className="toolbar-status small muted">
         {storage === 'unavailable'
           ? 'Not saved: this browser blocks local storage.'
-          : 'Saved in this browser.'}
+          : storage === 'saved'
+            ? 'Saved in this browser.'
+            : 'Changes are saved in this browser.'}
       </span>
     </div>
   );
