@@ -1,8 +1,8 @@
 import { isStale, type WorkspaceInputs } from '../lib/canonical';
 import { previewDesign, previewEquivalence, type PreviewItem, type PreviewOutcome } from '../lib/preview';
 import type { AnalysisReport, Claim, ClaimId } from '../lib/types';
-import type { Run } from '../state/store';
-import { IconPreview, StatusPill } from './icons';
+import type { Run, RunState } from '../state/store';
+import { IconPreview, IconWarning, StatusPill } from './icons';
 
 /**
  * Instant checks: browser diagnostics (lib/preview.ts) for the inputs in
@@ -52,28 +52,48 @@ export interface CheckRow {
   claim?: Claim;
 }
 
-/** One row per preview item; the Lean claim replaces the preview when the report is current. */
-export function checkRows(items: PreviewItem[], report: AnalysisReport | null): CheckRow[] {
+/**
+ * One row per preview item; the Lean claim replaces the preview when the
+ * report is current. A report from a run that did not complete (timed out,
+ * failed, stopped) replaces only the claims Lean actually decided: a claim it
+ * left not established because the run ended keeps its preview.
+ */
+export function checkRows(items: PreviewItem[], report: AnalysisReport | null, completed = true): CheckRow[] {
   const claims = new Map(report?.claims.map((c) => [c.id, c]) ?? []);
   return items.map((i) => {
-    const claim = claims.get(i.id);
+    const found = claims.get(i.id);
+    const claim = found && (completed || found.status !== 'not_established') ? found : undefined;
     return { id: i.id, label: SHORT[i.id] ?? i.title, title: i.title, ...(claim ? { claim } : { preview: i }) };
   });
 }
+
+/** How a Lean run that did not complete ended, for the strip's label. */
+export const ENDED_TEXT: Partial<Record<RunState, string>> = {
+  failed: 'Lean check failed',
+  timeout: 'Lean check timed out',
+  cancelled: 'Lean check stopped',
+  invalid: 'Input rejected',
+};
 
 /** The compact strip under the run buttons. */
 export function LiveChecks({
   items,
   report,
+  state = 'completed',
   problems,
 }: {
   items: PreviewItem[];
   report: AnalysisReport | null;
+  /** State of the run the report came from: only a completed run reads "Checked by Lean". */
+  state?: RunState;
   problems: number;
 }) {
-  const rows = checkRows(items, report);
-  const allLean = rows.length > 0 && rows.every((r) => r.claim);
+  const completed = state === 'completed';
+  const rows = checkRows(items, report, completed);
+  const allLean = completed && rows.length > 0 && rows.every((r) => r.claim);
   const someLean = rows.some((r) => r.claim);
+  const running = ['submitting', 'retrying', 'queued', 'running'].includes(state);
+  const ended = report && !completed && !running ? (ENDED_TEXT[state] ?? 'Lean check did not finish') : null;
   if (problems > 0 || !rows.length) {
     return (
       <div className="checks" aria-label="Instant checks">
@@ -85,11 +105,15 @@ export function LiveChecks({
     );
   }
   return (
-    <div className="checks" role="group" aria-label={allLean ? 'Checked by Lean' : 'Instant checks'}>
-      <span className={`checks-label${allLean ? ' checks-label-lean' : ''}`}>
-        {allLean ? 'Checked by Lean' : (
+    <div className="checks" role="group" aria-label={allLean ? 'Checked by Lean' : (ended ?? 'Instant checks')}>
+      <span className={`checks-label${allLean ? ' checks-label-lean' : ended ? ' checks-label-ended' : ''}`}>
+        {allLean ? 'Checked by Lean' : ended ? (
           <>
-            <IconPreview size={14} /> {someLean ? 'Lean results, preview for the rest' : PREVIEW_LABEL}
+            <IconWarning size={14} /> {ended} · {someLean ? 'Lean results where it finished, preview for the rest' : PREVIEW_LABEL}
+          </>
+        ) : (
+          <>
+            <IconPreview size={14} /> {someLean ? `Lean results${running ? ' so far' : ''}, preview for the rest` : PREVIEW_LABEL}
           </>
         )}
       </span>

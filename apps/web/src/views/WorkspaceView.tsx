@@ -214,7 +214,7 @@ export function WorkspaceView() {
             <RunProgress run={(isActive(analysis) ? analysis : experiment)!} compact />
           ) : null}
         </div>
-        <LiveChecks items={preview} report={leanReport} problems={problems.length} />
+        <LiveChecks items={preview} report={leanReport} state={analysis?.state} problems={problems.length} />
       </div>
 
       <WorkspaceToolbar field={design.field} problems={problems.length} />

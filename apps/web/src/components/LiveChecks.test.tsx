@@ -49,6 +49,28 @@ describe('instant checks', () => {
     expect(rows.every((r) => r.preview && !r.claim)).toBe(true);
   });
 
+  it('never reads "Checked by Lean" for a run that timed out, failed or was stopped', () => {
+    // A partial report: Lean decided the MDS claim, the rest were cut off.
+    const partial: AnalysisReport = {
+      ...recorded,
+      claims: recorded.claims.map((c) =>
+        c.id === 'matrix.mds' ? c : { ...c, status: 'not_established' as const },
+      ),
+    };
+    for (const state of ['timeout', 'failed', 'cancelled'] as const) {
+      const report = currentReport(run({ state, report: partial }), inputs);
+      const html = renderToStaticMarkup(<LiveChecks items={previewItems(inputs)} report={report} state={state} problems={0} />);
+      expect(html).not.toContain('Checked by Lean');
+      expect(html).toContain({ timeout: 'Lean check timed out', failed: 'Lean check failed', cancelled: 'Lean check stopped' }[state]);
+      expect(html).not.toContain('status-not_established');
+      expect((html.match(/data-source="lean"/g) ?? []).length).toBe(1);
+      expect((html.match(/data-source="preview"/g) ?? []).length).toBe(4);
+    }
+    const rows = checkRows(previewItems(inputs), partial, false);
+    expect(rows.find((r) => r.id === 'matrix.mds')!.claim?.status).toBe('proved');
+    expect(rows.filter((r) => r.preview)).toHaveLength(4);
+  });
+
   it('asks for fixes instead of showing checks while the inputs have problems', () => {
     const html = renderToStaticMarkup(<LiveChecks items={[]} report={null} problems={2} />);
     expect(html).toContain('Fix the input problems');

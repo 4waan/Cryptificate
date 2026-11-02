@@ -2246,6 +2246,9 @@ input[type='radio'] {
 .checks-label-lean {
   color: var(--accent-text);
 }
+.checks-label-ended {
+  color: var(--warn);
+}
 .checks-list {
   display: flex;
   flex-wrap: wrap;
