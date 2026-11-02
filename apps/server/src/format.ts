@@ -9,7 +9,7 @@ export interface Style {
   status(status: string, text?: string): string;
 }
 
-export function makeStyle(stream: NodeJS.WriteStream): Style {
+export function makeStyle(stream: { isTTY?: boolean }): Style {
   const color = Boolean(stream.isTTY) && !process.env['NO_COLOR'] && process.env['TERM'] !== 'dumb';
   const wrap = (code: string, s: string): string => (color ? `\u001b[${code}m${s}\u001b[0m` : s);
   return {
@@ -57,7 +57,7 @@ export function stepLine(step: Step): string {
   return `${step.name}: ${step.state}${ms}${step.detail ? ` (${step.detail})` : ''}`;
 }
 
-function witnessText(c: Claim): string {
+export function witnessText(c: Claim): string {
   const w = c.witness;
   if (!w) return '';
   switch (w.kind) {

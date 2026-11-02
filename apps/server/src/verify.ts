@@ -24,6 +24,8 @@ export interface VerifyRow {
   recorded: string;
   recomputed: string;
   result: MatchKind;
+  /** Why the recorded claim was not established, when the bundle says (e.g. "not-run"). */
+  reason?: string;
 }
 
 export interface VerifyResult {
@@ -72,7 +74,7 @@ function compareClaims(subject: string, recorded: readonly Claim[], recomputed: 
       rows.push({ subject, claim: rc.id, recorded: rc.status, recomputed: 'missing', result: 'mismatch' });
       continue;
     }
-    rows.push({ subject, claim: rc.id, recorded: rc.status, recomputed: now.status, result: now.status === rc.status ? 'match' : 'mismatch' });
+    rows.push({ subject, claim: rc.id, recorded: rc.status, recomputed: now.status, result: now.status === rc.status ? 'match' : 'mismatch', ...(rc.reason ? { reason: rc.reason } : {}) });
   }
   for (const c of recomputed) {
     if (!recorded.some((r) => r.id === c.id) && RECHECKED.has(c.id)) {
