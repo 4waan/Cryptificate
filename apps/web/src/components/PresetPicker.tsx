@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { FIELD_LABELS, KIND_LABELS, factLabels, searchPresets, type Preset, type PresetKind } from '../lib/library';
 import type { FieldName } from '../lib/types';
 import { applyPreset } from '../state/actions';
-import { IconSearch } from './icons';
+import { IconPreview, IconSearch } from './icons';
 
 const KIND_ORDER: PresetKind[] = ['design', 'matrix', 'sbox', 'circuit'];
 
@@ -134,8 +134,17 @@ export function PresetPicker({ field }: { field: FieldName }) {
       </span>
       {open ? (
         <div className="picker-pop">
+          <p className="picker-legend" id={`${id}-legend`}>
+            <IconPreview size={13} />
+            <span>
+              <span className="chip chip-fact" aria-hidden="true">
+                dashed
+              </span>{' '}
+              chips are quick checks computed in your browser, not Lean proofs. Run Check for evidence.
+            </span>
+          </p>
           {flat.length ? (
-            <ul className="picker-list" role="listbox" id={listId} aria-label="Presets">
+            <ul className="picker-list" role="listbox" id={listId} aria-label="Presets" aria-describedby={`${id}-legend`}>
               {groups.map((g) => (
                 <li key={g.kind} role="presentation">
                   <div className="picker-group" aria-hidden="true">
@@ -163,7 +172,8 @@ export function PresetPicker({ field }: { field: FieldName }) {
                             <span className="chip">{FIELD_LABELS[p.field]}</span>
                             {p.slot && SLOT_TEXT[p.slot] ? <span className="chip">{SLOT_TEXT[p.slot]}</span> : null}
                             {facts.map((f) => (
-                              <span key={f} className="chip chip-fact">
+                              <span key={f} className="chip chip-fact" title="Quick check in your browser, not a Lean proof">
+                                <span className="visually-hidden">Browser check: </span>
                                 {f}
                               </span>
                             ))}
@@ -183,10 +193,7 @@ export function PresetPicker({ field }: { field: FieldName }) {
               No preset matches “{query}”.
             </p>
           )}
-          <p className="picker-foot">
-            Dashed chips are browser previews, re-run by the unit tests, not proofs: Check gives evidence. Loading
-            replaces the workspace inputs; Undo brings them back.
-          </p>
+          <p className="picker-foot">Loading a preset replaces the workspace inputs; Undo brings them back.</p>
         </div>
       ) : null}
     </div>

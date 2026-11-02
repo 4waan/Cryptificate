@@ -2049,6 +2049,24 @@ input[type='radio'] {
 .picker-foot {
   border-top: 1px solid var(--line-strong);
 }
+.picker-legend {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.78rem;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--line-strong);
+}
+.picker-legend > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.picker-legend .chip {
+  min-height: 16px;
+  font-size: 0.72rem;
+}
 .chip {
   display: inline-flex;
   align-items: center;
