@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { WorkspaceInputs } from '../lib/canonical';
+import { emptyHistory, type History } from '../lib/history';
+import type { Snapshot } from '../lib/snapshot';
 import { aesDesign, aesSharedSum } from '../lib/presets';
 import type {
   Capabilities,
@@ -51,6 +53,18 @@ export interface AppState {
   current: { analysis?: string; experiment?: string };
   connection: { status: ConnectionStatus; capabilities?: Capabilities; message?: string };
   theme: Theme;
+  /** Undo/redo over the workspace inputs. */
+  history: History<Snapshot>;
+  /** The user changed the workspace since a story step last loaded it. */
+  dirty: boolean;
+  /** Workspace edits a story step replaced, kept so they can be restored. */
+  replaced?: { inputs: Snapshot; by: string };
+  /** A message for the workspace: a loaded share link, or why one failed. */
+  notice?: { kind: 'info' | 'error'; text: string };
+  /** Whether the workspace is saved in this browser. */
+  storage: 'idle' | 'saved' | 'unavailable';
+  /** Polite announcement for screen readers; `n` makes repeats announce again. */
+  announcement: { text: string; n: number };
   story: {
     runs: Record<string, string>;
     prediction: number | null;
@@ -74,6 +88,10 @@ export const initialState = (): AppState => ({
   current: {},
   connection: { status: replayBuild ? 'replay-build' : 'checking' },
   theme: 'system',
+  history: emptyHistory<Snapshot>(),
+  dirty: false,
+  storage: 'idle',
+  announcement: { text: '', n: 0 },
   story: { runs: {}, prediction: null, revealed: false, rewired: false },
 });
 
@@ -118,6 +136,11 @@ export function isReplayBuild(): boolean {
 /** Live when the local service answers; otherwise recorded runs. */
 export function dataSource(s: AppState): 'live' | 'replay' {
   return s.connection.status === 'connected' ? 'live' : 'replay';
+}
+
+/** The editable inputs as one value: what undo, persistence and share links carry. */
+export function snapshotOf(s: AppState): Snapshot {
+  return { design: s.design, program: s.program, target: s.target };
 }
 
 export function workspaceInputs(s: AppState): WorkspaceInputs {
