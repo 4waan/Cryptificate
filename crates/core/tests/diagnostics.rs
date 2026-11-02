@@ -601,6 +601,29 @@ fn external_matrix_as_internal_is_bypassed() {
     );
 }
 
+#[test]
+fn no_partial_rounds_is_not_a_bypass() {
+    // With zero partial rounds every nonzero difference "passes" them, so a
+    // bypass would be vacuous; the claim does not apply.
+    let mut design = hades(5);
+    design["partialRounds"] = json!(0);
+    let (d, v) = diagnose_json(json!({ "design": design }));
+    assert!(v["partial"]["window"].is_null());
+    assert!(v["partial"]["bypass"].is_null());
+    let c = d.claim(claim_ids::ACTIVITY_PARTIAL).unwrap();
+    assert_eq!(c.predicted, Status::NotEstablished);
+    assert_eq!(c.holds, None);
+    assert!(c.witness.is_none());
+    assert!(c.note.contains("no partial rounds"), "{}", c.note);
+    assert_eq!(
+        d.claim(claim_ids::ACTIVITY_OUTER).unwrap().predicted,
+        Status::Proved
+    );
+    let t = d.claim(claim_ids::ACTIVITY_TOTAL).unwrap();
+    assert_eq!(t.predicted, Status::NotEstablished);
+    assert!(t.note.contains("no partial rounds"), "{}", t.note);
+}
+
 /// `(M^j v)_i` for the masked `i`, computed by repeated multiplication.
 fn stays_zero(m: &Matrix<Bn254>, mask: &[bool], v: &[Bn254], steps: usize) -> bool {
     let mut x = v.to_vec();
@@ -642,6 +665,14 @@ fn partial_analysis_agrees_with_brute_force() {
         let m = bn_matrix(&rows);
         let p = &v["partial"];
         let c = d.claim(claim_ids::ACTIVITY_PARTIAL).unwrap();
+        if rp == 0 {
+            // Zero rounds: neither a window nor a bypass says anything.
+            assert_eq!(c.predicted, Status::NotEstablished);
+            assert_eq!(c.holds, None);
+            assert!(c.witness.is_none());
+            assert!(p["window"].is_null() && p["bypass"].is_null());
+            continue;
+        }
         if let Some(l) = p["window"].as_u64() {
             // Three of the rows at masked positions, powers below L, with a
             // nonzero determinant, and no null vector of the shorter stack.

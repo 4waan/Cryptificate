@@ -4,7 +4,7 @@
   "claim": "activity.partial",
   "status": "refuted",
   "theorem": "CryptificateJob.partial_bypass",
-  "expectedType": "∃ v, v ≠ 0 ∧ { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.Bypass CryptificateJob.candMask v",
+  "expectedType": "0 < CryptificateJob.candPartialRounds ∧ ∃ v, v ≠ 0 ∧ { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.Bypass CryptificateJob.candMask v",
   "placeholders": [],
   "requires": [
     "const_external_bn254",

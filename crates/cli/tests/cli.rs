@@ -433,6 +433,9 @@ fn refutation_cases() -> Vec<(String, String)> {
     // S-boxes on coordinates 0 and 1 in the partial rounds: windows of two.
     let mut two_sboxes = example("designs/poseidon2-bn254.json");
     two_sboxes["partialMask"] = json!([true, true, false]);
+    // No partial rounds: activity.partial does not apply and is not emitted.
+    let mut no_partial = example("designs/poseidon2-bn254.json");
+    no_partial["partialRounds"] = json!(0);
     vec![
         (
             "table-sbox".into(),
@@ -472,6 +475,10 @@ fn refutation_cases() -> Vec<(String, String)> {
         (
             "hades-partial-two-sboxes".into(),
             json!({ "design": two_sboxes }).to_string(),
+        ),
+        (
+            "hades-no-partial".into(),
+            json!({ "design": no_partial }).to_string(),
         ),
     ]
 }

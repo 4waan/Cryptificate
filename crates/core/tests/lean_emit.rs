@@ -780,6 +780,39 @@ fn repo_hades_partial_short_and_planes() {
         claim_ids::ACTIVITY_PARTIAL,
         Status::Refuted,
     );
+    if set.get("partial_bypass_short").is_some() {
+        let x = e
+            .expect
+            .iter()
+            .find(|x| x.claim == claim_ids::ACTIVITY_PARTIAL)
+            .unwrap();
+        // The refutation states that there is a partial round to bypass.
+        assert!(x
+            .expected_type
+            .starts_with("0 < CryptificateJob.candPartialRounds ∧ ∃ v, v ≠ 0 ∧"));
+    }
+    // No partial rounds: a bypass would be vacuous, so activity.partial is
+    // neither proved nor refuted, and activity.total is not emitted either.
+    let e = with(&|d| d["partialRounds"] = json!(0));
+    assert!(e
+        .expect
+        .iter()
+        .all(|x| x.claim != claim_ids::ACTIVITY_PARTIAL && x.claim != claim_ids::ACTIVITY_TOTAL));
+    let s = e
+        .skipped
+        .iter()
+        .find(|s| s.claim == claim_ids::ACTIVITY_PARTIAL)
+        .unwrap();
+    assert_eq!(s.predicted, Status::NotEstablished);
+    assert!(s.reason.contains("no partial rounds"), "{}", s.reason);
+    assert!(!e.source.contains("witnessBypass"));
+    expect_claim(
+        &set,
+        &e,
+        "hades_activity",
+        claim_ids::ACTIVITY_OUTER,
+        Status::Proved,
+    );
     // A first row (2, 0, 0) keeps the plane x0 = 0 invariant.
     let e = with(&|d| d["internal"] = json!([["2", "0", "0"], ["1", "2", "1"], ["1", "1", "3"]]));
     expect_claim(

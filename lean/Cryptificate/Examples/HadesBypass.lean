@@ -10,7 +10,7 @@ determinant `4`, `5` is a permutation exponent, and the full rounds activate at 
 S-boxes. The partial rounds can add none: the internal matrix fixes `v = [0, 1, -1]`, whose
 coordinate `0` is zero, so for every choice of round constants two states that differ by `v` when
 they enter the partial rounds feed equal inputs to the S-box of every one of the `56` partial
-rounds (`partial_bypass`). The kernel checks `v ≠ 0`, that `v` and the zero vector (the second
+rounds (`partial_bypass`). The kernel checks `0 < 56`, `v ≠ 0`, that `v` and the zero vector (the second
 spanning vector of a line) vanish at coordinate `0`, and `M v = 1 • v + 0 • 0`, `M 0 = 0 • v + 0 • 0`;
 `Hades.powers_zero_of_invariant2` and `Hades.Design.bypass_of_powers` do the rest for every round.
 
@@ -136,20 +136,22 @@ theorem hades_activity :
         fullRounds := candFullRounds, partialRounds := candPartialRounds }
       external_mds internal_invertible power_bijective mask constants hxy
 
-/-- Claim `activity.partial`, refuted: a nonzero difference passes all `candPartialRounds` partial
-rounds with no active S-box. For every choice of round constants and every state `z` entering the
+/-- Claim `activity.partial`, refuted: the design has at least one partial round, and a nonzero
+difference passes all `candPartialRounds` of them with no active S-box. (With no partial rounds
+every difference would pass them vacuously; the first conjunct rules that reading out.) For every choice of round constants and every state `z` entering the
 first partial round, the runs from `z` and from `z + v` feed equal inputs to every S-box at the
 positions of `candMask` in every partial round. The witness `v` is `witnessBypass`: it and
 `witnessBypassSpan` are zero on every masked position and `candInternal` maps their span into
 itself with the coefficients `witnessBypassCoeffs` (`Hades.powers_zero_of_invariant2`), so every
 power of `candInternal` keeps `v` at zero on the mask (`Hades.Design.bypass_of_powers`). -/
 theorem partial_bypass :
-    ∃ v : Fin 3 → Poseidon2.BN254.F, v ≠ 0 ∧
-      Hades.Design.Bypass
-        { external := candExternal, internal := candInternal, exponent := candExponent,
-          fullRounds := candFullRounds, partialRounds := candPartialRounds }
-        candMask v :=
-  ⟨witnessBypass, by decide,
+    0 < candPartialRounds ∧
+      ∃ v : Fin 3 → Poseidon2.BN254.F, v ≠ 0 ∧
+        Hades.Design.Bypass
+          { external := candExternal, internal := candInternal, exponent := candExponent,
+            fullRounds := candFullRounds, partialRounds := candPartialRounds }
+          candMask v :=
+  ⟨by decide, witnessBypass, by decide,
     Hades.Design.bypass_of_powers
       { external := candExternal, internal := candInternal, exponent := candExponent,
         fullRounds := candFullRounds, partialRounds := candPartialRounds }

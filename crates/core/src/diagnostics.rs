@@ -575,6 +575,10 @@ impl<F: Field> PartialBypass<F> {
 /// of `i`, and a row is kept when it raises the rank. Once one power adds
 /// nothing the row space stops growing, so full rank, if it comes at all,
 /// comes within `width` powers.
+///
+/// A design with no partial rounds has nothing to charge and nothing to
+/// bypass: `window` and `bypass` are then both `None`, and the claim
+/// `activity.partial` does not apply.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PartialAnalysis<F> {
@@ -589,7 +593,7 @@ pub struct PartialAnalysis<F> {
     pub rows: Vec<ObservabilityRow<F>>,
     /// The determinant of the kept rows, when there are `width` of them.
     pub determinant: Option<F>,
-    /// A bypass, when `window` is `None`.
+    /// A bypass, when `window` is `None` and there are partial rounds.
     pub bypass: Option<PartialBypass<F>>,
 }
 
@@ -624,6 +628,18 @@ pub fn analyze_partial<F: Field>(
 ) -> PartialAnalysis<F> {
     let n = m.len();
     let positions: Vec<usize> = (0..n).filter(|&i| mask.get(i) == Some(&true)).collect();
+    if partial_rounds == 0 {
+        // Every difference avoids the S-boxes of zero rounds; that is no
+        // bypass of anything.
+        return PartialAnalysis {
+            positions,
+            partial_rounds,
+            window: None,
+            rows: Vec::new(),
+            determinant: None,
+            bypass: None,
+        };
+    }
     // `stack[j]` holds the rows e_i M^j for the masked i.
     let mut stack: Vec<Vec<Vec<F>>> = Vec::new();
     let mut current: Vec<Vec<F>> = positions.iter().map(|&i| basis(n, i)).collect();
@@ -721,6 +737,9 @@ fn partial_note<F: Field>(p: &PartialAnalysis<F>) -> String {
             p.partial_rounds,
             plural(p.partial_rounds)
         ),
+        (None, None) => "not applicable: the design has no partial rounds, so there is no \
+                         partial-round S-box to activate or to bypass"
+            .into(),
         _ => format!(
             "no nonzero difference avoids the masked positions forever, but one stays at zero \
              on them through the design's {} partial round{}, so it passes them with no active \
@@ -1047,6 +1066,10 @@ fn diagnose_hades(
             Some(_) => "not established by this method: the bound needs an MDS external \
                         matrix, an invertible internal matrix and a bijective power map"
                 .into(),
+            None if d.partial_rounds == 0 => "not established by this method: the design has \
+                no partial rounds, so every S-box is in the full rounds and activity.outer gives \
+                the bound; no certificate is emitted for this claim"
+                .into(),
             None => "not established by this method: the bound needs every window of some \
                      length inside the partial rounds to be charged, and a nonzero difference \
                      passes them with no active S-box"
@@ -1121,12 +1144,24 @@ fn diagnose_hades(
             witness: None,
             note: activity.reason.clone(),
         },
-        ClaimPrediction::decided(
-            claim_ids::ACTIVITY_PARTIAL,
-            partial.window.is_some(),
-            partial.to_witness(),
-            partial_note(&partial),
-        ),
+        if d.partial_rounds == 0 {
+            // `L <= RP` fails for every window length and every nonzero
+            // difference passes zero rounds: neither outcome says anything.
+            ClaimPrediction {
+                claim: claim_ids::ACTIVITY_PARTIAL,
+                predicted: Status::NotEstablished,
+                holds: None,
+                witness: None,
+                note: partial_note(&partial),
+            }
+        } else {
+            ClaimPrediction::decided(
+                claim_ids::ACTIVITY_PARTIAL,
+                partial.window.is_some(),
+                partial.to_witness(),
+                partial_note(&partial),
+            )
+        },
         ClaimPrediction {
             claim: claim_ids::ACTIVITY_TOTAL,
             predicted: if total_applicable {
