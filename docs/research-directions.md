@@ -39,15 +39,15 @@ Cryptificate builds on the [WideTrail](https://github.com/4waan/Wide-Trail-forma
 - `Differential`: exact differential-count identities, independent-round-key trail bounds, and small examples separating fixed-key from key-averaged behaviour.
 - `Poseidon2/BN254`: bijectivity, external MDS mixing and an outer-round activity bound for the pinned width-three instance.
 
-Cryptificate adds fresh-input certificates (canonical minors, checked counterexamples, offsets, activity instantiation), a universal circuit-equivalence checker, S-box and exponent certificates, an optimizer, a native measurement harness, the Rust refinement chain, and replayable bundles.
+Cryptificate adds fresh-input certificates (canonical minors, checked counterexamples, offsets, activity instantiation, partial-round windows and bypasses), a universal circuit-equivalence checker, S-box and exponent certificates, an optimizer, a native measurement harness, the Rust refinement chain, and replayable bundles.
 
 ## 1. Audit diffusion changes and implementation substitutions
 
 *Implemented.* Two equivalent circuits implement the same matrix and therefore have the same diffusion; a changed matrix needs fresh evidence. Cryptificate checks circuit equivalence, matrix properties and round-template prerequisites separately. A failing branch-bound claim comes with a checked nonzero `v` whose combined weight in `v` and `Mv` is too small; a circuit mismatch comes with a checked distinguishing input. Fewer operations or faster execution is not evidence of stronger security.
 
-## 2. Partial rounds that miss a subspace (proposed)
+## 2. Partial rounds that miss a subspace
 
-Can a nonzero difference pass through a sequence of partial rounds without reaching an active S-box? Linear-layer choices affect middle-round behaviour even when every matrix is MDS ([Keller and Rosemarin, *Mind the Middle Layer*](https://eprint.iacr.org/2020/179)).
+*Implemented for width-three HADES designs over BN254, as the claims `activity.partial` and `activity.total`.* Can a nonzero difference pass through a sequence of partial rounds without reaching an active S-box? Linear-layer choices affect middle-round behaviour even when every matrix is MDS ([Keller and Rosemarin, *Mind the Middle Layer*](https://eprint.iacr.org/2020/179)).
 
 A concrete example over the pinned prime field: use
 
@@ -57,13 +57,18 @@ M = [2 1 1]      v = [0, 1, -1]
     [1 1 2]
 ```
 
-as the repeated internal matrix of a partial round whose S-box touches only coordinate 0. Then `Mv = v` and `v₀ = 0`, so two states differing by `v` feed equal values to the only S-box, and the difference stays `v` forever. This matrix is the pinned *external* matrix; using it as the internal matrix is a deliberately different construction. The pinned internal matrix is `[[2,1,1],[1,2,1],[1,1,3]]`.
+as the repeated internal matrix of a partial round whose S-box touches only coordinate 0. Then `Mv = v` and `v₀ = 0`, so two states differing by `v` feed equal values to the only S-box, and the difference stays `v` forever. This matrix is the pinned *external* matrix; using it as the internal matrix is a deliberately different construction. The pinned internal matrix is `[[2,1,1],[1,2,1],[1,1,3]]`. The design is [`examples/designs/poseidon2-bypass.json`](../examples/designs/poseidon2-bypass.json); its report refutes `activity.partial` with the witness `[0, 1, -1]` while every full-round claim still holds.
 
-Mechanism to build: constrain every active S-box coordinate to zero difference at its round input; along such a path differences propagate linearly, so the constraints are products of round matrices. An external analyzer proposes a kernel vector or basis; Lean checks nonzeroness, the constraints and the propagation theorem. A zero kernel only rules out this particular bypass under the modeled constraints.
+### What is proved
 
-### A stronger-bound target (proposed, not proved)
+`lean/Cryptificate/Hades/Partial.lean` proves, for any field, width and partial-round mask:
 
-With only coordinate 0 nonlinear and a repeated matrix `M`, stack `O_L = [e₀; e₀M; …; e₀M^(L-1)]`. If `O_L` has full column rank, no nonzero difference keeps the active coordinate zero for `L` consecutive partial rounds. For the pinned internal matrix,
+- **Inactivity lemma.** A partial round in which two states agree at every masked position multiplies their difference by the internal matrix `M` (`Design.round_sub_of_agree`), so along `L` such rounds the difference after `j` rounds is `Mʲ d` (`Design.run_sub_of_agree`). The round constants cancel.
+- **Bypass.** If `(Mʲ v)ᵢ = 0` for every masked `i` and every `j` below the number of partial rounds, then for every choice of round constants and every state `z` entering the first partial round, the runs from `z` and `z + v` give equal inputs to every masked S-box of every partial round (`Design.Bypass`, `Design.bypass_of_powers`). The certificate is an invariant subspace: at most two vectors that vanish on the mask and that `M` maps into their span with explicit coefficients (`powers_zero_of_invariant2`), so the kernel checks a few products however many partial rounds there are. At width three every bypass of more than two partial rounds has this form; a design with at most two partial rounds is checked directly (`powers_zero_of_short`).
+- **Charged windows.** If the stacked rows `eᵢ Mʲ`, `i` masked and `j < L`, have full column rank (`Observable`; certified at width three by three of them with a nonzero `3 × 3` determinant, `observable_of_rows3`), then for every choice of round constants, every window of `L` consecutive partial rounds and every two distinct states entering it, some masked S-box of the window receives different inputs (`Design.WindowActive`). With `L` at most the number of partial rounds this rules out every bypass (`Design.not_bypass_of_windowActive`), so the two certificates never both exist. For every width-three design one of them does: either the stacked rows reach full rank within the partial rounds, or they have a nonzero null vector, and the engine emits the corresponding certificate.
+- **Whole-permutation bound.** Under the hypotheses of the full-round bound (MDS external matrix, invertible internal matrix, bijective `x ↦ x^e`), two distinct inputs stay distinct at every round, the partial rounds hold `⌊RP / L⌋` disjoint charged windows, and the active S-boxes of the full and partial rounds together number at least `outerBound + ⌊RP / L⌋` (`Design.total_activity`).
+
+For the pinned internal matrix and mask `{0}`,
 
 ```text
 O_3 = [1 0 0]
@@ -71,7 +76,13 @@ O_3 = [1 0 0]
       [6 5 6]
 ```
 
-which suggests at least one charged S-box per three consecutive partial rounds: 18 disjoint blocks in 56 partial rounds, plus the 16 outer-round applications already proved, for a total lower bound of **34** on actual distinct execution pairs. This is a target: the inactivity lemma, rank implication, schedule indices, disjoint block sum and the combination with the outer bound are not yet proved in Lean. It is neither a tightness result nor a security level. Related subspace-trail criteria exist ([Grassi, Rechberger and Schofnegger](https://eprint.iacr.org/2020/500)); the contribution would be a scoped formalization with reusable checked certificates.
+so every three consecutive partial rounds activate the S-box of coordinate 0: 18 disjoint windows in 56 partial rounds, plus the 16 full-round applications, for a total lower bound of **34** active S-boxes over the whole permutation for any two distinct inputs and any round constants (`Hades.reference_total_activity`, and the `activity.total` certificate of the pinned instance).
+
+The engine finds the window length `L` by scanning the rows `eᵢ Mʲ` in order and keeping those that raise the rank, and finds a bypass as the null space of the stacked rows for `j` below the width, which is the largest subspace that every power of `M` keeps at zero on the mask. Neither computation is trusted: Lean checks the determinant, or the invariance and vanishing of the subspace, for the submitted matrix and mask.
+
+### Scope and limits
+
+The bound counts S-boxes with a nonzero input difference in two executions with the same round constants. It is neither a tightness result nor a security level, it says nothing about probabilities, and one charged S-box per window is all it extracts from the partial rounds; a sharper count of the partial rounds, or bounds across the boundary between full and partial rounds, would need a further argument. The certificates are written for width three over BN254, the only HADES width the tool accepts; the library lemmas other than `observable_of_rows3` hold at every width. Related subspace-trail criteria exist ([Grassi, Rechberger and Schofnegger](https://eprint.iacr.org/2020/500)); the contribution is a scoped formalization with reusable checked certificates.
 
 ## 3. Tighter activity bounds from checked search (proposed)
 

@@ -21,7 +21,7 @@ Cryptificate is a local application. A loopback Node service orchestrates three 
 
 | Path | Role | Trusted for soundness? |
 |---|---|---|
-| `lean/Cryptificate` | Generic theorems proved once: circuit interpretation, canonical-minor MDS certificates, counterexample lemmas, offsets, activity instantiation, S-box and exponent certificates, HADES bounds, audit commands. | Yes (checked by the Lean kernel) |
+| `lean/Cryptificate` | Generic theorems proved once: circuit interpretation, canonical-minor MDS certificates, counterexample lemmas, offsets, activity instantiation, S-box and exponent certificates, HADES full-round and partial-round bounds, audit commands. | Yes (checked by the Lean kernel) |
 | `lean/templates` | Certificate fragments with placeholders. A certificate is a concatenation of fragments with the request's values substituted. | No: acceptance checks bind every theorem to the request. |
 | `crates/core`, `crates/cli` | Validation, canonical encodings, unchecked diagnostics (minors, Gaussian-elimination witnesses, collisions), certificate emission. | No |
 | `crates/search` | Bounded optimizer. Every candidate is an untrusted proposal. | No |

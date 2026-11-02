@@ -83,6 +83,7 @@ From the terminal:
 ```sh
 npx cryptificate check examples/designs/aes-row-scaled.json
 npx cryptificate check examples/designs/aes.json --program examples/programs/aes-wrong-wire.json
+npx cryptificate check examples/designs/poseidon2-bypass.json
 npx cryptificate experiment examples/designs/aes.json --program examples/programs/aes-known-shared-sum.json --profile quick
 npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 ```
@@ -112,6 +113,7 @@ The [adopter guide](docs/adopter-guide.md) walks through a first design end to e
 | Active S-boxes over `r` rounds | For any injective S-box and any round keys, two different inputs differ at no fewer than `⌊r/4⌋·25 + (5 if r mod 4 ≥ 2)` S-box inputs | 25 for 4 rounds, 55 for 10, 200 for 32 |
 | The S-box is a permutation | An inverse table for byte S-boxes, an inverse exponent for BN254 power maps | `x³` over BN254 caught by a collision |
 | HADES outer rounds | WideTrail's outer-round bound for your external and internal matrices | 16 active S-boxes over 8 full rounds |
+| HADES partial rounds | Three rows `eᵢ Mʲ` of the internal matrix's powers at the partial-round S-box positions with a nonzero determinant: every `L` consecutive partial rounds activate an S-box, for any round constants. Otherwise a nonzero difference that every power of `M` keeps at zero there, checked through an invariant subspace, passes all partial rounds with no active S-box | the pinned internal matrix: `L = 3` (determinant 1), so at least 16 + ⌊56/3⌋ = 34 active S-boxes over all 64 rounds; the external matrix reused as internal matrix: `[0, 1, -1]` bypasses all 56 partial rounds |
 | The Rust source computes the model | Charon and Aeneas translate the Rust kernels to Lean, where they are proved equal to the model | GF(2⁸) arithmetic and the full AES-like round, for every design |
 | The generated Rust is correct | 9,214 test inputs per GF(2⁸) variant (8,278 for BN254) before any timing | a fast but wrong circuit is kept off the leaderboard |
 | It is faster on your machine | 15 paired rounds per workload, 95% bootstrap intervals, two fresh confirmation sessions | ratios with intervals for every candidate and baseline |
@@ -136,7 +138,8 @@ Every report labels its origin: **Live** or **Cached exact result**. Editing any
 | Wrong-wire circuit, checked witness | 3.1 s |
 | 256-instruction circuit with heavy sharing | 4.4–8.5 s |
 | MDS, offsets and activity bound for a fresh matrix | 3.3–8.5 s |
-| HADES: external MDS, internal invertibility, exponent, activity | 3.9–4.4 s |
+| HADES: external MDS, internal invertibility, exponent, full-round activity | 3.9–4.4 s |
+| HADES with the partial rounds: window certificate and whole-permutation bound, or a bypass | 3.9–4.8 s |
 
 **Every push re-checks everything.** [CI](https://github.com/4waan/Cryptificate/actions/workflows/checks.yml) rebuilds the Lean library, runs every certificate example, re-checks the refinement proofs on Lean 4.35 and runs the Rust, Node and Python test suites.
 
@@ -187,7 +190,7 @@ npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 
 | Path | What it holds |
 |---|---|
-| [`lean/`](lean) | Circuit semantics, canonical-minor MDS certificates, counterexample lemmas, offsets, the execution bridge, S-box and exponent certificates, HADES bounds, the audit command and the certificate templates |
+| [`lean/`](lean) | Circuit semantics, canonical-minor MDS certificates, counterexample lemmas, offsets, the execution bridge, S-box and exponent certificates, HADES full-round and partial-round bounds, the audit command and the certificate templates |
 | [`refinement/`](refinement) | Charon/Aeneas translations of `crates/kernels` and the gf256 crate, with their Lean proofs |
 | [`crates/`](crates) | `core` (validation, diagnostics, certificate emission), `cli` (`cryptificate-engine`), `search`, `native` (code generation and timing harness), `kernels` |
 | [`apps/server`](apps/server) | HTTP API, job queue, proof acceptance, bundles and the `cryptificate` CLI |
