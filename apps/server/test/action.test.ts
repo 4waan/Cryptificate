@@ -139,6 +139,15 @@ test('the action step reads cryptificate.json when inputs is empty, and defaults
     assert.equal(strict.outputs['exit-code'], '1', strict.log);
     assert.equal(strict.outputs['outcome'], 'policy-failure');
 
+    // a file without failOn: refuted
+    writeFileSync(join(project, 'cryptificate.json'), JSON.stringify({ inputs: ['designs/*.json'] }));
+    const unset = runStep(project, fx, {});
+    assert.equal(unset.outputs['exit-code'], '1', unset.log);
+    assert.equal(unset.result.failOn, 'refuted');
+    assert.doesNotMatch(unset.log, /::warning::/);
+    // the policy none is kept, with a warning in the log
+    assert.match(relaxed.log, /::warning::Cryptificate: the policy is none, so no claim status fails this job/);
+
     // explicit inputs and no fail-on: refuted, as before cryptificate.json existed
     const explicit = runStep(project, fx, { INPUT_PATTERNS: 'designs/identity.json' });
     assert.equal(explicit.outputs['exit-code'], '1', explicit.log);

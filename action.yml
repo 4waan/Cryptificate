@@ -17,8 +17,8 @@ inputs:
     default: ""
   fail-on:
     description: >-
-      Claim statuses that fail the job: none, refuted, not-established or any. Empty: the failOn
-      of cryptificate.json when inputs is empty, otherwise refuted.
+      Claim statuses that fail the job: none, refuted, not-established or any. Empty: refuted, or
+      the failOn of cryptificate.json when inputs is empty and the file sets one.
     default: ""
   claims:
     description: Comma-separated claim ids the policy is restricted to (default the claims of cryptificate.json when inputs is empty, otherwise every claim the run attempts). An unknown id, or an id an input's report does not carry, fails the job with exit status 2.
@@ -231,6 +231,9 @@ runs:
         [ "$code" -eq 1 ] && outcome=policy-failure
         sarif=""
         if [ -f "$out/result.json" ]; then
+          if grep -q '^  "failOn": "none",' "$out/result.json"; then
+            echo "::warning::Cryptificate: the policy is none, so no claim status fails this job. Set fail-on, or failOn in cryptificate.json."
+          fi
           # report exits with the recorded policy's status; the files are written either way.
           # The SARIF file locations are relative to the repository root, as code scanning reads them.
           node "$cli" report "$out/result.json" --format sarif --output "$out/cryptificate.sarif" --uri-base "${GITHUB_WORKSPACE:-$PWD}" --no-step-summary > /dev/null || true

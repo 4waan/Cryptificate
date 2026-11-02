@@ -18,7 +18,7 @@
       "items": { "type": "string", "minLength": 1 }
     },
     "failOn": {
-      "description": "Claim statuses that fail the run, as --fail-on. Default none.",
+      "description": "Claim statuses that fail the run, as --fail-on. Default refuted (the command-line default without this file is none).",
       "enum": ["none", "refuted", "not-established", "any"]
     },
     "claims": {

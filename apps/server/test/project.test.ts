@@ -178,6 +178,19 @@ test('an invalid or missing configuration is a usage error (exit 2) with every p
   });
 });
 
+test('a cryptificate.json without failOn gates on refuted claims; without the file the default stays none', async () => {
+  await withProject(async (fx) => {
+    writeConfig(fx, { inputs: ['designs/*.json'] });
+    const r = await runCli(fx, ['check', '-q', '--format', 'json']);
+    assert.equal(r.code, 1, r.stderr);
+    assert.equal((JSON.parse(r.stdout) as CheckRun).failOn, 'refuted');
+    // inputs on the command line do not read the file
+    const plain = await runCli(fx, ['check', '-q', 'designs/identity.json', '--format', 'json']);
+    assert.equal(plain.code, 0, plain.stderr);
+    assert.equal((JSON.parse(plain.stdout) as CheckRun).failOn, 'none');
+  });
+});
+
 type Sarif = { runs: { results: { ruleId: string; locations: { physicalLocation: { artifactLocation: { uri: string }; region?: { startLine: number } } }[] }[] }[] };
 
 function matrixLocation(sarif: Sarif): { uri: string; line: number | undefined } {

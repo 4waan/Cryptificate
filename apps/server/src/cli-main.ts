@@ -377,7 +377,8 @@ async function cmdCheck(argv: string[], io: Io): Promise<number> {
   const gate = gateOptions({
     format: values.format ?? cfg?.format,
     output: flagPath(values.output) ?? cfgPath(cfg?.output),
-    'fail-on': values['fail-on'] ?? cfg?.failOn,
+    // a cryptificate.json without failOn gates on refuted claims
+    'fail-on': values['fail-on'] ?? cfg?.failOn ?? (project ? 'refuted' : undefined),
     claims: values.claims ?? cfg?.claims,
     'no-step-summary': values['no-step-summary'],
     'uri-base': values['uri-base'],
