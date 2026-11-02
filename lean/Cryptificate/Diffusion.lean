@@ -4,6 +4,7 @@ import Cryptificate.Diffusion.Offsets
 import Cryptificate.Diffusion.Activity
 import Cryptificate.Bridge
 import Cryptificate.Sbox
+import Cryptificate.Sbox.Quality
 import Cryptificate.Diffusion.Echo
 
 /-!
@@ -25,5 +26,7 @@ small concrete computation:
 * `Sbox`: byte S-boxes given as tables; an inverse table certifies bijectivity and a
   collision refutes injectivity. WideTrail's AES S-box is checked against the table of
   FIPS 197.
+* `Sbox.Quality`: the differential uniformity and the linearity of a byte S-box, checked
+  exactly on its table with a witness attaining each value; `4` and `32` for the AES S-box.
 * `Diffusion.Echo`: the request encoding of an S-box, for the certificate's input echo.
 -/

@@ -1,0 +1,17 @@
+{
+  "name": "sbox_linearity",
+  "kind": "claim",
+  "claim": "sbox.linearity",
+  "status": "proved",
+  "theorem": "CryptificateJob.sbox_linearity",
+  "expectedType": "Cryptificate.linearity CryptificateJob.candSboxTable = {{LIN}} ∧ Cryptificate.gf {{LIN_B}} ≠ 0 ∧ (Cryptificate.walsh CryptificateJob.candSboxTable (Cryptificate.gf {{LIN_A}}) (Cryptificate.gf {{LIN_B}})).natAbs = {{LIN}}",
+  "placeholders": [
+    "LIN",
+    "LIN_A",
+    "LIN_B"
+  ],
+  "requires": [
+    "const_sbox_table"
+  ],
+  "field": "gf256"
+}
