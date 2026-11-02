@@ -53,7 +53,7 @@ KERNELS = {
     },
     'aes-like-checked': {
         'title': ('Active-S-box bound of the AES-like kernel of crates/kernels for designs that pass '
-                  'the kernel-checked design checks'),
+                  'the kernel-checked design checks, and for AES'),
         'appliesTo': {'model': 'aes-like/gf256/v1'},
         'rust': ['crates/kernels/src/aes_like.rs', 'crates/kernels/src/gf256.rs',
                  'refinement/rust/kernels.rs'],
@@ -61,7 +61,8 @@ KERNELS = {
         'proof': 'refinement/Refinement/AesConcrete.lean',
         'spec': ('Cryptificate.activityBound and the active-S-box count of the main Lean package, '
                  'with the design checks minors4Ok (canonical minors), distinct offsets and a '
-                 'byte table covering every value'),
+                 'byte table covering every value; for AES, the main package encodings gfMat4, '
+                 'offsets4 and the FIPS 197 table aesSboxTable, equal to WideTrail AES.sbox'),
         # Compiled by this package (Lean v4.35.0) from the main package's source files.
         'specSources': ['lean/Cryptificate/Bridge.lean',
                         'lean/Cryptificate/Diffusion/Activity.lean',
@@ -86,11 +87,14 @@ ENOUGH_KEYS = ('at least `rounds` round keys (rounds <= round_keys.len()); with 
 DESIGN_HYPOTHESES = ('IsMDS (matrixOf m), DiffusionOptimal offsets and an S-box table without '
                      'repeated entries are hypotheses of this theorem; '
                      'aes_like_encrypt_activity_bound_of_checks (kernel aes-like-checked) derives '
-                     'them in this package from Boolean checks on the bytes; the main package '
-                     'certificates (Lean v4.33.1) are not combined with it in one Lean environment')
+                     'them in this package from Boolean checks on the bytes, and the AES instance '
+                     'has none; the main package certificates (Lean v4.33.1) are not combined with '
+                     'it in one Lean environment')
 
 CHECKS = ('the design checks are hypotheses, each a Boolean the kernel evaluates for concrete '
           'bytes: minors4Ok (matrixOf m) = true, offsetsDistinct o = true, tableCovers t = true')
+AES_ONLY = ('no design hypothesis: the AES matrix, offsets and FIPS 197 S-box table are fixed byte '
+            'arrays, checked by the kernel; different input states (x != y); no special last round')
 
 # theorem -> (kernel, hypotheses and preconditions in words; the statement has them formally)
 THEOREMS = [
@@ -110,6 +114,17 @@ THEOREMS = [
     ('Cryptificate.Refinement.sboxOf_injective_of_tableCovers', 'aes-like-checked', []),
     ('Cryptificate.Refinement.aes_like_encrypt_activity_bound_of_checks', 'aes-like-checked',
      [CHECKS, 'at least r round keys (r <= round_keys.len())']),
+    ('Cryptificate.Refinement.matrixOf_aesMatrixBytes', 'aes-like-checked', []),
+    ('Cryptificate.Refinement.offsetsOf_aesOffsetBytes', 'aes-like-checked', []),
+    ('Cryptificate.Refinement.sboxOf_aesSboxBytes', 'aes-like-checked', []),
+    ('Cryptificate.Refinement.aes_rust_activity_bound', 'aes-like-checked',
+     [AES_ONLY, 'at least r round keys (r <= round_keys.len())']),
+    ('Cryptificate.Refinement.aes_rust_activity_bound_exists', 'aes-like-checked',
+     [AES_ONLY, 'at least r round keys (r <= round_keys.len())']),
+    ('Cryptificate.Refinement.aes_rust_activity_bound_10', 'aes-like-checked',
+     [AES_ONLY, 'at least 10 round keys']),
+    ('Cryptificate.Refinement.aes_rust_activity_bound_4', 'aes-like-checked',
+     [AES_ONLY, 'at least 4 round keys']),
     ('Cryptificate.Refinement.Gf256Crate.gf256crate_mul_refines', 'gf256-crate',
      ['SizeOfU8: core::mem::size_of::<u8>() returns 1 (not modelled by the Aeneas library; '
       'the extraction declares gf256_aes.core.mem.size_of as an uninterpreted function)']),
