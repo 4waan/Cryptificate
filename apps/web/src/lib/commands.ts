@@ -29,32 +29,48 @@ function subsequence(needle: string, hay: string): boolean {
   return i === needle.length;
 }
 
-/**
- * Scores a command against the query words: 0 means no match. Every query
- * word must match. A word that starts a label word scores highest, then a
- * substring of the label, then the group or keywords, then letters in order.
- */
-export function scoreCommand(c: Command, query: string[]): number {
-  if (!query.length) return 1;
+/** Letters in order inside one label word that starts with the same letter ("wrkspc" in "workspace"). */
+function fuzzyWord(q: string, labelWords: string[]): boolean {
+  return q.length > 1 && labelWords.some((w) => w[0] === q[0] && subsequence(q, w));
+}
+
+/** Scores and whether any query word matched only by letters in order. */
+function match(c: Command, query: string[]): { score: number; fuzzy: boolean } {
+  if (!query.length) return { score: 1, fuzzy: false };
   const label = c.label.toLowerCase();
   const labelWords = words(c.label);
   const extra = `${c.group} ${c.keywords ?? ''}`.toLowerCase();
   let score = 0;
+  let fuzzy = false;
   for (const q of query) {
     if (labelWords.some((w) => w.startsWith(q))) score += 8;
     else if (label.includes(q)) score += 5;
     else if (extra.includes(q)) score += 3;
-    else if (q.length > 1 && subsequence(q, label)) score += 1;
-    else return 0;
+    else if (fuzzyWord(q, labelWords)) {
+      score += 1;
+      fuzzy = true;
+    } else return { score: 0, fuzzy: false };
   }
-  return score;
+  return { score, fuzzy };
 }
 
+/**
+ * Scores a command against the query words: 0 means no match. Every query
+ * word must match. A word that starts a label word scores highest, then a
+ * substring of the label, then the group or keywords, then letters in order
+ * within one label word.
+ */
+export function scoreCommand(c: Command, query: string[]): number {
+  return match(c, query).score;
+}
+
+/**
+ * The commands matching the query, best first. Letters-in-order matches
+ * are a last resort: they are listed only when nothing matches better.
+ */
 export function filterCommands(query: string, commands: Command[]): Command[] {
   const q = words(query);
-  return commands
-    .map((c, i) => ({ c, i, s: scoreCommand(c, q) }))
-    .filter((x) => x.s > 0)
-    .sort((a, b) => b.s - a.s || a.i - b.i)
-    .map((x) => x.c);
+  const scored = commands.map((c, i) => ({ c, i, ...match(c, q) })).filter((x) => x.score > 0);
+  const exact = scored.filter((x) => !x.fuzzy);
+  return (exact.length ? exact : scored).sort((a, b) => b.score - a.score || a.i - b.i).map((x) => x.c);
 }

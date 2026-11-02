@@ -34,4 +34,21 @@ describe('command filter', () => {
   it('matches letters in order as a last resort', () => {
     expect(filterCommands('wrkspc', list).map((c) => c.id)).toEqual(['ws']);
   });
+
+  it('keeps letters in order within one word, and drops them when something matches better', () => {
+    const more = [
+      ...list,
+      cmd('stop', 'Stop the check', 'Run', 'cancel abort running job'),
+      cmd('s1', 'Story step 1: Beat the reference', 'Go to'),
+      cmd('s2', 'Story step 2: One wire goes wrong', 'Go to'),
+      cmd('bn', 'Load BN254 internal shared sum', 'Presets'),
+    ];
+    expect(filterCommands('stop', more).map((c) => c.id)).toEqual(['stop']);
+    // Letters spread over several words no longer match.
+    expect(scoreCommand(more[6]!, ['stop'])).toBe(0);
+    expect(scoreCommand(more[8]!, ['stop'])).toBe(0);
+    // A fuzzy match is still offered when it is the only one.
+    expect(filterCommands('wrkspc', more).map((c) => c.id)).toEqual(['ws']);
+    expect(filterCommands('exprmnt', more).map((c) => c.id)).toEqual(['exp']);
+  });
 });
