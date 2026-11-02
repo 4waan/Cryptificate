@@ -73,7 +73,8 @@ export type AutoStatus =
   | { kind: 'scheduled'; at: number }
   | { kind: 'checking' };
 
-export type Overlay = 'help' | 'palette' | null;
+/** The open overlay: the shortcuts help, the command palette or the Alerts popover. */
+export type Overlay = 'help' | 'palette' | 'alerts' | null;
 
 export interface AppState {
   view: View;
@@ -95,7 +96,7 @@ export interface AppState {
   };
   prefs: Prefs;
   auto: AutoStatus;
-  /** The open dialog: the shortcuts help or the command palette. */
+  /** The open overlay. While one is open, the window key handler leaves Escape and "?" to it. */
   overlay: Overlay;
   /** Recent durations of finished runs in this browser, for the progress estimate. */
   timings: Timings;

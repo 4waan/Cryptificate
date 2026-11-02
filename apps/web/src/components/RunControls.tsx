@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { notifyPermission, type NotifyPermission } from '../lib/signals';
 import { useNow } from '../lib/useNow';
-import { setPrefs } from '../state/actions';
+import { setOverlay, setPrefs } from '../state/actions';
 import { enableNotifications } from '../state/signals';
-import { useAppState, type AutoStatus } from '../state/store';
+import { getState, useAppState, type AutoStatus } from '../state/store';
 import { IconBell } from './icons';
 
 /** What auto-check is doing, in words. */
@@ -54,28 +54,45 @@ const PERMISSION_TEXT: Record<NotifyPermission, string> = {
   unsupported: 'This browser does not support notifications here.',
 };
 
-/** Completion alerts: tab title (always), desktop notification and tone (both opt-in). */
+/** The first control a keyboard user can reach in a container: an enabled input or a button. */
+export const FIRST_FOCUSABLE = 'input:not(:disabled), button:not(:disabled)';
+
+/**
+ * Completion alerts: tab title (always), desktop notification and tone (both opt-in).
+ * Open state lives in the store as the 'alerts' overlay, so the window key
+ * handler leaves Escape to the popover and never stops a run with it.
+ */
 export function AlertsMenu() {
   const id = useId();
   const prefs = useAppState((s) => s.prefs);
-  const [open, setOpen] = useState(false);
+  const open = useAppState((s) => s.overlay === 'alerts');
   const [permission, setPermission] = useState<NotifyPermission>(() => notifyPermission());
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     setPermission(notifyPermission());
-    panel.current?.querySelector<HTMLElement>('input')?.focus();
+    // With notifications blocked the first checkbox is disabled: focus the tone switch instead.
+    panel.current?.querySelector<HTMLElement>(FIRST_FOCUSABLE)?.focus();
     const onDown = (e: MouseEvent) => {
-      if (!panel.current?.contains(e.target as Node) && !button.current?.contains(e.target as Node)) setOpen(false);
+      if (!wrap.current?.contains(e.target as Node)) setOverlay(null);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
+  // Leaving the view with the popover open must not leave the overlay set.
+  useEffect(
+    () => () => {
+      if (getState().overlay === 'alerts') setOverlay(null);
+    },
+    [],
+  );
+
   const close = () => {
-    setOpen(false);
+    setOverlay(null);
     button.current?.focus();
   };
 
@@ -88,14 +105,29 @@ export function AlertsMenu() {
 
   const count = Number(prefs.notify) + Number(prefs.sound);
   return (
-    <div className="menu-wrap">
+    <div
+      ref={wrap}
+      className="menu-wrap"
+      onKeyDown={(e) => {
+        if (open && e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          close();
+        }
+      }}
+      onBlur={(e) => {
+        // Tabbing out of the button and popover closes it.
+        const next = e.relatedTarget as Node | null;
+        if (open && next && !wrap.current?.contains(next)) setOverlay(null);
+      }}
+    >
       <button
         ref={button}
         type="button"
         className="btn btn-sm btn-quiet"
         aria-expanded={open}
         aria-controls={`${id}-panel`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOverlay(open ? null : 'alerts')}
       >
         <IconBell size={14} /> Alerts{count ? <span className="muted"> ({count} on)</span> : null}
       </button>
@@ -106,13 +138,6 @@ export function AlertsMenu() {
           className="popover"
           role="group"
           aria-label="When a run finishes"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.preventDefault();
-              e.stopPropagation();
-              close();
-            }
-          }}
         >
           <p className="popover-title">When a run finishes</p>
           <p className="small muted">The tab title shows ✓ Done or ✕ Stopped while you are in another tab.</p>

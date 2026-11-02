@@ -3,39 +3,27 @@ import { Header, type DisplayOrigin } from './components/Header';
 import { CommandPalette, ShortcutsDialog } from './components/Overlays';
 import { isStale } from './lib/canonical';
 import { parseHash } from './lib/route';
-import { appShortcut, historyShortcut, isTextField, keepsNativeUndo } from './lib/shortcuts';
 import { titleWithMark } from './lib/signals';
 import {
   activeRunKey,
-  announce,
-  canCheck,
   checkConnection,
-  checkNow,
-  inputProblems,
   openShareLink,
-  redo,
   restorePrefs,
-  runIsActive,
   setOverlay,
   setStoryStep,
   setView,
   startAutoCheck,
-  startRun,
-  stopRun,
-  undo,
 } from './state/actions';
+import { handleAppKey } from './state/keys';
 import { startSignals } from './state/signals';
 import {
   dataSource,
-  getState,
   isTimingStep,
   setState,
   useAppState,
   type AppState,
   type Run,
   type Theme,
-  type View,
-  workspaceInputs,
 } from './state/store';
 import { ExperimentsView } from './views/ExperimentsView';
 import { StoryView } from './views/StoryView';
@@ -124,63 +112,11 @@ export function App() {
     restorePrefs();
     const stopSignals = startSignals();
     const stopAuto = startAutoCheck();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.isComposing) return;
-      const s = getState();
-      const shortcut = appShortcut(e, isTextField(document.activeElement as HTMLElement | null));
-      if (shortcut === 'palette') {
-        e.preventDefault();
-        setOverlay(s.overlay === 'palette' ? null : 'palette');
-        return;
-      }
-      // While a dialog is open it handles its own keys.
-      if (s.overlay) return;
-      if (shortcut === 'help') {
-        e.preventDefault();
-        setOverlay('help');
-        return;
-      }
-      if (shortcut === 'stop') {
-        const key = activeRunKey(s);
-        if (key) {
-          e.preventDefault();
-          void stopRun(key);
-          announce('Stopping the running job.');
-        }
-        return;
-      }
-      if (shortcut === 'check' || shortcut === 'experiment') {
-        if (s.view === 'story') return;
-        e.preventDefault();
-        if (inputProblems(workspaceInputs(s)).length) {
-          announce('Fix the input problems before checking.');
-          return;
-        }
-        if (shortcut === 'check') {
-          if (canCheck(s)) checkNow();
-          else announce('These inputs are being checked already.');
-        } else {
-          const ex = s.current.experiment ? s.runs[s.current.experiment] : undefined;
-          if (runIsActive(ex)) announce('An experiment is already running.');
-          else startRun('experiment', 'quick');
-        }
-        return;
-      }
-      const history = historyShortcut(e);
-      if (history && getState().view === 'workspace' && !keepsNativeUndo(document.activeElement as HTMLElement | null)) {
-        e.preventDefault();
-        if (history === 'undo') undo();
-        else redo();
-        return;
-      }
-      if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
-      const target = { KeyS: 'story', KeyW: 'workspace', KeyE: 'experiments' }[e.code] as View | undefined;
-      if (target) {
-        e.preventDefault();
+    const onKey = (e: KeyboardEvent) =>
+      handleAppKey(e, document.activeElement as HTMLElement | null, (target) => {
         window.location.hash = `#/${target}`;
         window.setTimeout(() => document.getElementById('main')?.focus(), 0);
-      }
-    };
+      });
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('hashchange', sync);
