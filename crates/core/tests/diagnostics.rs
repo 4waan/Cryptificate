@@ -8,9 +8,17 @@ use cryptificate_core::diagnostics::{
 use cryptificate_core::linalg::{combinations, mat_vec, weight, Matrix};
 use cryptificate_core::report::{claim_ids, Status, Witness};
 use cryptificate_core::{validate_analysis_request, Bn254, Field, Gf256};
+use num_bigint::BigUint;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use serde_json::{json, Value};
+
+fn example(path: &str) -> Value {
+    let p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples")
+        .join(path);
+    serde_json::from_str(&std::fs::read_to_string(&p).unwrap()).unwrap()
+}
 
 const AES: [[&str; 4]; 4] = [
     ["02", "03", "01", "01"],
@@ -765,4 +773,178 @@ fn partial_analysis_agrees_with_brute_force() {
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// HADES over a 64-bit prime field
+// ---------------------------------------------------------------------------
+
+fn prime_request(design: Value) -> cryptificate_core::AnalysisRequest {
+    cryptificate_core::validate_analysis_request(&json!({ "design": design })).unwrap()
+}
+
+fn prime_claims(d: &cryptificate_core::diagnostics::Diagnostics) -> Vec<(&'static str, Status)> {
+    d.claims.iter().map(|c| (c.claim, c.predicted)).collect()
+}
+
+#[test]
+fn prime_examples() {
+    use claim_ids::*;
+    for (name, window, total) in [("koalabear-t4", 4, 25), ("babybear-t4", 4, 23)] {
+        let req = prime_request(example(&format!("designs/{name}.json")));
+        let d = diagnose(&req);
+        assert_eq!(d.width, 4);
+        assert_eq!(
+            prime_claims(&d),
+            vec![
+                (FIELD_PRIME, Status::Proved),
+                (EXTERNAL_MDS, Status::Proved),
+                (INTERNAL_INVERTIBLE, Status::Proved),
+                (SBOX_BIJECTIVE, Status::Proved),
+                (ACTIVITY_OUTER, Status::Proved),
+                (ACTIVITY_PARTIAL, Status::Proved),
+                (ACTIVITY_TOTAL, Status::Proved),
+            ],
+            "{name}"
+        );
+        let ModelDiagnostics::HadesPrime(h) = &d.details else {
+            panic!("{name}")
+        };
+        assert_eq!(h.hades.partial.window, Some(window));
+        assert_eq!(h.hades.activity.bound, Some(20));
+        assert_eq!(h.hades.total.bound, Some(total));
+        assert!(cryptificate_core::prime::pratt_verify(
+            &h.prime.pratt,
+            h.prime.modulus.0
+        ));
+    }
+    let req = prime_request(example("designs/babybear-t4-bad.json"));
+    let d = diagnose(&req);
+    assert_eq!(
+        prime_claims(&d),
+        vec![
+            (FIELD_PRIME, Status::Proved),
+            (EXTERNAL_MDS, Status::Proved),
+            (INTERNAL_INVERTIBLE, Status::Proved),
+            (SBOX_BIJECTIVE, Status::Refuted),
+            (ACTIVITY_OUTER, Status::NotEstablished),
+            (ACTIVITY_PARTIAL, Status::Refuted),
+            (ACTIVITY_TOTAL, Status::NotEstablished),
+        ]
+    );
+    let ModelDiagnostics::HadesPrime(h) = &d.details else {
+        panic!()
+    };
+    // x^3 over BabyBear: 3 divides p - 1, and 2^((p-1)/3) is a cube root of one.
+    let omega = h.hades.power.collision.unwrap().omega;
+    cryptificate_core::with_modulus(2013265921, || {
+        assert_eq!(omega.pow(3), cryptificate_core::Fp(1));
+        assert_ne!(omega, cryptificate_core::Fp(1));
+    });
+    // J + I as internal matrix: the plane {v0 = 0, sum v = 0} is fixed.
+    let b = h.hades.partial.bypass.as_ref().unwrap();
+    assert_eq!(b.invariant_basis.len(), 2);
+    assert_eq!(
+        d.claim(ACTIVITY_PARTIAL).unwrap().witness,
+        Some(Witness::PartialBypass {
+            difference: vec!["0".into(), "1".into(), "2013265920".into(), "0".into()],
+            positions: vec![0],
+            partial_rounds: 13,
+        })
+    );
+}
+
+#[test]
+fn prime_power_maps_depend_on_the_modulus() {
+    use cryptificate_core::diagnostics::analyze_power_fp;
+    // x^3 permutes KoalaBear (p - 1 = 2^24 * 127) but not BabyBear
+    // (p - 1 = 2^27 * 3 * 5); x^7 permutes BabyBear but not Mersenne31
+    // (p - 1 = 2 * 3^2 * 7 * 11 * 31 * 151 * 331); Goldilocks takes x^7.
+    for (p, e, bijective) in [
+        (2130706433u64, 3u32, true),
+        (2013265921, 3, false),
+        (2013265921, 7, true),
+        (2147483647, 7, false),
+        (2147483647, 5, true),
+        (18446744069414584321, 7, true),
+        (18446744069414584321, 3, false),
+        (2, 4, true),
+        (7, 3, false),
+    ] {
+        let a = cryptificate_core::with_modulus(p, || analyze_power_fp(e));
+        assert_eq!(a.bijective, bijective, "x^{e} mod {p}");
+        if bijective {
+            let d = a.inverse_exponent.unwrap();
+            let k = a.k.unwrap();
+            assert_eq!(
+                BigUint::from(e) * &d,
+                BigUint::from(p - 1) * k + 1u32,
+                "x^{e} mod {p}"
+            );
+            assert!(d > BigUint::from(0u32));
+        } else {
+            let c = a.collision.unwrap();
+            cryptificate_core::with_modulus(p, || {
+                assert_eq!(c.omega.pow(u64::from(e)), cryptificate_core::Fp(1));
+                assert_ne!(c.omega, cryptificate_core::Fp(1));
+            });
+        }
+    }
+}
+
+#[test]
+fn prime_width_four_bypasses() {
+    use cryptificate_core::report::claim_ids::ACTIVITY_PARTIAL;
+    let design = |internal: Value, partial_rounds: u32| {
+        json!({
+            "model": "hades/prime/v1", "field": "mersenne31", "width": 4,
+            "external": [["5","7","1","3"],["4","6","1","1"],["1","3","5","7"],["1","1","4","6"]],
+            "internal": internal,
+            "fullRounds": 8, "partialRounds": partial_rounds,
+            "sbox": {"kind": "power", "exponent": 5}
+        })
+    };
+    // A diagonal internal matrix never moves e0: the invariant subspace
+    // {v0 = 0} has dimension three.
+    let diag = json!([
+        ["1", "0", "0", "0"],
+        ["0", "2", "0", "0"],
+        ["0", "0", "3", "0"],
+        ["0", "0", "0", "4"]
+    ]);
+    let d = diagnose(&prime_request(design(diag, 14)));
+    let ModelDiagnostics::HadesPrime(h) = &d.details else {
+        panic!()
+    };
+    assert_eq!(
+        h.hades
+            .partial
+            .bypass
+            .as_ref()
+            .unwrap()
+            .invariant_basis
+            .len(),
+        3
+    );
+    // Three partial rounds of a matrix that needs four to be observable:
+    // a difference survives them, but no subspace is invariant.
+    let good = json!([
+        ["2", "1", "1", "1"],
+        ["1", "3", "1", "1"],
+        ["1", "1", "5", "1"],
+        ["1", "1", "1", "9"]
+    ]);
+    let d = diagnose(&prime_request(design(good.clone(), 3)));
+    let ModelDiagnostics::HadesPrime(h) = &d.details else {
+        panic!()
+    };
+    let b = h.hades.partial.bypass.as_ref().unwrap();
+    assert!(!b.invariant());
+    assert_eq!(
+        d.claim(ACTIVITY_PARTIAL).unwrap().predicted,
+        Status::Refuted
+    );
+    // With four it is charged.
+    let d = diagnose(&prime_request(design(good, 4)));
+    assert_eq!(d.claim(ACTIVITY_PARTIAL).unwrap().predicted, Status::Proved);
 }

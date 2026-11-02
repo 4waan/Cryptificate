@@ -81,6 +81,9 @@ const CASES: &[(&str, &str, Option<&str>)] = &[
         Some("poseidon2-external-shared-sum"),
     ),
     ("poseidon2-bypass", "poseidon2-bypass", None),
+    ("koalabear-t4", "koalabear-t4", None),
+    ("babybear-t4", "babybear-t4", None),
+    ("babybear-t4-bad", "babybear-t4-bad", None),
 ];
 
 fn analysis_request(design: &str, program: Option<&str>) -> String {
@@ -114,7 +117,9 @@ fn essential_diagnostics(d: &Value) -> Value {
             out[key] = matrix(&d[key]);
         }
     }
-    for key in ["offsets", "activity", "partial", "total"] {
+    for key in [
+        "offsets", "activity", "partial", "total", "modulus", "prime",
+    ] {
         if d.get(key).is_some() {
             out[key] = d[key].clone();
         }
