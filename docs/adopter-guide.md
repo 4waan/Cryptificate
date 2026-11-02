@@ -99,7 +99,7 @@ Download the bundle from the workbench, with `client.bundle(...)`, or with `cryp
 npx cryptificate verify aes-check.tar.gz
 ```
 
-`verify` reads only the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It never runs Lean, Rust or shell code from the bundle. Recorded timings are shown as historical; measuring again creates a new experiment. A bundle recorded before the S-box differential uniformity and linearity claims existed lists them as *not recorded*: they are re-derived but there is nothing to compare them with.
+`verify` reads only the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It never runs Lean, Rust or shell code from the bundle. Recorded timings are shown as historical; measuring again creates a new experiment. For the S-box differential uniformity and linearity claims the comparison covers the value and the pair of bytes as well as the status, so a bundle that records another value does not verify. A bundle that lacks both of these claims and whose recorded Lean certificate digest differs from the regenerated one, as for a bundle recorded before they existed, lists them as *not recorded*: they are re-derived but there is nothing to compare them with, and `verify` adds a note saying so. Bundles are not signed, so this cannot rule out that the claims were removed by hand; a bundle whose certificate digest is the regenerated one and lacks them does not verify.
 
 ## 7. Bring your own implementation language
 
