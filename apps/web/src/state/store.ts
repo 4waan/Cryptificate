@@ -3,6 +3,7 @@ import type { WorkspaceInputs } from '../lib/canonical';
 import { emptyHistory, type History } from '../lib/history';
 import type { Timings } from '../lib/progress';
 import type { Snapshot } from '../lib/snapshot';
+import type { EndMark } from '../lib/signals';
 import { aesDesign, aesSharedSum } from '../lib/presets';
 import type {
   Capabilities,
@@ -101,7 +102,7 @@ export interface AppState {
   /** Recent durations of finished runs in this browser, for the progress estimate. */
   timings: Timings;
   /** A run finished while the page was in the background; shown in the tab title until the page is back. */
-  attention: 'done' | 'failed' | null;
+  attention: EndMark | null;
   theme: Theme;
   /** Undo/redo over the workspace inputs. */
   history: History<Snapshot>;

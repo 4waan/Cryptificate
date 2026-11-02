@@ -140,7 +140,10 @@ export function AlertsMenu() {
           aria-label="When a run finishes"
         >
           <p className="popover-title">When a run finishes</p>
-          <p className="small muted">The tab title shows ✓ Done or ✕ Stopped while you are in another tab.</p>
+          <p className="small muted">
+            While you are in another tab, the tab title shows ✓ Done, or how the run ended: ✕ Failed, ✕ Timed out or ✕
+            Stopped.
+          </p>
           <label className="check-row">
             <input
               type="checkbox"

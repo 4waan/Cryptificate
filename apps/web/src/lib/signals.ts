@@ -6,23 +6,31 @@ import type { Claim, Report } from './types';
  * evidence vocabulary: an execution outcome is never called a refutation.
  */
 
-export type TitleMark = 'running' | 'done' | 'failed' | null;
+/** How a finished run ended, for the tab title: done, or the execution outcome by name. */
+export type EndMark = 'done' | 'failed' | 'timeout' | 'cancelled' | 'invalid';
+export type TitleMark = 'running' | EndMark | null;
 
 const MARKS: Record<Exclude<TitleMark, null>, string> = {
   running: '◌ Running',
   done: '✓ Done',
-  failed: '✕ Stopped',
+  failed: '✕ Failed',
+  timeout: '✕ Timed out',
+  cancelled: '✕ Stopped',
+  invalid: '✕ Rejected',
 };
 
 export function titleWithMark(base: string, mark: TitleMark): string {
   return mark ? `${MARKS[mark]} · ${base}` : base;
 }
 
-const TERMINAL_OK = new Set(['completed']);
-
-/** Whether a finished run counts as done (it ran to the end) or not. */
-export function finishedMark(state: string): 'done' | 'failed' {
-  return TERMINAL_OK.has(state) ? 'done' : 'failed';
+/**
+ * The tab-title mark for a finished run: done when it ran to the end,
+ * otherwise its execution outcome (a failure or time-out is not something
+ * the user stopped). Unknown states read as failed.
+ */
+export function finishedMark(state: string): EndMark {
+  if (state === 'completed') return 'done';
+  return state === 'timeout' || state === 'cancelled' || state === 'invalid' ? state : 'failed';
 }
 
 function claimCounts(claims: Claim[]): string {

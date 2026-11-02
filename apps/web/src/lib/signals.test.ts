@@ -7,12 +7,19 @@ describe('completion signals', () => {
     expect(titleWithMark('Workspace · Cryptificate', null)).toBe('Workspace · Cryptificate');
     expect(titleWithMark('Workspace · Cryptificate', 'done')).toBe('✓ Done · Workspace · Cryptificate');
     expect(titleWithMark('W', 'running')).toMatch(/Running · W$/);
-    expect(titleWithMark('W', 'failed')).toBe('✕ Stopped · W');
+    expect(titleWithMark('W', 'failed')).toBe('✕ Failed · W');
+    expect(titleWithMark('W', 'timeout')).toBe('✕ Timed out · W');
+    expect(titleWithMark('W', 'cancelled')).toBe('✕ Stopped · W');
+    expect(titleWithMark('W', 'invalid')).toBe('✕ Rejected · W');
   });
 
-  it('only a completed run counts as done', () => {
+  it('only a completed run counts as done; other ends are named, and only a stop reads Stopped', () => {
     expect(finishedMark('completed')).toBe('done');
-    for (const s of ['failed', 'timeout', 'cancelled', 'invalid']) expect(finishedMark(s)).toBe('failed');
+    expect(finishedMark('failed')).toBe('failed');
+    expect(finishedMark('timeout')).toBe('timeout');
+    expect(finishedMark('cancelled')).toBe('cancelled');
+    expect(finishedMark('invalid')).toBe('invalid');
+    expect(finishedMark('something-new')).toBe('failed');
   });
 
   it('counts claims for a finished check', () => {
