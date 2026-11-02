@@ -54,7 +54,9 @@ axioms are within `propext`, `Classical.choice`, `Quot.sound`, and every `CRYPTI
 equals the value derived from the normalized request. Activity bounds are only proved together
 with MDS and distinct offsets. Completed, clean results are cached under a key of the input digest,
 toolchain pins, checker version and the digests of the templates, the Lean library and the generated
-source; a hit is reported with origin `cached` and the id of the run it came from.
+source; a hit is reported with origin `cached` and the id of the run it came from. The
+`rust.refinement` claim of a hit is not copied: it is recomputed from the current refinement
+status, which belongs to this machine rather than to the cached certificate.
 
 ## Experiment
 

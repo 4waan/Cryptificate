@@ -7,7 +7,7 @@ import type { AnalysisReport, AnalysisRequest, Claim, NotEstablishedReason, Witn
 import { cacheKey, ProofCache } from './cache.js';
 import { checkCertificate } from './certificate.js';
 import type { CertificateCheck } from './certificate.js';
-import { buildAnalysisClaims, diagnosticWitness } from './claims.js';
+import { buildAnalysisClaims, diagnosticWitness, withCurrentRefinement } from './claims.js';
 import type { NativeOutcome } from './claims.js';
 import type { JobContext, PipelineEnv, PipelineResult } from './context.js';
 import { toolchainDocument } from './bundle.js';
@@ -149,7 +149,9 @@ export async function runAnalysis(env: PipelineEnv, ctx: JobContext, raw: Analys
       id: ctx.id,
       inputs: request,
       inputDigest,
-      claims: hit.claims.map((c) => ({ ...c })),
+      // Recomputed rather than copied: the refinement check depends on this
+      // machine, not on the cached certificate.
+      claims: withCurrentRefinement(hit.claims, request, request.program ? refinementStatus(env.paths, request.design.field) : null),
       execution: { state: 'completed', steps: ctx.executionSteps() },
       provenance: { ...hit.provenance, origin: 'cached', cachedFrom: hit.id, ...(key ? { cacheKey: key } : {}) },
     };

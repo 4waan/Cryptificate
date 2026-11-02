@@ -226,6 +226,18 @@ test('refinement is reported only when checked for the current kernel source', a
     const { report } = await analyze(env, { design: IDENTITY_DESIGN, program: IDENTITY_PROGRAM });
     assert.equal(claim(report, 'rust.refinement').status, 'proved');
     assert.equal(claim(report, 'rust.refinement').evidence.label, 'Rust-source refinement (Aeneas)');
+    // a proof-cache hit recomputes the refinement claim instead of copying it
+    rmSync(join(env.paths.home, 'refinement.json'));
+    const { report: cached } = await analyze(env, { design: IDENTITY_DESIGN, program: IDENTITY_PROGRAM });
+    assert.equal(cached.provenance.origin, 'cached');
+    assert.equal(cached.provenance.cachedFrom, report.id);
+    assert.equal(claim(cached, 'rust.refinement').status, 'not_established');
+    assert.match(claim(cached, 'rust.refinement').note, /not been checked on this machine/);
+    assert.deepEqual(
+      cached.claims.filter((c) => c.id !== 'rust.refinement').map((c) => [c.id, c.status, c.note]),
+      report.claims.filter((c) => c.id !== 'rust.refinement').map((c) => [c.id, c.status, c.note]),
+    );
+    assert.deepEqual(cached.claims.map((c) => c.id), report.claims.map((c) => c.id));
     // a changed kernel no longer counts
     writeFileSync(join(root, 'crates', 'kernels', 'src', 'gf256.rs'), `${kernel}// edited\n`);
     assert.equal(refinementStatus(env.paths, 'gf256').status, 'not_established');

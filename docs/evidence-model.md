@@ -43,7 +43,7 @@ A failed MDS check or a repeated row offset makes the activity bound **not estab
 | Badge | Meaning |
 |---|---|
 | **Live** | Computed now, on this machine, for the inputs on screen. |
-| **Cached exact result** | Reused from an earlier check whose canonical inputs, toolchain pins, checker version and templates all match. |
+| **Cached exact result** | Reused from an earlier check whose canonical inputs, toolchain pins, checker version and templates all match. The `rust.refinement` claim is recomputed for this machine, not reused. |
 
 Editing any input marks every result as belonging to an earlier version until it is checked again.
 
