@@ -102,6 +102,23 @@ client.bundle(job["id"], "evidence.tar.gz")
 
 The [adopter guide](docs/adopter-guide.md) walks through a first design end to end.
 
+### With Docker
+
+The [`Dockerfile`](Dockerfile) builds one image with the pinned Lean toolchain, the built certificate library and Mathlib's compiled library, the engine, the Rust toolchain for native experiments and the workbench. Version tags publish it to `ghcr.io/4waan/cryptificate` (`linux/amd64`, over 10 GB unpacked); `docker build -t cryptificate .` builds it from a checkout.
+
+```sh
+# the workbench at http://127.0.0.1:4173 (the service binds loopback unless told otherwise)
+docker run --rm -p 127.0.0.1:4173:4173 ghcr.io/4waan/cryptificate serve --host 0.0.0.0
+
+# one-shot check of a design file in the current directory
+docker run --rm -v "$PWD:/work" ghcr.io/4waan/cryptificate check my-design.json
+
+# re-check a bundle
+docker run --rm -v "$PWD:/work:ro" ghcr.io/4waan/cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
+```
+
+`--host 0.0.0.0` is needed because a published port does not reach the container's loopback interface; `-p 127.0.0.1:…` keeps the port on your machine's loopback, since the service has no authentication. The image does not check the Rust-source refinement proofs, so `rust.refinement` reads `not_established` there. Details, port and permission rules and limits: [docs/docker.md](docs/docker.md).
+
 ## What it proves
 
 | Claim | How Cryptificate establishes it | Example from the demo |
@@ -194,7 +211,7 @@ npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 | [`apps/web`](apps/web) | The workbench, also published online |
 | [`python/`](python) | Python client |
 | [`examples/`](examples) | Designs, circuits, evidence bundles and measurements |
-| [`docs/`](docs) | [Evidence model](docs/evidence-model.md), [architecture](docs/architecture.md), [batch interface](docs/batch-interface.md), [adopter guide](docs/adopter-guide.md), [research directions](docs/research-directions.md) |
+| [`docs/`](docs) | [Evidence model](docs/evidence-model.md), [architecture](docs/architecture.md), [batch interface](docs/batch-interface.md), [adopter guide](docs/adopter-guide.md), [container image](docs/docker.md), [research directions](docs/research-directions.md) |
 
 ## Built on WideTrail
 
