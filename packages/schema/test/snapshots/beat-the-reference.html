@@ -62,7 +62,8 @@ table.vector{width:auto}
 footer{margin-top:2.5rem;padding-top:.6rem;border-top:1px solid var(--line);color:var(--muted);font-size:.85em}
 .report+.report{margin-top:3rem;border-top:3px double var(--line);padding-top:1rem}
 .gate+.report{margin-top:2.5rem}
-@media (max-width:640px){dl.kv{grid-template-columns:1fr}dl.kv dt{margin-top:.3rem}main{padding:1rem}}
+@media screen and (max-width:640px){dl.kv{grid-template-columns:1fr}dl.kv dt{margin-top:.3rem}main{padding:1rem}
+table{display:block;max-width:100%;overflow-x:auto}td.num,th.num{white-space:normal}.claim>header{flex-wrap:wrap}}
 @page{margin:16mm 14mm}
 @media print{
 :root{--fg:#000;--muted:#444;--bg:#fff;--panel:#f3f4f6;--line:#b8bfc7;--code:#0b3b6f;font-size:10pt}
