@@ -218,7 +218,11 @@ test('refinement is reported only when checked for the current kernel source', a
     mkdirSync(env.paths.home, { recursive: true });
     writeFileSync(join(env.paths.home, 'refinement.json'), JSON.stringify({ checked: true, kernelsSha256: digest }));
     assert.equal(refinementStatus(env.paths, 'gf256').status, 'proved');
-    assert.equal(refinementStatus(env.paths, 'gf256', { CRYPTIFICATE_CONTAINER: '1' }).status, 'proved');
+    // the image never reports a check it could not have made, even when its
+    // state directory holds a refinement.json written elsewhere
+    const recordedElsewhere = refinementStatus(env.paths, 'gf256', { CRYPTIFICATE_CONTAINER: '1' });
+    assert.equal(recordedElsewhere.status, 'not_established');
+    assert.match(recordedElsewhere.note, /container image does not check the refinement proofs/);
     const { report } = await analyze(env, { design: IDENTITY_DESIGN, program: IDENTITY_PROGRAM });
     assert.equal(claim(report, 'rust.refinement').status, 'proved');
     assert.equal(claim(report, 'rust.refinement').evidence.label, 'Rust-source refinement (Aeneas)');
