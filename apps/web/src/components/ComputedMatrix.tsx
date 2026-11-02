@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { matrixDiff, naiveCircuit, type MatrixCellDiff } from '../lib/circuit';
 import { targetMatrix } from '../lib/design';
-import { fieldOps } from '../lib/field';
+import { displayElement, fieldOps } from '../lib/field';
 import type { CandidateDesign, Program, ProgramTarget } from '../lib/types';
 import { announce, setProgram } from '../state/actions';
 import { IconCircuit, IconInfo, IconPreview } from './icons';
@@ -32,9 +32,10 @@ export function generateCircuit(design: CandidateDesign, target: ProgramTarget):
   );
 }
 
-function describeCells(cells: MatrixCellDiff[], field: CandidateDesign['field']): string {
-  const f = fieldOps(field);
-  const shown = cells.slice(0, 4).map((c) => `(${c.row + 1}, ${c.col + 1}) needs ${f.canonical(c.want)}, gets ${c.got}`);
+/** The first differing coefficients in words, with long BN254 values shortened. */
+export function describeCells(cells: MatrixCellDiff[], field: CandidateDesign['field']): string {
+  const show = (v: string) => displayElement(field, v).text;
+  const shown = cells.slice(0, 4).map((c) => `(${c.row + 1}, ${c.col + 1}) needs ${show(c.want)}, gets ${show(c.got)}`);
   return shown.join('; ') + (cells.length > 4 ? `; and ${cells.length - 4} more` : '');
 }
 

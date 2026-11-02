@@ -68,6 +68,23 @@ export function bnInv(a: bigint): bigint | null {
   return a === 0n ? null : invMod(a, BN254_P);
 }
 
+/** Values within this distance below p are shown as "p−k". */
+export const NEAR_P = 1_000_000n;
+
+/**
+ * Compact display text for a BN254 element in a matrix cell: short values
+ * as they are, values just below p as "p−k" (so -1 reads p−1), and other
+ * long values as the first 6 digits, an ellipsis and the last 4. `spoken`
+ * is the text for screen readers: "p minus k", or the full value.
+ * Non-canonical text is returned unchanged.
+ */
+export function compactBn(text: string, maxDigits = 12): { text: string; spoken: string; short: boolean } {
+  if (!isBnDecimal(text) || text.length <= maxDigits) return { text, spoken: text, short: false };
+  const below = BN254_P - BigInt(text);
+  if (below <= NEAR_P) return { text: `p\u2212${below}`, spoken: `p minus ${below}`, short: true };
+  return { text: `${text.slice(0, 6)}\u2026${text.slice(-4)}`, spoken: text, short: true };
+}
+
 /** Shortens a long decimal for compact display, keeping both ends. */
 export function abbreviateDecimal(text: string, keep = 6): string {
   return text.length <= keep * 2 + 3 ? text : `${text.slice(0, keep)}…${text.slice(-keep)}`;

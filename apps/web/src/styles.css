@@ -733,11 +733,14 @@ textarea {
   border-left: 2px solid var(--line-strong);
   border-right: 2px solid var(--line-strong);
   border-radius: var(--radius-sm);
+  max-width: 100%;
+  overflow-x: auto;
 }
-.matrix-static span {
+.matrix-static [role='cell'] {
   min-width: 2.4em;
   text-align: center;
   padding: 2px 4px;
+  overflow-wrap: anywhere;
 }
 
 .bytes {
@@ -2138,9 +2141,14 @@ input[type='radio'] {
 .computed-pair {
   row-gap: var(--space-4);
 }
+.computed-pair > figure {
+  min-width: 0;
+  max-width: 100%;
+}
 .diff-summary {
   font-size: 0.88rem;
   color: var(--text-2);
+  overflow-wrap: anywhere;
 }
 .diff-summary-bad {
   color: var(--text);

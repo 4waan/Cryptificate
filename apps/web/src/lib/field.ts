@@ -1,4 +1,4 @@
-import { BN254_P, bnAdd, bnInv, bnMul, formatBn, isBnDecimal, parseBn } from './bn254';
+import { BN254_P, bnAdd, bnInv, bnMul, compactBn, formatBn, isBnDecimal, parseBn } from './bn254';
 import { formatGfHex, gfInv, gfMul, isGfHex, parseGfHex } from './gf256';
 import type { FieldName } from './types';
 
@@ -58,4 +58,17 @@ export function fieldOps(name: FieldName): FieldOps {
 export function formatVector(field: FieldName, values: readonly string[]): string {
   const ops = fieldOps(field);
   return `[${values.map((v) => (ops.isValid(v) ? ops.canonical(v) : v)).join(', ')}]`;
+}
+
+/**
+ * Short display text for one element (matrix cells, diff summaries): the
+ * canonical form, with long BN254 values shortened. `full` is the whole
+ * value for a tooltip; `spoken` is what a screen reader should read.
+ */
+export function displayElement(field: FieldName, value: string): { text: string; full: string; spoken: string; short: boolean } {
+  const ops = fieldOps(field);
+  const full = ops.isValid(value) ? ops.canonical(value) : value;
+  if (field !== 'bn254') return { text: full, full, spoken: full, short: false };
+  const c = compactBn(full);
+  return { text: c.text, full, spoken: c.spoken, short: c.short };
 }

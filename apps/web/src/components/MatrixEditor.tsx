@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { copyText } from '../lib/clipboard';
-import { fieldOps } from '../lib/field';
+import { displayElement, fieldOps } from '../lib/field';
 import { MATRIX_FORMATS, formatMatrix, normalizeCell, parseMatrixText, type MatrixFormat, type Radix } from '../lib/notation';
 import type { FieldName } from '../lib/types';
 import { IconCopy, IconPaste, IconWarning } from './icons';
@@ -407,7 +407,6 @@ export function MatrixView({
   emphasis?: string[];
   emphasisLabel?: string;
 }) {
-  const f = fieldOps(field);
   return (
     <figure style={{ margin: 0 }} className="stack" aria-label={label}>
       <figcaption className="field-label">{label}</figcaption>
@@ -416,14 +415,22 @@ export function MatrixView({
           <div key={r} role="row" style={{ display: 'contents' }}>
             {row.map((v, c) => {
               const hl = emphasis.includes(`${r},${c}`);
+              const d = displayElement(field, v);
               return (
                 <span
                   key={c}
                   role="cell"
                   className={hl ? 'cell-diff' : undefined}
-                  title={field === 'bn254' ? v : undefined}
+                  title={field === 'bn254' ? d.full : undefined}
                 >
-                  {f.isValid(v) ? f.canonical(v) : v}
+                  {d.short ? (
+                    <>
+                      <span aria-hidden="true">{d.text}</span>
+                      <span className="visually-hidden">{d.spoken}</span>
+                    </>
+                  ) : (
+                    d.text
+                  )}
                   {hl ? <span className="visually-hidden"> ({emphasisLabel})</span> : null}
                 </span>
               );
