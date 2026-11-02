@@ -637,10 +637,24 @@ function provenanceSection(report: Report, opts: HtmlReportOptions, machine: Mea
 
 function verifySection(report: Report, opts: HtmlReportOptions): SafeHtml {
   const bundle = opts.bundleName ?? '<bundle>.tar.gz';
-  const scope =
+  const scope: Child =
     report.kind === 'experiment'
-      ? 'For an experiment it re-checks the circuit equivalence of every recorded candidate. Native correctness results and timings are historical: they describe the machine that recorded them and are shown, not re-measured.'
-      : 'For an analysis it re-checks the design claims and circuit.equivalence, and native.correctness with --native (from regenerated Rust, never the bundled Rust). It does not re-check rust.refinement or timings; they are shown with their recorded status.';
+      ? fragment(
+          'For an experiment it re-checks ',
+          code('circuit.equivalence'),
+          ' of every recorded candidate. Native correctness results and timings are historical: they describe the machine that recorded them and are shown, not re-measured.',
+        )
+      : fragment(
+          'For an analysis it re-checks the design claims and ',
+          code('circuit.equivalence'),
+          ', and ',
+          code('native.correctness'),
+          ' with ',
+          code('--native'),
+          ' (from regenerated Rust, never the bundled Rust). It does not re-check ',
+          code('rust.refinement'),
+          ' or timings; they are shown with their recorded status.',
+        );
   return section(
     'verify',
     'How to verify',
@@ -649,7 +663,8 @@ function verifySection(report: Report, opts: HtmlReportOptions): SafeHtml {
     h(
       'p',
       null,
-      'verify reads only ',
+      code('verify'),
+      ' reads only ',
       code('inputs.json'),
       ' and ',
       code('report.json'),
@@ -992,6 +1007,7 @@ footer{margin-top:2.5rem;padding-top:.6rem;border-top:1px solid var(--line);colo
 main{max-width:none;padding:0}
 a{color:inherit;text-decoration:none}
 h2{break-after:avoid;page-break-after:avoid}
+h2+p,h3+p{break-after:avoid;page-break-after:avoid}
 h3,h4{break-after:avoid;page-break-after:avoid}
 .claim,.legend,.witness,table.matrix,dl.kv,tr{break-inside:avoid;page-break-inside:avoid}
 pre{break-inside:auto}
