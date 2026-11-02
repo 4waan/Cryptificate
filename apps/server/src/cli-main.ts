@@ -1,5 +1,5 @@
 /**
- * The `cryptificate` command: init | check | serve | experiment | verify | report.
+ * The `cryptificate` command: init | check | doctor | serve | experiment | verify | report.
  * The executable is cli.ts; this module holds the commands so tests can call
  * main() with their own pipeline environment and output streams.
  */
@@ -22,6 +22,8 @@ import { makeEnv } from './env.js';
 import { resolvePaths } from './paths.js';
 import { EXIT_ERROR, FAIL_ON, UsageError, parseClaimList, parseFailOn } from './policy.js';
 import type { FailOn } from './policy.js';
+import { DEFAULT_SERVICE_URL, defaultProbes, runDoctor } from './doctor.js';
+import type { CheckStatus, DoctorProbes, DoctorReport } from './doctor.js';
 import { DEFAULT_ACTION, planInit, posixRelative, writePlan } from './init.js';
 import type { CiChoice } from './init.js';
 import { DEFAULT_PRESET, MODEL_IDS, PRESETS, findPreset } from './presets.js';
@@ -68,6 +70,10 @@ Commands:
         Check designs (and optionally a circuit) and print the claims. Without inputs, the
         inputs and options come from the nearest cryptificate.json (this directory or a
         parent); options on the command line override it.
+  doctor [--json] [--url http://127.0.0.1:4173]
+        Check Node.js, elan and the pinned Lean toolchain, the Mathlib and certificate
+        library builds, the engine, rustc, the state directory, disk space and the local
+        service, and print a fix for each problem. Exit 0 when nothing failed, 1 otherwise.
   serve [--port 4173] [--host 127.0.0.1] [--allow-origin URL]
         Run the local service and web UI.
   experiment <design.json> [--program p.json] [--profile quick|research] [--seed HEX] [--json out.json]
@@ -99,7 +105,7 @@ unavailable, a --claims id an input does not carry, or (verify) an in-scope clai
 does not re-check. experiment: 0 completed, 1 failed, timed out or stopped, 2 invalid.
 init: 0 written, 1 declined at the prompt, 2 usage error or a file exists (nothing written).
 Environment: CRYPTIFICATE_HOME (state directory), CRYPTIFICATE_ENGINE, CRYPTIFICATE_LAKE,
-GITHUB_STEP_SUMMARY.
+CRYPTIFICATE_ROOT, GITHUB_STEP_SUMMARY.
 `;
 
 export interface Output {
@@ -118,6 +124,8 @@ export interface CliDeps {
   stderr?: Output;
   /** Where init reads its answers (default process.stdin). */
   stdin?: () => Input;
+  /** Replaces the machine probes of doctor (tests). */
+  doctor?: Partial<DoctorProbes>;
   /** Environment variables consulted (GITHUB_STEP_SUMMARY). */
   environ?: Record<string, string | undefined>;
   cwd?: string;
@@ -130,6 +138,7 @@ interface Io {
   stdout: Output;
   stderr: Output;
   stdin: () => Input;
+  doctor: Partial<DoctorProbes>;
   environ: Record<string, string | undefined>;
   cwd: string;
   signals: boolean;
@@ -709,6 +718,48 @@ async function cmdInit(argv: string[], io: Io): Promise<number> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// doctor
+
+function doctorText(report: DoctorReport, style: Style): string {
+  const tag: Record<CheckStatus, string> = {
+    pass: style.status('completed', 'ok  '),
+    warn: style.status('timeout', 'warn'),
+    fail: style.status('failed', 'FAIL'),
+    skip: style.dim('skip'),
+  };
+  const width = Math.max(...report.checks.map((c) => c.title.length));
+  const lines = [style.bold(`Cryptificate doctor (${report.checker})`)];
+  for (const c of report.checks) {
+    lines.push(`  ${tag[c.status]}  ${c.title.padEnd(width)}  ${c.detail}`);
+    if (c.fix && c.status !== 'pass') lines.push(`        ${' '.repeat(width)}  fix: ${c.fix}`);
+  }
+  const failed = report.checks.filter((c) => c.status === 'fail').length;
+  const warned = report.checks.filter((c) => c.status === 'warn').length;
+  const counts = `${failed} failed, ${warned} warning${warned === 1 ? '' : 's'}`;
+  lines.push('');
+  lines.push(
+    failed > 0
+      ? `${counts}. Run the fix commands above (scripts/setup.sh installs everything that is missing), then cryptificate doctor again.`
+      : `Ready: ${counts}.`,
+  );
+  return `${lines.join('\n')}\n`;
+}
+
+async function cmdDoctor(argv: string[], io: Io): Promise<number> {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: { json: { type: 'boolean' }, url: { type: 'string' } },
+  });
+  if (positionals.length > 0) fail('doctor takes no arguments');
+  const url = values.url ?? DEFAULT_SERVICE_URL;
+  if (!/^https?:\/\/[^\s/]+/.test(url)) fail(`--url must be an http:// or https:// URL (got "${url}")`);
+  const report = await runDoctor(io.env(), { ...defaultProbes(url), ...io.doctor });
+  io.stdout.write(values.json ? `${JSON.stringify(report, null, 2)}\n` : doctorText(report, makeStyle(io.stdout)));
+  return report.ok ? 0 : 1;
+}
+
 async function cmdServe(argv: string[]): Promise<number> {
   const { values } = parseArgs({
     args: argv,
@@ -784,6 +835,7 @@ export async function main(argv: string[], deps: CliDeps = {}): Promise<number> 
     stdout: deps.stdout ?? process.stdout,
     stderr: deps.stderr ?? process.stderr,
     stdin: deps.stdin ?? (() => process.stdin),
+    doctor: deps.doctor ?? {},
     environ: deps.environ ?? process.env,
     cwd: deps.cwd ?? process.cwd(),
     signals: deps.signals ?? true,
@@ -793,6 +845,8 @@ export async function main(argv: string[], deps: CliDeps = {}): Promise<number> 
     switch (cmd) {
       case 'init':
         return await cmdInit(rest, io);
+      case 'doctor':
+        return await cmdDoctor(rest, io);
       case 'serve':
         return await cmdServe(rest);
       case 'check':

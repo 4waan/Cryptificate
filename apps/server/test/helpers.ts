@@ -25,6 +25,7 @@ export const EQ_TYPE = 'Cryptificate.Circuit.implements CryptificateJob.candProg
 const FAKE_ENGINE = String.raw`#!/usr/bin/env node
 const sub = process.argv[2];
 const NATIVE = __NATIVE__;
+if (sub === '--version') { console.log('cryptificate-engine 0.1.0'); process.exit(0); }
 if (sub === '--help') { console.log('subcommands:\n  validate\n  diagnose\n  emit-lean\n  search' + (NATIVE ? '\n  codegen\n  native' : '')); process.exit(0); }
 let input = '';
 process.stdin.on('data', (c) => (input += c));
