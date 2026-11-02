@@ -869,9 +869,9 @@ function measurementsBlock(ex: ExperimentReport, m: Measurements): SafeHtml {
 }
 
 const VERDICT_TEXT: Record<string, string> = {
-  'locally confirmed': 'The lower bound of the 95% interval exceeded 1.02 in both confirmation sessions against every relevant baseline, for a candidate whose equivalence Lean proved. This holds for the recorded machine, compiler and workloads.',
-  inconclusive: 'Intervals overlapped or there were too few samples; no speed-up is claimed.',
-  'no improvement': 'No candidate was faster; no speed-up is claimed.',
+  'locally confirmed': 'The lower bound of the 95% interval exceeded 1.02 in both confirmation sessions against every relevant baseline, and every timed sample in both sessions left the same output checksum, for a candidate whose equivalence Lean proved. This holds for the recorded machine, compiler and workloads.',
+  inconclusive: 'The confirmation sessions met neither the locally confirmed criterion nor the no improvement criterion, or the run used quick-test settings, which never confirm; no speed-up is claimed.',
+  'no improvement': 'There was no contender, or in both confirmation sessions the contender was no faster (ratio at most 1) than some baseline; no speed-up is claimed.',
 };
 
 function experimentArticle(ex: ExperimentReport, opts: HtmlReportOptions): SafeHtml {

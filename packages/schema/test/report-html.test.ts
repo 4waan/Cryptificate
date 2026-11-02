@@ -100,6 +100,8 @@ test('experiment reports render with candidates, timing intervals and the machin
   assert.ok(html.includes(escapeHtml(ex.measurements!.machine.cpu)));
   assert.ok(html.includes(escapeHtml(ex.measurements!.machine.flags)));
   assert.ok(html.includes('Verdict: <strong>inconclusive</strong>'));
+  // the explanation follows the rule in crates/native/src/protocol.rs, quick-test settings included
+  assert.ok(html.includes('met neither the locally confirmed criterion nor the no improvement criterion, or the run used quick-test settings'));
   assert.ok(html.includes('An experiment does not check design guarantees'));
 });
 
