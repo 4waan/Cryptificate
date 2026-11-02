@@ -72,9 +72,12 @@ generated variant crates, the kernels they link against (checked against the dig
 engine), the harness source and the raw correctness and timing records, described in `native/SOURCES.md`.
 `cryptificate verify` extracts it to a fresh temporary directory, reads only `inputs.json` and
 `report.json`, regenerates and checks the certificate with the installed engine and Lean, and prints
-a per-claim table (`match`, `mismatch`, `not re-checked`, `historical`, `not recorded`). A claim that
-reports gained after the bundle was recorded (`activity.partial`, `activity.total`) has no recorded
-status to compare; it is derived, shown as `not recorded` and not counted as a mismatch. It never runs
+a per-claim table (`match`, `mismatch`, `not re-checked`, `historical`, `not recorded`). A bundle
+whose checker revision (`report.provenance.checker`) is a commit of the local checkout whose claim
+list does not yet name `activity.partial` and `activity.total`, and that records neither, has no
+status to compare for them; they are derived, shown as `not recorded` and not counted as a mismatch.
+Any other bundle that lacks one of them (a newer, dirty or unknown revision, or no git history to
+look it up in) counts the omission as a mismatch, as for every other re-checked claim. It never runs
 Lean, Rust or shell files from the bundle. Exit status 0 means every re-checked claim matched.
 
 ## Environment

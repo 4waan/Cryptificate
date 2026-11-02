@@ -4,12 +4,13 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { AnalysisRequest, Claim, ClaimId } from '@cryptificate/schema';
 import type { ClaimVerdict, ExpectedTheorem } from '../src/acceptance.js';
 import { buildAnalysisClaims } from '../src/claims.js';
-import { compareClaims } from '../src/verify.js';
+import { compareClaims, predatesAddedClaims, recordedRevision } from '../src/verify.js';
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
 
@@ -107,7 +108,8 @@ test('verify: partial-round claims missing from an older bundle are not mismatch
   const claim = (id: ClaimId, status: Claim['status']): Claim => ({ id, chain: 'design', title: id, status, evidence: { kind: 'lean', label: 'Lean-checked proof' }, witness: null, note: '' });
   const recorded = [claim('external.mds', 'proved'), claim('activity.outer', 'proved')];
   const now = [...recorded, claim('activity.partial', 'proved'), claim('activity.total', 'proved')];
-  const rows = compareClaims('design', recorded, now, false);
+  // A bundle shown to predate the claims, lacking both of them.
+  const rows = compareClaims('design', recorded, now, false, true);
   assert.deepEqual(
     rows.map((r) => [r.claim, r.result]),
     [
@@ -118,9 +120,49 @@ test('verify: partial-round claims missing from an older bundle are not mismatch
     ],
   );
   // A recorded status is compared as usual.
-  const forged = compareClaims('design', [...recorded, claim('activity.partial', 'refuted')], now, false);
+  const forged = compareClaims('design', [...recorded, claim('activity.partial', 'refuted')], now, false, true);
   assert.equal(forged.find((r) => r.claim === 'activity.partial')?.result, 'mismatch');
   // Older claims missing from a bundle still count as a mismatch.
-  const dropped = compareClaims('design', [claim('activity.outer', 'proved')], now, false);
+  const dropped = compareClaims('design', [claim('activity.outer', 'proved')], now, false, true);
   assert.equal(dropped.find((r) => r.claim === 'external.mds')?.result, 'mismatch');
+});
+
+test('verify: a bundle that cannot be shown to predate the claims may not drop them', () => {
+  const claim = (id: ClaimId, status: Claim['status']): Claim => ({ id, chain: 'design', title: id, status, evidence: { kind: 'lean', label: 'Lean-checked proof' }, witness: null, note: '' });
+  const full = [claim('external.mds', 'proved'), claim('activity.outer', 'proved'), claim('activity.partial', 'refuted'), claim('activity.total', 'not_established')];
+  // Recorded by the current version, with the refuted bypass removed from report.json.
+  const hidden = full.filter((c) => c.id !== 'activity.partial');
+  const rows = compareClaims('design', hidden, full, false, false);
+  assert.equal(rows.find((r) => r.claim === 'activity.partial')?.result, 'mismatch');
+  // Even an older checker may not drop one of the claims while recording the other.
+  const partly = compareClaims('design', hidden, full, false, true);
+  assert.equal(partly.find((r) => r.claim === 'activity.partial')?.result, 'mismatch');
+  // Without the predating proof, dropping both is a mismatch too.
+  const both = compareClaims('design', full.slice(0, 2), full, false, false);
+  assert.deepEqual(
+    both.filter((r) => r.claim.startsWith('activity.p') || r.claim === 'activity.total').map((r) => r.result),
+    ['mismatch', 'mismatch'],
+  );
+});
+
+test('verify: the recorded checker revision decides whether a bundle predates the claims', async () => {
+  assert.equal(recordedRevision('cryptificate 0.1.0 (e74b8e6)'), 'e74b8e6');
+  assert.equal(recordedRevision('cryptificate 0.1.0 (v0.1-12-g0123abcd)'), '0123abcd');
+  assert.equal(recordedRevision('cryptificate 0.1.0 (e74b8e6-dirty)'), null);
+  assert.equal(recordedRevision('cryptificate 0.1.0'), null);
+  assert.equal(recordedRevision('cryptificate 0.1.0 (--output=x)'), null);
+  assert.equal(recordedRevision(undefined), null);
+  // A revision unknown to the checkout, or none, proves nothing.
+  assert.equal(await predatesAddedClaims(root, 'cryptificate 0.1.0 (0000000)'), false);
+  assert.equal(await predatesAddedClaims(root, 'cryptificate 0.1.0'), false);
+  const git = (args: string[]) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
+  if (git(['rev-parse', '--verify', '--quiet', 'HEAD^{commit}']).status !== 0) return;
+  // The current checkout names the claims.
+  const head = git(['rev-parse', '--short', 'HEAD']).stdout.trim();
+  assert.equal(await predatesAddedClaims(root, `cryptificate 0.1.0 (${head})`), false);
+  // The revision that recorded the example HADES bundles predates them,
+  // when the checkout has its history.
+  if (git(['cat-file', '-e', 'e74b8e6^{commit}']).status === 0) {
+    assert.equal(await predatesAddedClaims(root, 'cryptificate 0.1.0 (e74b8e6)'), true);
+  }
 });

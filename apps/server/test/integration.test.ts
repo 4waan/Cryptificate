@@ -5,13 +5,15 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AnalysisReport, AnalysisRequest, Claim } from '@cryptificate/schema';
 import { ANALYSIS_STEPS, runAnalysis } from '../src/analysis.js';
+import { buildBundle } from '../src/bundle.js';
 import { JobContext } from '../src/context.js';
 import { makeEnv } from '../src/env.js';
+import { verifyBundle } from '../src/verify.js';
 
 const enabled = process.env['CRYPTIFICATE_INTEGRATION'] === '1';
 const env = makeEnv();
@@ -99,4 +101,47 @@ test('partial rounds: 34 for the reference, a checked bypass for the external ma
     '21888242871839275222246405745257275088548364400416034343698204186575808495616',
   ]);
   assert.equal(status(bad, 'activity.total').status, 'not_established');
+});
+
+test('partial rounds: none at all is out of scope, not a bypass', { skip }, async () => {
+  const home = mkdtempSync(join(tmpdir(), 'cryptificate-it-'));
+  try {
+    const design = { ...(example('designs', 'poseidon2-bn254') as Record<string, unknown>), partialRounds: 0 };
+    const ctx = new JobContext('0'.repeat(32), join(home, 'job'), new AbortController().signal, 300_000, ANALYSIS_STEPS);
+    const result = await runAnalysis({ ...env, noCache: true }, ctx, { design } as AnalysisRequest);
+    assert.equal(result.state, 'completed', JSON.stringify(result.error ?? ctx.steps));
+    const r = result.report as AnalysisReport;
+    assert.equal(status(r, 'activity.outer').status, 'proved');
+    const partial = status(r, 'activity.partial');
+    assert.equal(partial.status, 'not_established');
+    assert.equal(partial.reason, 'out-of-scope');
+    assert.equal(partial.witness, null);
+    assert.equal(status(r, 'activity.total').status, 'not_established');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('verify: a current bundle that drops the refuted bypass does not verify', { skip }, async () => {
+  const home = mkdtempSync(join(tmpdir(), 'cryptificate-it-'));
+  try {
+    const req = { design: example('designs', 'poseidon2-bypass') } as AnalysisRequest;
+    const jobDir = join(home, 'job');
+    const ctx = new JobContext('1'.repeat(32), jobDir, new AbortController().signal, 300_000, ANALYSIS_STEPS);
+    const result = await runAnalysis({ ...env, noCache: true }, ctx, req);
+    assert.equal(result.state, 'completed', JSON.stringify(result.error ?? ctx.steps));
+    const report = result.report as AnalysisReport;
+    assert.equal(status(report, 'activity.partial').status, 'refuted');
+    const tc = await env.toolchain();
+    const forged: AnalysisReport = { ...report, claims: report.claims.filter((c) => c.id !== 'activity.partial') };
+    const bundlePath = join(home, 'forged.tar.gz');
+    writeFileSync(bundlePath, buildBundle({ jobDir, report: forged, toolchain: tc, paths: env.paths }));
+    const v = await verifyBundle({ ...env, paths: { ...env.paths, home: join(home, 'verify') } }, bundlePath);
+    assert.equal(v.ok, false, JSON.stringify(v.rows));
+    const row = v.rows.find((x) => x.claim === 'activity.partial');
+    assert.equal(row?.recorded, 'missing');
+    assert.equal(row?.result, 'mismatch');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
