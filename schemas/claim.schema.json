@@ -14,6 +14,8 @@
         "external.mds",
         "internal.invertible",
         "activity.outer",
+        "sbox.differential",
+        "sbox.linearity",
         "circuit.equivalence",
         "native.correctness",
         "rust.refinement",

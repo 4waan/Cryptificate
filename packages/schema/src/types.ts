@@ -146,7 +146,9 @@ export type DesignClaimId =
   | 'activity.bound'
   | 'external.mds'
   | 'internal.invertible'
-  | 'activity.outer';
+  | 'activity.outer'
+  | 'sbox.differential'
+  | 'sbox.linearity';
 
 export type ImplementationClaimId =
   | 'circuit.equivalence'
@@ -209,6 +211,30 @@ export interface SboxCollisionWitness {
   y: GfHex;
 }
 
+/**
+ * The differential uniformity of a byte S-box: no nonzero input difference
+ * and output difference occur together for more inputs than `uniformity`,
+ * and this pair does.
+ */
+export interface SboxDifferentialWitness {
+  kind: 'sbox-differential';
+  uniformity: number;
+  inputDifference: GfHex;
+  outputDifference: GfHex;
+}
+
+/**
+ * The linearity of a byte S-box: no Walsh coefficient at a nonzero output
+ * mask exceeds `linearity` in absolute value, and the one at these masks
+ * reaches it.
+ */
+export interface SboxLinearityWitness {
+  kind: 'sbox-linearity';
+  linearity: number;
+  inputMask: GfHex;
+  outputMask: GfHex;
+}
+
 export interface PowerCollisionWitness {
   kind: 'power-collision';
   exponent: number;
@@ -222,7 +248,9 @@ export type Witness =
   | OffsetCollisionWitness
   | DistinguishingInputWitness
   | SboxCollisionWitness
-  | PowerCollisionWitness;
+  | PowerCollisionWitness
+  | SboxDifferentialWitness
+  | SboxLinearityWitness;
 
 export type WitnessKind = Witness['kind'];
 

@@ -101,6 +101,8 @@ export const AES_LIKE_DESIGN_CLAIMS: readonly ClaimInfo[] = [
   { id: 'offsets.dispersion', chain: 'design', title: 'Row offsets are pairwise distinct' },
   { id: 'sbox.bijective', chain: 'design', title: 'S-box is a permutation' },
   { id: 'activity.bound', chain: 'design', title: 'Active S-box lower bound' },
+  { id: 'sbox.differential', chain: 'design', title: 'Differential uniformity of the S-box table' },
+  { id: 'sbox.linearity', chain: 'design', title: 'Linearity of the S-box table' },
 ];
 
 export const HADES_DESIGN_CLAIMS: readonly ClaimInfo[] = [
