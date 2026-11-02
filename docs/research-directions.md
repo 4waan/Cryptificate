@@ -4,16 +4,28 @@ Cryptificate checks the consequences of changes to supported cryptographic compo
 
 ## Scope of the current release
 
-Cryptificate certifies components first. Two profiles are checked and tested:
+Cryptificate certifies components first. Three profiles are checked and tested:
 
-| Profile | Field | Width | Round template |
+| Profile | Model | Field | Width | Round template |
+|---|---|---|---|---|
+| AES-like | `aes-like/gf256/v1` | GF(2⁸), polynomial `0x11B` | 4 | pre-addition, byte S-box, row shifting, column mixing; 4 to 32 rounds |
+| HADES | `hades/bn254/v1` | BN254 scalar field | 3 | initial external mixing, then full / partial / full rounds with pre-addition; up to 160 rounds |
+| HADES over a 64-bit prime | `hades/prime/v1` | BabyBear, KoalaBear, Mersenne31, Goldilocks, or a custom prime below 2⁶⁴ | 3 and 4 | as for BN254 |
+
+The engine's representation accepts AES-like widths two through four; widths two and three are experimental. Other profile and width pairs are rejected until their checks exist.
+
+Which claims exist differs by profile, and the table is exact:
+
+| Claim | AES-like, width 4 | HADES BN254, width 3 | HADES 64-bit prime, widths 3 and 4 |
 |---|---|---|---|
-| AES-like | GF(2⁸), polynomial `0x11B` | 4 | pre-addition, byte S-box, row shifting, column mixing; 4 to 32 rounds |
-| HADES | BN254 scalar field | 3 | initial external mixing, then full / partial / full rounds with pre-addition; up to 160 rounds |
+| `field.prime` (Pratt certificate) | – | – (WideTrail's pinned proof) | yes |
+| `matrix.mds`, `offsets.dispersion`, `activity.bound` | yes | – | – |
+| `external.mds`, `internal.invertible`, `activity.outer`, `activity.partial`, `activity.total` | – | yes | yes |
+| `sbox.bijective` | table or AES S-box | power map | power map |
+| `circuit.equivalence`, native correctness and timing, circuit search | yes | yes | not offered |
+| `rust.refinement` | yes | not established | not established |
 
-The engine's representation accepts widths two through four. Other profile and width pairs are experimental until their checks exist.
-
-Fields are fixed. Editable within each template's fixed operation order: matrices, row offsets, round counts, byte S-box tables, prime-field power exponents, partial-round masks and explicit constant arrays. Constant arrays must match the submitted schedule exactly; they are never extended silently. An edited reference configuration is reported as a variant.
+Editable within each template's fixed operation order: matrices, row offsets, round counts, byte S-box tables, prime-field power exponents, partial-round masks and explicit constant arrays; in the prime-field profile also the field and, for a custom field, its modulus. Constant arrays must match the submitted schedule exactly; they are never extended silently. An edited reference configuration is reported as a variant. Every claim holds for every choice of round constants, so constants are part of a request and its digest but of no certificate; the prime-field profile has no reference constants and leaves them unspecified unless given.
 
 The exact GF(2⁸) polynomial and prime modulus are part of every claim's meaning. The BN254 profile uses
 
@@ -21,13 +33,15 @@ The exact GF(2⁸) polynomial and prime modulus are part of every claim's meanin
 21888242871839275222246405745257275088548364400416034343698204186575808495617
 ```
 
+The prime-field profile names its modulus in every normalized request: BabyBear `2013265921 = 15 · 2²⁷ + 1`, KoalaBear `2130706433 = 127 · 2²⁴ + 1`, Mersenne31 `2147483647 = 2³¹ - 1`, Goldilocks `18446744069414584321 = 2⁶⁴ - 2³² + 1`, or the submitted custom prime. Each certificate proves its modulus prime from a Pratt certificate (claim `field.prime`, below) before any other claim uses it.
+
 ### Implementation assurance is part of the scope
 
 The release includes a formal connection from Rust source to the mathematical model:
 
 `recorded Rust source → Aeneas model → executable mathematical model → named properties`
 
-For the GF(2⁸) kernels and the AES-like round it covers field arithmetic, S-box table lookup, state layout, round keys, linear layers and complete bounded round execution, with successful execution and equality to the specification for every input (for multi-round execution, given enough round keys). BN254 arithmetic and HADES rounds are not covered. Charon, Aeneas and the Rust compiler remain trusted. This does not establish machine-code correctness or constant-time execution. [refinement/STATUS.md](../refinement/STATUS.md) records which links are proved today.
+For the GF(2⁸) kernels and the AES-like round it covers field arithmetic, S-box table lookup, state layout, round keys, linear layers and complete bounded round execution, with successful execution and equality to the specification for every input (for multi-round execution, given enough round keys). BN254 arithmetic, the arithmetic of the other prime fields and HADES rounds are not covered. Charon, Aeneas and the Rust compiler remain trusted. This does not establish machine-code correctness or constant-time execution. [refinement/STATUS.md](../refinement/STATUS.md) records which links are proved today.
 
 ## What the underlying library establishes
 
@@ -39,7 +53,17 @@ Cryptificate builds on the [WideTrail](https://github.com/4waan/Wide-Trail-forma
 - `Differential`: exact differential-count identities, independent-round-key trail bounds, and small examples separating fixed-key from key-averaged behaviour.
 - `Poseidon2/BN254`: bijectivity, external MDS mixing and an outer-round activity bound for the pinned width-three instance.
 
-Cryptificate adds fresh-input certificates (canonical minors, checked counterexamples, offsets, activity instantiation, partial-round windows and bypasses), a universal circuit-equivalence checker, S-box and exponent certificates, an optimizer, a native measurement harness, the Rust refinement chain, and replayable bundles.
+Cryptificate adds fresh-input certificates (canonical minors, checked counterexamples, offsets, activity instantiation, partial-round windows and bypasses), primality certificates for submitted moduli, a universal circuit-equivalence checker, S-box and exponent certificates, an optimizer, a native measurement harness, the Rust refinement chain, and replayable bundles.
+
+### Prime fields: what is proved
+
+`lean/Cryptificate/PrimeField` makes the HADES certificates field-generic:
+
+- **Primality by kernel evaluation.** `Pratt.prime_of_checkFlat` proves `Nat.Prime p` from a flat list of numerals that `Pratt.checkFlat` accepts: steps `n, a, m, q₁, k₁, …`, each proving `n` prime from `n - 1 = ∏ qᵢ^kᵢ` with every `qᵢ` proved by an earlier step, `a^(n-1) ≡ 1` and `a^((n-1)/qᵢ) ≢ 1 (mod n)` (Mathlib's `lucas_primality`). Modular powers are square-and-multiply on natural numbers, so the kernel's arbitrary-precision arithmetic does all the work and nothing is searched. The engine factors `p - 1` (Pollard's rho, Miller–Rabin) and picks the smallest primitive root; none of that is trusted. The library proves the four named moduli prime with the same checker, and BN254 too, as a cross-check of WideTrail's tactic proof.
+- **Field-generic encoders and power maps.** Matrices, vectors and masks over `ZMod p` are written as numeral lists (`pfMat`, `pfVec`, `maskBits`) and echoed back in decimal; `PrimePower.ZModP.pow_bijective` is the inverse-exponent certificate for any prime `p`; a collision `w ≠ 1`, `w^e = 1` refutes injectivity in any monoid.
+- **Width four.** `Hades.observable_of_rows4` (four rows `eᵢ Mʲ` with a nonzero explicit `4 × 4` determinant), `Hades.powers_zero_of_invariant` (an invariant subspace of any dimension that vanishes on the mask, with explicit coefficients) and `Hades.powers_zero_of_rows` (a bypass of fewer partial rounds than the width, checked row by row). With `Diffusion.Minors4` for MDS and the width-generic `Hades.Design` and `Hades.Partial`, every HADES claim has a certificate at widths three and four.
+
+Every theorem above has its axioms pinned to `propext`, `Classical.choice` and `Quot.sound` (`PrimeField/Axioms.lean`; `powMod_eq` needs only `propext` and `Quot.sound`). Regression certificates for KoalaBear and BabyBear at width four, Mersenne31 and Goldilocks at width three and a custom prime at width four are in `lean/Cryptificate/Examples/Hades*.lean`; each checks in about five seconds.
 
 ## 1. Audit diffusion changes and implementation substitutions
 
@@ -47,7 +71,7 @@ Cryptificate adds fresh-input certificates (canonical minors, checked counterexa
 
 ## 2. Partial rounds that miss a subspace
 
-*Implemented for width-three HADES designs over BN254, as the claims `activity.partial` and `activity.total`.* Can a nonzero difference pass through a sequence of partial rounds without reaching an active S-box? Linear-layer choices affect middle-round behaviour even when every matrix is MDS ([Keller and Rosemarin, *Mind the Middle Layer*](https://eprint.iacr.org/2020/179)).
+*Implemented for HADES designs of width three over BN254 and of widths three and four over the 64-bit prime fields, as the claims `activity.partial` and `activity.total`.* Can a nonzero difference pass through a sequence of partial rounds without reaching an active S-box? Linear-layer choices affect middle-round behaviour even when every matrix is MDS ([Keller and Rosemarin, *Mind the Middle Layer*](https://eprint.iacr.org/2020/179)).
 
 A concrete example over the pinned prime field: use
 
@@ -82,7 +106,7 @@ The engine finds the window length `L` by scanning the rows `eᵢ Mʲ` in order 
 
 ### Scope and limits
 
-The bound counts S-boxes with a nonzero input difference in two executions with the same round constants. It is neither a tightness result nor a security level, it says nothing about probabilities, and one charged S-box per window is all it extracts from the partial rounds; a sharper count of the partial rounds, or bounds across the boundary between full and partial rounds, would need a further argument. The certificates are written for width three over BN254, the only HADES width the tool accepts; the library lemmas other than `observable_of_rows3` hold at every width. Related subspace-trail criteria exist ([Grassi, Rechberger and Schofnegger](https://eprint.iacr.org/2020/500)); the contribution is a scoped formalization with reusable checked certificates.
+The bound counts S-boxes with a nonzero input difference in two executions with the same round constants. It is neither a tightness result nor a security level, it says nothing about probabilities, and one charged S-box per window is all it extracts from the partial rounds; a sharper count of the partial rounds, or bounds across the boundary between full and partial rounds, would need a further argument. The certificates are written for width three over BN254 and for widths three and four over the 64-bit prime fields (with `observable_of_rows4`, `powers_zero_of_invariant` and `powers_zero_of_rows` at width four); the other library lemmas hold at every width. At width four a window needs at least four partial rounds with a single masked position, and a design with fewer partial rounds than that is refuted by a bypass of its few rounds. Deployed Poseidon2 widths (8 to 24) are not accepted: their external matrices are not MDS by construction and need claims about the construction itself. Related subspace-trail criteria exist ([Grassi, Rechberger and Schofnegger](https://eprint.iacr.org/2020/500)); the contribution is a scoped formalization with reusable checked certificates.
 
 ## 3. Tighter activity bounds from checked search (proposed)
 
