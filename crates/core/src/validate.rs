@@ -88,6 +88,17 @@ pub fn validate_analysis_request(v: &Value) -> Result<AnalysisRequest> {
 pub fn validate_experiment_request(v: &Value) -> Result<ExperimentRequest> {
     let o = Obj::new(v, "", &["design", "program", "profile", "seed"])?;
     let design = design_at(o.req("design")?, &o.path("design"))?;
+    if let CandidateDesign::HadesPrime(d) = &design {
+        return Err(err(
+            ErrorCode::FieldMismatch,
+            at(&o.path("design"), "field"),
+            format!(
+                "experiments (the circuit search and native measurement) cover gf256 and bn254 \
+                 designs only, not field {}",
+                d.field
+            ),
+        ));
+    }
     let program = o
         .opt("program")
         .map(|p| program_for_design(p, &o.path("program"), &design))

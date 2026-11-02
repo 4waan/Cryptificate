@@ -875,6 +875,12 @@ fn prime_designs_take_no_programs() {
     assert_eq!(e.code, ErrorCode::FieldMismatch);
     let req = json!({"design": prime_design(), "target": "internal"});
     validate_analysis_request(&req).unwrap();
+    let e = validate_experiment_request(&json!({"design": prime_design(), "profile": "quick"}))
+        .unwrap_err();
+    assert_eq!(
+        (e.code, e.path.as_str()),
+        (ErrorCode::FieldMismatch, "/design/field")
+    );
 }
 
 #[test]
