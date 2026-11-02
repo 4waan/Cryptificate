@@ -146,8 +146,7 @@ theorem sboxOf_injective_of_tableCovers {t : Std.Array U8 256#usize}
     (ht : tableCovers t = true) : Function.Injective (sboxOf t) :=
   Finite.injective_iff_surjective.mpr (sboxOf_surjective_of_tableCovers ht)
 
-/-- Injectivity of `sboxOf t` is exactly the absence of repeated entries among
-`t[0], …, t[255]`, the hypothesis of `aes_like_encrypt_activity_bound`. The converse of
+/-- An injective `sboxOf t` has no repeated entry among `t[0], …, t[255]`: the converse of
 `sboxOf_injective`. -/
 theorem table_injective_of_sboxOf_injective {t : Std.Array U8 256#usize}
     (h : Function.Injective (sboxOf t)) : ∀ a < 256, ∀ b < 256, t[a]! = t[b]! → a = b := by
@@ -155,6 +154,8 @@ theorem table_injective_of_sboxOf_injective {t : Std.Array U8 256#usize}
   have hgf : gf a = gf b := h (by simp only [sboxOf, gf_toNat ha, gf_toNat hb, hab])
   rw [← gf_toNat ha, ← gf_toNat hb, hgf]
 
+/-- Injectivity of `sboxOf t` is exactly the absence of repeated entries among
+`t[0], …, t[255]`, the S-box hypothesis of `aes_like_encrypt_activity_bound`. -/
 theorem sboxOf_injective_iff (t : Std.Array U8 256#usize) :
     Function.Injective (sboxOf t) ↔ ∀ a < 256, ∀ b < 256, t[a]! = t[b]! → a = b :=
   ⟨table_injective_of_sboxOf_injective, sboxOf_injective t⟩
