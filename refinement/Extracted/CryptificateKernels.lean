@@ -343,6 +343,261 @@ def aes_like.encrypt
   := do
   aes_like.encrypt_loop state matrix offsets sbox round_keys rounds 0#usize
 
+/-- [cryptificate_kernels::bn254_mont::P0]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 23:0-23:42
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.P0 : Std.U64 := 4891460686036598785#u64
+
+/-- [cryptificate_kernels::bn254_mont::P1]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 24:0-24:42
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.P1 : Std.U64 := 2896914383306846353#u64
+
+/-- [cryptificate_kernels::bn254_mont::P2]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 25:0-25:42
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.P2 : Std.U64 := 13281191951274694749#u64
+
+/-- [cryptificate_kernels::bn254_mont::P3]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 26:0-26:42
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.P3 : Std.U64 := 3486998266802970665#u64
+
+/-- [cryptificate_kernels::bn254_mont::INV]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 29:0-29:43
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.INV : Std.U64 := 14042775128853446655#u64
+
+/-- [cryptificate_kernels::bn254_mont::R2_0]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 32:0-32:44
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.R2_0 : Std.U64 := 1997599621687373223#u64
+
+/-- [cryptificate_kernels::bn254_mont::R2_1]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 33:0-33:44
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.R2_1 : Std.U64 := 6052339484930628067#u64
+
+/-- [cryptificate_kernels::bn254_mont::R2_2]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 34:0-34:44
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.R2_2 : Std.U64 := 10108755138030829701#u64
+
+/-- [cryptificate_kernels::bn254_mont::R2_3]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 35:0-35:44
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.R2_3 : Std.U64 := 150537098327114917#u64
+
+/-- [cryptificate_kernels::bn254_mont::MODULUS]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 38:0-38:47
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.MODULUS : Array Std.U64 4#usize :=
+  Array.make 4#usize [
+    bn254_mont.P0, bn254_mont.P1, bn254_mont.P2, bn254_mont.P3
+    ]
+
+/-- [cryptificate_kernels::bn254_mont::R2]
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 41:0-41:50
+    Visibility: public -/
+@[global_simps, irreducible]
+def bn254_mont.R2 : Array Std.U64 4#usize :=
+  Array.make 4#usize [
+    bn254_mont.R2_0, bn254_mont.R2_1, bn254_mont.R2_2, bn254_mont.R2_3
+    ]
+
+/-- [cryptificate_kernels::bn254_mont::mac]:
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 46:0-49:1
+    Visibility: public -/
+def bn254_mont.mac
+  (acc : Std.U64) (a : Std.U64) (b : Std.U64) (carry : Std.U64) :
+  Result (Std.U64 × Std.U64)
+  := do
+  let i ← lift (UScalar.cast .U128 acc)
+  let i1 ← lift (UScalar.cast .U128 a)
+  let i2 ← lift (UScalar.cast .U128 b)
+  let i3 ← i1 * i2
+  let i4 ← i + i3
+  let i5 ← lift (UScalar.cast .U128 carry)
+  let t ← i4 + i5
+  let i6 ← lift (UScalar.cast .U64 t)
+  let i7 ← t >>> 64#i32
+  let i8 ← lift (UScalar.cast .U64 i7)
+  ok (i6, i8)
+
+/-- [cryptificate_kernels::bn254_mont::adc]:
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 53:0-56:1
+    Visibility: public -/
+def bn254_mont.adc
+  (a : Std.U64) (b : Std.U64) (carry : Std.U64) :
+  Result (Std.U64 × Std.U64)
+  := do
+  let i ← lift (UScalar.cast .U128 a)
+  let i1 ← lift (UScalar.cast .U128 b)
+  let i2 ← i + i1
+  let i3 ← lift (UScalar.cast .U128 carry)
+  let t ← i2 + i3
+  let i4 ← lift (UScalar.cast .U64 t)
+  let i5 ← t >>> 64#i32
+  let i6 ← lift (UScalar.cast .U64 i5)
+  ok (i4, i6)
+
+/-- [cryptificate_kernels::bn254_mont::sbb]:
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 61:0-64:1
+    Visibility: public -/
+def bn254_mont.sbb
+  (a : Std.U64) (b : Std.U64) (borrow : Std.U64) :
+  Result (Std.U64 × Std.U64)
+  := do
+  let i ← lift (UScalar.cast .U128 a)
+  let i1 ← i + 18446744073709551616#u128
+  let i2 ← lift (UScalar.cast .U128 b)
+  let i3 ← i1 - i2
+  let i4 ← lift (UScalar.cast .U128 borrow)
+  let t ← i3 - i4
+  let i5 ← lift (UScalar.cast .U64 t)
+  let i6 ← t >>> 64#i32
+  let i7 ← lift (UScalar.cast .U64 i6)
+  let i8 ← 1#u64 - i7
+  ok (i5, i8)
+
+/-- [cryptificate_kernels::bn254_mont::reduce_once]:
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 69:0-79:1
+    Visibility: public -/
+def bn254_mont.reduce_once
+  (t : Array Std.U64 4#usize) : Result (Array Std.U64 4#usize) := do
+  let i ← Array.index_usize t 0#usize
+  let (d0, b) ← bn254_mont.sbb i bn254_mont.P0 0#u64
+  let i1 ← Array.index_usize t 1#usize
+  let (d1, b1) ← bn254_mont.sbb i1 bn254_mont.P1 b
+  let i2 ← Array.index_usize t 2#usize
+  let (d2, b2) ← bn254_mont.sbb i2 bn254_mont.P2 b1
+  let i3 ← Array.index_usize t 3#usize
+  let (d3, b3) ← bn254_mont.sbb i3 bn254_mont.P3 b2
+  if b3 = 0#u64
+  then ok (Array.make 4#usize [ d0, d1, d2, d3 ])
+  else ok t
+
+/-- [cryptificate_kernels::bn254_mont::mont_row]:
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 84:0-96:1
+    Visibility: public -/
+def bn254_mont.mont_row
+  (t : Array Std.U64 4#usize) (a : Array Std.U64 4#usize) (b : Std.U64) :
+  Result (Array Std.U64 4#usize)
+  := do
+  let i ← Array.index_usize t 0#usize
+  let i1 ← Array.index_usize a 0#usize
+  let (r0, c) ← bn254_mont.mac i i1 b 0#u64
+  let i2 ← Array.index_usize t 1#usize
+  let i3 ← Array.index_usize a 1#usize
+  let (r1, c1) ← bn254_mont.mac i2 i3 b c
+  let i4 ← Array.index_usize t 2#usize
+  let i5 ← Array.index_usize a 2#usize
+  let (r2, c2) ← bn254_mont.mac i4 i5 b c1
+  let i6 ← Array.index_usize t 3#usize
+  let i7 ← Array.index_usize a 3#usize
+  let (r3, r4) ← bn254_mont.mac i6 i7 b c2
+  let m ← lift (core.num.U64.wrapping_mul r0 bn254_mont.INV)
+  let (_, c3) ← bn254_mont.mac r0 m bn254_mont.P0 0#u64
+  let (s0, c4) ← bn254_mont.mac r1 m bn254_mont.P1 c3
+  let (s1, c5) ← bn254_mont.mac r2 m bn254_mont.P2 c4
+  let (s2, c6) ← bn254_mont.mac r3 m bn254_mont.P3 c5
+  let s3 ← r4 + c6
+  ok (Array.make 4#usize [ s0, s1, s2, s3 ])
+
+/-- [cryptificate_kernels::bn254_mont::mul]:
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 100:0-106:1
+    Visibility: public -/
+def bn254_mont.mul
+  (a : Array Std.U64 4#usize) (b : Array Std.U64 4#usize) :
+  Result (Array Std.U64 4#usize)
+  := do
+  let a1 := Array.repeat 4#usize 0#u64
+  let i ← Array.index_usize b 0#usize
+  let t ← bn254_mont.mont_row a1 a i
+  let i1 ← Array.index_usize b 1#usize
+  let t1 ← bn254_mont.mont_row t a i1
+  let i2 ← Array.index_usize b 2#usize
+  let t2 ← bn254_mont.mont_row t1 a i2
+  let i3 ← Array.index_usize b 3#usize
+  let t3 ← bn254_mont.mont_row t2 a i3
+  bn254_mont.reduce_once t3
+
+/-- [cryptificate_kernels::bn254_mont::add]:
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 110:0-116:1
+    Visibility: public -/
+def bn254_mont.add
+  (a : Array Std.U64 4#usize) (b : Array Std.U64 4#usize) :
+  Result (Array Std.U64 4#usize)
+  := do
+  let i ← Array.index_usize a 0#usize
+  let i1 ← Array.index_usize b 0#usize
+  let (s0, c) ← bn254_mont.adc i i1 0#u64
+  let i2 ← Array.index_usize a 1#usize
+  let i3 ← Array.index_usize b 1#usize
+  let (s1, c1) ← bn254_mont.adc i2 i3 c
+  let i4 ← Array.index_usize a 2#usize
+  let i5 ← Array.index_usize b 2#usize
+  let (s2, c2) ← bn254_mont.adc i4 i5 c1
+  let i6 ← Array.index_usize a 3#usize
+  let i7 ← Array.index_usize b 3#usize
+  let (s3, _) ← bn254_mont.adc i6 i7 c2
+  bn254_mont.reduce_once (Array.make 4#usize [ s0, s1, s2, s3 ])
+
+/-- [cryptificate_kernels::bn254_mont::sub]:
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 120:0-134:1
+    Visibility: public -/
+def bn254_mont.sub
+  (a : Array Std.U64 4#usize) (b : Array Std.U64 4#usize) :
+  Result (Array Std.U64 4#usize)
+  := do
+  let i ← Array.index_usize a 0#usize
+  let i1 ← Array.index_usize b 0#usize
+  let (d0, br) ← bn254_mont.sbb i i1 0#u64
+  let i2 ← Array.index_usize a 1#usize
+  let i3 ← Array.index_usize b 1#usize
+  let (d1, br1) ← bn254_mont.sbb i2 i3 br
+  let i4 ← Array.index_usize a 2#usize
+  let i5 ← Array.index_usize b 2#usize
+  let (d2, br2) ← bn254_mont.sbb i4 i5 br1
+  let i6 ← Array.index_usize a 3#usize
+  let i7 ← Array.index_usize b 3#usize
+  let (d3, br3) ← bn254_mont.sbb i6 i7 br2
+  if br3 = 0#u64
+  then ok (Array.make 4#usize [ d0, d1, d2, d3 ])
+  else
+    let (s0, c) ← bn254_mont.adc d0 bn254_mont.P0 0#u64
+    let (s1, c1) ← bn254_mont.adc d1 bn254_mont.P1 c
+    let (s2, c2) ← bn254_mont.adc d2 bn254_mont.P2 c1
+    let (s3, _) ← bn254_mont.adc d3 bn254_mont.P3 c2
+    ok (Array.make 4#usize [ s0, s1, s2, s3 ])
+
+/-- [cryptificate_kernels::bn254_mont::to_mont]:
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 138:0-140:1
+    Visibility: public -/
+def bn254_mont.to_mont
+  (x : Array Std.U64 4#usize) : Result (Array Std.U64 4#usize) := do
+  bn254_mont.mul
+    (Array.make 4#usize [
+      bn254_mont.R2_0, bn254_mont.R2_1, bn254_mont.R2_2, bn254_mont.R2_3
+      ]) x
+
+/-- [cryptificate_kernels::bn254_mont::from_mont]:
+    Source: 'refinement/rust/../../crates/kernels/src/bn254_mont.rs', lines 144:0-146:1
+    Visibility: public -/
+def bn254_mont.from_mont
+  (x : Array Std.U64 4#usize) : Result (Array Std.U64 4#usize) := do
+  bn254_mont.mul (Array.make 4#usize [ 1#u64, 0#u64, 0#u64, 0#u64 ]) x
+
 /-- [cryptificate_kernels::gf256::POLY]
     Source: 'refinement/rust/../../crates/kernels/src/gf256.rs', lines 10:0-10:28
     Visibility: public -/
