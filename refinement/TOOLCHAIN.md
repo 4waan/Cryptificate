@@ -61,7 +61,8 @@ aeneas -backend lean -dest <tmp>/lean <tmp>/<crate>.llbc
 
 `--sysroot default` uses the distributed standard library instead of building a full-MIR
 sysroot: the standard-library functions the extracted code calls (`u8::wrapping_mul`,
-`u8::wrapping_sub`, `u16::leading_zeros`) are modelled directly by the Aeneas Lean library;
+`u8::wrapping_sub`, `u16::leading_zeros`, `u64::wrapping_mul`) are modelled directly by the
+Aeneas Lean library;
 `core::mem::size_of`, which the gf256 crate calls, is not, and Aeneas declares it as an
 uninterpreted function (see `STATUS.md`). For `Gf256Aes.lean`, `extract.sh` then writes
 references to the crate module `p` with their full names (`gf256_aes.p.…`), because the Lean

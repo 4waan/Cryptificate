@@ -27,7 +27,7 @@ The release includes a formal connection from Rust source to the mathematical mo
 
 `recorded Rust source → Aeneas model → executable mathematical model → named properties`
 
-For the GF(2⁸) kernels and the AES-like round it covers field arithmetic, S-box table lookup, state layout, round keys, linear layers and complete bounded round execution, with successful execution and equality to the specification for every input (for multi-round execution, given enough round keys). BN254 arithmetic and HADES rounds are not covered. Charon, Aeneas and the Rust compiler remain trusted. This does not establish machine-code correctness or constant-time execution. [refinement/STATUS.md](../refinement/STATUS.md) records which links are proved today.
+For the GF(2⁸) kernels and the AES-like round it covers field arithmetic, S-box table lookup, state layout, round keys, linear layers and complete bounded round execution, with successful execution and equality to the specification for every input (for multi-round execution, given enough round keys). For BN254 it covers a self-contained Montgomery kernel (`crates/kernels/src/bn254_mont.rs`: CIOS multiplication, addition, subtraction, conversions) against `ZMod p` on canonical inputs; the arkworks arithmetic that the native BN254 variants call, and HADES rounds, are not covered. Charon, Aeneas and the Rust compiler remain trusted. This does not establish machine-code correctness or constant-time execution. [refinement/STATUS.md](../refinement/STATUS.md) records which links are proved today.
 
 ## What the underlying library establishes
 
@@ -91,7 +91,7 @@ Linear cryptanalysis needs masks, correlations and dual linear-layer semantics; 
 
 ## 7. From the formal circuit to deployed code
 
-The refinement chain above connects Rust source to the model. Strengthening it means verified code generation for searched circuits (today each generated variant is checked by tests, not refined), verification of the arkworks Montgomery arithmetic used for BN254, and adapters for other implementation languages through the batch interface, for example OxCaml implementations studied by [FP Launchpad](https://fplaunchpad.org). Constant-time behaviour, fault resistance and leakage need their own models; memory safety and a good benchmark establish none of them.
+The refinement chain above connects Rust source to the model. Strengthening it means verified code generation for searched circuits (today each generated variant is checked by tests, not refined), moving the native BN254 variants from arkworks to the proved Montgomery kernel (or verifying arkworks' arithmetic itself), and adapters for other implementation languages through the batch interface, for example OxCaml implementations studied by [FP Launchpad](https://fplaunchpad.org). Constant-time behaviour, fault resistance and leakage need their own models; memory safety and a good benchmark establish none of them.
 
 ## Reporting rules
 

@@ -150,8 +150,9 @@ The native code Cryptificate measures is built on [`crates/kernels`](crates/kern
 | `gf256::xtime`, `gf256::add` | equal to `GF256.xtime` and to XOR | WideTrail's field `GF256` |
 | `aes_like::round`, `aes_like::encrypt` | equal to `aesLikeRound` and `aesLikeExec` of [`Bridge.lean`](lean/Cryptificate/Bridge.lean) for every matrix, offsets, S-box table and key schedule (`encrypt` given at least `rounds` keys) | the active-S-box bound, assuming an MDS matrix, distinct offsets and an injective S-box table |
 | gf256 crate 0.3.1 (`0x11B`, table-free), expanded source | its `mul` equals WideTrail's multiplier, assuming `size_of::<u8>() = 1` | WideTrail's field `GF256` |
+| `bn254_mont::{mul, add, sub, to_mont, from_mont}` (BN254 Montgomery form on `[u64; 4]`) | on canonical inputs, no panic and the canonical result of `a·b·R⁻¹`, `a + b`, `a − b` mod p (and `x·R`, `x·R⁻¹` for any input) | WideTrail's `Poseidon2.BN254.F = ZMod p`, through `toField x = x·R⁻¹` |
 
-Because the round kernel takes the design as runtime data, one proof covers every AES-like design you submit. The extraction script reproduces the Lean translation byte for byte from the pinned source; pins and hashes are in [refinement/](refinement/STATUS.md).
+Because the round kernel takes the design as runtime data, one proof covers every AES-like design you submit. The BN254 kernel is proved, but the native BN254 variants still call arkworks' `Fr`, which Aeneas cannot translate, so the timed BN254 arithmetic is not covered ([STATUS.md, section 4](refinement/STATUS.md)). The extraction script reproduces the Lean translation byte for byte from the pinned source; pins and hashes are in [refinement/](refinement/STATUS.md).
 
 ## Search and measurement
 
