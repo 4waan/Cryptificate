@@ -146,7 +146,9 @@ export type DesignClaimId =
   | 'activity.bound'
   | 'external.mds'
   | 'internal.invertible'
-  | 'activity.outer';
+  | 'activity.outer'
+  | 'activity.partial'
+  | 'activity.total';
 
 export type ImplementationClaimId =
   | 'circuit.equivalence'
@@ -217,12 +219,25 @@ export interface PowerCollisionWitness {
   note: string;
 }
 
+/**
+ * A nonzero difference that passes every partial round of a HADES design
+ * with no active S-box: every power of the internal matrix below
+ * `partialRounds` keeps it at zero on the masked `positions`.
+ */
+export interface PartialBypassWitness {
+  kind: 'partial-bypass';
+  difference: BnDecimal[];
+  positions: number[];
+  partialRounds: number;
+}
+
 export type Witness =
   | BranchWitness
   | OffsetCollisionWitness
   | DistinguishingInputWitness
   | SboxCollisionWitness
-  | PowerCollisionWitness;
+  | PowerCollisionWitness
+  | PartialBypassWitness;
 
 export type WitnessKind = Witness['kind'];
 

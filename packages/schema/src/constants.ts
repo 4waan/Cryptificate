@@ -108,6 +108,8 @@ export const HADES_DESIGN_CLAIMS: readonly ClaimInfo[] = [
   { id: 'internal.invertible', chain: 'design', title: 'Internal matrix is invertible' },
   { id: 'sbox.bijective', chain: 'design', title: 'Power S-box is a permutation' },
   { id: 'activity.outer', chain: 'design', title: 'Active S-box bound for the full rounds' },
+  { id: 'activity.partial', chain: 'design', title: 'No difference passes the partial rounds without an active S-box' },
+  { id: 'activity.total', chain: 'design', title: 'Active S-box bound over the whole permutation' },
 ];
 
 export const IMPLEMENTATION_CLAIMS: readonly ClaimInfo[] = [
@@ -141,6 +143,17 @@ export function aesLikeActivityBound(rounds: number): number {
 export function hadesOuterActivityBound(fullRounds: number): number {
   const h = Math.floor(fullRounds / 2);
   return 2 * (4 * Math.floor(h / 2) + (h % 2));
+}
+
+/**
+ * Active S-box lower bound over the whole permutation of a width-3 HADES
+ * design whose full-round bound applies and whose internal matrix charges
+ * every window of `window` consecutive partial rounds: the full-round bound
+ * plus one for each of the `floor(partialRounds / window)` disjoint windows.
+ * The bound of the Lean theorem `hades_total_activity`.
+ */
+export function hadesTotalActivityBound(fullRounds: number, partialRounds: number, window: number): number {
+  return hadesOuterActivityBound(fullRounds) + (window > 0 ? Math.floor(partialRounds / window) : 0);
 }
 
 /** Plain-language wording for a claim that is not established. */
