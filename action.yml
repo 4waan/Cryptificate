@@ -1,0 +1,259 @@
+name: Cryptificate check
+description: >-
+  Check cipher and ZK-hash design files with Cryptificate's Lean checker and gate the job on
+  the claim statuses: SARIF for code scanning, a job summary and the evidence bundles.
+author: 4waan
+branding:
+  icon: check-square
+  color: green
+
+inputs:
+  inputs:
+    description: >-
+      Design or request files, or patterns (*, ?, [..], **), relative to working-directory and
+      separated by spaces or new lines. A request file may hold "design", "program" and "target".
+    required: true
+  fail-on:
+    description: "Claim statuses that fail the job: none, refuted, not-established or any."
+    default: refuted
+  claims:
+    description: Comma-separated claim ids the policy is restricted to (default every claim the run attempts).
+    default: ""
+  target:
+    description: "Circuit target for every input: matrix, external or internal (default from each file)."
+    default: ""
+  working-directory:
+    description: Directory the input patterns and output paths are relative to.
+    default: "."
+  upload-sarif:
+    description: Upload the SARIF log to GitHub code scanning (needs the security-events write permission).
+    default: "true"
+  sarif-category:
+    description: Code scanning category for the SARIF upload.
+    default: cryptificate
+  upload-artifacts:
+    description: Upload the evidence bundles and the result files as a workflow artifact.
+    default: "true"
+  artifact-name:
+    description: Name of the uploaded artifact.
+    default: cryptificate-evidence
+  step-summary:
+    description: Append the Markdown result to the job summary.
+    default: "true"
+  proof-cache:
+    description: >-
+      Keep Cryptificate's proof cache between runs in the Actions cache. A cache hit skips Lean for
+      an unchanged input and is reported as a cached result; leave it off to have Lean check every
+      certificate in every run.
+    default: "false"
+  node-version:
+    description: Node.js version used to run the command.
+    default: "22"
+
+outputs:
+  exit-code:
+    description: "Exit status of cryptificate check: 0 passed, 1 policy failed, 2 error."
+    value: ${{ steps.check.outputs.exit-code }}
+  outcome:
+    description: pass, policy-failure or error.
+    value: ${{ steps.check.outputs.outcome }}
+  result-file:
+    description: The check result as JSON (cryptificate-check/v1).
+    value: ${{ steps.check.outputs.result-file }}
+  sarif-file:
+    description: The SARIF 2.1.0 log.
+    value: ${{ steps.check.outputs.sarif-file }}
+  bundle-dir:
+    description: Directory holding one evidence bundle per checked input.
+    value: ${{ steps.check.outputs.bundle-dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Compute cache keys
+      id: keys
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd "$GITHUB_ACTION_PATH"
+        toolchain="$(tr -d '[:space:]' < lean/lean-toolchain)"
+        manifest="$(sha256sum lean/lake-manifest.json | cut -c1-16)"
+        leansrc="$(find lean -path lean/.lake -prune -o \( -name '*.lean' -o -name 'lakefile.*' \) -type f -print | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -c1-16)"
+        cargo_lock="$(sha256sum Cargo.lock | cut -c1-16)"
+        npm_lock="$(sha256sum package-lock.json | cut -c1-16)"
+        rustc_v="$( (rustc -V 2>/dev/null || echo none) | sha256sum | cut -c1-8)"
+        {
+          echo "toolchain=${toolchain}"
+          echo "elan=cryptificate-elan-${RUNNER_OS}-${toolchain//[^A-Za-z0-9.]/-}"
+          echo "mathlib=cryptificate-mathlib-${RUNNER_OS}-${manifest}"
+          echo "lean-build=cryptificate-lean-${RUNNER_OS}-${manifest}-${leansrc}"
+          echo "lean-build-prefix=cryptificate-lean-${RUNNER_OS}-${manifest}-"
+          echo "cargo=cryptificate-cargo-${RUNNER_OS}-${rustc_v}-${cargo_lock}"
+          echo "npm=cryptificate-npm-${RUNNER_OS}-${npm_lock}"
+        } >> "$GITHUB_OUTPUT"
+        echo "home=${RUNNER_TEMP}/cryptificate-home" >> "$GITHUB_OUTPUT"
+
+    - name: Restore the Lean toolchain
+      uses: actions/cache@v4
+      with:
+        path: ~/.elan
+        key: ${{ steps.keys.outputs.elan }}
+
+    - name: Restore the Mathlib build cache archives
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/mathlib
+        key: ${{ steps.keys.outputs.mathlib }}
+
+    - name: Restore the Cryptificate and WideTrail builds
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ github.action_path }}/lean/.lake/build
+          ${{ github.action_path }}/lean/.lake/packages/WideTrail/.lake
+        key: ${{ steps.keys.outputs.lean-build }}
+        restore-keys: ${{ steps.keys.outputs.lean-build-prefix }}
+
+    - name: Restore the cargo registry and engine build
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+          ${{ github.action_path }}/target
+        key: ${{ steps.keys.outputs.cargo }}
+
+    - name: Restore the npm cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ steps.keys.outputs.npm }}
+
+    - name: Restore the proof cache
+      if: ${{ inputs.proof-cache == 'true' }}
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.keys.outputs.home }}/cache
+        key: cryptificate-proofs-${{ runner.os }}-${{ github.sha }}
+        restore-keys: cryptificate-proofs-${{ runner.os }}-
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install elan and the pinned Lean toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ ! -x "$HOME/.elan/bin/elan" ]; then
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o "$RUNNER_TEMP/elan-init.sh"
+          sh "$RUNNER_TEMP/elan-init.sh" -y --default-toolchain none --no-modify-path
+        fi
+        echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+        toolchain="${{ steps.keys.outputs.toolchain }}"
+        if ! "$HOME/.elan/bin/elan" toolchain list | grep -q "^${toolchain}"; then
+          "$HOME/.elan/bin/elan" toolchain install "$toolchain"
+        fi
+
+    - name: Fetch the Mathlib build cache and build the certificate library
+      shell: bash
+      working-directory: ${{ github.action_path }}/lean
+      run: |
+        set -euo pipefail
+        export PATH="$HOME/.elan/bin:$PATH"
+        lake exe cache get
+        lake build Cryptificate
+
+    - name: Build the engine
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        cargo fetch --locked
+        cargo build --release --locked --bin cryptificate-engine
+
+    - name: Build the command
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        npm ci --no-audit --no-fund
+        npm run build -w packages/schema
+        npm run build -w apps/server
+
+    - name: Check the inputs
+      id: check
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CRYPTIFICATE_HOME: ${{ steps.keys.outputs.home }}
+        INPUT_PATTERNS: ${{ inputs.inputs }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_CLAIMS: ${{ inputs.claims }}
+        INPUT_TARGET: ${{ inputs.target }}
+        INPUT_STEP_SUMMARY: ${{ inputs.step-summary }}
+        INPUT_PROOF_CACHE: ${{ inputs.proof-cache }}
+      run: |
+        set -uo pipefail
+        export PATH="$HOME/.elan/bin:$PATH"
+        cli="$GITHUB_ACTION_PATH/apps/server/dist/src/cli.js"
+        out="$RUNNER_TEMP/cryptificate"
+        rm -rf "$out"
+        mkdir -p "$out/bundles"
+        # Split on white space without letting the shell expand the patterns.
+        set -f
+        read -r -d '' -a patterns <<< "$INPUT_PATTERNS" || true
+        set +f
+        args=(check "${patterns[@]}" --fail-on "$INPUT_FAIL_ON" --format json --output "$out/result.json" --bundle-dir "$out/bundles")
+        [ -n "$INPUT_CLAIMS" ] && args+=(--claims "$INPUT_CLAIMS")
+        [ -n "$INPUT_TARGET" ] && args+=(--target "$INPUT_TARGET")
+        [ "$INPUT_STEP_SUMMARY" = "true" ] || args+=(--no-step-summary)
+        [ "$INPUT_PROOF_CACHE" = "true" ] || args+=(--no-cache)
+        node "$cli" "${args[@]}"
+        code=$?
+        outcome=error
+        [ "$code" -eq 0 ] && outcome=pass
+        [ "$code" -eq 1 ] && outcome=policy-failure
+        sarif=""
+        if [ -f "$out/result.json" ]; then
+          node "$cli" report "$out/result.json" --format sarif --output "$out/cryptificate.sarif" --no-step-summary > /dev/null
+          node "$cli" report "$out/result.json" --format junit --output "$out/cryptificate.junit.xml" --no-step-summary > /dev/null
+          [ -f "$out/cryptificate.sarif" ] && sarif="$out/cryptificate.sarif"
+        fi
+        {
+          echo "exit-code=$code"
+          echo "outcome=$outcome"
+          echo "result-file=$([ -f "$out/result.json" ] && echo "$out/result.json")"
+          echo "sarif-file=$sarif"
+          echo "bundle-dir=$out/bundles"
+        } >> "$GITHUB_OUTPUT"
+        exit 0
+
+    - name: Upload SARIF to code scanning
+      if: ${{ always() && inputs.upload-sarif == 'true' && steps.check.outputs.sarif-file != '' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.check.outputs.sarif-file }}
+        category: ${{ inputs.sarif-category }}
+
+    - name: Upload the evidence bundles and results
+      if: ${{ always() && inputs.upload-artifacts == 'true' && steps.check.outputs.exit-code != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/cryptificate
+        if-no-files-found: warn
+
+    - name: Apply the policy
+      if: ${{ always() }}
+      shell: bash
+      env:
+        CODE: ${{ steps.check.outputs.exit-code }}
+        OUTCOME: ${{ steps.check.outputs.outcome }}
+      run: |
+        case "${CODE:-2}" in
+          0) echo "Cryptificate: passed." ;;
+          1) echo "::error::Cryptificate: the policy failed (a claim has a status the policy rejects)."; exit 1 ;;
+          *) echo "::error::Cryptificate: error (${OUTCOME:-no result}); the inputs could not all be checked."; exit 2 ;;
+        esac
