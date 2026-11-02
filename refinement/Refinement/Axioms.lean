@@ -109,6 +109,40 @@ info: 'Cryptificate.Refinement.aes_like_encrypt_activity_bound' depends on axiom
 #print axioms Cryptificate.Refinement.aes_like_encrypt_activity_bound
 
 /--
+info: 'Cryptificate.Refinement.aes_like_final_round_refines' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_final_round_refines
+
+/--
+info: 'Cryptificate.Refinement.aes_like_final_round_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_final_round_eq
+
+/--
+info: 'Cryptificate.Refinement.aes_like_encrypt_with_last_round_refines' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_encrypt_with_last_round_refines
+
+/--
+info: 'Cryptificate.Refinement.aes_like_encrypt_with_last_round_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_encrypt_with_last_round_eq
+
+/--
+info: 'Cryptificate.Refinement.aes_like_encrypt_with_last_round_activity_bound' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_encrypt_with_last_round_activity_bound
+
+/--
 info: 'Cryptificate.Refinement.table_injective_of_sboxOf_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
@@ -145,6 +179,14 @@ info: 'Cryptificate.Refinement.aes_like_encrypt_activity_bound_of_checks' depend
 -/
 #guard_msgs in
 #print axioms Cryptificate.Refinement.aes_like_encrypt_activity_bound_of_checks
+
+/--
+info: 'Cryptificate.Refinement.aes_like_encrypt_with_last_round_activity_bound_of_checks' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_like_encrypt_with_last_round_activity_bound_of_checks
 
 /--
 info: 'Cryptificate.Refinement.aesMatrixBytes_minors4Ok' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -205,6 +247,18 @@ info: 'Cryptificate.Refinement.aes_rust_activity_bound_4' depends on axioms: [pr
 -/
 #guard_msgs in
 #print axioms Cryptificate.Refinement.aes_rust_activity_bound_4
+
+/--
+info: 'Cryptificate.Refinement.aes_rust_cipher_activity_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_rust_cipher_activity_bound
+
+/--
+info: 'Cryptificate.Refinement.aes_rust_cipher_activity_bound_10' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Refinement.aes_rust_cipher_activity_bound_10
 
 /--
 info: 'Cryptificate.Refinement.Gf256Crate.crateMul_eq_rawMul' depends on axioms: [propext, Quot.sound]
