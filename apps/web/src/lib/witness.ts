@@ -71,8 +71,8 @@ export function describeWitness(w: Witness, field: FieldName): string {
       return (
         `Two states that differ by [${w.difference.map(signedDecimal).join(', ')}] when they enter the partial rounds ` +
         `give equal inputs to the S-box${at.length === 1 ? '' : 'es'} at ${joinWords(at)} in all ${w.partialRounds} partial ` +
-        `${plural(w.partialRounds, 'round', 'rounds')}, whatever the round constants: every power of the internal matrix ` +
-        `keeps the difference at zero there, so no partial-round S-box is active.`
+        `${plural(w.partialRounds, 'round', 'rounds')}, whatever the round constants: with M the internal matrix, M^j v ` +
+        `is zero there for every j < ${w.partialRounds}, so no partial-round S-box is active.`
       );
     }
   }

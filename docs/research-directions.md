@@ -78,7 +78,7 @@ O_3 = [1 0 0]
 
 so every three consecutive partial rounds activate the S-box of coordinate 0: 18 disjoint windows in 56 partial rounds, plus the 16 full-round applications, for a total lower bound of **34** active S-boxes over the whole permutation for any two distinct inputs and any round constants (`Hades.reference_total_activity`, and the `activity.total` certificate of the pinned instance).
 
-The engine finds the window length `L` by scanning the rows `eᵢ Mʲ` in order and keeping those that raise the rank, and finds a bypass as the null space of the stacked rows for `j` below the width, which is the largest subspace that every power of `M` keeps at zero on the mask. Neither computation is trusted: Lean checks the determinant, or the invariance and vanishing of the subspace, for the submitted matrix and mask.
+The engine finds the window length `L` by scanning the rows `eᵢ Mʲ` in order and keeping those that raise the rank, and finds a bypass as the null space of the stacked rows for `j` below the width, which is the largest subspace that every power of `M` keeps at zero on the mask; when that subspace is zero and there are only one or two partial rounds, it takes a null vector of the rows for `j` below the number of partial rounds instead. Neither computation is trusted: Lean checks the determinant, the invariance and vanishing of the subspace, or `v` and `M v` on the mask, for the submitted matrix and mask.
 
 ### Scope and limits
 
