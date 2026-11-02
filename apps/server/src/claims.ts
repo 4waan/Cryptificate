@@ -308,6 +308,17 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
   }
 
   for (const info of IMPLEMENTATION_CLAIMS) {
+    if (request.design.model === 'hades/prime/v1') {
+      // Validation rejects circuits for this profile; say why the chain is empty.
+      claims.push(
+        notEstablished(
+          info,
+          'out-of-scope',
+          'Circuits, native correctness, timing and Rust refinement cover GF(2^8) and BN254 designs; over this prime field only the design claims are checked.',
+        ),
+      );
+      continue;
+    }
     switch (info.id) {
       case 'circuit.equivalence':
         if (!request.program) claims.push(notEstablished(info, 'not-run', 'No circuit was submitted.'));

@@ -73,6 +73,16 @@ test('KoalaBear width four: the modulus claim first, bounds for branch number fi
   assert.equal(total.title, 'At least 25 active S-boxes over all 28 rounds');
 });
 
+test('the implementation chain is out of scope over a 64-bit prime field', () => {
+  const claims = koalaClaims(PROVED);
+  for (const id of ['circuit.equivalence', 'native.correctness', 'rust.refinement', 'native.timing']) {
+    const c = byId(claims, id);
+    assert.equal(c.status, 'not_established', id);
+    assert.equal(c.reason, 'out-of-scope', id);
+    assert.match(c.note, /GF\(2\^8\) and BN254/);
+  }
+});
+
 test('the activity bounds need the modulus proved prime', () => {
   const claims = koalaClaims(PROVED.filter(([c]) => c !== 'field.prime'));
   const outer = byId(claims, 'activity.outer');
