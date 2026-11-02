@@ -105,7 +105,8 @@ that could re-check nothing or whose mismatch came from a missing tool, or, unde
 an in-scope claim left unchecked because the engine, Lean or the native toolchain was
 unavailable, a --claims id an input does not carry, or (verify) an in-scope claim verify
 does not re-check. experiment: 0 completed, 1 failed, timed out or stopped, 2 invalid.
-init: 0 written, 1 declined at the prompt, 2 usage error or a file exists (nothing written).
+init: 0 written, 1 declined at the prompt, 2 usage error, a file exists, or a question left
+without a valid answer (end of input, or five invalid answers); nothing is written unless 0.
 Environment: CRYPTIFICATE_HOME (state directory), CRYPTIFICATE_ENGINE, CRYPTIFICATE_LAKE,
 CRYPTIFICATE_ROOT, GITHUB_STEP_SUMMARY.
 `;
