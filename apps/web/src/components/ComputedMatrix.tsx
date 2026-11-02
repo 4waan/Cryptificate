@@ -4,6 +4,7 @@ import { targetMatrix } from '../lib/design';
 import { displayElement, fieldOps } from '../lib/field';
 import type { CandidateDesign, Program, ProgramTarget } from '../lib/types';
 import { announce, setProgram } from '../state/actions';
+import { getState } from '../state/store';
 import { IconCircuit, IconInfo, IconPreview } from './icons';
 import { MatrixView } from './MatrixEditor';
 
@@ -26,9 +27,13 @@ export function circuitFromDesign(design: CandidateDesign, target: ProgramTarget
 export function generateCircuit(design: CandidateDesign, target: ProgramTarget): void {
   const p = circuitFromDesign(design, target);
   if (!p) return;
+  const replacing = getState().program !== null;
   setProgram(p);
+  const what = `a term-by-term circuit with ${p.instructions.length} instructions for the ${targetName(design, target)}`;
   announce(
-    `Generated a term-by-term circuit with ${p.instructions.length} instructions for the ${targetName(design, target)}.`,
+    replacing
+      ? `Replaced the circuit with ${what}. Undo brings back the previous circuit.`
+      : `Generated ${what}.`,
   );
 }
 
@@ -50,6 +55,7 @@ export function ComputedMatrix({
   onSearch,
   searchLabel,
   searchDisabled,
+  searchNote,
 }: {
   design: CandidateDesign;
   target: ProgramTarget;
@@ -57,6 +63,8 @@ export function ComputedMatrix({
   onSearch: () => void;
   searchLabel: string;
   searchDisabled: boolean;
+  /** Visible reason the search is unavailable or what it will show; also its accessible description. */
+  searchNote?: string;
 }) {
   const want = targetMatrix(design, target);
   const diff = useMemo(
@@ -115,20 +123,35 @@ export function ComputedMatrix({
         <div className="row">
           <button
             type="button"
-            className={`btn btn-sm${diff && diff.cells.length ? ' btn-primary' : ''}`}
+            className="btn btn-sm"
             disabled={!canGenerate}
-            title={canGenerate ? undefined : 'Fix the matrix cells first'}
+            aria-describedby={canGenerate ? undefined : 'computed-generate-why'}
             onClick={() => generateCircuit(design, target)}
           >
-            <IconCircuit size={14} /> Generate circuit from matrix
+            <IconCircuit size={14} /> Replace circuit with term-by-term
           </button>
-          <button type="button" className="btn btn-sm" disabled={searchDisabled} onClick={onSearch}>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={searchDisabled}
+            aria-describedby={searchNote ? 'computed-search-why' : undefined}
+            onClick={onSearch}
+          >
             {searchLabel}
           </button>
         </div>
+        {!canGenerate || searchNote ? (
+          <ul className="disabled-reasons small muted">
+            {!canGenerate ? (
+              <li id="computed-generate-why">Fix the matrix cells to generate a circuit from the matrix.</li>
+            ) : null}
+            {searchNote ? <li id="computed-search-why">{searchNote}</li> : null}
+          </ul>
+        ) : null}
         <p className="field-hint">
-          The generated circuit computes y = M·x term by term: a correct baseline, not an optimized one. The quick
-          experiment searches for cheaper equivalent circuits and proves each one in Lean.
+          The term-by-term circuit computes y = M·x directly: a correct baseline, not an optimized one, and it
+          replaces the circuit above (Undo brings it back). The quick experiment searches for cheaper equivalent
+          circuits and proves each one in Lean.
         </p>
       </div>
     </section>

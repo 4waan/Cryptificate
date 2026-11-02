@@ -878,6 +878,11 @@ textarea {
   font-size: 0.85rem;
   color: var(--text-2);
 }
+.evidence > svg {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 3px;
+}
 .evidence strong {
   font-weight: 600;
 }
@@ -2130,13 +2135,22 @@ input[type='radio'] {
   border-radius: var(--radius-sm);
 }
 .matrix-static span.cell-diff::after {
-  content: '◆';
-  content: '◆' / '';
+  /* A small diamond (the ◆ the summary names), drawn so it stays legible at any size. */
+  content: '';
   position: absolute;
-  top: -5px;
-  right: -3px;
-  font-size: 0.55rem;
-  color: var(--text);
+  top: -4px;
+  right: -4px;
+  width: 7px;
+  height: 7px;
+  background: var(--text);
+  transform: rotate(45deg);
+}
+.disabled-reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
 }
 .computed-pair {
   row-gap: var(--space-4);
@@ -2173,6 +2187,9 @@ input[type='radio'] {
   .matrix-static span.cell-diff,
   .picker-option[aria-selected='true'] {
     border: 1px solid CanvasText;
+  }
+  .matrix-static span.cell-diff::after {
+    background: CanvasText;
   }
 }
 
