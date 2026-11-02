@@ -81,3 +81,22 @@ test('fresh input: row-scaled AES is certified MDS', { skip }, async () => {
   const r = await analyze('aes-row-scaled');
   assert.equal(status(r, 'matrix.mds').status, 'proved');
 });
+
+test('partial rounds: 34 for the reference, a checked bypass for the external matrix reused inside', { skip }, async () => {
+  const ref = await analyze('poseidon2-bn254');
+  assert.equal(status(ref, 'activity.partial').status, 'proved');
+  const total = status(ref, 'activity.total');
+  assert.equal(total.status, 'proved');
+  assert.equal(total.title, 'At least 34 active S-boxes over all 64 rounds');
+  const bad = await analyze('poseidon2-bypass');
+  assert.equal(status(bad, 'activity.outer').status, 'proved');
+  const partial = status(bad, 'activity.partial');
+  assert.equal(partial.status, 'refuted');
+  assert.equal(partial.evidence.label, 'Lean-checked counterexample');
+  assert.deepEqual(partial.witness?.kind === 'partial-bypass' ? partial.witness.difference : null, [
+    '0',
+    '1',
+    '21888242871839275222246405745257275088548364400416034343698204186575808495616',
+  ]);
+  assert.equal(status(bad, 'activity.total').status, 'not_established');
+});

@@ -71,6 +71,8 @@ function witnessText(c: Claim): string {
       return `S(${w.x1}) = S(${w.x2}) = ${w.y}`;
     case 'power-collision':
       return `${w.x1}^${w.exponent} = ${w.x2}^${w.exponent}${w.note ? ` (${w.note})` : ''}`;
+    case 'partial-bypass':
+      return `difference [${w.difference.join(',')}] stays zero at positions ${w.positions.join(',')} through ${w.partialRounds} partial rounds`;
     default:
       return '';
   }

@@ -11,6 +11,7 @@ import {
   aesLikeActivityBound,
   designClaimsFor,
   hadesOuterActivityBound,
+  hadesTotalActivityBound,
   nativeCorrectnessLabel,
 } from '@cryptificate/schema';
 import type {
@@ -155,9 +156,30 @@ const PRECONDITION_TEXT: Partial<Record<ClaimId, string>> = {
   'sbox.bijective': 'a bijective S-box',
   'external.mds': 'the MDS property of the external matrix',
   'internal.invertible': 'an invertible internal matrix',
+  'activity.partial': 'a charged window of partial rounds',
 };
 
-function activityTitle(req: AnalysisRequest, info: ClaimInfo): string {
+/** Preconditions of each activity bound, all of which must be proved first. */
+const ACTIVITY_PRECONDITIONS: Partial<Record<ClaimId, ClaimId[]>> = {
+  'activity.bound': ['matrix.mds', 'offsets.dispersion', 'sbox.bijective'],
+  'activity.outer': ['external.mds', 'internal.invertible', 'sbox.bijective'],
+  'activity.total': ['external.mds', 'internal.invertible', 'sbox.bijective', 'activity.partial'],
+};
+
+/**
+ * The window length `L` the (unchecked) diagnostics found for the partial
+ * rounds: every `L` consecutive partial rounds activate an S-box. Lean
+ * checks the claim that uses it; this only names the bound in the title.
+ */
+function partialWindow(diagnostics: unknown): number | null {
+  if (!diagnostics || typeof diagnostics !== 'object') return null;
+  const partial = (diagnostics as Record<string, unknown>)['partial'];
+  if (!partial || typeof partial !== 'object') return null;
+  const w = (partial as Record<string, unknown>)['window'];
+  return typeof w === 'number' && Number.isInteger(w) && w > 0 ? w : null;
+}
+
+function activityTitle(req: AnalysisRequest, info: ClaimInfo, diagnostics: unknown): string {
   const d = req.design;
   if (info.id === 'activity.bound' && d.model === 'aes-like/gf256/v1' && d.width === 4) {
     return `At least ${aesLikeActivityBound(d.rounds)} active S-boxes over ${d.rounds} rounds`;
@@ -165,6 +187,11 @@ function activityTitle(req: AnalysisRequest, info: ClaimInfo): string {
   if (info.id === 'activity.outer' && d.model === 'hades/bn254/v1') {
     // Only the full rounds are charged; the partial rounds add nothing to the bound.
     return `At least ${hadesOuterActivityBound(d.fullRounds)} active S-boxes in the ${d.fullRounds} full rounds`;
+  }
+  const window = partialWindow(diagnostics);
+  if (info.id === 'activity.total' && d.model === 'hades/bn254/v1' && window !== null) {
+    // The full rounds charge their bound; each disjoint window of partial rounds charges one.
+    return `At least ${hadesTotalActivityBound(d.fullRounds, d.partialRounds, window)} active S-boxes over all ${d.fullRounds + d.partialRounds} rounds`;
   }
   return info.title;
 }
@@ -203,15 +230,12 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
   const isProved = (id: ClaimId): boolean => claims.some((c) => c.id === id && c.status === 'proved');
 
   for (const info of designClaimsFor(request.design.model)) {
-    if (info.id === 'activity.bound' || info.id === 'activity.outer') {
-      const title = activityTitle(request, info);
+    const pre = ACTIVITY_PRECONDITIONS[info.id];
+    if (pre) {
+      const title = activityTitle(request, info, diagnostics);
       // The bound counts active S-boxes of trails; it only applies to this
       // design when its diffusion layer and S-box have been certified.
-      const pre =
-        info.id === 'activity.bound'
-          ? ['matrix.mds', 'offsets.dispersion', 'sbox.bijective']
-          : ['external.mds', 'internal.invertible', 'sbox.bijective'];
-      const missing = (pre as ClaimId[]).filter((p) => !isProved(p));
+      const missing = pre.filter((p) => !isProved(p));
       if (missing.length > 0) {
         claims.push(
           notEstablished(

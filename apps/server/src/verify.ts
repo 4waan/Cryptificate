@@ -16,7 +16,7 @@ import { JobContext } from './context.js';
 import type { PipelineEnv } from './context.js';
 import { readTarGz } from './tar.js';
 
-export type MatchKind = 'match' | 'mismatch' | 'historical' | 'not re-checked';
+export type MatchKind = 'match' | 'mismatch' | 'historical' | 'not re-checked' | 'not recorded';
 
 export interface VerifyRow {
   subject: string;
@@ -54,9 +54,16 @@ export function extractBundle(bundlePath: string): { dir: string; files: string[
   return { dir, files: [...files.keys()].sort() };
 }
 
-const RECHECKED = new Set(['matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'circuit.equivalence']);
+const RECHECKED = new Set(['matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'activity.partial', 'activity.total', 'circuit.equivalence']);
 
-function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean): VerifyRow[] {
+/**
+ * Claims that reports did not carry before a later release. A bundle recorded
+ * earlier has no status for them to compare with; they are re-derived and
+ * shown, never counted as a mismatch.
+ */
+const ADDED_LATER = new Set(['activity.partial', 'activity.total']);
+
+export function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean): VerifyRow[] {
   const rows: VerifyRow[] = [];
   for (const rc of recorded) {
     const now = recomputed.find((c) => c.id === rc.id);
@@ -76,7 +83,7 @@ function compareClaims(subject: string, recorded: readonly Claim[], recomputed: 
   }
   for (const c of recomputed) {
     if (!recorded.some((r) => r.id === c.id) && RECHECKED.has(c.id)) {
-      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result: 'mismatch' });
+      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result: ADDED_LATER.has(c.id) ? 'not recorded' : 'mismatch' });
     }
   }
   return rows;
@@ -105,6 +112,8 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
         let rows = compareClaims('design', (report as AnalysisReport).claims, now?.claims ?? [], opts.native ?? false);
         rows = rows.map((r) => ({ ...r, subject: r.claim.startsWith('circuit') || r.claim.startsWith('native') || r.claim.startsWith('rust') ? 'implementation' : 'design' }));
         if (recomputedDigest && recomputedDigest !== report.inputDigest) notes.push('The recomputed input digest differs from the recorded one.');
+        const unrecorded = rows.filter((r) => r.result === 'not recorded').map((r) => r.claim);
+        if (unrecorded.length > 0) notes.push(`The bundle has no recorded status for ${unrecorded.join(' and ')}, which its version of the tool did not report; they were derived now and are not compared.`);
         if (result.state !== 'completed') notes.push(`The re-run ended with state ${result.state}.`);
         notes.push('Timings in the bundle are historical and were not re-measured.');
         return finalize(report, recomputedDigest, rows, notes);
