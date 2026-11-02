@@ -5,7 +5,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
 import type { AnalysisReport, AnalysisRequest, ExecutionState, ExperimentReport, ExperimentRequest, ProgramTarget, Report } from '@cryptificate/schema';
@@ -23,6 +23,8 @@ import { resolvePaths } from './paths.js';
 import { EXIT_ERROR, UsageError, parseClaimList, parseFailOn } from './policy.js';
 import type { FailOn } from './policy.js';
 import { killAll } from './proc.js';
+import { CONFIG_FILE, findConfig, loadConfig } from './project.js';
+import type { LoadedConfig } from './project.js';
 import { runLean } from './leanrun.js';
 import {
   checkToJUnit,
@@ -50,11 +52,14 @@ import type { VerifyResult } from './verify.js';
 const USAGE = `Usage: cryptificate <command> [options]
 
 Commands:
+  check [<design.json|glob>...] [--config cryptificate.json] [--program p.json]
+        [--target matrix|external|internal] [--json out.json] [--bundle out.tar.gz]
+        [--bundle-dir DIR] [--no-cache] [GATE OPTIONS]
+        Check designs (and optionally a circuit) and print the claims. Without inputs, the
+        inputs and options come from the nearest cryptificate.json (this directory or a
+        parent); options on the command line override it.
   serve [--port 4173] [--host 127.0.0.1] [--allow-origin URL]
         Run the local service and web UI.
-  check <design.json|glob>... [--program p.json] [--target matrix|external|internal]
-        [--json out.json] [--bundle out.tar.gz] [--bundle-dir DIR] [--no-cache] [GATE OPTIONS]
-        Check designs (and optionally a circuit) and print the claims.
   experiment <design.json> [--program p.json] [--profile quick|research] [--seed HEX] [--json out.json]
         [--bundle out.tar.gz]
         Search, check and measure circuits for the design's matrix.
@@ -308,24 +313,55 @@ async function cmdCheck(argv: string[], io: Io): Promise<number> {
       bundle: { type: 'string' },
       'bundle-dir': { type: 'string' },
       'no-cache': { type: 'boolean' },
+      config: { type: 'string' },
       quiet: { type: 'boolean', short: 'q' },
       ...GATE_OPTIONS,
     },
   });
-  const gate = gateOptions(values);
+  const quiet = values.quiet ?? false;
+  // cryptificate.json: named with --config, or looked up when no input is given.
+  let project: LoadedConfig | null = null;
+  if (values.config !== undefined) project = loadConfig(resolve(io.cwd, values.config), values.config);
+  else if (positionals.length === 0) {
+    const found = findConfig(io.cwd);
+    if (found) project = loadConfig(found, relative(io.cwd, found) || CONFIG_FILE);
+  }
+  if (positionals.length === 0 && !project) {
+    fail(`check needs at least one design file, or a ${CONFIG_FILE} in this directory or a parent\n\n${USAGE}`);
+  }
+  const cfg = project?.config;
+  // Inputs from the command line are relative to the working directory; inputs
+  // from the file, and the paths it names, to the file's directory. Paths given
+  // as options always stay relative to the working directory.
+  const fromConfig = positionals.length === 0 && project !== null;
+  const runCwd = fromConfig ? project!.dir : io.cwd;
+  const flagPath = (p: string | undefined): string | undefined => (p === undefined ? undefined : resolve(io.cwd, p));
+  const cfgPath = (p: string | undefined): string | undefined => (p === undefined || !project ? undefined : resolve(project.dir, p));
+  if (project && !quiet) io.stderr.write(`config: ${relative(io.cwd, project.path) || CONFIG_FILE}${fromConfig ? '' : ' (inputs from the command line)'}\n`);
+  const gate = gateOptions({
+    format: values.format ?? cfg?.format,
+    output: flagPath(values.output) ?? cfgPath(cfg?.output),
+    'fail-on': values['fail-on'] ?? cfg?.failOn,
+    claims: values.claims ?? cfg?.claims,
+    'no-step-summary': values['no-step-summary'],
+  });
   const failOn = gate.failOn ?? 'none';
-  const files = expand(positionals, io, 'check needs at least one design file');
+  const target = values.target ?? cfg?.target;
+  const runIo: Io = { ...io, cwd: runCwd };
+  const files = expand(fromConfig ? cfg!.inputs : positionals, runIo, 'check needs at least one design file');
+  const program = values.program === undefined ? undefined : relative(runCwd, resolve(io.cwd, values.program));
+  const jsonOut = flagPath(values.json);
+  const bundleOut = flagPath(values.bundle);
   if (files.length > 1) {
-    if (values.program) fail('--program needs a single design file; put "program" in each request file instead');
-    if (values.json) fail('--json needs a single design file; use --format json --output FILE for several');
-    if (values.bundle) fail('--bundle needs a single design file; use --bundle-dir DIR for several');
+    if (program) fail('--program needs a single design file; put "program" in each request file instead');
+    if (jsonOut) fail('--json needs a single design file; use --format json --output FILE for several');
+    if (bundleOut) fail('--bundle needs a single design file; use --bundle-dir DIR for several');
   }
   const env = io.env();
   if (values['no-cache']) env.noCache = true;
   const controller = new AbortController();
   onInterrupt(controller, io);
-  const quiet = values.quiet ?? false;
-  const bundleDir = values['bundle-dir'] ? resolve(io.cwd, values['bundle-dir']) : null;
+  const bundleDir = flagPath(values['bundle-dir']) ?? cfgPath(cfg?.bundleDir) ?? null;
   if (bundleDir) mkdirSync(bundleDir, { recursive: true });
   const taken = new Set<string>();
   const entries: CheckEntry[] = [];
@@ -338,13 +374,13 @@ async function cmdCheck(argv: string[], io: Io): Promise<number> {
     };
     let req: Record<string, unknown>;
     try {
-      ({ req, input } = buildRequest(file, values.program, io.cwd));
+      ({ req, input } = buildRequest(file, program, runCwd));
     } catch (e) {
       if (!(e instanceof InputError)) throw e;
       error(e.message);
       continue;
     }
-    if (values.target) req['target'] = values.target as ProgramTarget;
+    if (target) req['target'] = target as ProgramTarget;
     const v = validateAnalysisRequest(req);
     if (!v.ok) {
       error(`invalid request:\n${v.errors.map((e) => `  ${e.path}: ${e.message}`).join('\n')}`);
@@ -364,13 +400,13 @@ async function cmdCheck(argv: string[], io: Io): Promise<number> {
     const report = result.report as AnalysisReport;
     const entry = evaluateCheckEntry({ input, state: result.state, report, ...(result.error ? { error: result.error.message } : {}) }, failOn, gate.claims);
     entries.push(entry);
-    if (values.json) writeFileSync(resolve(io.cwd, values.json), `${JSON.stringify(report, null, 2)}\n`);
-    if (values.bundle) await writeBundle(env, dir, report, resolve(io.cwd, values.bundle), io.stderr);
+    if (jsonOut) writeFileSync(jsonOut, `${JSON.stringify(report, null, 2)}\n`);
+    if (bundleOut) await writeBundle(env, dir, report, bundleOut, io.stderr);
     if (bundleDir) await writeBundle(env, dir, report, join(bundleDir, bundleName(file, taken)), io.stderr);
     if (!quiet) io.stderr.write(`job directory: ${dir}\n`);
   }
   const run = makeCheckRun(entries, failOn, gate.claims);
-  emit(run, gate, io);
+  emit(run, gate, runIo);
   return run.exitCode;
 }
 

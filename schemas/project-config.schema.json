@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/4waan/Cryptificate/schemas/project-config.schema.json",
+  "title": "ProjectConfig",
+  "description": "cryptificate.json: what `cryptificate check` checks when it is run without input arguments. Relative paths are relative to the directory that holds this file. Options given on the command line override the values here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["inputs"],
+  "properties": {
+    "$schema": {
+      "description": "URL of this schema, for editors. Ignored by cryptificate.",
+      "type": "string"
+    },
+    "inputs": {
+      "description": "Design or request files, or patterns (*, ?, [..], **). Each pattern must match at least one file.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "failOn": {
+      "description": "Claim statuses that fail the run, as --fail-on. Default none.",
+      "enum": ["none", "refuted", "not-established", "any"]
+    },
+    "claims": {
+      "description": "Claim ids the policy is restricted to, as --claims. Default: every claim the run attempts.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "matrix.mds",
+          "offsets.dispersion",
+          "sbox.bijective",
+          "activity.bound",
+          "external.mds",
+          "internal.invertible",
+          "activity.outer",
+          "circuit.equivalence",
+          "native.correctness",
+          "rust.refinement",
+          "native.timing"
+        ]
+      }
+    },
+    "target": {
+      "description": "Circuit target applied to every input, as --target. Default: from each file.",
+      "enum": ["matrix", "external", "internal"]
+    },
+    "format": {
+      "description": "Output format, as --format. Default text.",
+      "enum": ["text", "json", "sarif", "junit", "markdown"]
+    },
+    "output": {
+      "description": "File the formatted result is written to, as --output.",
+      "type": "string",
+      "minLength": 1
+    },
+    "bundleDir": {
+      "description": "Directory that receives one evidence bundle per input, as --bundle-dir.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

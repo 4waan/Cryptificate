@@ -5,6 +5,8 @@
 import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { main } from '../src/cli-main.js';
+import type { CliDeps } from '../src/cli-main.js';
 import type { PipelineEnv } from '../src/context.js';
 import { Engine } from '../src/engine.js';
 import { pathReplacements, resolvePaths } from '../src/paths.js';
@@ -208,3 +210,28 @@ export const IDENTITY_DESIGN = {
 };
 
 export const IDENTITY_PROGRAM = { field: 'gf256' as const, width: 4, name: 'identity', instructions: [], outputs: [0, 1, 2, 3] };
+
+export interface Ran {
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+export function sink(isTTY = false): { write(s: string): boolean; text: string; isTTY: boolean } {
+  return {
+    text: '',
+    isTTY,
+    write(s: string) {
+      this.text += s;
+      return true;
+    },
+  };
+}
+
+/** Run the cryptificate command in-process against a fixture, in `cwd` (default the fixture root). */
+export async function runCli(fx: Fixture, argv: string[], extra: Partial<CliDeps> = {}): Promise<Ran> {
+  const stdout = sink();
+  const stderr = sink();
+  const code = await main(argv, { env: () => fx.env, stdout, stderr, environ: {}, cwd: fx.root, signals: false, ...extra });
+  return { code, stdout: stdout.text, stderr: stderr.text };
+}
