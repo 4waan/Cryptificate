@@ -41,7 +41,10 @@ function readRecord(p: string): CheckRecord | null {
 
 export function refinementStatus(paths: Paths, field: FieldName): RefinementStatus {
   if (field !== 'gf256') {
-    return { status: 'unsupported', note: 'Refinement proofs exist for the GF(2^8) kernels only; BN254 arithmetic is not covered.' };
+    return {
+      status: 'unsupported',
+      note: "The native BN254 variants compute with arkworks' Fr, which no refinement proof covers. The proved BN254 Montgomery kernel (crates/kernels/src/bn254_mont.rs) is not the code these variants call.",
+    };
   }
   const recorded = readText(join(paths.root, 'refinement', 'extract.sha256'));
   const kernel = readText(join(paths.root, KERNEL));
