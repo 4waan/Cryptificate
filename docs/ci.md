@@ -36,11 +36,13 @@ jobs:
           fail-on: refuted
 ```
 
+`cryptificate init` writes a workflow of this shape with no `inputs`: the action then reads the inputs, the policy and the claim scope from `cryptificate.json` (see [Project configuration](#project-configuration)), so they are set in one place for the action and for a local `cryptificate check`.
+
 What the action does, in order:
 
 1. Restores its caches from the repository's Actions cache: `~/.elan` (keyed on `lean/lean-toolchain`), the Mathlib cache archives in `~/.cache/mathlib` (keyed on `lean/lake-manifest.json`), the Cryptificate and WideTrail Lean builds (keyed on the manifest and the Lean sources), the cargo registry and engine build (keyed on `Cargo.lock` and `rustc -V`) and the npm cache (keyed on `package-lock.json`).
 2. Installs elan and the toolchain pinned in `lean/lean-toolchain`, runs `lake exe cache get` and `lake build Cryptificate` in `lean/`, builds `cryptificate-engine` with `cargo build --release --locked`, and builds the command with `npm ci` and `npm run build`.
-3. Runs `cryptificate check <inputs> --fail-on <policy> --format json --output result.json --bundle-dir bundles` in `working-directory`. The text report goes to the job log and the Markdown report to the job summary. `cryptificate report` then renders the same result as SARIF and JUnit, with the same policy.
+3. Runs `cryptificate check <inputs> --fail-on <policy> --format json --output result.json --bundle-dir bundles` in `working-directory`. Without `inputs` it runs `cryptificate check --format json --output result.json --bundle-dir bundles`, which reads the nearest `cryptificate.json` (in `working-directory` or a parent); `--fail-on` is added only when `fail-on` is set, and the file's `format`, `output` and `bundleDir` are replaced by the action's result files. The text report goes to the job log and the Markdown report to the job summary. `cryptificate report` then renders the same result as SARIF and JUnit, with the same policy.
 4. Uploads the SARIF log with `github/codeql-action/upload-sarif@v3` and the directory with `result.json`, `cryptificate.sarif`, `cryptificate.junit.xml` and one evidence bundle per input with `actions/upload-artifact@v4`, as artifact `cryptificate-evidence`.
 5. Fails the job with the exit status of `check` (below).
 
@@ -50,10 +52,10 @@ A cold run downloads the Mathlib cache archives (about 0.9 GB for the pinned Mat
 
 | Input | Default | Meaning |
 | --- | --- | --- |
-| `inputs` | required | Design or request files, or patterns, separated by spaces or new lines, relative to `working-directory`. Patterns support `*`, `?`, `[..]` and `**`, are expanded by `cryptificate` itself, and must each match at least one file. Paths with spaces are not supported. |
-| `fail-on` | `refuted` | `none`, `refuted`, `not-established` or `any` (see [Policy](#policy)). |
-| `claims` | all attempted | Comma-separated claim ids the policy is restricted to, for example `matrix.mds,offsets.dispersion,sbox.bijective`. An unknown id, or one an input's report does not carry, is an error (see [Policy](#policy)). |
-| `target` | from each file | `matrix`, `external` or `internal`, applied to every input. |
+| `inputs` | empty | Design or request files, or patterns, separated by spaces or new lines, relative to `working-directory`. Patterns support `*`, `?`, `[..]` and `**`, are expanded by `cryptificate` itself, and must each match at least one file. Paths with spaces are not supported. Empty: the inputs of the nearest `cryptificate.json`; without such a file the job fails with exit status 2. |
+| `fail-on` | empty | `none`, `refuted`, `not-established` or `any` (see [Policy](#policy)). Empty: the `failOn` of `cryptificate.json` when `inputs` is empty (`none` if the file has none), otherwise `refuted`. |
+| `claims` | empty | Comma-separated claim ids the policy is restricted to, for example `matrix.mds,offsets.dispersion,sbox.bijective`. An unknown id, or one an input's report does not carry, is an error (see [Policy](#policy)). Empty: the `claims` of `cryptificate.json` when `inputs` is empty, otherwise every claim the run attempts. |
+| `target` | from each file | `matrix`, `external` or `internal`, applied to every input (overrides the `target` of `cryptificate.json`). |
 | `working-directory` | `.` | Directory for `inputs` and for the relative paths in the SARIF log. Keep it at the repository root (or a path inside the checkout) so code scanning can place the annotations. |
 | `upload-sarif` | `true` | Upload to code scanning. Needs `security-events: write`; code scanning must be available for the repository. |
 | `sarif-category` | `cryptificate` | Category of the SARIF upload, to keep several gates apart. |
@@ -78,6 +80,41 @@ npx cryptificate check 'designs/*.json' --fail-on refuted \
 
 GitLab, Jenkins and Buildkite read the JUnit file: each claim is a test case, a claim the policy rejects is a `<failure>` (with the counterexample when it is refuted), a claim left unchecked by a missing tool is an `<error>`, and other claims that are not proved are `<skipped>` with their reason.
 
+## Project configuration
+
+`cryptificate check` without input arguments reads `cryptificate.json` from the working directory or the nearest parent that has one; `--config FILE` names the file explicitly, and then its settings also apply to inputs given on the command line. When inputs are given without `--config`, no file is read. `cryptificate init` writes one; its JSON Schema is [`schemas/project-config.schema.json`](../schemas/project-config.schema.json).
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/4waan/Cryptificate/main/schemas/project-config.schema.json",
+  "inputs": ["cryptificate/designs/*.json"],
+  "failOn": "refuted",
+  "claims": ["matrix.mds", "offsets.dispersion", "sbox.bijective", "activity.bound"],
+  "bundleDir": "cryptificate/evidence"
+}
+```
+
+| Key | Command-line option | Meaning |
+| --- | --- | --- |
+| `inputs` | input arguments | Required. Design or request files, or patterns; each must match at least one file. |
+| `failOn` | `--fail-on` | Policy, `none` when absent. |
+| `claims` | `--claims` | Claim ids the policy is restricted to; every id must be one of the claim ids listed under [SARIF](#sarif). |
+| `target` | `--target` | Circuit target applied to every input. |
+| `format` | `--format` | Output format, `text` when absent. |
+| `output` | `--output` | File the formatted result is written to. |
+| `bundleDir` | `--bundle-dir` | Directory for one evidence bundle per input. |
+| `$schema` | | Ignored; lets editors validate the file. |
+
+Relative paths in the file (`inputs`, `output`, `bundleDir`) are relative to the directory that holds it, and the input paths in the result, the SARIF locations included, are relative to that directory too. An option given on the command line overrides the file, and a path given as an option stays relative to the working directory. The command names the file it uses on stderr (`config: ../cryptificate.json`) unless `-q` is given. A file that is not valid JSON, has an unknown key or a value of the wrong kind, or names an unknown claim id is a usage error (exit 2), and every problem is listed with its JSON Pointer:
+
+```text
+cryptificate: cryptificate.json is not a valid project configuration (2 problems; schema: schemas/project-config.schema.json):
+  /failOn: must be one of none, refuted, not-established, any (got "sometimes")
+  /claims/0: unknown claim id "matrix.mdss"; the claim ids are matrix.mds, ...
+```
+
+`verify` and `report` do not read the file.
+
 ## Command-line options
 
 `check`, `verify` and `report` share these options:
@@ -90,7 +127,7 @@ GitLab, Jenkins and Buildkite read the JUnit file: each claim is a test case, a 
 | `--claims ID[,ID...]` | Restrict the policy to these claim ids (repeatable). An id that is not one of the claim ids listed under [SARIF](#sarif) (a typo, or the wrong case) is a usage error. |
 | `--no-step-summary` | Do not append Markdown to `$GITHUB_STEP_SUMMARY`. When that variable is set (as it is in GitHub Actions), the Markdown report is appended to the file it names, whatever `--format` is. |
 
-`check` takes one or more design or request files or patterns. `--program`, `--json` and `--bundle` need a single input; with several, put `program` (and `target`) in each request file, use `--format json --output FILE` for the results and `--bundle-dir DIR` for one bundle per input (named after the input file). `verify` takes one or more bundles or patterns. `report` takes saved results: `check --format json` or `verify --format json` output, a `report.json`, or a bundle.
+`check` takes one or more design or request files or patterns, or none to read `cryptificate.json` ([Project configuration](#project-configuration)); `--config FILE` names that file. `--program`, `--json` and `--bundle` need a single input; with several, put `program` (and `target`) in each request file, use `--format json --output FILE` for the results and `--bundle-dir DIR` for one bundle per input (named after the input file). `verify` takes one or more bundles or patterns. `report` takes saved results: `check --format json` or `verify --format json` output, a `report.json`, or a bundle.
 
 ## Policy
 

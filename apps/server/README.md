@@ -6,6 +6,8 @@ keeps jobs on disk and packs evidence bundles.
 
 ```sh
 npm run build -w apps/server
+npx cryptificate doctor                      # what is missing, and how to fix it
+npx cryptificate init ../my-repo             # cryptificate.json, a starting design, a GitHub workflow
 npx cryptificate serve                       # http://127.0.0.1:4173/
 npx cryptificate check examples/designs/aes.json --program examples/programs/aes-known-shared-sum.json
 npx cryptificate experiment examples/designs/aes.json --profile quick
@@ -23,7 +25,10 @@ text|json|sarif|junit|markdown`, `--output FILE`, `--fail-on none|refuted|not-es
 report to it. Exit status: 0 passed, 1 the policy failed (or `verify` found a difference), 2 usage
 error, unusable input, a run that did not complete, or, under a policy, an in-scope claim left
 unchecked because a tool was missing. The renderings are in `src/report-formats.ts`, the policy in
-`src/policy.ts`; [docs/ci.md](../../docs/ci.md) describes them and the GitHub Action.
+`src/policy.ts`; [docs/ci.md](../../docs/ci.md) describes them and the GitHub Action. Without
+input arguments `check` reads the nearest `cryptificate.json` (`src/project.ts`, schema
+`schemas/project-config.schema.json`), which `init` (`src/init.ts`, `src/presets.ts`) writes;
+`doctor` (`src/doctor.ts`) checks the toolchains, builds, state directory and service.
 
 ## HTTP API
 
