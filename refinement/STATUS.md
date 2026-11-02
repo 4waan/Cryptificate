@@ -17,7 +17,7 @@ Statuses: **proved** (checked by Lean, axioms listed), **trusted** (assumed, not
 | 3. Aeneas model compiles in Lean | yes | yes | yes | — |
 | 4. Model = specification | **proved** | **proved** | **proved**, under the hypothesis `size_of::<u8>() = 1` | not established |
 | 5. Specification → named properties | **proved**: WideTrail's field `GF256` (field laws carried to the Rust functions) | **proved** as a conditional theorem: the active-S-box bound for Rust executions, assuming MDS, diffusion-optimal offsets and an injective S-box table | **proved**: equal to WideTrail's multiplier, hence to the kernels' `mul` | not established |
-| 5′. Same, for a concrete design | — | **proved without design hypotheses** for byte arrays that pass three checks the kernel evaluates, and for AES: at least `activityBound r` active S-boxes (`55` for ten rounds) for any two different inputs and at least `r` round keys (section 2.1) | — | not established |
+| 5′. Same, for a concrete design | — | **proved** for AES with no design hypothesis (`aes_rust_activity_bound*`), and for any design as a theorem whose only design hypotheses are three Boolean checks on its bytes, each closable by `decide +kernel` (`aes_like_encrypt_activity_bound_of_checks`): at least `activityBound r` active S-boxes (for AES, `55` over ten rounds) for any two different inputs and at least `r` round keys (section 2.1) | — | not established |
 
 ### Axioms and hypotheses of each theorem
 
@@ -122,7 +122,7 @@ certificates are checked by the main package on Lean `v4.33.1` and are not impor
 section 2.1 instead compiles the checks they are built on in this package and discharges the
 hypotheses for concrete byte arrays. The model has no special last round (as in `Bridge.lean`).
 
-## 2.1 Concrete designs and AES, without design hypotheses
+## 2.1 Design checks on the bytes, and AES without design hypotheses
 
 Proof file `Refinement/AesConcrete.lean`. The refinement package also compiles, from the main
 package's source files and under Lean and Mathlib `v4.35.0`, `lean/Cryptificate/Encoding.lean`,
@@ -152,7 +152,15 @@ theorem aes_like_encrypt_activity_bound_of_checks (m o t ks)
 
 The inputs are now different byte arrays (`x ≠ y`; `stateOf_injective`). For concrete bytes
 each check is closed by `decide +kernel`, an evaluation by the Lean kernel (not
-`native_decide`), so a design whose bytes pass the checks gets the bound with no hypothesis left.
+`native_decide`), so instantiating the theorem for fixed bytes that pass the checks leaves no
+design hypothesis. AES, below, is the only design instantiated in this package; for any other
+design the checks remain hypotheses until someone instantiates it.
+
+In `claims.json` the theorems for any design are kernel `aes-like-checked`, whose `appliesTo`
+names only the model, and the AES theorems are kernel `aes-like-aes`, whose `appliesTo` also
+names the AES design; a consumer must match a submitted design's bytes against it before using
+those claims. `claims.py` refuses to record an AES-only theorem under a kernel that names no
+design.
 
 **AES.** `aesMatrixBytes`, `aesOffsetBytes` and `aesSboxBytes` are the AES `MixColumns` matrix
 `[02 03 01 01 / 01 02 03 01 / 01 01 02 03 / 03 01 01 02]` (row-major), the offsets `[0, 1, 2, 3]`
