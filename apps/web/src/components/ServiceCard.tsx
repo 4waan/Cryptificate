@@ -18,7 +18,10 @@ export function reconnectText(connection: AppState['connection'], now: number): 
 /**
  * Shown while the local service does not answer: how to start it, with a
  * copy button, and the automatic reconnect countdown. Until it is back,
- * results come from recorded runs and the in-browser preview.
+ * results come from recorded Lean runs (built-in examples) and the
+ * unchecked in-browser preview. While it is shown, the header's
+ * connection badge drops its own retry button: this card's Try now is the
+ * one control for it.
  */
 export function ServiceCard({ connection, now: fixedNow }: { connection: AppState['connection']; now?: number }) {
   const [copied, setCopied] = useState<string>('');
@@ -73,7 +76,10 @@ export function ServiceCard({ connection, now: fixedNow }: { connection: AppStat
           <IconRefresh size={12} /> Try now
         </button>
       </div>
-      <p className="small muted">Meanwhile the page shows recorded runs and the instant preview, never as proofs.</p>
+      <p className="small muted">
+        Until it is running, the page shows recorded Lean runs for the built-in examples and an unchecked browser
+        preview for anything else.
+      </p>
     </section>
   );
 }

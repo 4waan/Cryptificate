@@ -12,7 +12,7 @@ describe('ServiceCard', () => {
     expect(html).toContain('Copy');
     expect(html).toContain('npx cryptificate serve');
     expect(html).toContain('next try in 5 s');
-    expect(html).toContain('never as proofs');
+    expect(html).toContain('recorded Lean runs for the built-in examples and an unchecked browser');
   });
 
   it('describes reconnecting', () => {
