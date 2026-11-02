@@ -20,10 +20,22 @@ column-major layout of AES. One round is
 3. shift rows: `out[r][c] = in[r][(c + off r) mod 4]`;
 4. mix columns: column `c` of the output is `M` times column `c` of the input.
 
-`aesLikeExec` iterates rounds with a sequence of round keys. Real AES differs in its last
-round (no MixColumns, one more key addition); neither changes the count below, which only
-looks at S-box inputs, and the S-boxes of the first `r` rounds see only the first `r - 1`
-linear layers.
+`aesLikeExec` iterates rounds with a sequence of round keys; every round has the four steps.
+
+## The final round
+
+AES differs in its last round: it has no MixColumns, and one more key is added after it.
+`aesLikeFinalRound` is that round (add the key, S-boxes, shift rows, add the final key), and
+`aesLikeCipher M off sbox keys x r` is `r - 1` rounds of `aesLikeExec` followed by the final
+round, with `r + 1` keys; with the AES parameters, `r = 10` and the AES-128 key expansion it
+is AES-128 encryption. `aesLikeCipherExec … r x n` is the state at the input of round `n` of
+that cipher. Its S-box inputs over the `r` rounds are the S-box inputs of the first `r` rounds
+of `aesLikeExec` (`aesLikeCipherExec_of_lt`): the S-boxes of the first `r` rounds see only the
+first `r - 1` linear layers, and the final key addition comes after every S-box. So the
+cipher's count of active S-boxes over its `r` rounds, its final round included, equals the
+count of the first `r` rounds of `aesLikeExec` (`aesLikeCipherActiveSboxes_eq`) and has the
+same lower bound (`aesLikeCipherActiveSboxes_bound`). Dropping the last linear layer neither
+adds to nor takes from that bound.
 
 ## The bridge
 
@@ -132,6 +144,66 @@ def aesLikeExec (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4) (sbox : K
     aesLikeExec M off sbox keys x (n + 1)
       = aesLikeRound M off sbox (keys n) (aesLikeExec M off sbox keys x n) := rfl
 
+/-! ### A final round without the linear layer -/
+
+/-- The final round of AES: add the round key, substitute bytes, shift rows, add the final
+key. There is no column mixing. -/
+def aesLikeFinalRound (off : Fin 4 → Fin 4) (sbox : K → K) (key finalKey s : Fin 16 → K) :
+    Fin 16 → K :=
+  addRoundKey finalKey (shiftRows off (subBytes sbox (addRoundKey key s)))
+
+/-- `r` rounds whose last one is the final round: rounds `0, …, r - 2` are `aesLikeRound` with
+keys `0, …, r - 2`, round `r - 1` is `aesLikeFinalRound` with keys `r - 1` and `r`. It uses
+`r + 1` keys; with `r = 0` it is the input. -/
+def aesLikeCipher (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4) (sbox : K → K)
+    (keys : ℕ → Fin 16 → K) (x : Fin 16 → K) : ℕ → Fin 16 → K
+  | 0 => x
+  | n + 1 => aesLikeFinalRound off sbox (keys n) (keys (n + 1)) (aesLikeExec M off sbox keys x n)
+
+@[simp] theorem aesLikeCipher_zero (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4)
+    (sbox : K → K) (keys : ℕ → Fin 16 → K) (x : Fin 16 → K) :
+    aesLikeCipher M off sbox keys x 0 = x := rfl
+
+theorem aesLikeCipher_succ (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4)
+    (sbox : K → K) (keys : ℕ → Fin 16 → K) (x : Fin 16 → K) (n : ℕ) :
+    aesLikeCipher M off sbox keys x (n + 1)
+      = aesLikeFinalRound off sbox (keys n) (keys (n + 1)) (aesLikeExec M off sbox keys x n) :=
+  rfl
+
+/-- Round `n` of the `r`-round cipher: a full round while `n + 1 < r`, the final round
+otherwise. -/
+def aesLikeCipherRound (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4) (sbox : K → K)
+    (keys : ℕ → Fin 16 → K) (r n : ℕ) (s : Fin 16 → K) : Fin 16 → K :=
+  if n + 1 < r then aesLikeRound M off sbox (keys n) s
+  else aesLikeFinalRound off sbox (keys n) (keys (n + 1)) s
+
+/-- The state at the input of round `n` of the `r`-round cipher `aesLikeCipher`, round by
+round (`aesLikeCipherExec_self`: after `r` rounds it is the cipher's output). -/
+def aesLikeCipherExec (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4) (sbox : K → K)
+    (keys : ℕ → Fin 16 → K) (r : ℕ) (x : Fin 16 → K) : ℕ → Fin 16 → K
+  | 0 => x
+  | n + 1 => aesLikeCipherRound M off sbox keys r n (aesLikeCipherExec M off sbox keys r x n)
+
+/-- Before its last round, the cipher is `aesLikeExec`: the state at the input of round
+`n < r` is the same in both. -/
+theorem aesLikeCipherExec_of_lt (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4)
+    (sbox : K → K) (keys : ℕ → Fin 16 → K) (x : Fin 16 → K) {r n : ℕ} (h : n < r) :
+    aesLikeCipherExec M off sbox keys r x n = aesLikeExec M off sbox keys x n := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    simp only [aesLikeCipherExec, aesLikeCipherRound, if_pos h, ih (by omega), aesLikeExec_succ]
+
+/-- After its `r` rounds, the round-by-round execution is `aesLikeCipher`. -/
+theorem aesLikeCipherExec_self (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4)
+    (sbox : K → K) (keys : ℕ → Fin 16 → K) (x : Fin 16 → K) (r : ℕ) :
+    aesLikeCipherExec M off sbox keys r x r = aesLikeCipher M off sbox keys x r := by
+  cases r with
+  | zero => rfl
+  | succ n =>
+    simp only [aesLikeCipherExec, aesLikeCipherRound, lt_irrefl, if_false,
+      aesLikeCipherExec_of_lt M off sbox keys x (Nat.lt_succ_self n), aesLikeCipher_succ]
+
 /-! ### Active S-boxes of an execution pair -/
 
 variable [DecidableEq K]
@@ -210,5 +282,44 @@ theorem activeSboxes_bound {M : Matrix (Fin 4) (Fin 4) K} {off : Fin 4 → Fin 4
   rw [activeSboxes_eq_patternWeight]
   exact candidate_activity_bound hM hoff (isTrail_difference hM hoff hs keys x y r)
     (differenceTrail_zero_ne_zero M off sbox keys hxy)
+
+/-! ### Active S-boxes of the cipher with a final round -/
+
+/-- The S-boxes of round `n` of the `r`-round cipher whose inputs differ between the
+executions from `x` and from `y`. -/
+def aesLikeCipherActiveSboxesAt (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4)
+    (sbox : K → K) (keys : ℕ → Fin 16 → K) (r : ℕ) (x y : Fin 16 → K) (n : ℕ) :
+    Finset (Fin 16) :=
+  univ.filter fun p =>
+    addRoundKey (keys n) (aesLikeCipherExec M off sbox keys r x n) p
+      ≠ addRoundKey (keys n) (aesLikeCipherExec M off sbox keys r y n) p
+
+/-- The number of active S-boxes over the `r` rounds of the cipher, its final round
+included. -/
+def aesLikeCipherActiveSboxes (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4)
+    (sbox : K → K) (keys : ℕ → Fin 16 → K) (r : ℕ) (x y : Fin 16 → K) : ℕ :=
+  ∑ n ∈ range r, (aesLikeCipherActiveSboxesAt M off sbox keys r x y n).card
+
+/-- **The final round's S-boxes count, and the missing linear layer changes nothing.** Over
+its `r` rounds, the cipher with a final round has exactly as many active S-boxes as the first
+`r` rounds of `aesLikeExec`. -/
+theorem aesLikeCipherActiveSboxes_eq (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4)
+    (sbox : K → K) (keys : ℕ → Fin 16 → K) (r : ℕ) (x y : Fin 16 → K) :
+    aesLikeCipherActiveSboxes M off sbox keys r x y = activeSboxes M off sbox keys x y r := by
+  refine Finset.sum_congr rfl fun n hn => ?_
+  have h := Finset.mem_range.mp hn
+  simp only [aesLikeCipherActiveSboxesAt, activeSboxesAt, aesLikeCipherExec_of_lt _ _ _ _ _ h]
+
+/-- **The active-S-box bound for the cipher with a final round.** For an MDS matrix `M`,
+diffusion-optimal offsets `off` and any injective S-box, two executions of the `r`-round
+cipher (the last round without column mixing, then the final key) from distinct inputs under
+the same keys have at least `activityBound r` S-boxes with differing inputs over their `r`
+rounds: the bound of the first `r` rounds of `aesLikeExec`. -/
+theorem aesLikeCipherActiveSboxes_bound {M : Matrix (Fin 4) (Fin 4) K} {off : Fin 4 → Fin 4}
+    (hM : IsMDS M) (hoff : DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 off))
+    {sbox : K → K} (hs : Function.Injective sbox) (keys : ℕ → Fin 16 → K) {x y : Fin 16 → K}
+    (hxy : x ≠ y) (r : ℕ) : activityBound r ≤ aesLikeCipherActiveSboxes M off sbox keys r x y := by
+  rw [aesLikeCipherActiveSboxes_eq]
+  exact activeSboxes_bound hM hoff hs keys hxy r
 
 end Cryptificate

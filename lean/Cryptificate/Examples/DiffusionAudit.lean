@@ -19,6 +19,8 @@ submodules (including `Diffusion.Minors3`, which the HADES certificates use),
 #cryptificate_audit Cryptificate.candidate_activity_bound
 #cryptificate_audit Cryptificate.isTrail_difference
 #cryptificate_audit Cryptificate.activeSboxes_bound
+#cryptificate_audit Cryptificate.aesLikeCipherActiveSboxes_eq
+#cryptificate_audit Cryptificate.aesLikeCipherActiveSboxes_bound
 #cryptificate_audit Cryptificate.bijective_of_leftInverse
 #cryptificate_audit Cryptificate.not_injective_of_collision
 #cryptificate_audit Cryptificate.aes_sbox_bijective
