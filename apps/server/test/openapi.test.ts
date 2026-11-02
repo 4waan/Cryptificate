@@ -12,6 +12,8 @@ import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SchemaRegistry, resolveJsonPointer, validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
+import type { AnalysisReport } from '@cryptificate/schema';
+import type { JobContext, PipelineEnv, PipelineResult } from '../src/context.js';
 import { JobManager } from '../src/jobs.js';
 import { bundleOpenApi, componentName } from '../src/openapi.js';
 import { API_ROUTES, createApp, matchApiRoute } from '../src/server.js';
@@ -51,7 +53,8 @@ function deref(doc: Obj, node: unknown, pointer: string): { node: Obj; pointer: 
   for (let i = 0; i < 10 && typeof cur['$ref'] === 'string'; i++) {
     const ref = cur['$ref'] as string;
     assert.ok(ref.startsWith('#/'), `${ptr}: non-local reference ${ref}`);
-    ptr = ref.slice(1);
+    // the reference is a URI fragment: percent-decode it to get the JSON Pointer
+    ptr = decodeURIComponent(ref.slice(1));
     cur = resolveJsonPointer(doc, ptr) as Obj;
     assert.ok(cur, `${pointer}: unresolvable ${ref}`);
   }
@@ -256,13 +259,12 @@ function call(port: number, method: string, path: string, opts: { body?: string 
   });
 }
 
-test('openapi: live responses of the service conform to the description', async () => {
-  const { root, env } = makeFixture();
-  cpSync(SCHEMAS, join(root, 'schemas'), { recursive: true });
-  const jobs = new JobManager({ env });
-  const server = createApp({ env, jobs, host: '127.0.0.1', port: 0, webDist: null });
-  await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
-  const port = (server.address() as AddressInfo).port;
+/**
+ * Checks a live response against the description: its status and media type
+ * are documented for the operation, and a JSON body validates against the
+ * schema. `seen` records each operation/status pair checked.
+ */
+function conformer(): { conform: (operationId: string, res: Res) => unknown; seen: Set<string> } {
   const reg = registry();
   const byId = new Map(operations().map((o) => [String(o.op['operationId']), o]));
   const seen = new Set<string>();
@@ -277,6 +279,21 @@ test('openapi: live responses of the service conform to the description', async 
     assert.deepEqual(reg.validate(`${DOC_URI}#${pointer}`, body), [], `${operationId} ${res.status}`);
     return body;
   };
+  return { conform, seen };
+}
+
+function assertExercised(seen: Set<string>, required: string[]): void {
+  for (const s of required) assert.ok(seen.has(s), `not exercised: ${s}`);
+}
+
+test('openapi: live responses of the service conform to the description', async () => {
+  const { root, env } = makeFixture();
+  cpSync(SCHEMAS, join(root, 'schemas'), { recursive: true });
+  const jobs = new JobManager({ env });
+  const server = createApp({ env, jobs, host: '127.0.0.1', port: 0, webDist: null });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+  const port = (server.address() as AddressInfo).port;
+  const { conform, seen } = conformer();
   try {
     conform('getCapabilities', await call(port, 'GET', '/api/capabilities'));
     const served = conform('getOpenApi', await call(port, 'GET', '/api/openapi.json')) as Obj;
@@ -287,6 +304,11 @@ test('openapi: live responses of the service conform to the description', async 
     conform('submitAnalysis', await call(port, 'POST', '/api/analyses', { body: '{not json' }));
     conform('submitAnalysis', await call(port, 'POST', '/api/analyses', { body: JSON.stringify({ design: { ...AES_DESIGN, rounds: 3 } }) }));
     conform('submitAnalysis', await call(port, 'POST', '/api/analyses', { body: '{}', headers: { 'content-type': 'text/plain' } }));
+    // a declared length over the limit is refused before any body is read
+    const declared = await call(port, 'POST', '/api/analyses', { body: '', headers: { 'content-length': String(300 * 1024) } });
+    assert.equal(declared.status, 413);
+    conform('submitAnalysis', declared);
+    // an oversized upload may instead see the connection closed before the answer arrives
     const big = await call(port, 'POST', '/api/analyses', { body: Buffer.alloc(300 * 1024, 0x20) });
     if (big.status !== -1) conform('submitAnalysis', big);
     conform('submitExperiment', await call(port, 'POST', '/api/experiments', { body: JSON.stringify({ design: AES_DESIGN, profile: 'fast' }) }));
@@ -296,6 +318,7 @@ test('openapi: live responses of the service conform to the description', async 
     const accepted = await call(port, 'POST', '/api/analyses', { body: JSON.stringify({ design: AES_DESIGN }) });
     const id = (conform('submitAnalysis', accepted) as { job: { id: string } }).job.id;
     assert.equal(accepted.headers['location'], `/api/jobs/${id}`);
+    // 409 while the job runs is checked deterministically in the next test
     const early = await call(port, 'GET', `/api/jobs/${id}/bundle`);
     if (early.status === 409) conform('getJobBundle', early);
     await jobs.idle();
@@ -312,18 +335,6 @@ test('openapi: live responses of the service conform to the description', async 
     conform('stopJob', await call(port, 'POST', `/api/jobs/${missing}/stop`));
     conform('getJobBundle', await call(port, 'GET', `/api/jobs/${missing}/bundle`));
 
-    // a cancelled job without a report has no bundle
-    const exp = await call(port, 'POST', '/api/experiments', { body: JSON.stringify({ design: AES_DESIGN, profile: 'quick' }) });
-    const expId = (conform('submitExperiment', exp) as { job: { id: string } }).job.id;
-    conform('stopJob', await call(port, 'POST', `/api/jobs/${expId}/stop`));
-    await jobs.idle();
-    const stopped = conform('getJob', await call(port, 'GET', `/api/jobs/${expId}`)) as { state: string; bundle: boolean };
-    if (!stopped.bundle) {
-      const none = await call(port, 'GET', `/api/jobs/${expId}/bundle`);
-      conform('getJobBundle', none);
-      assert.equal(JSON.parse(none.body.toString()).error.code, 'not-ready');
-    }
-
     // methods the description does not list are not served on described paths
     for (const [path, item] of Object.entries(paths)) {
       if (!path.startsWith('/api/')) continue;
@@ -334,10 +345,123 @@ test('openapi: live responses of the service conform to the description', async 
         assert.ok(r.status === 404 || r.status === 405, `${m} ${path} answered ${r.status}`);
       }
     }
-    for (const s of ['submitAnalysis 400', 'submitAnalysis 403', 'submitAnalysis 415', 'getCapabilities 403', 'getJob 404', 'getJobBundle 200', 'stopJob 200']) {
-      assert.ok(seen.has(s), `not exercised: ${s}`);
-    }
+    assertExercised(seen, [
+      'getCapabilities 200',
+      'getCapabilities 403',
+      'getOpenApi 200',
+      'getWebUi 200',
+      'submitAnalysis 202',
+      'submitAnalysis 400',
+      'submitAnalysis 403',
+      'submitAnalysis 413',
+      'submitAnalysis 415',
+      'submitExperiment 400',
+      'getJob 200',
+      'getJob 404',
+      'getJobBundle 200',
+      'getJobBundle 404',
+      'stopJob 200',
+      'stopJob 404',
+    ]);
   } finally {
+    jobs.stopAll();
+    await jobs.idle();
+    await new Promise<void>((r) => server.close(() => r()));
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+/** A pipeline that holds the single run slot until stopped or released, publishing a partial report. */
+function blockingPipeline(release: Promise<void>) {
+  return async (_env: PipelineEnv, ctx: JobContext): Promise<PipelineResult> => {
+    ctx.start('validate');
+    ctx.finish('validate', 'completed');
+    const partial: AnalysisReport = {
+      kind: 'analysis',
+      id: ctx.id,
+      inputDigest: `sha256:${'0'.repeat(64)}`,
+      inputs: { design: AES_DESIGN },
+      claims: [],
+      execution: { state: 'running', steps: ctx.executionSteps() },
+      provenance: { origin: 'live', checker: 'cryptificate test', toolchain: { lean: 'v', mathlib: 'm', widetrail: 'w', rustc: 'r' } },
+    };
+    ctx.setReport(partial);
+    await new Promise<void>((resolve) => {
+      ctx.signal.addEventListener('abort', () => resolve(), { once: true });
+      void release.then(resolve);
+    });
+    const state = ctx.cancelled ? ('cancelled' as const) : ('completed' as const);
+    ctx.closeRemaining(ctx.cancelled ? 'cancelled' : 'not_run');
+    const r = { ...partial, execution: { state, steps: ctx.executionSteps() } };
+    ctx.setReport(r);
+    return { state, report: r };
+  };
+}
+
+test('openapi: queued, running and cancelled jobs answer as described', async () => {
+  const { root, env } = makeFixture();
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  const pipeline = blockingPipeline(gate);
+  const jobs = new JobManager({ env, pipelines: { analysis: pipeline, experiment: pipeline } });
+  const server = createApp({ env, jobs, host: '127.0.0.1', port: 0, webDist: null });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+  const port = (server.address() as AddressInfo).port;
+  const { conform, seen } = conformer();
+  const submit = async (operationId: 'submitAnalysis' | 'submitExperiment'): Promise<Res> =>
+    operationId === 'submitAnalysis'
+      ? call(port, 'POST', '/api/analyses', { body: JSON.stringify({ design: AES_DESIGN }) })
+      : call(port, 'POST', '/api/experiments', { body: JSON.stringify({ design: AES_DESIGN, profile: 'quick' }) });
+  const error = (res: Res): { code: string; message: string } => (JSON.parse(res.body.toString('utf8')) as { error: { code: string; message: string } }).error;
+  try {
+    // the first job takes the run slot and holds it until stopped
+    const first = (conform('submitAnalysis', await submit('submitAnalysis')) as { job: { id: string } }).job.id;
+    const second = (conform('submitExperiment', await submit('submitExperiment')) as { job: { id: string } }).job.id;
+    const running = conform('getJob', await call(port, 'GET', `/api/jobs/${first}`)) as { state: string };
+    assert.equal(running.state, 'running');
+    const queued = conform('getJob', await call(port, 'GET', `/api/jobs/${second}`)) as { state: string; queuePosition?: number };
+    assert.equal(queued.state, 'queued');
+    assert.equal(queued.queuePosition, 1);
+
+    for (const id of [first, second]) {
+      const notYet = await call(port, 'GET', `/api/jobs/${id}/bundle`);
+      assert.equal(notYet.status, 409);
+      conform('getJobBundle', notYet);
+      assert.deepEqual(error(notYet), { code: 'not-ready', message: 'the job has not finished' });
+    }
+
+    // one job runs and two wait: a further submission is refused
+    const third = (conform('submitAnalysis', await submit('submitAnalysis')) as { job: { id: string } }).job.id;
+    for (const operationId of ['submitAnalysis', 'submitExperiment'] as const) {
+      const full = await submit(operationId);
+      assert.equal(full.status, 429);
+      assert.equal(full.headers['retry-after'], '30');
+      conform(operationId, full);
+      assert.equal(error(full).code, 'queue-full');
+    }
+
+    // a queued job that is stopped never runs and has no report, hence no bundle
+    conform('stopJob', await call(port, 'POST', `/api/jobs/${second}/stop`));
+    const cancelled = conform('getJob', await call(port, 'GET', `/api/jobs/${second}`)) as { state: string; bundle: boolean; report: unknown };
+    assert.deepEqual([cancelled.state, cancelled.bundle, cancelled.report], ['cancelled', false, null]);
+    const none = await call(port, 'GET', `/api/jobs/${second}/bundle`);
+    assert.equal(none.status, 409);
+    conform('getJobBundle', none);
+    assert.deepEqual(error(none), { code: 'not-ready', message: 'the job ended before it produced a report' });
+
+    // a running job that is stopped keeps its partial report, which has a bundle
+    conform('stopJob', await call(port, 'POST', `/api/jobs/${first}/stop`));
+    release();
+    await jobs.idle();
+    const stopped = conform('getJob', await call(port, 'GET', `/api/jobs/${first}`)) as { state: string; bundle: boolean };
+    assert.deepEqual([stopped.state, stopped.bundle], ['cancelled', true]);
+    conform('getJobBundle', await call(port, 'GET', `/api/jobs/${first}/bundle`));
+    const after = conform('getJob', await call(port, 'GET', `/api/jobs/${third}`)) as { state: string };
+    assert.equal(after.state, 'completed');
+
+    assertExercised(seen, ['submitAnalysis 202', 'submitExperiment 202', 'submitAnalysis 429', 'submitExperiment 429', 'getJob 200', 'getJobBundle 409', 'getJobBundle 200', 'stopJob 200']);
+  } finally {
+    release();
     jobs.stopAll();
     await jobs.idle();
     await new Promise<void>((r) => server.close(() => r()));
