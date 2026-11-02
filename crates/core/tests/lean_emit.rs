@@ -223,9 +223,17 @@ fn toy_refutations_with_witnesses() {
             "witnessVector": ["01", "00", "00", "00"]
         })
     );
-    // sbox.bijective has no fragment; activity is out of reach for this design.
+    // The S-box claims have no fragment; activity is out of reach for this design.
     let skipped: Vec<&str> = e.skipped.iter().map(|s| s.claim.as_str()).collect();
-    assert_eq!(skipped, vec!["sbox.bijective", "activity.bound"]);
+    assert_eq!(
+        skipped,
+        vec![
+            "sbox.bijective",
+            "activity.bound",
+            "sbox.differential",
+            "sbox.linearity"
+        ]
+    );
     assert!(e.skipped[0].reason.contains("sbox_bijective_aes"));
 }
 
@@ -335,11 +343,21 @@ fn check_emission(set: &TemplateSet, e: &Emission) -> Vec<(String, Status)> {
     assert_eq!(audits, theorems);
     for x in &e.expect {
         let meta = &set.get(&x.fragment).unwrap().meta;
+        let declared = meta.expected_type.as_deref().unwrap();
+        if declared.contains("{{") {
+            // Placeholders in a statement are filled like those in the source.
+            assert!(!x.expected_type.contains("{{"), "{x:?}");
+        } else {
+            assert_eq!(declared, x.expected_type);
+        }
+        // A refutation carries its counterexample, a value claim its value.
+        let states_value =
+            x.claim == claim_ids::SBOX_DIFFERENTIAL || x.claim == claim_ids::SBOX_LINEARITY;
         assert_eq!(
-            meta.expected_type.as_deref(),
-            Some(x.expected_type.as_str())
+            x.status == Status::Refuted || states_value,
+            x.witness.is_some(),
+            "{x:?}"
         );
-        assert_eq!(x.status == Status::Refuted, x.witness.is_some(), "{x:?}");
     }
     // Every fragment's requirements come earlier.
     for (i, name) in e.fragments.iter().enumerate() {
@@ -443,6 +461,57 @@ fn repo_aes_with_known_circuit() {
             p["instructions"][4],
             json!({"op": "mul", "k": "02", "a": 7})
         );
+    }
+    expect_claim(
+        &set,
+        &e,
+        "sbox_differential_aes",
+        claim_ids::SBOX_DIFFERENTIAL,
+        Status::Proved,
+    );
+    expect_claim(
+        &set,
+        &e,
+        "sbox_linearity_aes",
+        claim_ids::SBOX_LINEARITY,
+        Status::Proved,
+    );
+    if set.get("sbox_differential_aes").is_some() {
+        let x = e
+            .expect
+            .iter()
+            .find(|x| x.claim == claim_ids::SBOX_DIFFERENTIAL)
+            .unwrap();
+        // The library theorem states the values the engine computes.
+        assert_eq!(
+            x.witness,
+            Some(Witness::SboxDifferential {
+                uniformity: 4,
+                input_difference: "01".into(),
+                output_difference: "1F".into(),
+            })
+        );
+        assert!(x
+            .expected_type
+            .contains("(Cryptificate.gf 1) (Cryptificate.gf 31) = 4"));
+    }
+    if set.get("sbox_linearity_aes").is_some() {
+        let x = e
+            .expect
+            .iter()
+            .find(|x| x.claim == claim_ids::SBOX_LINEARITY)
+            .unwrap();
+        assert_eq!(
+            x.witness,
+            Some(Witness::SboxLinearity {
+                linearity: 32,
+                input_mask: "01".into(),
+                output_mask: "48".into(),
+            })
+        );
+        assert!(x
+            .expected_type
+            .contains("(Cryptificate.gf 1) (Cryptificate.gf 72)).natAbs = 32"));
     }
     if set.get("const_sbox_aes").is_some() {
         assert_eq!(e.inputs_echo["candSboxTable"], json!({"kind": "aes"}));
@@ -579,6 +648,38 @@ fn repo_row_scaled_and_table_sbox() {
         claim_ids::SBOX_BIJECTIVE,
         Status::Proved,
     );
+    // The quality claims of a table are checked on the table, with the
+    // values substituted into the statement.
+    expect_claim(
+        &set,
+        &e,
+        "sbox_differential",
+        claim_ids::SBOX_DIFFERENTIAL,
+        Status::Proved,
+    );
+    expect_claim(
+        &set,
+        &e,
+        "sbox_linearity",
+        claim_ids::SBOX_LINEARITY,
+        Status::Proved,
+    );
+    if set.get("sbox_differential").is_some() {
+        let x = e
+            .expect
+            .iter()
+            .find(|x| x.claim == claim_ids::SBOX_DIFFERENTIAL)
+            .unwrap();
+        assert_eq!(
+            x.expected_type,
+            "Cryptificate.differentialUniformity CryptificateJob.candSboxTable = 4 ∧ \
+             Cryptificate.gf 1 ≠ 0 ∧ diffCount CryptificateJob.candSboxTable (Cryptificate.gf 1) \
+             (Cryptificate.gf 31) = 4"
+        );
+        assert!(e
+            .source
+            .contains("differentialUniformity candSboxTable = 4 ∧ gf 1 ≠ 0"));
+    }
     if set.get("const_sbox_inv").is_some() && set.get("sbox_bijective").is_some() {
         // The inverse table starts 52 09 6A D5 (FIPS 197, Figure 14).
         assert!(e.source.contains("byteTable![0x52 0x09 0x6A 0xD5 "));

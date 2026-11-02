@@ -14,6 +14,9 @@ pub mod claim_ids {
     pub const OFFSETS_DISPERSION: &str = "offsets.dispersion";
     pub const SBOX_BIJECTIVE: &str = "sbox.bijective";
     pub const ACTIVITY_BOUND: &str = "activity.bound";
+    // Design chain, AES-like: exact quality values of the byte S-box table.
+    pub const SBOX_DIFFERENTIAL: &str = "sbox.differential";
+    pub const SBOX_LINEARITY: &str = "sbox.linearity";
     // Design chain, HADES (`sbox.bijective` is shared).
     pub const EXTERNAL_MDS: &str = "external.mds";
     pub const INTERNAL_INVERTIBLE: &str = "internal.invertible";
@@ -128,6 +131,22 @@ pub enum Witness {
     },
     /// Two distinct S-box inputs with the same output.
     SboxCollision { x1: String, x2: String, y: String },
+    /// The differential uniformity of a byte S-box, with an input difference
+    /// and an output difference whose count attains it.
+    #[serde(rename_all = "camelCase")]
+    SboxDifferential {
+        uniformity: u32,
+        input_difference: String,
+        output_difference: String,
+    },
+    /// The linearity of a byte S-box (largest absolute Walsh coefficient),
+    /// with an input mask and a nonzero output mask attaining it.
+    #[serde(rename_all = "camelCase")]
+    SboxLinearity {
+        linearity: u32,
+        input_mask: String,
+        output_mask: String,
+    },
     /// Two distinct field elements with the same power.
     PowerCollision {
         exponent: u32,

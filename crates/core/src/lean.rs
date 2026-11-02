@@ -390,6 +390,13 @@ fn aes_value(rounds: u32, offsets: &[usize], a: &AesLikeDiagnostics, name: &str)
         "X2" => lean_literal(&collision?.x2),
         "ROW_I" => offset_collision?.rows[0].to_string(),
         "ROW_J" => offset_collision?.rows[1].to_string(),
+        // S-box quality values, as decimal numerals (Lean prints `gf 31`, not `gf 0x1F`).
+        "DU" => a.sbox.differential.uniformity.to_string(),
+        "DU_A" => a.sbox.differential.input_difference.0.to_string(),
+        "DU_B" => a.sbox.differential.output_difference.0.to_string(),
+        "LIN" => a.sbox.linear.linearity.to_string(),
+        "LIN_A" => a.sbox.linear.input_mask.0.to_string(),
+        "LIN_B" => a.sbox.linear.output_mask.0.to_string(),
         _ => return None,
     })
 }
@@ -558,6 +565,21 @@ fn fragment_candidates(
                 (ModelDiagnostics::AesLike(_), false) => vec!["sbox_not_injective".into()],
                 (ModelDiagnostics::Hades(_), true) => vec!["power_bijective".into()],
                 (ModelDiagnostics::Hades(_), false) => vec!["power_not_injective".into()],
+            };
+        }
+        (claim_ids::SBOX_DIFFERENTIAL | claim_ids::SBOX_LINEARITY, true) => {
+            let base = if claim == claim_ids::SBOX_DIFFERENTIAL {
+                "sbox_differential"
+            } else {
+                "sbox_linearity"
+            };
+            // The AES S-box values are checked once in the library.
+            return match &diag.details {
+                ModelDiagnostics::AesLike(a) if a.sbox.source == SboxSource::Aes => {
+                    vec![format!("{base}_aes"), base.to_string()]
+                }
+                ModelDiagnostics::AesLike(_) => vec![base.to_string()],
+                ModelDiagnostics::Hades(_) => vec![],
             };
         }
         (claim_ids::CIRCUIT_EQUIVALENCE, holds) => {
@@ -835,7 +857,14 @@ pub fn emit(
             fragment: name.clone(),
             reason: format!("expectedType: {reason}"),
         })?;
-        let witness = (status == Status::Refuted)
+        // A refutation carries its counterexample; a claim that states an
+        // exact value (the S-box quality claims) carries the value and where
+        // it is attained, which its statement repeats.
+        let states_value = matches!(
+            claim.as_str(),
+            claim_ids::SBOX_DIFFERENTIAL | claim_ids::SBOX_LINEARITY
+        );
+        let witness = (status == Status::Refuted || states_value)
             .then(|| diag.claim(&claim).and_then(|c| c.witness.clone()))
             .flatten();
         expect.push(Expectation {

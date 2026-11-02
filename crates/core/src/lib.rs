@@ -7,6 +7,7 @@
 //! * [`circuit`]: evaluation, coefficient matrices and cost measures of programs.
 //! * [`report`]: claims, evidence, witnesses and report documents.
 //! * [`diagnostics`]: unchecked analysis used to choose certificates.
+//! * [`sbox_quality`]: differential uniformity and linearity of byte S-boxes.
 //! * [`lean`]: Lean certificates assembled from the template fragments.
 //! * [`linalg`], [`limits`]: small helpers and the enforced input limits.
 
@@ -22,6 +23,7 @@ pub mod linalg;
 pub mod program;
 pub mod report;
 pub mod request;
+pub mod sbox_quality;
 pub mod validate;
 
 pub use circuit::{CircuitStats, OpCounts};
