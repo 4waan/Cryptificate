@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
 import { isStale, normalizeAnalysisRequest, type WorkspaceInputs } from '../lib/canonical';
 import { downloadJson } from '../lib/download';
-import { previewDesign, previewEquivalence, type PreviewItem } from '../lib/preview';
+import type { PreviewItem } from '../lib/preview';
 import type { AnalysisReport, Claim, ClaimId, ExperimentReport, FieldName } from '../lib/types';
-import { startRun } from '../state/actions';
+import { checkNow } from '../state/actions';
 import type { Run } from '../state/store';
 import { ClaimCard, MissingClaimCard, PreviewCard } from './ClaimCard';
-import { IconDownload, IconPreview, IconRefresh, IconWarning } from './icons';
+import { IconDownload, IconPlay, IconPreview, IconRefresh, IconWarning } from './icons';
+import { PREVIEW_LABEL, previewItems } from './LiveChecks';
 import { RunProgress, isActive } from './RunProgress';
 
 const DESIGN_CLAIMS: Record<FieldName, { id: ClaimId; title: string }[]> = {
@@ -80,13 +81,30 @@ function Chain({ title, subtitle, children }: { title: string; subtitle: string;
   );
 }
 
-function previewItems(inputs: WorkspaceInputs): PreviewItem[] {
-  const items = previewDesign(inputs.design);
-  if (inputs.program) {
-    const eq = previewEquivalence(inputs.design, inputs.program, inputs.target);
-    if (eq) items.push(eq);
-  }
-  return items;
+/** Both chains of browser diagnostics, labelled as a preview Lean has not checked. */
+export function PreviewChains({ items, field }: { items: PreviewItem[]; field: FieldName }) {
+  return (
+    <div className="grid-2">
+      <Chain title="Design guarantees" subtitle={PREVIEW_LABEL}>
+        {items
+          .filter((i) => i.chain === 'design')
+          .map((i) => (
+            <PreviewCard key={i.id} item={i} field={field} />
+          ))}
+      </Chain>
+      <Chain title="Implementation correspondence" subtitle={PREVIEW_LABEL}>
+        {items
+          .filter((i) => i.chain === 'implementation')
+          .map((i) => (
+            <PreviewCard key={i.id} item={i} field={field} />
+          ))}
+        <MissingClaimCard
+          title="Rust refinement, native correctness and timing"
+          reason="These need the local service: they are never computed in the browser."
+        />
+      </Chain>
+    </div>
+  );
 }
 
 export function UnverifiedPreview({ inputs, reason }: { inputs: WorkspaceInputs; reason: string }) {
@@ -103,32 +121,38 @@ export function UnverifiedPreview({ inputs, reason }: { inputs: WorkspaceInputs;
           <IconDownload /> Export JSON
         </button>
       </div>
-      {items.length ? (
-        <div className="grid-2">
-          <Chain title="Design guarantees" subtitle="computed in the browser">
-            {items
-              .filter((i) => i.chain === 'design')
-              .map((i) => (
-                <PreviewCard key={i.id} item={i} field={field} />
-              ))}
-          </Chain>
-          <Chain title="Implementation correspondence" subtitle="computed in the browser">
-            {items
-              .filter((i) => i.chain === 'implementation')
-              .map((i) => (
-                <PreviewCard key={i.id} item={i} field={field} />
-              ))}
-            <MissingClaimCard
-              title="Rust refinement, native correctness and timing"
-              reason="These need the local service: they are never computed in the browser."
-            />
-          </Chain>
-        </div>
-      ) : (
-        <p className="muted">Fix the highlighted inputs to see the results.</p>
-      )}
+      {items.length ? <PreviewChains items={items} field={field} /> : <p className="muted">Fix the highlighted inputs to see the results.</p>}
     </div>
   );
+}
+
+/**
+ * The instant preview in the result area: shown while there is no Lean
+ * result for the inputs in the editor, and replaced by it when it arrives.
+ */
+export function LivePreview({
+  items,
+  field,
+  note,
+  action,
+}: {
+  items: PreviewItem[];
+  field: FieldName;
+  note: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <section className="stack" aria-label={PREVIEW_LABEL} data-live-preview="">
+      <div className="banner banner-preview">
+        <IconPreview />
+        <div className="banner-body">
+          <strong>{PREVIEW_LABEL}.</strong> <span>{note}</span>
+        </div>
+        {action}
+      </div>
+      {items.length ? <PreviewChains items={items} field={field} /> : <p className="muted">Fix the input problems to see the preview.</p>}
+    </section>
+  )
 }
 
 export function ClaimChains({
@@ -238,25 +262,42 @@ export function ExecutionProblems({ report, run }: { report: AnalysisReport | Ex
   );
 }
 
-/** The workspace result area: staleness, execution problems and both claim chains. */
+/** The workspace result area: staleness, execution problems, the instant preview and both claim chains. */
 export function ResultsPanel({
   run,
   inputs,
   experiment,
+  preview,
+  source = 'live',
 }: {
   run: Run | undefined;
   inputs: WorkspaceInputs;
   experiment?: ExperimentReport | null;
+  /** Browser diagnostics for the inputs (debounced by the caller); computed here when absent. */
+  preview?: PreviewItem[];
+  source?: 'live' | 'replay';
 }) {
+  const computed = useMemo(() => (preview ? null : previewItems(inputs)), [preview, inputs]);
+  const items = preview ?? computed ?? [];
+  const field = inputs.design.field;
   const stale = run ? isStale(inputs, run.inputs) : false;
+  const checkLabel = source === 'live' ? 'Check with Lean' : 'Show the recorded check';
   if (!run) {
     return (
-      <div className="panel">
-        <p className="muted">
-          No results yet. <strong>Check</strong> the design and circuit to see which guarantees hold and whether the
-          circuit implements the design.
-        </p>
-      </div>
+      <LivePreview
+        items={items}
+        field={field}
+        note={
+          source === 'live'
+            ? 'Computed in this browser as you edit, with no proof. Check to get Lean certificates for these exact values.'
+            : 'Computed in this browser as you edit, with no proof. Lean runs on the local service; this page shows recorded runs.'
+        }
+        action={
+          <button type="button" className="btn btn-primary" onClick={() => checkNow()} aria-keyshortcuts="Control+Enter Meta+Enter">
+            <IconPlay size={12} /> {checkLabel}
+          </button>
+        }
+      />
     );
   }
   const report = run.report && run.report.kind === 'analysis' ? (run.report as AnalysisReport) : null;
@@ -268,31 +309,50 @@ export function ResultsPanel({
       />
     );
   }
+  const active = isActive(run);
   return (
     <div className="stack-lg">
-      {stale ? (
-        run.source === 'replay' ? (
-          <UnverifiedPreview
-            inputs={inputs}
-            reason="You changed the inputs. The results below belong to the earlier version."
-          />
-        ) : (
-          <div className="banner banner-warn" role="status">
-            <IconWarning />
-            <div className="banner-body">
-              <strong>These results are from an earlier version of the inputs.</strong> They no longer describe what is
-              in the editor.
-            </div>
-            <button type="button" className="btn btn-primary" onClick={() => startRun('analysis')}>
-              <IconRefresh /> Re-check
-            </button>
-          </div>
-        )
+      {stale && run.source === 'replay' && !active ? (
+        <UnverifiedPreview
+          inputs={inputs}
+          reason="You changed the inputs. The results below belong to the earlier version."
+        />
       ) : null}
-      {isActive(run) ? (
+      {stale && run.source === 'live' ? (
+        <div className="banner banner-warn" role="status">
+          <IconWarning />
+          <div className="banner-body">
+            {active ? (
+              <strong>The running check is for an earlier version of the inputs.</strong>
+            ) : (
+              <>
+                <strong>These results are from an earlier version of the inputs.</strong> They no longer describe what is
+                in the editor.
+              </>
+            )}
+          </div>
+          <button type="button" className="btn btn-primary" onClick={() => checkNow()}>
+            <IconRefresh /> {active ? 'Check the current inputs' : 'Re-check'}
+          </button>
+        </div>
+      ) : null}
+      {active ? (
         <div className="panel">
           <RunProgress run={run} />
         </div>
+      ) : null}
+      {active && !stale ? (
+        <LivePreview
+          items={items}
+          field={field}
+          note="Computed in this browser. The Lean result for these inputs replaces it when it arrives."
+        />
+      ) : stale && run.source === 'live' ? (
+        <LivePreview
+          items={items}
+          field={field}
+          note="Computed in this browser for the inputs in the editor. Check them to replace this with Lean evidence."
+        />
       ) : null}
       <ExecutionProblems report={report} run={run} />
       {report ? (
