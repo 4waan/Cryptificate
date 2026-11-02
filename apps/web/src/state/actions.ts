@@ -593,6 +593,7 @@ export function autoView(s: AppState = getState()): AutoView {
           active: runIsActive(last),
           auto: last.auto === true,
           failed: ['failed', 'timeout', 'cancelled', 'invalid'].includes(last.state),
+          unavailable: last.state === 'unavailable',
         }
       : undefined,
     experimentActive: Object.values(s.runs).some((r) => r.kind === 'experiment' && runIsActive(r)),

@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AUTO_DELAY_MS, AUTO_MIN_INTERVAL_MS, createAutoChecker, decideAutoCheck, type AutoReport, type AutoView } from './autocheck';
+import {
+  AUTO_DELAY_MS,
+  AUTO_MIN_INTERVAL_MS,
+  UNAVAILABLE_REASON,
+  createAutoChecker,
+  decideAutoCheck,
+  type AutoReport,
+  type AutoView,
+} from './autocheck';
 
 const base: AutoView = {
   enabled: true,
@@ -27,6 +35,15 @@ describe('decideAutoCheck', () => {
     expect(decideAutoCheck({ ...base, last })).toEqual({ kind: 'idle', reason: 'Up to date.' });
     expect(decideAutoCheck({ ...base, last: { ...last, active: true } })).toEqual({ kind: 'checking' });
     expect(decideAutoCheck({ ...base, last: { ...last, failed: true } })).toMatchObject({ kind: 'idle' });
+  });
+
+  it('never says "Up to date" when no recorded check matched', () => {
+    const last = { key: 'run-1', digest: 'd1', active: false, auto: true, failed: false, unavailable: true };
+    const d = decideAutoCheck({ ...base, last });
+    expect(d).toEqual({ kind: 'idle', reason: UNAVAILABLE_REASON });
+    expect(UNAVAILABLE_REASON).toMatch(/No recorded check.*start the service/);
+    // New inputs are still looked up.
+    expect(decideAutoCheck({ ...base, last: { ...last, digest: 'd0' } })).toEqual({ kind: 'run', digest: 'd1' });
   });
 
   it('supersedes an unfinished auto-check of other inputs, but never a check the user started', () => {

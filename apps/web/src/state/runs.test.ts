@@ -159,6 +159,16 @@ describe('auto-check view of the store', () => {
     expect(autoView().digest).toBeNull();
   });
 
+  it('marks a look-up that found no recorded check as unavailable, not up to date', () => {
+    const inputs = { design: getState().design };
+    setState({
+      prefs: { autoCheck: true, notify: false, sound: false },
+      runs: { r: { key: 'r', kind: 'analysis', inputs, source: 'replay', state: 'unavailable', steps: [], report: null, auto: true } },
+      current: { analysis: 'r' },
+    });
+    expect(autoView().last).toMatchObject({ unavailable: true, failed: false, active: false });
+  });
+
   it('counts room in the service queue from this page’s own live jobs', () => {
     const run = (key: string, state: 'running' | 'queued' | 'completed') => ({
       key,

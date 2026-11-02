@@ -18,6 +18,9 @@ export const AUTO_DELAY_MS = 1200;
 /** At least this long between two auto-check submissions. */
 export const AUTO_MIN_INTERVAL_MS = 2500;
 
+/** Status when the last look-up found no recorded check: never "Up to date". */
+export const UNAVAILABLE_REASON = 'No recorded check for these inputs; start the service to check them.';
+
 export interface AutoView {
   enabled: boolean;
   /** Auto-check runs only in the workspace. */
@@ -27,7 +30,15 @@ export interface AutoView {
   /** Digest of the current inputs, or null while they have problems. */
   digest: string | null;
   /** The latest analysis of the workspace, if any. */
-  last?: { key: string; digest: string | null; active: boolean; auto: boolean; failed: boolean };
+  last?: {
+    key: string;
+    digest: string | null;
+    active: boolean;
+    auto: boolean;
+    failed: boolean;
+    /** No recorded check matched (replay, or offline): nothing was checked. */
+    unavailable?: boolean;
+  };
   /** An experiment is running: auto-check must not disturb its timing. */
   experimentActive: boolean;
   /** Jobs the service would still accept from this page (see queueRoom). */
@@ -48,6 +59,7 @@ export function decideAutoCheck(v: AutoView): AutoDecision {
   const last = v.last;
   if (last && last.digest === v.digest) {
     if (last.active) return { kind: 'checking' };
+    if (last.unavailable) return { kind: 'idle', reason: UNAVAILABLE_REASON };
     return {
       kind: 'idle',
       reason: last.failed ? 'The last check did not finish; press Check to try again.' : 'Up to date.',
