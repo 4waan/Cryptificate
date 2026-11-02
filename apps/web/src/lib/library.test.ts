@@ -137,4 +137,10 @@ describe('searchPresets', () => {
     expect(searchPresets('weak').length).toBeGreaterThan(3);
     expect(searchPresets('nothing-matches-this')).toEqual([]);
   });
+  it('ranks whole tokens and phrases in the label first', () => {
+    expect(searchPresets('circ(02, 01')[0]!.id).toBe('matrix.circ-02-01-01-01');
+    expect(searchPresets('circ')[0]!.kind).toBe('matrix');
+    expect(searchPresets('x^3')[0]!.id).toBe('sbox.power-3');
+    expect(searchPresets('identity').slice(0, 3).every((p) => /identity/i.test(p.label))).toBe(true);
+  });
 });

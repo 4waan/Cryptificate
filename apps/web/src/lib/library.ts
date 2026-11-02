@@ -187,6 +187,8 @@ function circuitPreset(
   };
 }
 
+const SUPERSCRIPT: Record<number, string> = { 3: '³', 5: '⁵', 7: '⁷' };
+
 const GF_NOTE = 'GF(2⁸) with x⁸ + x⁴ + x³ + x + 1 (0x11B).';
 
 export const PRESETS: Preset[] = [
@@ -454,7 +456,7 @@ export const PRESETS: Preset[] = [
       id: `sbox.power-${e}`,
       kind: 'sbox',
       field: 'bn254',
-      label: `Power map x^${e}${ok ? '' : ': not a permutation'}`,
+      label: `Power map x${SUPERSCRIPT[e]}${ok ? '' : ': not a permutation'}`,
       family: 'Poseidon2',
       summary: note,
       scope: 'Power maps x ↦ xᵉ over the BN254 scalar field; a permutation exactly when gcd(e, p − 1) = 1.',
@@ -581,24 +583,50 @@ function haystack(p: Preset): string {
     .replace(/[̀-ͯ]/g, '');
 }
 
-/**
- * Presets whose text contains every word of the query (case-insensitive),
- * in library order. Designs come first, then matrices, S-boxes and circuits.
- */
-export function searchPresets(query: string, presets: Preset[] = PRESETS): Preset[] {
-  const words = query
+const fold = (t: string) =>
+  t
     .toLowerCase()
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .split(/[\s,]+/)
+    .replace(/[\u0300-\u036f]/g, '');
+
+/**
+ * Relevance of a preset for the query words: a word that is a whole token
+ * of the label scores 4, a token prefix 2, anywhere else in the preset's
+ * text 1, and the words in sequence in the label add 10. Zero when some
+ * word does not occur at all.
+ */
+export function presetScore(p: Preset, words: string[]): number {
+  const h = haystack(p);
+  const tokens = fold(p.label).split(/[^a-z0-9⁰-⁹]+/).filter(Boolean);
+  // The query as a phrase of label tokens ("circ 02 01" in "circ(02, 01, 01, 01)") ranks first.
+  const phrase = words.map((w) => w.replace(/[^a-z0-9⁰-⁹]+/g, '')).filter(Boolean).join(' ');
+  let score = words.length > 1 && phrase && ` ${tokens.join(' ')} `.includes(` ${phrase}`) ? 10 : 0;
+  for (const w of words) {
+    if (!h.includes(w)) return 0;
+    const bare = w.replace(/[^a-z0-9⁰-⁹]+/g, '');
+    if (bare && tokens.includes(bare)) score += 4;
+    else if (bare && tokens.some((t) => t.startsWith(bare))) score += 2;
+    else score += 1;
+  }
+  return score;
+}
+
+/**
+ * Presets whose text contains every word of the query (case-insensitive),
+ * best match first; ties keep library order with designs, then matrices,
+ * S-boxes and circuits. Commas and brackets in the query are ignored, so
+ * "circ(02, 01" finds circ(02, 01, 01, 01).
+ */
+export function searchPresets(query: string, presets: Preset[] = PRESETS): Preset[] {
+  const words = fold(query)
+    .split(/[\s,()[\]]+/)
     .filter(Boolean);
   const order: PresetKind[] = ['design', 'matrix', 'sbox', 'circuit'];
   return presets
-    .filter((p) => {
-      const h = haystack(p);
-      return words.every((w) => h.includes(w));
-    })
-    .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+    .map((p, i) => ({ p, i, score: words.length ? presetScore(p, words) : 1 }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || order.indexOf(a.p.kind) - order.indexOf(b.p.kind) || a.i - b.i)
+    .map((x) => x.p);
 }
 
 export function presetById(id: string): Preset | undefined {
