@@ -87,7 +87,7 @@ shell files from the bundle. Exit status 0 means every re-checked claim matched.
 | `CRYPTIFICATE_LAKE` | `lake` launcher (default `PATH`, then `~/.elan/bin/lake`) |
 | `CRYPTIFICATE_ALLOWED_ORIGINS` | extra comma-separated origins allowed to `POST` |
 | `CRYPTIFICATE_HOST` | `serve` bind address when `--host` is not given (default `127.0.0.1`) |
-| `PORT` | `serve` port when `--port` is not given (default `4173`) |
+| `PORT` | `serve` port when `--port` is not given (default `4173`); in the container image, also the port its health check polls |
 | `CRYPTIFICATE_ROOT` | the checkout whose `lean/`, templates and web UI are used (default: found from the service's own location) |
 | `CRYPTIFICATE_CONTAINER` | set to `1` by the container image: `serve` explains how to publish the port, and `rust.refinement` is never `proved`: it says the image does not check the refinement proofs, and `<state>/refinement.json` is not read |
 | `NO_COLOR` | plain terminal output (also automatic when stdout is not a TTY) |

@@ -45,30 +45,37 @@ export function serveHost(flag: string | undefined, env: Readonly<Record<string,
 }
 
 /**
- * Lines `serve` prints about its bind address: a warning for any address
- * other than loopback, and inside the container image (which sets
- * CRYPTIFICATE_CONTAINER=1) how to reach the service from the host.
+ * Lines `serve` prints about its bind address and port: a warning for any
+ * address other than loopback, and inside the container image (which sets
+ * CRYPTIFICATE_CONTAINER=1) how to reach the service from the host and, when
+ * --port differs from PORT, that the image's health check polls PORT.
  */
 export function bindNotes(host: string, port: number, env: Readonly<Record<string, string | undefined>>): string[] {
   const inContainer = env['CRYPTIFICATE_CONTAINER'] === '1';
+  const notes: string[] = [];
   if (!LOOPBACK_BIND_ADDRESSES.includes(host)) {
-    const notes = [`warning: binding to ${host}. The service has no authentication; anyone who can reach this address can run jobs.`];
+    notes.push(`warning: binding to ${host}. The service has no authentication; anyone who can reach this address can run jobs.`);
     if (inContainer) {
       notes.push(
         `note: publish the port on the host's loopback interface only (docker run -p 127.0.0.1:${port}:${port}) and open http://127.0.0.1:${port}/. ` +
           'Writes are accepted only from that origin, so keep the same port number on both sides.',
       );
     }
-    return notes;
-  }
-  if (inContainer) {
-    return [
+  } else if (inContainer) {
+    notes.push(
       "note: listening on the container's own loopback interface, which a published port (docker run -p) does not reach. " +
         `To open the workbench from the host, start the container with --host 0.0.0.0 (or CRYPTIFICATE_HOST=0.0.0.0) and publish -p 127.0.0.1:${port}:${port}. ` +
         'See docs/docker.md.',
-    ];
+    );
   }
-  return [];
+  const healthPort = env['PORT']?.trim() || '4173';
+  if (inContainer && String(port) !== healthPort) {
+    notes.push(
+      `note: the image's health check polls port ${healthPort} (the PORT variable), not ${port}, so Docker will report this container unhealthy. ` +
+        `Set the port with -e PORT=${port} instead of --port.`,
+    );
+  }
+  return notes;
 }
 
 const MIME: Record<string, string> = {

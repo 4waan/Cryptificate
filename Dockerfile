@@ -7,7 +7,8 @@
 #   docker run --rm -p 127.0.0.1:4173:4173 cryptificate serve --host 0.0.0.0
 #
 # The service binds 127.0.0.1 inside the container unless --host or
-# CRYPTIFICATE_HOST says otherwise. Usage and limits: docs/docker.md.
+# CRYPTIFICATE_HOST says otherwise. Change its port with -e PORT=…, which the
+# health check also reads, not with --port. Usage and limits: docs/docker.md.
 
 # Base images, pinned by tag and by the digest of their multi-platform index.
 ARG DEBIAN_IMAGE=debian:trixie-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4

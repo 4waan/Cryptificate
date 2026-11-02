@@ -131,10 +131,23 @@ test('serve binds loopback unless --host or CRYPTIFICATE_HOST names another addr
   assert.match(inside[0] ?? '', /does not reach/);
   assert.match(inside[0] ?? '', /--host 0\.0\.0\.0/);
   assert.match(inside[0] ?? '', /-p 127\.0\.0\.1:4173:4173/);
-  const wideInside = bindNotes('0.0.0.0', 8080, { CRYPTIFICATE_CONTAINER: '1' });
+  const wideInside = bindNotes('0.0.0.0', 8080, { CRYPTIFICATE_CONTAINER: '1', PORT: '8080' });
   assert.equal(wideInside.length, 2);
   assert.match(wideInside[0] ?? '', /^warning: binding to 0\.0\.0\.0/);
   assert.match(wideInside[1] ?? '', /-p 127\.0\.0\.1:8080:8080/);
+  // --port 8080 with the image's PORT=4173: its health check would poll 4173
+  const portFlag = bindNotes('0.0.0.0', 8080, { CRYPTIFICATE_CONTAINER: '1', PORT: '4173' });
+  assert.equal(portFlag.length, 3);
+  assert.match(portFlag[2] ?? '', /health check polls port 4173 \(the PORT variable\), not 8080/);
+  assert.match(portFlag[2] ?? '', /-e PORT=8080 instead of --port/);
+  const portFlagLoopback = bindNotes('127.0.0.1', 8080, { CRYPTIFICATE_CONTAINER: '1', PORT: '4173' });
+  assert.equal(portFlagLoopback.length, 2);
+  assert.match(portFlagLoopback[1] ?? '', /health check polls port 4173/);
+  // -e PORT=8080: the health check follows the service
+  assert.equal(bindNotes('0.0.0.0', 8080, { CRYPTIFICATE_CONTAINER: '1', PORT: '8080' }).length, 2);
+  assert.equal(bindNotes('0.0.0.0', 4173, { CRYPTIFICATE_CONTAINER: '1', PORT: '4173' }).length, 2);
+  // outside the image there is no such health check
+  assert.deepEqual(bindNotes('127.0.0.1', 8080, { PORT: '4173' }), []);
 });
 
 test('origin policy when bound to all interfaces: Host must still be loopback', () => {
