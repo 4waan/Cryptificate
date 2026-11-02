@@ -3,7 +3,9 @@ import { activityBound, activityFormula, EXPONENT_MAX, ROUNDS_MAX, ROUNDS_MIN, v
 import { aesSbox, formatGfHex, isGfHex } from '../lib/gf256';
 import { aesDesign, aesSharedSum, hadesDesign, hadesSharedSum } from '../lib/presets';
 import type { AesLikeDesign, CandidateDesign, HadesDesign, ProgramTarget } from '../lib/types';
-import { loadInputs, setDesign, setTarget } from '../state/actions';
+import { AES_WIDTHS, isExperimentalWidth, matrixLabel, resizeAesDesign, type AesWidth } from '../lib/width';
+import { announce, loadInputs, setDesign, setTarget } from '../state/actions';
+import { getState } from '../state/store';
 import { MatrixEditor } from './MatrixEditor';
 import { IconWarning } from './icons';
 
@@ -42,6 +44,68 @@ function ProfileSwitch({ design }: { design: CandidateDesign }) {
   );
 }
 
+const WIDTH_WORDS: Record<number, string> = { 2: 'two', 3: 'three', 4: 'four' };
+
+function WidthSwitch({ design }: { design: AesLikeDesign }) {
+  const id = useId();
+  const choose = (w: AesWidth) => {
+    if (w === design.width) return;
+    const s = getState();
+    loadInputs({ ...resizeAesDesign(design, s.program, w), target: 'matrix' });
+    announce(
+      `Width ${w}${isExperimentalWidth(w) ? ', experimental' : ''}: loaded ${matrixLabel(w)} with offsets 0 to ${w - 1}${
+        s.program ? ' and a term-by-term circuit' : ''
+      }. Undo restores the previous inputs.`,
+    );
+  };
+  const experimental = isExperimentalWidth(design.width);
+  return (
+    <div className="field">
+      <span className="field-label" id={`${id}-width`}>
+        State width
+      </span>
+      <div
+        className="segmented"
+        role="radiogroup"
+        aria-labelledby={`${id}-width`}
+        aria-describedby={`${id}-width-hint`}
+        onKeyDown={(e) => {
+          const i = AES_WIDTHS.indexOf(design.width as AesWidth);
+          const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+          if (!step || i < 0) return;
+          e.preventDefault();
+          const group = e.currentTarget;
+          const next = AES_WIDTHS[(i + step + AES_WIDTHS.length) % AES_WIDTHS.length]!;
+          choose(next);
+          window.requestAnimationFrame(() =>
+            (group.querySelector(`[data-width="${next}"]`) as HTMLElement | null)?.focus(),
+          );
+        }}
+      >
+        {AES_WIDTHS.map((w) => (
+          <button
+            key={w}
+            type="button"
+            role="radio"
+            data-width={w}
+            aria-checked={design.width === w}
+            tabIndex={design.width === w ? 0 : -1}
+            onClick={() => choose(w)}
+          >
+            {w}×{w}
+            {isExperimentalWidth(w) ? <span className="seg-tag">experimental</span> : null}
+          </button>
+        ))}
+      </div>
+      <span id={`${id}-width-hint`} className="field-hint">
+        {experimental
+          ? `Experimental: requests carry "experimental": true. MDS, offsets, S-box and circuit equivalence are checked as at width 4; the active S-box bound is not established by this method.`
+          : 'AES uses width 4; 3×3 and 2×2 are experimental. Changing the width loads a new matrix and a matching circuit (Undo restores).'}
+      </span>
+    </div>
+  );
+}
+
 function AesFields({ design }: { design: AesLikeDesign }) {
   const id = useId();
   const [tableText, setTableText] = useState('');
@@ -54,6 +118,7 @@ function AesFields({ design }: { design: AesLikeDesign }) {
 
   return (
     <div className="stack-lg">
+      <WidthSwitch design={design} />
       <div className="stack">
         <MatrixEditor
           id={`${id}-matrix`}
@@ -93,7 +158,7 @@ function AesFields({ design }: { design: AesLikeDesign }) {
         </div>
         <span className="field-hint">
           {distinct
-            ? 'All four offsets differ, so each column spreads over all four columns.'
+            ? `All ${WIDTH_WORDS[design.width] ?? design.width} offsets differ, so each column spreads over all ${WIDTH_WORDS[design.width] ?? design.width} columns.`
             : 'Two rows share an offset: the activity bound will not be established.'}
         </span>
       </fieldset>
@@ -128,7 +193,9 @@ function AesFields({ design }: { design: AesLikeDesign }) {
         <span id={`${id}-rounds-hint`} className={roundsInvalid ? 'error-text' : 'field-hint'}>
           {roundsInvalid
             ? `Choose ${ROUNDS_MIN} to ${ROUNDS_MAX} rounds.`
-            : `If M is MDS and the offsets differ: at least ${activityBound(design.rounds)} active S-boxes (${activityFormula(design.rounds)}).`}
+            : design.width === 4
+              ? `If M is MDS and the offsets differ: at least ${activityBound(design.rounds)} active S-boxes (${activityFormula(design.rounds)}).`
+              : `The active S-box bound is stated for width 4; at width ${design.width} it is not established by this method.`}
         </span>
       </div>
 
