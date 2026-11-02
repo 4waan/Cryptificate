@@ -335,9 +335,11 @@ fn check_emission(set: &TemplateSet, e: &Emission) -> Vec<(String, Status)> {
     assert_eq!(audits, theorems);
     for x in &e.expect {
         let meta = &set.get(&x.fragment).unwrap().meta;
-        assert_eq!(
-            meta.expected_type.as_deref(),
-            Some(x.expected_type.as_str())
+        let template = meta.expected_type.as_deref().unwrap();
+        assert!(
+            matches_template(template, &x.expected_type),
+            "{} does not instantiate {template}",
+            x.expected_type
         );
         assert_eq!(x.status == Status::Refuted, x.witness.is_some(), "{x:?}");
     }
@@ -356,6 +358,28 @@ fn check_emission(set: &TemplateSet, e: &Emission) -> Vec<(String, Status)> {
         .iter()
         .map(|x| (x.claim.clone(), x.status))
         .collect()
+}
+
+/// Whether `text` is `template` with each `{{NAME}}` replaced by a
+/// nonempty value of numerals, spaces and commas.
+fn matches_template(template: &str, text: &str) -> bool {
+    let Some(start) = template.find("{{") else {
+        return template == text;
+    };
+    let end = template[start..]
+        .find("}}")
+        .map_or(template.len(), |e| start + e + 2);
+    let (head, rest) = (&template[..start], &template[end..]);
+    let Some(tail) = text.strip_prefix(head) else {
+        return false;
+    };
+    (1..=tail.len()).any(|n| {
+        tail.is_char_boundary(n)
+            && tail[..n]
+                .bytes()
+                .all(|b| b.is_ascii_digit() || b == b' ' || b == b',')
+            && matches_template(rest, &tail[n..])
+    })
 }
 
 /// Whether `name` and everything it needs, transitively, are present.
@@ -644,6 +668,39 @@ fn repo_hades() {
         expect_claim(
             &set,
             &e,
+            "partial_active",
+            claim_ids::ACTIVITY_PARTIAL,
+            Status::Proved,
+        );
+        if holds {
+            expect_claim(
+                &set,
+                &e,
+                "hades_total_activity",
+                claim_ids::ACTIVITY_TOTAL,
+                Status::Proved,
+            );
+        } else {
+            // The whole-permutation bound needs a bijective S-box.
+            assert!(e
+                .expect
+                .iter()
+                .all(|x| x.claim != claim_ids::ACTIVITY_TOTAL));
+            assert!(e
+                .skipped
+                .iter()
+                .any(|s| s.claim == claim_ids::ACTIVITY_TOTAL));
+        }
+        if set.get("partial_active").is_some() {
+            // Rows e0, e0 M, e0 M^2 of the reference internal matrix.
+            assert!(e
+                .source
+                .contains("candMask 3\n        ![0, 1, 2] ![0, 0, 0]"));
+            assert!(e.source.contains("maskBits3 1 0 0"));
+        }
+        expect_claim(
+            &set,
+            &e,
             "circuit_equivalence_bn254_external",
             claim_ids::CIRCUIT_EQUIVALENCE,
             Status::Proved,
@@ -655,6 +712,109 @@ fn repo_hades() {
                 .source
                 .contains("bnProgram3 [.add 0 1, .add 3 2, .add 4 0, .add 4 1, .add 4 2] 5 6 7"));
         }
+    }
+}
+
+/// `p - 1`, the BN254 encoding of `-1`.
+const MINUS_ONE: &str =
+    "21888242871839275222246405745257275088548364400416034343698204186575808495616";
+
+#[test]
+fn repo_hades_partial_bypass() {
+    let Some(set) = repo_templates() else { return };
+    // The external matrix reused as the internal matrix fixes [0, 1, -1].
+    let req = request("poseidon2-bypass", None);
+    let e = emit_with(&req, &set).unwrap();
+    check_emission(&set, &e);
+    expect_claim(
+        &set,
+        &e,
+        "partial_bypass",
+        claim_ids::ACTIVITY_PARTIAL,
+        Status::Refuted,
+    );
+    assert!(e
+        .expect
+        .iter()
+        .all(|x| x.claim != claim_ids::ACTIVITY_TOTAL));
+    if set.get("partial_bypass").is_some() {
+        let x = e
+            .expect
+            .iter()
+            .find(|x| x.claim == claim_ids::ACTIVITY_PARTIAL)
+            .unwrap();
+        assert_eq!(
+            x.witness,
+            Some(Witness::PartialBypass {
+                difference: vec!["0".into(), "1".into(), MINUS_ONE.into()],
+                positions: vec![0],
+                partial_rounds: 56,
+            })
+        );
+        assert!(e.source.contains(&format!("bnVec3 0 1 {MINUS_ONE}")));
+        // A line: the second spanning vector is zero, M v = 1 v.
+        assert!(e.source.contains("bnVec3 0 0 0"));
+        assert!(e.source.contains("![bn 1, bn 0, bn 0, bn 0]"));
+        assert_eq!(e.inputs_echo["witnessBypass"], json!(["0", "1", MINUS_ONE]));
+    }
+}
+
+#[test]
+fn repo_hades_partial_short_and_planes() {
+    let Some(set) = repo_templates() else { return };
+    let with = |edit: &dyn Fn(&mut Value)| {
+        let mut d = example("designs/poseidon2-bn254.json");
+        edit(&mut d);
+        let req = validate_analysis_request(&json!({ "design": d })).unwrap();
+        let e = emit_with(&req, &set).unwrap();
+        check_emission(&set, &e);
+        e
+    };
+    // Two partial rounds: [0, 1, -1] avoids coordinate 0 in both, but no
+    // subspace avoids it forever, so the short certificate is used.
+    let e = with(&|d| d["partialRounds"] = json!(2));
+    expect_claim(
+        &set,
+        &e,
+        "partial_bypass_short",
+        claim_ids::ACTIVITY_PARTIAL,
+        Status::Refuted,
+    );
+    // A first row (2, 0, 0) keeps the plane x0 = 0 invariant.
+    let e = with(&|d| d["internal"] = json!([["2", "0", "0"], ["1", "2", "1"], ["1", "1", "3"]]));
+    expect_claim(
+        &set,
+        &e,
+        "partial_bypass",
+        claim_ids::ACTIVITY_PARTIAL,
+        Status::Refuted,
+    );
+    if set.get("partial_bypass").is_some() {
+        // b1 = e1, b2 = e2, M e1 = 2 e1 + e2, M e2 = e1 + 3 e2.
+        assert!(e.source.contains("bnVec3 0 1 0"));
+        assert!(e.source.contains("bnVec3 0 0 1"));
+        assert!(e.source.contains("![bn 2, bn 1, bn 1, bn 3]"));
+    }
+    // S-boxes on coordinates 0 and 1: two powers suffice.
+    let e = with(&|d| d["partialMask"] = json!([true, true, false]));
+    expect_claim(
+        &set,
+        &e,
+        "partial_active",
+        claim_ids::ACTIVITY_PARTIAL,
+        Status::Proved,
+    );
+    if set.get("partial_active").is_some() {
+        assert!(e.source.contains("maskBits3 1 1 0"));
+        assert!(e
+            .source
+            .contains("candMask 2\n        ![0, 0, 1] ![0, 1, 0]"));
+        let x = e
+            .expect
+            .iter()
+            .find(|x| x.claim == claim_ids::ACTIVITY_TOTAL)
+            .unwrap();
+        assert!(x.expected_type.contains("candPartialRounds / 2 ≤"));
     }
 }
 

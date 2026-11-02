@@ -25,11 +25,13 @@ use crate::design::{AesLikeDesign, CandidateDesign, HadesDesign, SboxSpec, Targe
 use crate::field::{bn254_modulus, Bn254, Field, FieldKind, Gf256};
 use crate::limits;
 use crate::linalg::{
-    combinations, determinant, encode_vec, kernel_vector, mat_vec, submatrix, weight, Matrix,
+    basis, combinations, coordinates, determinant, encode_vec, kernel_vector, mat_vec,
+    nullspace_basis, rank, submatrix, vec_mat, weight, Matrix,
 };
 use crate::program::Program;
 use crate::report::{
-    aes_like_activity_bound, claim_ids, hades_outer_activity_bound, labels, Status, Witness,
+    aes_like_activity_bound, claim_ids, hades_outer_activity_bound, hades_total_activity_bound,
+    labels, Status, Witness,
 };
 use crate::request::AnalysisRequest;
 use crate::AnyProgram;
@@ -528,6 +530,208 @@ pub struct ActivityAnalysis {
 }
 
 // ---------------------------------------------------------------------------
+// Partial rounds
+// ---------------------------------------------------------------------------
+
+/// Row `position` of `M^power`, for a masked `position`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct ObservabilityRow<F> {
+    pub power: u32,
+    pub position: usize,
+    pub row: Vec<F>,
+}
+
+/// A nonzero difference that the partial rounds never bring to an S-box.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartialBypass<F> {
+    /// The difference, scaled so that its first nonzero coordinate is one.
+    pub difference: Vec<F>,
+    /// A basis of the largest subspace that every power of the internal
+    /// matrix keeps at zero on the masked positions, starting with
+    /// `difference`; empty when that subspace is zero and the difference
+    /// only survives the few partial rounds the design has.
+    pub invariant_basis: Vec<Vec<F>>,
+    /// `M b_k = sum_l coefficients[k][l] b_l` for the basis vectors `b_k`.
+    pub coefficients: Vec<Vec<F>>,
+}
+
+impl<F: Field> PartialBypass<F> {
+    /// Whether the difference lies in an invariant subspace, so that it
+    /// passes any number of partial rounds.
+    pub fn invariant(&self) -> bool {
+        !self.invariant_basis.is_empty()
+    }
+}
+
+/// Which differences can pass the partial rounds of a HADES design without
+/// reaching an S-box.
+///
+/// In a partial round with no active S-box the difference is multiplied by
+/// the internal matrix `M`. A difference `d` therefore avoids every S-box of
+/// `L` consecutive partial rounds exactly when `(M^j d)_i = 0` for every
+/// masked position `i` and every `j < L`: when `d` is in the null space of
+/// the stack of rows `e_i M^j`. The rows are scanned in order of `j`, then
+/// of `i`, and a row is kept when it raises the rank. Once one power adds
+/// nothing the row space stops growing, so full rank, if it comes at all,
+/// comes within `width` powers.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartialAnalysis<F> {
+    /// The masked positions, increasing.
+    pub positions: Vec<usize>,
+    pub partial_rounds: u32,
+    /// The smallest `L <= partial_rounds` for which the rows `e_i M^j`,
+    /// `j < L`, have full rank: every `L` consecutive partial rounds then
+    /// activate an S-box. `None` when no such `L` exists.
+    pub window: Option<u32>,
+    /// The rows kept by the scan, `width` of them when `window` is set.
+    pub rows: Vec<ObservabilityRow<F>>,
+    /// The determinant of the kept rows, when there are `width` of them.
+    pub determinant: Option<F>,
+    /// A bypass, when `window` is `None`.
+    pub bypass: Option<PartialBypass<F>>,
+}
+
+impl<F: Field> PartialAnalysis<F> {
+    /// The report witness for a bypass.
+    pub fn to_witness(&self) -> Option<Witness> {
+        self.bypass.as_ref().map(|b| Witness::PartialBypass {
+            difference: encode_vec(&b.difference),
+            positions: self.positions.clone(),
+            partial_rounds: self.partial_rounds,
+        })
+    }
+}
+
+/// `v` scaled so that its first nonzero coordinate is one.
+fn normalize<F: Field>(v: &[F]) -> Vec<F> {
+    match v.iter().find(|x| !x.is_zero()) {
+        Some(&lead) => {
+            let inv = lead.inverse().expect("nonzero");
+            v.iter().map(|&x| x * inv).collect()
+        }
+        None => v.to_vec(),
+    }
+}
+
+/// See [`PartialAnalysis`]. `mask` marks the S-box positions of a partial
+/// round.
+pub fn analyze_partial<F: Field>(
+    m: &Matrix<F>,
+    mask: &[bool],
+    partial_rounds: u32,
+) -> PartialAnalysis<F> {
+    let n = m.len();
+    let positions: Vec<usize> = (0..n).filter(|&i| mask.get(i) == Some(&true)).collect();
+    // `stack[j]` holds the rows e_i M^j for the masked i.
+    let mut stack: Vec<Vec<Vec<F>>> = Vec::new();
+    let mut current: Vec<Vec<F>> = positions.iter().map(|&i| basis(n, i)).collect();
+    for _ in 0..n {
+        stack.push(current.clone());
+        current = current.iter().map(|r| vec_mat(r, m)).collect();
+    }
+    let horizon = (partial_rounds as usize).min(n);
+    let mut rows: Vec<ObservabilityRow<F>> = Vec::new();
+    let mut window = None;
+    'scan: for (j, layer) in stack.iter().enumerate().take(horizon) {
+        for (row, &i) in layer.iter().zip(&positions) {
+            let mut kept: Matrix<F> = rows.iter().map(|r| r.row.clone()).collect();
+            kept.push(row.clone());
+            if rank(&kept) == kept.len() {
+                rows.push(ObservabilityRow {
+                    power: j as u32,
+                    position: i,
+                    row: row.clone(),
+                });
+                if rows.len() == n {
+                    window = Some(j as u32 + 1);
+                    break 'scan;
+                }
+            }
+        }
+    }
+    let determinant = (rows.len() == n)
+        .then(|| determinant(&rows.iter().map(|r| r.row.clone()).collect::<Vec<_>>()));
+    let bypass = window.is_none().then(|| {
+        let all: Matrix<F> = stack.iter().flatten().cloned().collect();
+        let mut invariant = nullspace_basis(&all, n);
+        if let Some(first) = invariant.first_mut() {
+            *first = normalize(first);
+            let coefficients = invariant
+                .iter()
+                .map(|b| {
+                    coordinates(&invariant, &mat_vec(m, b))
+                        .expect("the null space of the full stack is invariant")
+                })
+                .collect();
+            PartialBypass {
+                difference: invariant[0].clone(),
+                invariant_basis: invariant,
+                coefficients,
+            }
+        } else {
+            // Only the first `partial_rounds` powers constrain the difference.
+            let short: Matrix<F> = stack.iter().take(horizon).flatten().cloned().collect();
+            let difference = nullspace_basis(&short, n)
+                .into_iter()
+                .next()
+                .map(|v| normalize(&v))
+                .expect("the stack below full rank has a null vector");
+            PartialBypass {
+                difference,
+                invariant_basis: Vec::new(),
+                coefficients: Vec::new(),
+            }
+        }
+    });
+    PartialAnalysis {
+        positions,
+        partial_rounds,
+        window,
+        rows,
+        determinant,
+        bypass,
+    }
+}
+
+fn partial_note<F: Field>(p: &PartialAnalysis<F>) -> String {
+    let plural = |k: u32| if k == 1 { "" } else { "s" };
+    match (&p.window, &p.bypass) {
+        (Some(l), _) => {
+            let rows = p
+                .rows
+                .iter()
+                .map(|r| format!("e{} M^{}", r.position, r.power))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!(
+                "the rows {rows} of the powers of the internal matrix M at the masked positions \
+                 have determinant {}, so no nonzero difference avoids the S-boxes of {l} \
+                 consecutive partial round{}",
+                p.determinant.map(|d| d.encode()).unwrap_or_default(),
+                plural(*l)
+            )
+        }
+        (None, Some(b)) if b.invariant() => format!(
+            "every power of the internal matrix keeps a subspace of dimension {} at zero on the \
+             masked positions, so a nonzero difference in it passes all {} partial round{} with \
+             no active S-box",
+            b.invariant_basis.len(),
+            p.partial_rounds,
+            plural(p.partial_rounds)
+        ),
+        _ => format!(
+            "no nonzero difference avoids the masked positions forever, but one stays at zero \
+             on them through the design's {} partial round{}, so it passes them with no active \
+             S-box",
+            p.partial_rounds,
+            plural(p.partial_rounds)
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Whole requests
 // ---------------------------------------------------------------------------
 
@@ -575,6 +779,10 @@ pub struct HadesDiagnostics {
     pub internal: MatrixAnalysis<Bn254>,
     pub power: PowerAnalysis,
     pub activity: ActivityAnalysis,
+    /// The partial rounds: a charged window or a bypass.
+    pub partial: PartialAnalysis<Bn254>,
+    /// The bound over the whole permutation (claim `activity.total`).
+    pub total: ActivityAnalysis,
     pub program: Option<ProgramAnalysis<Bn254>>,
 }
 
@@ -820,6 +1028,31 @@ fn diagnose_hades(
                 .into()
         },
     };
+    let partial = analyze_partial(&d.internal, &d.partial_mask, d.partial_rounds);
+    let total_applicable = applicable && partial.window.is_some();
+    let total = ActivityAnalysis {
+        claim: claim_ids::ACTIVITY_TOTAL,
+        applicable: total_applicable,
+        rounds: d.total_rounds(),
+        bound: partial
+            .window
+            .map(|l| hades_total_activity_bound(d.full_rounds, d.partial_rounds, l)),
+        reason: match partial.window {
+            Some(l) if applicable => format!(
+                "the full-round bound {} plus one active S-box in each of the {} disjoint \
+                 windows of {l} partial rounds",
+                hades_outer_activity_bound(d.full_rounds),
+                d.partial_rounds / l
+            ),
+            Some(_) => "not established by this method: the bound needs an MDS external \
+                        matrix, an invertible internal matrix and a bijective power map"
+                .into(),
+            None => "not established by this method: the bound needs every window of some \
+                     length inside the partial rounds to be charged, and a nonzero difference \
+                     passes them with no active S-box"
+                .into(),
+        },
+    };
     let program = match program {
         Some(AnyProgram::Bn254(p)) if p.width == d.width => {
             let m = if target == Target::Internal {
@@ -888,6 +1121,23 @@ fn diagnose_hades(
             witness: None,
             note: activity.reason.clone(),
         },
+        ClaimPrediction::decided(
+            claim_ids::ACTIVITY_PARTIAL,
+            partial.window.is_some(),
+            partial.to_witness(),
+            partial_note(&partial),
+        ),
+        ClaimPrediction {
+            claim: claim_ids::ACTIVITY_TOTAL,
+            predicted: if total_applicable {
+                Status::Proved
+            } else {
+                Status::NotEstablished
+            },
+            holds: total_applicable.then_some(true),
+            witness: None,
+            note: total.reason.clone(),
+        },
     ];
     if let Some(p) = &program {
         claims.push(program_prediction(p));
@@ -898,6 +1148,8 @@ fn diagnose_hades(
             internal,
             power,
             activity,
+            partial,
+            total,
             program,
         }),
         claims,

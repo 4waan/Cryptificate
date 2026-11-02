@@ -275,8 +275,27 @@ fn poseidon2_style_design() {
         v["program"]["stats"]["ops"],
         json!({"add": 5, "mul": 0, "xtime": 0})
     );
+    // Rows e0, e0 M, e0 M^2 of the internal matrix: [1,0,0], [2,1,1], [6,5,6].
+    assert_eq!(v["partial"]["window"], 3);
+    assert_eq!(v["partial"]["determinant"], "1");
+    assert_eq!(v["partial"]["rows"][2]["row"], json!(["6", "5", "6"]));
+    assert!(v["partial"]["bypass"].is_null());
+    assert_eq!(v["total"]["bound"], 34);
+    let ids: Vec<&str> = d.claims.iter().map(|c| c.claim).collect();
+    assert_eq!(
+        ids,
+        vec![
+            claim_ids::EXTERNAL_MDS,
+            claim_ids::INTERNAL_INVERTIBLE,
+            claim_ids::SBOX_BIJECTIVE,
+            claim_ids::ACTIVITY_OUTER,
+            claim_ids::ACTIVITY_PARTIAL,
+            claim_ids::ACTIVITY_TOTAL,
+            claim_ids::CIRCUIT_EQUIVALENCE,
+        ]
+    );
     let statuses: Vec<Status> = d.claims.iter().map(|c| c.predicted).collect();
-    assert_eq!(statuses, vec![Status::Proved; 5]);
+    assert_eq!(statuses, vec![Status::Proved; 7]);
     assert!(matches!(d.details, ModelDiagnostics::Hades(_)));
 }
 
@@ -300,6 +319,16 @@ fn exponent_three_collides() {
     assert_eq!(omega.pow(3), Bn254::one());
     assert_eq!(
         d.claim(claim_ids::ACTIVITY_OUTER).unwrap().predicted,
+        Status::NotEstablished
+    );
+    // The partial rounds do not depend on the exponent; the total bound
+    // needs the full-round preconditions.
+    assert_eq!(
+        d.claim(claim_ids::ACTIVITY_PARTIAL).unwrap().predicted,
+        Status::Proved
+    );
+    assert_eq!(
+        d.claim(claim_ids::ACTIVITY_TOTAL).unwrap().predicted,
         Status::NotEstablished
     );
     // The independent check: omega is a primitive cube root, 1 + omega + omega^2 = 0.
@@ -511,4 +540,198 @@ fn singular_internal_matrix() {
         d.claim(claim_ids::INTERNAL_INVERTIBLE).unwrap().predicted,
         Status::Refuted
     );
+}
+
+fn bn_matrix(rows: &[[u64; 3]; 3]) -> Matrix<Bn254> {
+    rows.iter()
+        .map(|r| r.iter().map(|&x| Bn254::from_u64(x)).collect())
+        .collect()
+}
+
+fn decode_vec(v: &Value) -> Vec<Bn254> {
+    v.as_array()
+        .unwrap()
+        .iter()
+        .map(|x| Bn254::decode(x.as_str().unwrap()).unwrap())
+        .collect()
+}
+
+#[test]
+fn external_matrix_as_internal_is_bypassed() {
+    let mut design = hades(5);
+    design["internal"] = design["external"].clone();
+    let (d, v) = diagnose_json(json!({ "design": design }));
+    assert!(v["partial"]["window"].is_null());
+    let c = d.claim(claim_ids::ACTIVITY_PARTIAL).unwrap();
+    assert_eq!(c.predicted, Status::Refuted);
+    let Some(Witness::PartialBypass {
+        difference,
+        positions,
+        partial_rounds,
+    }) = &c.witness
+    else {
+        panic!("expected a partial bypass, got {:?}", c.witness)
+    };
+    // [0, 1, -1] is fixed by the matrix and has coordinate 0 at zero.
+    let diff: Vec<Bn254> = difference
+        .iter()
+        .map(|x| Bn254::decode(x).unwrap())
+        .collect();
+    assert_eq!(diff, vec![Bn254::zero(), Bn254::one(), -Bn254::one()]);
+    let m = bn_matrix(&[[2, 1, 1], [1, 2, 1], [1, 1, 2]]);
+    assert_eq!(mat_vec(&m, &diff), diff);
+    assert_eq!(positions, &vec![0]);
+    assert_eq!(*partial_rounds, 56);
+    assert_eq!(
+        v["partial"]["bypass"]["invariantBasis"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(v["partial"]["bypass"]["coefficients"], json!([["1"]]));
+    // Everything the full-round bound needs still holds.
+    assert_eq!(
+        d.claim(claim_ids::ACTIVITY_OUTER).unwrap().predicted,
+        Status::Proved
+    );
+    assert_eq!(
+        d.claim(claim_ids::ACTIVITY_TOTAL).unwrap().predicted,
+        Status::NotEstablished
+    );
+}
+
+/// `(M^j v)_i` for the masked `i`, computed by repeated multiplication.
+fn stays_zero(m: &Matrix<Bn254>, mask: &[bool], v: &[Bn254], steps: usize) -> bool {
+    let mut x = v.to_vec();
+    for _ in 0..steps {
+        if mask.iter().zip(&x).any(|(&b, y)| b && !y.is_zero()) {
+            return false;
+        }
+        x = mat_vec(m, &x);
+    }
+    true
+}
+
+#[test]
+fn partial_analysis_agrees_with_brute_force() {
+    let mut rng = ChaCha20Rng::seed_from_u64(0x5eed_0002);
+    for round in 0..400 {
+        // Small entries with many zeros, so that bypasses occur.
+        let rows: [[u64; 3]; 3] = std::array::from_fn(|_| {
+            std::array::from_fn(|_| {
+                if rng.gen_bool(0.45) {
+                    0
+                } else {
+                    rng.gen_range(1..4)
+                }
+            })
+        });
+        let mask: Vec<bool> = loop {
+            let m: Vec<bool> = (0..3).map(|_| rng.gen_bool(0.4)).collect();
+            if m.iter().any(|&b| b) {
+                break m;
+            }
+        };
+        let rp: u32 = [0, 1, 2, 3, 5, 56][round % 6];
+        let mut design = hades(5);
+        design["internal"] = json!(rows.map(|r| r.map(|x| x.to_string())));
+        design["partialMask"] = json!(mask);
+        design["partialRounds"] = json!(rp);
+        let (d, v) = diagnose_json(json!({ "design": design }));
+        let m = bn_matrix(&rows);
+        let p = &v["partial"];
+        let c = d.claim(claim_ids::ACTIVITY_PARTIAL).unwrap();
+        if let Some(l) = p["window"].as_u64() {
+            // Three of the rows at masked positions, powers below L, with a
+            // nonzero determinant, and no null vector of the shorter stack.
+            assert!(l as u32 <= rp && l >= 1);
+            assert_eq!(c.predicted, Status::Proved);
+            let picked: Vec<Vec<Bn254>> = p["rows"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|r| {
+                    let (j, i) = (
+                        r["power"].as_u64().unwrap(),
+                        r["position"].as_u64().unwrap(),
+                    );
+                    assert!(j < l && mask[i as usize]);
+                    let mut row: Vec<Bn254> = (0..3)
+                        .map(|k| if k == i { Bn254::one() } else { Bn254::zero() })
+                        .collect();
+                    for _ in 0..j {
+                        row = (0..3)
+                            .map(|k| (0..3).fold(Bn254::zero(), |a, t| a + row[t] * m[t][k]))
+                            .collect();
+                    }
+                    assert_eq!(decode_vec(&r["row"]), row);
+                    row
+                })
+                .collect();
+            assert_eq!(picked.len(), 3);
+            assert!(!cryptificate_core::linalg::determinant(&picked).is_zero());
+            if l > 1 {
+                let shorter: Matrix<Bn254> = (0..l - 1)
+                    .flat_map(|j| (0..3usize).filter(|&i| mask[i]).map(move |i| (j, i)))
+                    .map(|(j, i)| {
+                        let mut row: Vec<Bn254> = (0..3)
+                            .map(|k| if k == i { Bn254::one() } else { Bn254::zero() })
+                            .collect();
+                        for _ in 0..j {
+                            row = (0..3)
+                                .map(|k| (0..3).fold(Bn254::zero(), |a, t| a + row[t] * m[t][k]))
+                                .collect();
+                        }
+                        row
+                    })
+                    .collect();
+                let x = cryptificate_core::linalg::kernel_vector(&shorter)
+                    .expect("a shorter window is not charged");
+                assert!(stays_zero(&m, &mask, &x, l as usize - 1));
+            }
+        } else {
+            assert_eq!(c.predicted, Status::Refuted);
+            let b = &p["bypass"];
+            let diff = decode_vec(&b["difference"]);
+            assert!(weight(&diff) > 0);
+            assert_eq!(diff.iter().find(|x| !x.is_zero()), Some(&Bn254::one()));
+            assert!(
+                stays_zero(&m, &mask, &diff, rp as usize),
+                "{rows:?} {mask:?} {rp}"
+            );
+            let basis: Vec<Vec<Bn254>> = b["invariantBasis"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(decode_vec)
+                .collect();
+            if basis.is_empty() {
+                // Only a short design escapes the invariant-subspace form.
+                assert!(rp < 3);
+                assert!(!stays_zero(&m, &mask, &diff, 3));
+            } else {
+                assert!(basis.len() <= 2);
+                assert_eq!(basis[0], diff);
+                assert!(stays_zero(&m, &mask, &diff, 40));
+                let coeffs: Vec<Vec<Bn254>> = b["coefficients"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(decode_vec)
+                    .collect();
+                for (k, bk) in basis.iter().enumerate() {
+                    let image = mat_vec(&m, bk);
+                    let combo: Vec<Bn254> = (0..3)
+                        .map(|t| {
+                            (0..basis.len())
+                                .fold(Bn254::zero(), |a, l| a + coeffs[k][l] * basis[l][t])
+                        })
+                        .collect();
+                    assert_eq!(image, combo);
+                    assert!(stays_zero(&m, &mask, bk, 1));
+                }
+            }
+        }
+    }
 }

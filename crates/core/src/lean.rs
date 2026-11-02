@@ -31,9 +31,9 @@ use serde_json::{json, Map, Value};
 use crate::design::{CandidateDesign, SboxSpec, Target};
 use crate::diagnostics::{
     AesLikeDiagnostics, ClaimPrediction, Diagnostics, HadesDiagnostics, ModelDiagnostics,
-    ProgramAnalysis, SboxSource,
+    PartialBypass, ProgramAnalysis, SboxSource,
 };
-use crate::field::{Field, FieldKind};
+use crate::field::{Bn254, Field, FieldKind};
 use crate::limits;
 use crate::program::{Instruction, Program};
 use crate::report::{claim_ids, Status, Witness};
@@ -418,6 +418,63 @@ fn hades_value(
         "OMEGA" => lean_literal(&h.power.collision?.omega),
         "FULL_ROUNDS" => d.full_rounds.to_string(),
         "PARTIAL_ROUNDS" => d.partial_rounds.to_string(),
+        // `1` at a masked position, `0` elsewhere.
+        "PARTIAL_MASK" => d
+            .partial_mask
+            .iter()
+            .map(|&b| if b { "1" } else { "0" })
+            .collect::<Vec<_>>()
+            .join(" "),
+        // The observability certificate of `activity.partial`.
+        "OBS_LENGTH" => h.partial.window?.to_string(),
+        "OBS_POWERS" => {
+            h.partial.window?;
+            list(h.partial.rows.iter().map(|r| r.power))
+        }
+        "OBS_COORDS" => {
+            h.partial.window?;
+            list(h.partial.rows.iter().map(|r| r.position))
+        }
+        // The bypass witness of `activity.partial`, and for an invariant
+        // subspace its second basis vector (zero for a line) and the
+        // coefficients of the internal matrix on it.
+        "BYPASS_VECTOR" => lean_vector(&h.partial.bypass.as_ref()?.difference),
+        "BYPASS_SPAN" | "BYPASS_A11" | "BYPASS_A12" | "BYPASS_A21" | "BYPASS_A22" => {
+            bypass_span_value(h.partial.bypass.as_ref()?, name)?
+        }
+        _ => return None,
+    })
+}
+
+fn list<T: fmt::Display>(xs: impl Iterator<Item = T>) -> String {
+    xs.map(|x| x.to_string()).collect::<Vec<_>>().join(", ")
+}
+
+/// The span placeholders of an invariant-subspace bypass of dimension one
+/// or two, written as two vectors `b1 = difference`, `b2` and the
+/// coefficients `M b1 = a11 b1 + a12 b2`, `M b2 = a21 b1 + a22 b2`.
+fn bypass_span_value(b: &PartialBypass<Bn254>, name: &str) -> Option<String> {
+    let basis = &b.invariant_basis;
+    if basis.is_empty() || basis.len() > 2 {
+        return None;
+    }
+    let zero = Bn254::zero();
+    let coeff = |k: usize, l: usize| -> Bn254 {
+        b.coefficients
+            .get(k)
+            .and_then(|row| row.get(l))
+            .copied()
+            .unwrap_or(zero)
+    };
+    Some(match name {
+        "BYPASS_SPAN" => match basis.get(1) {
+            Some(v) => lean_vector(v),
+            None => lean_vector(&vec![zero; basis[0].len()]),
+        },
+        "BYPASS_A11" => lean_literal(&coeff(0, 0)),
+        "BYPASS_A12" => lean_literal(&coeff(0, 1)),
+        "BYPASS_A21" => lean_literal(&coeff(1, 0)),
+        "BYPASS_A22" => lean_literal(&coeff(1, 1)),
         _ => return None,
     })
 }
@@ -509,6 +566,7 @@ fn echo_value(req: &AnalysisRequest, diag: &Diagnostics, key: &str) -> Option<Va
             "witnessVector" => to(&h.external.branch_witness.as_ref()?.input),
             "witnessKernel" => to(h.internal.kernel_vector.as_ref()?),
             "witnessRoot" => to(&h.power.collision?.omega),
+            "witnessBypass" => to(&h.partial.bypass.as_ref()?.difference),
             "candProgram" => match &req.program {
                 Some(AnyProgram::Bn254(p)) => program_echo(p),
                 _ => return None,
@@ -549,6 +607,20 @@ fn fragment_candidates(
         (claim_ids::INTERNAL_INVERTIBLE, true) => &["internal_invertible"],
         (claim_ids::INTERNAL_INVERTIBLE, false) => &["internal_singular"],
         (claim_ids::ACTIVITY_OUTER, _) => &["hades_activity"],
+        (claim_ids::ACTIVITY_PARTIAL, true) => &["partial_active"],
+        (claim_ids::ACTIVITY_PARTIAL, false) => {
+            // An invariant subspace covers any number of partial rounds; a
+            // difference that only survives a few is checked directly.
+            return match &diag.details {
+                ModelDiagnostics::Hades(h) => match &h.partial.bypass {
+                    Some(b) if b.invariant() => vec!["partial_bypass".into()],
+                    Some(_) => vec!["partial_bypass_short".into()],
+                    None => Vec::new(),
+                },
+                ModelDiagnostics::AesLike(_) => Vec::new(),
+            };
+        }
+        (claim_ids::ACTIVITY_TOTAL, _) => &["hades_total_activity"],
         (claim_ids::SBOX_BIJECTIVE, holds) => {
             return match (&diag.details, holds) {
                 (ModelDiagnostics::AesLike(a), true) if a.sbox.source == SboxSource::Aes => {
@@ -598,6 +670,7 @@ fn always_constants(req: &AnalysisRequest) -> Vec<&'static str> {
                 "const_internal_bn254",
                 "const_exponent",
                 "const_rounds_hades",
+                "const_mask_hades",
             ];
             if req.program.is_some() {
                 v.push("const_program_bn254");
