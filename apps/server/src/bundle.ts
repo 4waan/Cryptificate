@@ -110,16 +110,30 @@ function scrub(text: string, paths: Paths): string {
   return s;
 }
 
+/** The bundle's report.json (path-scrubbed) and toolchain.json (pins recorded when the job ran; the current checkout only as a fallback). */
+function bundledReport(src: BundleSource): { reportJson: string; toolchainJson: Buffer } {
+  const reportJson = scrub(json(src.report), src.paths);
+  const recorded = readIf(join(src.jobDir, 'toolchain.json'));
+  const toolchainJson = recorded ?? Buffer.from(json(toolchainDocument(src.toolchain)));
+  return { reportJson, toolchainJson };
+}
+
+/**
+ * The report.html a bundle of this job carries, computed without reading the
+ * job's lean/, native/, search/ or engine/ files.
+ */
+export function bundleReportHtml(src: BundleSource): string {
+  const { reportJson, toolchainJson } = bundledReport(src);
+  return reportHtml(reportJson, toolchainJson);
+}
+
 export function bundleEntries(src: BundleSource): TarEntry[] {
   const { jobDir, report, toolchain, paths } = src;
   const entries: TarEntry[] = [];
   const inputs = src.inputs ?? (report.kind === 'analysis' ? report.inputs : report.inputs ?? null);
   entries.push({ path: 'inputs.json', data: scrub(json(inputs), paths) });
-  const reportJson = scrub(json(report), paths);
+  const { reportJson, toolchainJson } = bundledReport(src);
   entries.push({ path: 'report.json', data: reportJson });
-  // Pins recorded when the job ran; the current checkout only as a fallback.
-  const recorded = readIf(join(jobDir, 'toolchain.json'));
-  const toolchainJson = recorded ?? Buffer.from(json(toolchainDocument(toolchain)));
   entries.push({ path: 'toolchain.json', data: toolchainJson });
   entries.push({ path: 'VERIFY.md', data: verifyMarkdown(report, toolchain) });
   // Rendered from the bundled (scrubbed) report and pins, so it shows exactly what they say.

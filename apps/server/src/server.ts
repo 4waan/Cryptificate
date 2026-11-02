@@ -11,8 +11,8 @@ import { extname, join, normalize, sep } from 'node:path';
 import { LIMITS, MODELS, validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
 import type { Capabilities, ErrorResponse, ExperimentProfile, ValidationIssue } from '@cryptificate/schema';
 import { ANALYSIS_BUDGET_MS } from './analysis.js';
-import { REPORT_HTML_CSP, renderReportHtml, reportHtmlFileName } from '@cryptificate/schema';
-import { buildBundle, bundleEntries } from './bundle.js';
+import { REPORT_HTML_CSP, reportHtmlFileName } from '@cryptificate/schema';
+import { buildBundle, bundleReportHtml } from './bundle.js';
 import type { PipelineEnv } from './context.js';
 import { PROFILE_BUDGETS } from './experiment.js';
 import { JobManager, QueueFullError } from './jobs.js';
@@ -345,9 +345,8 @@ export function createApp(opts: ServerOptions): Server {
             sendError(res, 409, 'not-ready', view.state === 'invalid' ? 'invalid requests have no report' : 'the job has not finished');
             return;
           }
-          // The same rendering as the bundle's report.html, from the bundled (path-scrubbed) report.
-          const entries = bundleEntries({ jobDir: rec.dir, report: view.report, toolchain: await env.toolchain(), paths: env.paths, inputs: readInputs(rec.dir) });
-          const html = Buffer.from(entries.find((e) => e.path === 'report.html')?.data ?? renderReportHtml(view.report));
+          // Byte for byte the bundle's report.html: rendered from the bundled (path-scrubbed) report and pins.
+          const html = Buffer.from(bundleReportHtml({ jobDir: rec.dir, report: view.report, toolchain: await env.toolchain(), paths: env.paths }));
           res.writeHead(200, {
             'content-type': 'text/html; charset=utf-8',
             'content-length': String(html.length),
