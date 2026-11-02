@@ -46,7 +46,7 @@ git clone https://github.com/4waan/Cryptificate && cd Cryptificate && npm start
 
 1. **Describe the change.** Edit the matrix, offsets, rounds, S-box and circuit in the workbench, or write them as JSON. Bytes are two hex digits; BN254 field elements are decimal strings.
 2. **Check it.** Cryptificate generates a Lean certificate for your exact values and checks it. A fresh 4×4 MDS certificate takes about three seconds.
-3. **Read the evidence.** The report shows two chains side by side: *design guarantees* (MDS, offsets, S-box, activity bound) and *implementation correspondence* (circuit equivalence, Rust-source refinement, native correctness, timing). Every refutation comes with concrete bytes you can check by hand.
+3. **Read the evidence.** The report shows two chains side by side: *design guarantees* (MDS, offsets, S-box, activity bound, S-box differential uniformity and linearity) and *implementation correspondence* (circuit equivalence, Rust-source refinement, native correctness, timing). Every refutation comes with concrete bytes you can check by hand.
 4. **Search and measure.** A bounded search proposes cheaper circuits. Each candidate is proved equivalent in Lean and run against 9,214 test inputs before it is timed against the textbook circuit and the direct implementation.
 5. **Share it.** Download the evidence bundle. `cryptificate verify` regenerates every claim from the bundle's inputs with the installed checker.
 
@@ -111,6 +111,7 @@ The [adopter guide](docs/adopter-guide.md) walks through a first design end to e
 | The row offsets disperse every column | Offsets checked distinct, through WideTrail's characterization of diffusion-optimal rotations | `[0,1,1,3]` caught: rows 1 and 2 share offset 1 |
 | Active S-boxes over `r` rounds | For any injective S-box and any round keys, two different inputs differ at no fewer than `⌊r/4⌋·25 + (5 if r mod 4 ≥ 2)` S-box inputs | 25 for 4 rounds, 55 for 10, 200 for 32 |
 | The S-box is a permutation | An inverse table for byte S-boxes, an inverse exponent for BN254 power maps | `x³` over BN254 caught by a collision |
+| Exact differential uniformity and linearity of a byte S-box | The kernel tests every row of the difference table and every Walsh coefficient of the submitted table, packed into one number, against the value, and recounts a witness that attains it; a property of the table, not a trail bound | AES: 4 and 32 (nonlinearity 112); AES with two entries swapped: 6 and 32 |
 | HADES outer rounds | WideTrail's outer-round bound for your external and internal matrices | 16 active S-boxes over 8 full rounds |
 | The Rust source computes the model | Charon and Aeneas translate the Rust kernels to Lean, where they are proved equal to the model | GF(2⁸) arithmetic and the full AES-like round, for every design |
 | The generated Rust is correct | 9,214 test inputs per GF(2⁸) variant (8,278 for BN254) before any timing | a fast but wrong circuit is kept off the leaderboard |
@@ -137,6 +138,7 @@ Every report labels its origin: **Live** or **Cached exact result**. Editing any
 | 256-instruction circuit with heavy sharing | 4.4–8.5 s |
 | MDS, offsets and activity bound for a fresh matrix | 3.3–8.5 s |
 | HADES: external MDS, internal invertibility, exponent, activity | 3.9–4.4 s |
+| Differential uniformity and linearity of a submitted byte table | 17–18 s |
 
 **Every push re-checks everything.** [CI](https://github.com/4waan/Cryptificate/actions/workflows/checks.yml) rebuilds the Lean library, runs every certificate example, re-checks the refinement proofs on Lean 4.35 and runs the Rust, Node and Python test suites.
 

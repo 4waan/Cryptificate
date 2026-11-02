@@ -8,7 +8,7 @@ A report always shows two separate chains, because they answer separate question
 
 | Chain | Question | Claims |
 |---|---|---|
-| **Design guarantees** | Does the *specification* have good diffusion? | `matrix.mds`, `offsets.dispersion`, `sbox.bijective`, `activity.bound` (HADES: `external.mds`, `internal.invertible`, `sbox.bijective`, `activity.outer`) |
+| **Design guarantees** | Does the *specification* have good diffusion? | `matrix.mds`, `offsets.dispersion`, `sbox.bijective`, `activity.bound`, `sbox.differential`, `sbox.linearity` (HADES: `external.mds`, `internal.invertible`, `sbox.bijective`, `activity.outer`) |
 | **Implementation correspondence** | Does the *code* compute the specification? | `circuit.equivalence`, `rust.refinement`, `native.correctness`, `native.timing` |
 
 A circuit can match its matrix perfectly while the matrix has weak diffusion (the identity example), and a matrix can be MDS while its circuit has a crossed wire (the wrong-wire example). Passing one chain says nothing about the other.
@@ -25,6 +25,8 @@ A circuit can match its matrix perfectly while the matrix has weak diffusion (th
 Execution outcomes are reported separately: `completed`, `failed`, `timeout`, `cancelled`, `invalid`. A timeout or a crashed worker never turns into `refuted`.
 
 A failed MDS check or a repeated row offset makes the activity bound **not established by this method**. It does not refute the bound: some other argument might still establish it.
+
+`sbox.differential` and `sbox.linearity` state an exact value rather than a yes-or-no property, so they are `proved` or `not_established`, never `refuted`. A proved one carries the value and a pair of bytes attaining it, both repeated in the checked statement: the largest difference-table entry outside row 0 for an input difference and an output difference, and the largest absolute Walsh coefficient for an input mask and a nonzero output mask. They describe the S-box table alone and are not bounds on trails, differentials or linear hulls of the cipher.
 
 ## Evidence labels
 
