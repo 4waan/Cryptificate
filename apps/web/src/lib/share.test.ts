@@ -2,8 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { inputsDigest } from './canonical';
 import { nonInjectiveSbox } from './library';
 import { aesDesign, aesSharedSum, hadesDesign, hadesSharedSum } from './presets';
-import { MAX_TOKEN_LENGTH, decodeShare, encodeShare, shareUrl } from './share';
+import { MAX_DECODED_BYTES, MAX_TOKEN_LENGTH, decodeShare, encodeShare, shareUrl } from './share';
 import type { Snapshot } from './snapshot';
+
+const b64url = (text: string) => btoa(text).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+async function deflate(bytes: Uint8Array): Promise<Uint8Array> {
+  const stream = new Blob([bytes as unknown as BlobPart]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+function bytesToB64url(bytes: Uint8Array): string {
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return b64url(bin);
+}
 
 const aes: Snapshot = { design: aesDesign(), program: aesSharedSum(), target: 'matrix' };
 
@@ -48,8 +61,10 @@ describe('share links', () => {
     ['an unknown prefix', 'xabc', /not a Cryptificate share link/],
     ['bad characters', 'j$$$', /characters/],
     ['damaged compressed data', 'zAAAA', /damaged/],
-    ['not JSON', `j${btoa('hello').replace(/=+$/, '')}`, /valid request/],
-    ['a request without a design', `j${btoa('{"program":{}}').replace(/=+$/, '')}`, /valid request|design/],
+    ['not JSON', `j${btoa('hello').replace(/=+$/, '')}`, /^The link is damaged: its contents are not valid JSON\.$/],
+    ['a request without a design', `j${btoa('{"program":{}}').replace(/=+$/, '')}`, /^The link does not contain a design\.$/],
+    ['a bare circuit', `j${b64url(JSON.stringify(aesSharedSum()))}`, /^The link does not contain a design\.$/],
+    ['a JSON array', `j${b64url('[1, 2]')}`, /does not contain a design/],
     ['an overly long token', `j${'A'.repeat(MAX_TOKEN_LENGTH)}`, /too long/],
   ])('rejects %s', async (_, token, message) => {
     await expect(decodeShare(token)).rejects.toThrow(message);
@@ -59,6 +74,30 @@ describe('share links', () => {
     const bad = JSON.stringify({ design: { ...aesDesign(), rounds: 99 } });
     const token = `j${btoa(bad).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
     await expect(decodeShare(token)).rejects.toThrow(/Rounds/);
+  });
+
+  it('ends a wrapped import error with a single period', async () => {
+    const token = `j${b64url(JSON.stringify({ design: { model: 'nope' } }))}`;
+    const err = await decodeShare(token).catch((e: Error) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toMatch(/^The link does not hold a valid request: /);
+    expect((err as Error).message).not.toMatch(/\.\.$|\.\)\.$/);
+  });
+
+  it('rejects a compressed token that inflates past the size limit', async () => {
+    // A small token (a "deflate bomb") that would decompress to several megabytes.
+    const huge = new TextEncoder().encode(' '.repeat(MAX_DECODED_BYTES * 40));
+    const token = `z${bytesToB64url(await deflate(huge))}`;
+    expect(token.length).toBeLessThan(MAX_TOKEN_LENGTH);
+    await expect(decodeShare(token)).rejects.toThrow(/too large/);
+  });
+
+  it('accepts a compressed token just under the size limit when it holds a request', async () => {
+    const text = JSON.stringify({ design: aesDesign(), program: aesSharedSum(), target: 'matrix' });
+    const padded = text + ' '.repeat(MAX_DECODED_BYTES - text.length - 1);
+    const token = `z${bytesToB64url(await deflate(new TextEncoder().encode(padded)))}`;
+    const back = await decodeShare(token);
+    expect(inputsDigest(back)).toBe(inputsDigest(aes));
   });
 
   it('builds a workspace URL', () => {

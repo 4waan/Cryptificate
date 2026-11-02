@@ -116,11 +116,21 @@ export async function decodeShare(token: string): Promise<Snapshot> {
   } catch {
     throw new ShareError('The link is cut off or damaged.');
   }
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new ShareError('The link is damaged: its contents are not valid JSON.');
+  }
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw) || !('design' in raw || 'model' in raw)) {
+    throw new ShareError('The link does not contain a design.');
+  }
   let imported;
   try {
     imported = parseImport(text);
   } catch (e) {
-    throw new ShareError(`The link does not hold a valid request (${e instanceof Error ? e.message : 'unreadable'}).`);
+    const why = e instanceof Error ? e.message.replace(/\.$/, '') : 'unreadable';
+    throw new ShareError(`The link does not hold a valid request: ${why}.`);
   }
   if (!imported.design) throw new ShareError('The link does not contain a design.');
   const snapshot: Snapshot = {
