@@ -125,12 +125,15 @@ over `ZMod candModulus` by cofactor expansion along the first row (`det4`), is n
 theorem internal_invertible : candInternal.det ≠ 0 :=
   det_ne_zero_of_det4 (by decide)
 
+
 /-- Claim `sbox.bijective`, refuted: `witnessRoot ≠ 1` and `witnessRoot ^ candExponent = 1`,
 which the kernel computes over `ZMod candModulus` by square-and-multiply, so `1` and `witnessRoot`
-have the same image under `x ↦ x ^ candExponent`. -/
+have the same image under `x ↦ x ^ candExponent`. The statement is about
+`PrimePower.ZModP.powMap candModulus candExponent`, so it names the field. -/
 theorem power_not_injective :
-    ¬ Function.Injective (fun x : ZMod candModulus => x ^ candExponent) :=
-  PrimePower.pow_not_injective_of_root candExponent witnessRoot (by decide) (by decide)
+    ¬ Function.Injective (PrimePower.ZModP.powMap candModulus candExponent) :=
+  PrimePower.ZModP.powMap_not_injective_of_root candModulus candExponent witnessRoot
+    (by decide) (by decide)
 
 /-- Claim `activity.partial`, refuted: the design has at least one partial round, and a nonzero
 difference passes all `candPartialRounds` of them with no active S-box. (With no partial rounds

@@ -14,6 +14,12 @@ certificate builds from a Pratt certificate (`Cryptificate.Pratt`):
 * Non-injectivity needs nothing new: `PrimePower.pow_not_injective_of_root` already holds in every
   monoid, and a certificate applies it to `ZMod p` with a root of unity checked by
   square-and-multiply.
+* `powMap p e` names the map `x ↦ x ^ e` on `ZMod p`. A certificate states its `sbox.bijective`
+  claim about `powMap candModulus candExponent` rather than about a bare `fun x => x ^ e`, because
+  the audit line prints a lambda without its binder type: the printed statement then names the
+  modulus, so the service, which compares that line with the expected statement, also checks that
+  the claim is about `ZMod candModulus` and not about some other type. `powMap_bijective` and
+  `powMap_not_injective_of_root` restate the two results above for it.
 -/
 
 set_option autoImplicit false
@@ -39,5 +45,23 @@ example (e d k : ℕ) (he : 0 < e) (hd : 0 < d)
     (hexp : e * d = (Poseidon2.BN254.modulus - 1) * k + 1) :
     Function.Bijective (fun x : Poseidon2.BN254.F => x ^ e) :=
   pow_bijective Poseidon2.BN254.modulus e d k he hd hexp
+
+/-- The power map `x ↦ x ^ e` on `ZMod p`. A statement about `powMap p e` names the field
+`ZMod p` in its printed form, where `fun x => x ^ e` would not. -/
+def powMap (p e : ℕ) : ZMod p → ZMod p := fun x => x ^ e
+
+@[simp] theorem powMap_apply (p e : ℕ) (x : ZMod p) : powMap p e x = x ^ e :=
+  rfl
+
+/-- `pow_bijective`, stated for `powMap`. -/
+theorem powMap_bijective (p : ℕ) [Fact p.Prime] (e d k : ℕ) (he : 0 < e) (hd : 0 < d)
+    (hexp : e * d = (p - 1) * k + 1) : Function.Bijective (powMap p e) :=
+  pow_bijective p e d k he hd hexp
+
+/-- `PrimePower.pow_not_injective_of_root`, stated for `powMap`: a root `w ≠ 1` of `w ^ e = 1`,
+checked by square-and-multiply, has the same image as `1`. -/
+theorem powMap_not_injective_of_root (p e : ℕ) (w : ZMod p) (hw : fastPow w e = 1) (hw1 : w ≠ 1) :
+    ¬ Function.Injective (powMap p e) :=
+  pow_not_injective_of_root e w hw hw1
 
 end Cryptificate.PrimePower.ZModP

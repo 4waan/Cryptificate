@@ -39,6 +39,18 @@ info: 'Cryptificate.PrimePower.ZModP.pow_bijective' depends on axioms: [propext,
 #print axioms Cryptificate.PrimePower.ZModP.pow_bijective
 
 /--
+info: 'Cryptificate.PrimePower.ZModP.powMap_bijective' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.PrimePower.ZModP.powMap_bijective
+
+/--
+info: 'Cryptificate.PrimePower.ZModP.powMap_not_injective_of_root' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.PrimePower.ZModP.powMap_not_injective_of_root
+
+/--
 info: 'Cryptificate.det_ne_zero_of_det4' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in

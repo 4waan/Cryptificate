@@ -4,7 +4,7 @@
   "claim": "sbox.bijective",
   "status": "proved",
   "theorem": "CryptificateJob.power_bijective",
-  "expectedType": "Function.Bijective fun x => x ^ CryptificateJob.candExponent",
+  "expectedType": "Function.Bijective (Cryptificate.PrimePower.ZModP.powMap CryptificateJob.candModulus CryptificateJob.candExponent)",
   "placeholders": [
     "INV_EXPONENT",
     "K"

@@ -4,7 +4,7 @@
   "claim": "sbox.bijective",
   "status": "refuted",
   "theorem": "CryptificateJob.power_not_injective",
-  "expectedType": "¬Function.Injective fun x => x ^ CryptificateJob.candExponent",
+  "expectedType": "¬Function.Injective (Cryptificate.PrimePower.ZModP.powMap CryptificateJob.candModulus CryptificateJob.candExponent)",
   "placeholders": [],
   "requires": [
     "const_exponent",
