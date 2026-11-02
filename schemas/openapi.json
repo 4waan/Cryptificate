@@ -1,0 +1,1755 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "Cryptificate local service",
+    "version": "0.1.0",
+    "summary": "Submit designs and circuits for Lean-checked analysis, run experiments, poll jobs and download evidence bundles.",
+    "description": "HTTP API of `cryptificate serve`, the local Cryptificate service. The web workbench, the `cryptificate` command line and the Python client (`python/cryptificate`) all use it.\n\n**Scope.** This document describes every route the service answers. Request and report bodies are described by the JSON Schemas in `schemas/` (referenced here with `$ref`); the served copy at `GET /api/openapi.json` embeds them under `components/schemas`. Examples are responses recorded from a live service (version 0.1.0, release engine, Lean checker), except the 500 example, which shows the fixed body of that response. Field elements are strings: two hex digits for GF(2^8), canonical decimals below the modulus for BN254.\n\n**Security model.** The service is a single-user local tool and has no authentication. It binds to 127.0.0.1 by default; `--host` can bind elsewhere, and then anyone who can reach the address can run jobs. Every request must carry a `Host` header naming a loopback address (`127.0.0.1`, `localhost`, `::1`) or the bound host, which rejects DNS-rebinding pages. State-changing requests (every method other than GET, HEAD and OPTIONS) are accepted only same-origin: when an `Origin` header is present it must be `http://<allowed host>:<port>` of this service or one of the origins given with `--allow-origin` / `CRYPTIFICATE_ALLOWED_ORIGINS`; without `Origin`, a `Sec-Fetch-Site` header other than `same-origin` or `none` is rejected. Clients outside a browser (curl, Python) send neither header and are accepted. A rejected request gets 403 `forbidden`. There are no CORS headers: cross-origin browser reads are not supported. Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and `Cross-Origin-Resource-Policy: same-origin`.\n\n**Limits.** JSON bodies are at most 256 KiB (413 beyond, and the connection is closed). One job runs at a time and at most two wait behind it (`limits.maxQueued` in the capabilities); a further submission gets 429 with `Retry-After: 30`. There is no per-client rate limit beyond this queue. Each job runs under a time budget (`limits.analysisBudgetSeconds`, or the experiment profile's `budget.totalSeconds`), and each Lean run under `limits.leanTimeoutSeconds`.\n\n**Job lifecycle.** `POST /api/analyses` or `POST /api/experiments` answers 202 with a job summary and a `Location` header. The job moves `queued` -> `running` -> one of `completed`, `failed`, `timeout`, `cancelled` or `invalid` (terminal). Poll `GET /api/jobs/{id}`: while it runs, `steps` and a partial `report` are visible. When the state is terminal and `bundle` is true, `GET /api/jobs/{id}/bundle` returns the evidence bundle. Jobs survive a restart of the service; a job that was running when the service stopped is reported as `failed` with error code `interrupted`. There is no endpoint that lists jobs; keep the ids you submit.\n\n**Errors.** Every error is JSON with a stable `error.code` (see `ErrorResponse`). Any other path under `/api/` answers 404 `not-found` to GET and POST and 405 `method-not-allowed` to other methods. An unexpected failure answers 500 `internal`.\n\n**Stability.** Paths, status codes, error codes and the members described in the schemas are the supported surface. New optional members may be added to responses; clients should ignore members they do not know. Requests are checked strictly: unknown members are rejected.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://{host}:{port}",
+      "description": "cryptificate serve (default 127.0.0.1:4173)",
+      "variables": {
+        "host": {
+          "default": "127.0.0.1",
+          "description": "Bound address; loopback by default."
+        },
+        "port": {
+          "default": "4173",
+          "description": "--port or PORT."
+        }
+      }
+    }
+  ],
+  "security": [],
+  "tags": [
+    {
+      "name": "service",
+      "description": "Service description and capabilities."
+    },
+    {
+      "name": "jobs",
+      "description": "Submit, poll and stop analyses and experiments."
+    },
+    {
+      "name": "bundles",
+      "description": "Evidence bundles of finished jobs."
+    },
+    {
+      "name": "web",
+      "description": "The built web workbench (not part of the JSON API)."
+    }
+  ],
+  "paths": {
+    "/api/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "tags": [
+          "service"
+        ],
+        "summary": "Models, profiles, limits and toolchain availability",
+        "description": "Reports what this installation can do: the supported design models, the experiment profiles and their budgets, the request and queue limits, and whether the Lean toolchain, rustc and the engine are available. Cheap; the workbench polls it every 15 s.",
+        "responses": {
+          "200": {
+            "description": "Capabilities of this installation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "capabilities.schema.json"
+                },
+                "examples": {
+                  "live": {
+                    "summary": "A fully installed service",
+                    "value": {
+                      "name": "cryptificate",
+                      "version": "0.1.0",
+                      "checker": "cryptificate 0.1.0 (c27d45c)",
+                      "models": [
+                        "aes-like/gf256/v1",
+                        "hades/bn254/v1"
+                      ],
+                      "profiles": [
+                        {
+                          "id": "quick",
+                          "label": "Quick",
+                          "budget": {
+                            "totalSeconds": 180,
+                            "searchMs": 10000,
+                            "maxCandidates": 8,
+                            "shortlist": 1,
+                            "sessions": 3
+                          }
+                        },
+                        {
+                          "id": "research",
+                          "label": "Research",
+                          "budget": {
+                            "totalSeconds": 900,
+                            "searchMs": 60000,
+                            "maxCandidates": 64,
+                            "shortlist": 3,
+                            "sessions": 3
+                          }
+                        }
+                      ],
+                      "limits": {
+                        "maxBodyBytes": 262144,
+                        "maxInstructions": 256,
+                        "maxQueued": 2,
+                        "leanTimeoutSeconds": 180,
+                        "analysisBudgetSeconds": 300
+                      },
+                      "toolchain": {
+                        "lean": {
+                          "available": true,
+                          "version": "v4.33.1"
+                        },
+                        "rust": {
+                          "available": true,
+                          "version": "rustc 1.97.0 (2d8144b78)"
+                        },
+                        "engine": {
+                          "available": true,
+                          "subcommands": [
+                            "validate",
+                            "diagnose",
+                            "emit-lean",
+                            "search",
+                            "codegen",
+                            "native"
+                          ],
+                          "version": "cryptificate-engine 0.1.0"
+                        },
+                        "pins": {
+                          "lean": "v4.33.1",
+                          "mathlib": "v4.33.1",
+                          "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298",
+                          "rustc": "rustc 1.97.0 (2d8144b78)"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/Internal"
+          }
+        }
+      }
+    },
+    "/api/openapi.json": {
+      "get": {
+        "operationId": "getOpenApi",
+        "tags": [
+          "service"
+        ],
+        "summary": "This OpenAPI description",
+        "description": "The OpenAPI 3.1 description of this API, self-contained: the JSON Schemas from `schemas/` are embedded under `components/schemas` and every `$ref` is local.",
+        "responses": {
+          "200": {
+            "description": "The bundled OpenAPI document.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "openapi",
+                    "info",
+                    "paths",
+                    "components"
+                  ],
+                  "properties": {
+                    "openapi": {
+                      "const": "3.1.0"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "This installation has no schemas/openapi.json (`not-found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "error.schema.json"
+                },
+                "examples": {
+                  "missing": {
+                    "summary": "Service started from a checkout without the description",
+                    "value": {
+                      "error": {
+                        "code": "not-found",
+                        "message": "this installation has no schemas/openapi.json"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Internal"
+          }
+        }
+      }
+    },
+    "/api/analyses": {
+      "post": {
+        "operationId": "submitAnalysis",
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Submit an analysis",
+        "description": "Checks a candidate design, and optionally a linear circuit against one of its matrices. The body is shape-checked before a job is created (400 on any problem, with every issue listed); the engine then validates it in depth as the job's first step, so a request that passes the shape check can still end in state `invalid`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "analysis-request.schema.json"
+              },
+              "examples": {
+                "wrong-wire": {
+                  "summary": "AES design with a mis-wired MixColumns circuit",
+                  "value": {
+                    "design": {
+                      "model": "aes-like/gf256/v1",
+                      "field": "gf256",
+                      "width": 4,
+                      "matrix": [
+                        [
+                          "02",
+                          "03",
+                          "01",
+                          "01"
+                        ],
+                        [
+                          "01",
+                          "02",
+                          "03",
+                          "01"
+                        ],
+                        [
+                          "01",
+                          "01",
+                          "02",
+                          "03"
+                        ],
+                        [
+                          "03",
+                          "01",
+                          "01",
+                          "02"
+                        ]
+                      ],
+                      "offsets": [
+                        0,
+                        1,
+                        2,
+                        3
+                      ],
+                      "rounds": 4,
+                      "sbox": {
+                        "kind": "aes"
+                      }
+                    },
+                    "program": {
+                      "field": "gf256",
+                      "width": 4,
+                      "name": "aes-shared-sum-wrong-wire",
+                      "instructions": [
+                        {
+                          "op": "add",
+                          "a": 0,
+                          "b": 1
+                        },
+                        {
+                          "op": "add",
+                          "a": 4,
+                          "b": 2
+                        },
+                        {
+                          "op": "add",
+                          "a": 5,
+                          "b": 3
+                        },
+                        {
+                          "op": "add",
+                          "a": 0,
+                          "b": 2
+                        },
+                        {
+                          "op": "mul",
+                          "k": "02",
+                          "a": 7
+                        },
+                        {
+                          "op": "add",
+                          "a": 0,
+                          "b": 8
+                        },
+                        {
+                          "op": "add",
+                          "a": 9,
+                          "b": 6
+                        },
+                        {
+                          "op": "add",
+                          "a": 1,
+                          "b": 2
+                        },
+                        {
+                          "op": "mul",
+                          "k": "02",
+                          "a": 11
+                        },
+                        {
+                          "op": "add",
+                          "a": 1,
+                          "b": 12
+                        },
+                        {
+                          "op": "add",
+                          "a": 13,
+                          "b": 6
+                        },
+                        {
+                          "op": "add",
+                          "a": 2,
+                          "b": 3
+                        },
+                        {
+                          "op": "mul",
+                          "k": "02",
+                          "a": 15
+                        },
+                        {
+                          "op": "add",
+                          "a": 2,
+                          "b": 16
+                        },
+                        {
+                          "op": "add",
+                          "a": 17,
+                          "b": 6
+                        },
+                        {
+                          "op": "add",
+                          "a": 3,
+                          "b": 0
+                        },
+                        {
+                          "op": "mul",
+                          "k": "02",
+                          "a": 19
+                        },
+                        {
+                          "op": "add",
+                          "a": 3,
+                          "b": 20
+                        },
+                        {
+                          "op": "add",
+                          "a": 21,
+                          "b": 6
+                        }
+                      ],
+                      "outputs": [
+                        10,
+                        14,
+                        18,
+                        22
+                      ]
+                    }
+                  }
+                },
+                "design-only": {
+                  "summary": "Row-scaled AES matrix, no circuit",
+                  "value": {
+                    "design": {
+                      "model": "aes-like/gf256/v1",
+                      "field": "gf256",
+                      "width": 4,
+                      "matrix": [
+                        [
+                          "04",
+                          "06",
+                          "02",
+                          "02"
+                        ],
+                        [
+                          "01",
+                          "02",
+                          "03",
+                          "01"
+                        ],
+                        [
+                          "01",
+                          "01",
+                          "02",
+                          "03"
+                        ],
+                        [
+                          "03",
+                          "01",
+                          "01",
+                          "02"
+                        ]
+                      ],
+                      "offsets": [
+                        0,
+                        1,
+                        2,
+                        3
+                      ],
+                      "rounds": 4,
+                      "sbox": {
+                        "kind": "aes"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Accepted"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/QueueFull"
+          },
+          "500": {
+            "$ref": "#/components/responses/Internal"
+          }
+        }
+      }
+    },
+    "/api/experiments": {
+      "post": {
+        "operationId": "submitExperiment",
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Submit an experiment",
+        "description": "Searches for cheaper circuits for the design's matrix, checks each shortlisted candidate's equivalence in Lean, tests the generated Rust and times it against baselines under the chosen profile's budget. Same submission rules as analyses.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "experiment-request.schema.json"
+              },
+              "examples": {
+                "quick": {
+                  "summary": "Quick profile with a fixed seed",
+                  "value": {
+                    "design": {
+                      "model": "aes-like/gf256/v1",
+                      "field": "gf256",
+                      "width": 4,
+                      "matrix": [
+                        [
+                          "02",
+                          "03",
+                          "01",
+                          "01"
+                        ],
+                        [
+                          "01",
+                          "02",
+                          "03",
+                          "01"
+                        ],
+                        [
+                          "01",
+                          "01",
+                          "02",
+                          "03"
+                        ],
+                        [
+                          "03",
+                          "01",
+                          "01",
+                          "02"
+                        ]
+                      ],
+                      "offsets": [
+                        0,
+                        1,
+                        2,
+                        3
+                      ],
+                      "rounds": 4,
+                      "sbox": {
+                        "kind": "aes"
+                      }
+                    },
+                    "profile": "quick",
+                    "seed": "c0ffee"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Accepted"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/QueueFull"
+          },
+          "500": {
+            "$ref": "#/components/responses/Internal"
+          }
+        }
+      }
+    },
+    "/api/jobs/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/JobId"
+        }
+      ],
+      "get": {
+        "operationId": "getJob",
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Poll a job",
+        "description": "Current state, progress steps, queue position (while queued), error (when one occurred) and the report, which is partial while the job runs and final once the state is terminal. Poll until `state` is one of completed, failed, timeout, cancelled or invalid; the workbench polls every 800 ms, and once a second is plenty for scripts.",
+        "responses": {
+          "200": {
+            "description": "The job.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "job.schema.json"
+                },
+                "examples": {
+                  "queued": {
+                    "summary": "Waiting behind other jobs",
+                    "value": {
+                      "id": "9393c161324a988ffe38d84fc90e3b93",
+                      "kind": "experiment",
+                      "state": "queued",
+                      "origin": "live",
+                      "steps": [
+                        {
+                          "name": "validate",
+                          "state": "pending"
+                        },
+                        {
+                          "name": "search",
+                          "state": "pending"
+                        },
+                        {
+                          "name": "equivalence",
+                          "state": "pending"
+                        },
+                        {
+                          "name": "native-correctness",
+                          "state": "pending"
+                        },
+                        {
+                          "name": "benchmark-1",
+                          "state": "pending"
+                        },
+                        {
+                          "name": "benchmark-2",
+                          "state": "pending"
+                        },
+                        {
+                          "name": "benchmark-3",
+                          "state": "pending"
+                        },
+                        {
+                          "name": "report",
+                          "state": "pending"
+                        }
+                      ],
+                      "report": null,
+                      "bundle": false,
+                      "queuePosition": 2
+                    }
+                  },
+                  "running": {
+                    "summary": "Running, with checkpoints and a partial report",
+                    "value": {
+                      "id": "9d4777dbeae6b987f0e2ce28b7993cfe",
+                      "kind": "analysis",
+                      "state": "running",
+                      "origin": "live",
+                      "steps": [
+                        {
+                          "name": "validate",
+                          "state": "completed",
+                          "ms": 5
+                        },
+                        {
+                          "name": "diagnose",
+                          "state": "completed",
+                          "ms": 4
+                        },
+                        {
+                          "name": "emit-lean",
+                          "state": "completed",
+                          "ms": 9,
+                          "detail": "5 theorem(s)"
+                        },
+                        {
+                          "name": "lean",
+                          "state": "running",
+                          "detail": "limit 180 s"
+                        },
+                        {
+                          "name": "native",
+                          "state": "pending"
+                        },
+                        {
+                          "name": "report",
+                          "state": "pending"
+                        }
+                      ],
+                      "report": {
+                        "kind": "analysis",
+                        "id": "9d4777dbeae6b987f0e2ce28b7993cfe",
+                        "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
+                        "inputs": {
+                          "design": {
+                            "field": "gf256",
+                            "matrix": [
+                              [
+                                "02",
+                                "03",
+                                "01",
+                                "01"
+                              ],
+                              [
+                                "01",
+                                "02",
+                                "03",
+                                "01"
+                              ],
+                              [
+                                "01",
+                                "01",
+                                "02",
+                                "03"
+                              ],
+                              [
+                                "03",
+                                "01",
+                                "01",
+                                "02"
+                              ]
+                            ],
+                            "model": "aes-like/gf256/v1",
+                            "offsets": [
+                              0,
+                              1,
+                              2,
+                              3
+                            ],
+                            "rounds": 4,
+                            "sbox": {
+                              "kind": "aes"
+                            },
+                            "width": 4
+                          },
+                          "program": {
+                            "field": "gf256",
+                            "instructions": [
+                              {
+                                "a": 0,
+                                "b": 1,
+                                "op": "add"
+                              },
+                              {
+                                "a": 4,
+                                "b": 2,
+                                "op": "add"
+                              },
+                              {
+                                "a": 5,
+                                "b": 3,
+                                "op": "add"
+                              },
+                              {
+                                "a": 0,
+                                "b": 2,
+                                "op": "add"
+                              },
+                              {
+                                "a": 7,
+                                "k": "02",
+                                "op": "mul"
+                              },
+                              {
+                                "a": 0,
+                                "b": 8,
+                                "op": "add"
+                              },
+                              {
+                                "a": 9,
+                                "b": 6,
+                                "op": "add"
+                              },
+                              {
+                                "a": 1,
+                                "b": 2,
+                                "op": "add"
+                              },
+                              {
+                                "a": 11,
+                                "k": "02",
+                                "op": "mul"
+                              },
+                              {
+                                "a": 1,
+                                "b": 12,
+                                "op": "add"
+                              },
+                              {
+                                "a": 13,
+                                "b": 6,
+                                "op": "add"
+                              },
+                              {
+                                "a": 2,
+                                "b": 3,
+                                "op": "add"
+                              },
+                              {
+                                "a": 15,
+                                "k": "02",
+                                "op": "mul"
+                              },
+                              {
+                                "a": 2,
+                                "b": 16,
+                                "op": "add"
+                              },
+                              {
+                                "a": 17,
+                                "b": 6,
+                                "op": "add"
+                              },
+                              {
+                                "a": 3,
+                                "b": 0,
+                                "op": "add"
+                              },
+                              {
+                                "a": 19,
+                                "k": "02",
+                                "op": "mul"
+                              },
+                              {
+                                "a": 3,
+                                "b": 20,
+                                "op": "add"
+                              },
+                              {
+                                "a": 21,
+                                "b": 6,
+                                "op": "add"
+                              }
+                            ],
+                            "name": "aes-shared-sum-wrong-wire",
+                            "outputs": [
+                              10,
+                              14,
+                              18,
+                              22
+                            ],
+                            "width": 4
+                          },
+                          "target": "matrix"
+                        },
+                        "claims": [],
+                        "execution": {
+                          "state": "running",
+                          "steps": [
+                            {
+                              "name": "validate",
+                              "state": "completed",
+                              "ms": 5
+                            }
+                          ]
+                        },
+                        "provenance": {
+                          "origin": "live",
+                          "checker": "cryptificate 0.1.0 (c27d45c)",
+                          "toolchain": {
+                            "lean": "v4.33.1",
+                            "mathlib": "v4.33.1",
+                            "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298",
+                            "rustc": "rustc 1.97.0 (2d8144b78)"
+                          }
+                        }
+                      },
+                      "bundle": false
+                    }
+                  },
+                  "completed": {
+                    "summary": "Finished: design claims proved, the mis-wired circuit refuted with a witness",
+                    "value": {
+                      "id": "9d4777dbeae6b987f0e2ce28b7993cfe",
+                      "kind": "analysis",
+                      "state": "completed",
+                      "origin": "live",
+                      "steps": [
+                        {
+                          "name": "validate",
+                          "state": "completed",
+                          "ms": 5
+                        },
+                        {
+                          "name": "diagnose",
+                          "state": "completed",
+                          "ms": 4
+                        },
+                        {
+                          "name": "emit-lean",
+                          "state": "completed",
+                          "ms": 9,
+                          "detail": "5 theorem(s)"
+                        },
+                        {
+                          "name": "lean",
+                          "state": "completed",
+                          "detail": "5/5 theorem(s) accepted",
+                          "ms": 5242
+                        },
+                        {
+                          "name": "native",
+                          "state": "completed",
+                          "ms": 25268
+                        },
+                        {
+                          "name": "report",
+                          "state": "completed",
+                          "ms": 1
+                        }
+                      ],
+                      "report": {
+                        "kind": "analysis",
+                        "id": "9d4777dbeae6b987f0e2ce28b7993cfe",
+                        "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
+                        "inputs": {
+                          "design": {
+                            "field": "gf256",
+                            "matrix": [
+                              [
+                                "02",
+                                "03",
+                                "01",
+                                "01"
+                              ],
+                              [
+                                "01",
+                                "02",
+                                "03",
+                                "01"
+                              ],
+                              [
+                                "01",
+                                "01",
+                                "02",
+                                "03"
+                              ],
+                              [
+                                "03",
+                                "01",
+                                "01",
+                                "02"
+                              ]
+                            ],
+                            "model": "aes-like/gf256/v1",
+                            "offsets": [
+                              0,
+                              1,
+                              2,
+                              3
+                            ],
+                            "rounds": 4,
+                            "sbox": {
+                              "kind": "aes"
+                            },
+                            "width": 4
+                          },
+                          "program": {
+                            "field": "gf256",
+                            "instructions": [
+                              {
+                                "a": 0,
+                                "b": 1,
+                                "op": "add"
+                              },
+                              {
+                                "a": 4,
+                                "b": 2,
+                                "op": "add"
+                              },
+                              {
+                                "a": 5,
+                                "b": 3,
+                                "op": "add"
+                              },
+                              {
+                                "a": 0,
+                                "b": 2,
+                                "op": "add"
+                              },
+                              {
+                                "a": 7,
+                                "k": "02",
+                                "op": "mul"
+                              },
+                              {
+                                "a": 0,
+                                "b": 8,
+                                "op": "add"
+                              },
+                              {
+                                "a": 9,
+                                "b": 6,
+                                "op": "add"
+                              },
+                              {
+                                "a": 1,
+                                "b": 2,
+                                "op": "add"
+                              },
+                              {
+                                "a": 11,
+                                "k": "02",
+                                "op": "mul"
+                              },
+                              {
+                                "a": 1,
+                                "b": 12,
+                                "op": "add"
+                              },
+                              {
+                                "a": 13,
+                                "b": 6,
+                                "op": "add"
+                              },
+                              {
+                                "a": 2,
+                                "b": 3,
+                                "op": "add"
+                              },
+                              {
+                                "a": 15,
+                                "k": "02",
+                                "op": "mul"
+                              },
+                              {
+                                "a": 2,
+                                "b": 16,
+                                "op": "add"
+                              },
+                              {
+                                "a": 17,
+                                "b": 6,
+                                "op": "add"
+                              },
+                              {
+                                "a": 3,
+                                "b": 0,
+                                "op": "add"
+                              },
+                              {
+                                "a": 19,
+                                "k": "02",
+                                "op": "mul"
+                              },
+                              {
+                                "a": 3,
+                                "b": 20,
+                                "op": "add"
+                              },
+                              {
+                                "a": 21,
+                                "b": 6,
+                                "op": "add"
+                              }
+                            ],
+                            "name": "aes-shared-sum-wrong-wire",
+                            "outputs": [
+                              10,
+                              14,
+                              18,
+                              22
+                            ],
+                            "width": 4
+                          },
+                          "target": "matrix"
+                        },
+                        "claims": [
+                          {
+                            "id": "matrix.mds",
+                            "chain": "design",
+                            "title": "Matrix is MDS (branch number 5)",
+                            "status": "proved",
+                            "evidence": {
+                              "kind": "lean",
+                              "label": "Lean-checked proof",
+                              "theorem": "CryptificateJob.matrix_mds",
+                              "type": "IsMDS CryptificateJob.candMatrix",
+                              "axioms": [
+                                "propext",
+                                "Classical.choice",
+                                "Quot.sound"
+                              ]
+                            },
+                            "witness": null,
+                            "note": "Lean checked CryptificateJob.matrix_mds using only the standard axioms."
+                          },
+                          {
+                            "id": "offsets.dispersion",
+                            "chain": "design",
+                            "title": "Row offsets are pairwise distinct",
+                            "status": "proved",
+                            "evidence": {
+                              "kind": "lean",
+                              "label": "Lean-checked proof",
+                              "theorem": "CryptificateJob.offsets_optimal",
+                              "type": "DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 CryptificateJob.candOffsets)",
+                              "axioms": [
+                                "propext",
+                                "Classical.choice",
+                                "Quot.sound"
+                              ]
+                            },
+                            "witness": null,
+                            "note": "Lean checked CryptificateJob.offsets_optimal using only the standard axioms."
+                          },
+                          {
+                            "id": "sbox.bijective",
+                            "chain": "design",
+                            "title": "S-box is a permutation",
+                            "status": "proved",
+                            "evidence": {
+                              "kind": "lean",
+                              "label": "Lean-checked proof",
+                              "theorem": "CryptificateJob.sbox_bijective",
+                              "type": "Function.Bijective CryptificateJob.candSboxTable",
+                              "axioms": [
+                                "propext",
+                                "Classical.choice",
+                                "Quot.sound"
+                              ]
+                            },
+                            "witness": null,
+                            "note": "Lean checked CryptificateJob.sbox_bijective using only the standard axioms."
+                          },
+                          {
+                            "id": "activity.bound",
+                            "chain": "design",
+                            "title": "At least 25 active S-boxes over 4 rounds",
+                            "status": "proved",
+                            "evidence": {
+                              "kind": "lean",
+                              "label": "Lean-checked proof",
+                              "theorem": "CryptificateJob.activity_bound",
+                              "type": "∀ (sbox : GF256 → GF256), Function.Injective sbox → ∀ (keys : ℕ → Fin 16 → GF256) (x y : Fin 16 → GF256), x ≠ y → (CryptificateJob.candRounds / 4 * 25 + if 2 ≤ CryptificateJob.candRounds % 4 then 5 else 0) ≤ Cryptificate.activeSboxes CryptificateJob.candMatrix CryptificateJob.candOffsets sbox keys x y CryptificateJob.candRounds",
+                              "axioms": [
+                                "propext",
+                                "Classical.choice",
+                                "Quot.sound"
+                              ]
+                            },
+                            "witness": null,
+                            "note": "Lean checked CryptificateJob.activity_bound using only the standard axioms."
+                          },
+                          {
+                            "id": "circuit.equivalence",
+                            "chain": "implementation",
+                            "title": "Circuit computes the design matrix",
+                            "status": "refuted",
+                            "evidence": {
+                              "kind": "lean",
+                              "label": "Lean-checked counterexample",
+                              "theorem": "CryptificateJob.circuit_mismatch",
+                              "type": "CryptificateJob.candProgram.WellFormed ∧ CryptificateJob.candMatrix.mulVec CryptificateJob.witnessInput = CryptificateJob.witnessExpected ∧ CryptificateJob.candProgram.eval CryptificateJob.witnessInput = CryptificateJob.witnessActual ∧ ¬∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x",
+                              "axioms": [
+                                "propext",
+                                "Classical.choice",
+                                "Quot.sound"
+                              ]
+                            },
+                            "witness": {
+                              "actual": [
+                                "01",
+                                "02",
+                                "01",
+                                "01"
+                              ],
+                              "differing": [
+                                0
+                              ],
+                              "expected": [
+                                "03",
+                                "02",
+                                "01",
+                                "01"
+                              ],
+                              "input": [
+                                "00",
+                                "01",
+                                "00",
+                                "00"
+                              ],
+                              "kind": "distinguishing-input"
+                            },
+                            "note": "Lean checked a counterexample (CryptificateJob.circuit_mismatch)."
+                          },
+                          {
+                            "id": "native.correctness",
+                            "chain": "implementation",
+                            "title": "Generated Rust matches the reference",
+                            "status": "refuted",
+                            "evidence": {
+                              "kind": "native",
+                              "label": "Generated Rust passed 549 correctness cases",
+                              "cases": 9215
+                            },
+                            "witness": {
+                              "actual": [
+                                "01",
+                                "02",
+                                "01",
+                                "01"
+                              ],
+                              "differing": [
+                                0
+                              ],
+                              "expected": [
+                                "03",
+                                "02",
+                                "01",
+                                "01"
+                              ],
+                              "input": [
+                                "00",
+                                "01",
+                                "00",
+                                "00"
+                              ],
+                              "kind": "distinguishing-input"
+                            },
+                            "note": "8666 of 9215 cases gave a wrong output."
+                          },
+                          {
+                            "id": "rust.refinement",
+                            "chain": "implementation",
+                            "title": "Rust kernel refines the Lean model",
+                            "status": "not_established",
+                            "evidence": {
+                              "kind": "diagnostic",
+                              "label": "Unchecked diagnostic"
+                            },
+                            "witness": null,
+                            "note": "The refinement proofs have not been checked on this machine (scripts/setup.sh --with-refinement).",
+                            "reason": "out-of-scope"
+                          },
+                          {
+                            "id": "native.timing",
+                            "chain": "implementation",
+                            "title": "Native speed on this machine",
+                            "status": "not_established",
+                            "evidence": {
+                              "kind": "diagnostic",
+                              "label": "Unchecked diagnostic"
+                            },
+                            "witness": null,
+                            "note": "Timing is measured by experiments, not by an analysis.",
+                            "reason": "not-run"
+                          }
+                        ],
+                        "execution": {
+                          "state": "completed",
+                          "steps": [
+                            {
+                              "name": "validate",
+                              "state": "completed",
+                              "ms": 5
+                            },
+                            {
+                              "name": "diagnose",
+                              "state": "completed",
+                              "ms": 4
+                            },
+                            {
+                              "name": "emit-lean",
+                              "state": "completed",
+                              "ms": 9,
+                              "detail": "5 theorem(s)"
+                            },
+                            {
+                              "name": "lean",
+                              "state": "completed",
+                              "detail": "5/5 theorem(s) accepted",
+                              "ms": 5242
+                            },
+                            {
+                              "name": "native",
+                              "state": "completed",
+                              "ms": 25268
+                            },
+                            {
+                              "name": "report",
+                              "state": "completed",
+                              "ms": 1
+                            }
+                          ]
+                        },
+                        "provenance": {
+                          "origin": "live",
+                          "checker": "cryptificate 0.1.0 (c27d45c)",
+                          "toolchain": {
+                            "lean": "v4.33.1",
+                            "mathlib": "v4.33.1",
+                            "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298",
+                            "rustc": "rustc 1.97.0 (2d8144b78)"
+                          },
+                          "leanSourceSha256": "cd40d3bf3407a7c13554c6be4d9b1a17f8d03e69aa4f5dca6bee8fb5ffb9fa86",
+                          "cacheKey": "dcfd3d75e30c71346967c36af9b78b043e1571dd40f5756710e83a8526512910"
+                        }
+                      },
+                      "bundle": true
+                    }
+                  },
+                  "cancelled": {
+                    "summary": "Stopped while queued",
+                    "value": {
+                      "id": "9393c161324a988ffe38d84fc90e3b93",
+                      "kind": "experiment",
+                      "state": "cancelled",
+                      "origin": "live",
+                      "steps": [
+                        {
+                          "name": "validate",
+                          "state": "not_run"
+                        },
+                        {
+                          "name": "search",
+                          "state": "not_run"
+                        },
+                        {
+                          "name": "equivalence",
+                          "state": "not_run"
+                        },
+                        {
+                          "name": "native-correctness",
+                          "state": "not_run"
+                        },
+                        {
+                          "name": "benchmark-1",
+                          "state": "not_run"
+                        },
+                        {
+                          "name": "benchmark-2",
+                          "state": "not_run"
+                        },
+                        {
+                          "name": "benchmark-3",
+                          "state": "not_run"
+                        },
+                        {
+                          "name": "report",
+                          "state": "not_run"
+                        }
+                      ],
+                      "report": null,
+                      "bundle": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NoSuchJob"
+          },
+          "500": {
+            "$ref": "#/components/responses/Internal"
+          }
+        }
+      }
+    },
+    "/api/jobs/{id}/stop": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/JobId"
+        }
+      ],
+      "post": {
+        "operationId": "stopJob",
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Stop a job",
+        "description": "A queued job is removed from the queue and becomes `cancelled` at once. A running job is signalled (its whole process group is killed) and becomes `cancelled` shortly after; completed checkpoints and the partial report are kept. Stopping a finished job changes nothing. The request body is ignored and no Content-Type is required. The response is the summary at the time of the call, so a running job may still read `running`: poll to see the final state.",
+        "responses": {
+          "200": {
+            "description": "The job summary after the stop request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "job.schema.json#/$defs/envelope"
+                },
+                "examples": {
+                  "queued": {
+                    "summary": "A queued experiment, stopped",
+                    "value": {
+                      "job": {
+                        "id": "9393c161324a988ffe38d84fc90e3b93",
+                        "kind": "experiment",
+                        "state": "cancelled",
+                        "origin": "live"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NoSuchJob"
+          },
+          "500": {
+            "$ref": "#/components/responses/Internal"
+          }
+        }
+      }
+    },
+    "/api/jobs/{id}/bundle": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/JobId"
+        }
+      ],
+      "get": {
+        "operationId": "getJobBundle",
+        "tags": [
+          "bundles"
+        ],
+        "summary": "Download the evidence bundle",
+        "description": "A deterministic gzip-compressed tar archive with the normalized inputs, the report, the generated Lean certificates and the checker output, the toolchain pins, native sources and measurements when those steps ran, and VERIFY.md. Available when the job is terminal, not `invalid`, and has a report (`bundle: true` in the job). The same job always yields the same bytes. `cryptificate verify <bundle>` re-checks it.",
+        "responses": {
+          "200": {
+            "description": "The bundle.",
+            "headers": {
+              "Content-Disposition": {
+                "$ref": "#/components/headers/ContentDisposition"
+              }
+            },
+            "content": {
+              "application/gzip": {
+                "schema": {
+                  "contentMediaType": "application/gzip"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NoSuchJob"
+          },
+          "409": {
+            "description": "There is no bundle: the job is still queued or running, ended before producing a report, or its request was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "error.schema.json"
+                },
+                "examples": {
+                  "running": {
+                    "summary": "The job is still running",
+                    "value": {
+                      "error": {
+                        "code": "not-ready",
+                        "message": "the job has not finished"
+                      }
+                    }
+                  },
+                  "no-report": {
+                    "summary": "The job was stopped before it produced a report",
+                    "value": {
+                      "error": {
+                        "code": "not-ready",
+                        "message": "the job ended before it produced a report"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Internal"
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "operationId": "getWebUi",
+        "tags": [
+          "web"
+        ],
+        "summary": "The web workbench",
+        "description": "Serves the built workbench from apps/web/dist when it exists: static files, with index.html for any other path without a file extension (client-side routes). Without a built UI, `/` returns a short page that points to the API. HEAD is answered like GET; other methods on non-API paths answer 405. Not part of the JSON API.",
+        "responses": {
+          "200": {
+            "description": "The workbench page.",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "JobId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Job id as returned at submission: 32 lowercase hex digits. Any other value is answered with 404.",
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "example": "9d4777dbeae6b987f0e2ce28b7993cfe"
+      }
+    },
+    "headers": {
+      "Location": {
+        "description": "Path of the new job: /api/jobs/{id}.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RetryAfter": {
+        "description": "Seconds to wait before submitting again (always 30).",
+        "schema": {
+          "type": "integer",
+          "const": 30
+        }
+      },
+      "ContentDisposition": {
+        "description": "attachment; filename=\"cryptificate-<id>.tar.gz\"",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "Connection": {
+        "description": "close: the service stops reading the oversized body.",
+        "schema": {
+          "const": "close"
+        }
+      }
+    },
+    "responses": {
+      "Accepted": {
+        "description": "The job was created and queued. Poll the job at the `Location` path.",
+        "headers": {
+          "Location": {
+            "$ref": "#/components/headers/Location"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "job.schema.json#/$defs/envelope"
+            },
+            "examples": {
+              "analysis": {
+                "summary": "An analysis was queued",
+                "value": {
+                  "job": {
+                    "id": "9d4777dbeae6b987f0e2ce28b7993cfe",
+                    "kind": "analysis",
+                    "state": "queued",
+                    "origin": "live"
+                  }
+                }
+              },
+              "experiment": {
+                "summary": "An experiment was queued",
+                "value": {
+                  "job": {
+                    "id": "9393c161324a988ffe38d84fc90e3b93",
+                    "kind": "experiment",
+                    "state": "queued",
+                    "origin": "live"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "The body is not JSON (`bad-json`) or not a request of the documented shape (`invalid-request`, with every issue in `errors`, at most 50).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "error.schema.json"
+            },
+            "examples": {
+              "bad-json": {
+                "summary": "Not JSON",
+                "value": {
+                  "error": {
+                    "code": "bad-json",
+                    "message": "request body is not valid JSON"
+                  }
+                }
+              },
+              "invalid-request": {
+                "summary": "A number where a field element string belongs, and too few rounds",
+                "value": {
+                  "error": {
+                    "code": "invalid-request",
+                    "message": "/design/matrix/0/1: field elements are strings, not numbers"
+                  },
+                  "errors": [
+                    {
+                      "path": "/design/matrix/0/1",
+                      "code": "type",
+                      "message": "field elements are strings, not numbers"
+                    },
+                    {
+                      "path": "/design/rounds",
+                      "code": "range",
+                      "message": "expected an integer in 4..32"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "TooLarge": {
+        "description": "The body exceeds 256 KiB (`body-too-large`). The connection is closed; a client still uploading may see the connection reset instead of this response.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "error.schema.json"
+            },
+            "examples": {
+              "body-too-large": {
+                "summary": "300 000 bytes",
+                "value": {
+                  "error": {
+                    "code": "body-too-large",
+                    "message": "request body exceeds 262144 bytes"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "headers": {
+          "Connection": {
+            "$ref": "#/components/headers/Connection"
+          }
+        }
+      },
+      "UnsupportedMediaType": {
+        "description": "The Content-Type is not application/json (`unsupported-media-type`).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "error.schema.json"
+            },
+            "examples": {
+              "text-plain": {
+                "summary": "Content-Type: text/plain",
+                "value": {
+                  "error": {
+                    "code": "unsupported-media-type",
+                    "message": "expected Content-Type: application/json"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "QueueFull": {
+        "description": "One job is running and two are queued (`queue-full`). Retry after the indicated delay.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "error.schema.json"
+            },
+            "examples": {
+              "queue-full": {
+                "summary": "Fourth submission",
+                "value": {
+                  "error": {
+                    "code": "queue-full",
+                    "message": "one job is running and the queue is full; try again later"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "headers": {
+          "Retry-After": {
+            "$ref": "#/components/headers/RetryAfter"
+          }
+        }
+      },
+      "NoSuchJob": {
+        "description": "No job has this id (`not-found`). Ids are random. After a restart the service loads the 200 most recently updated jobs from its state directory; older ids answer 404.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "error.schema.json"
+            },
+            "examples": {
+              "not-found": {
+                "summary": "Unknown id",
+                "value": {
+                  "error": {
+                    "code": "not-found",
+                    "message": "no such job"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The request failed the Host/Origin policy (see the security model above).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "error.schema.json"
+            },
+            "examples": {
+              "host": {
+                "summary": "Host header is not a loopback address",
+                "value": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "Host header is not a loopback address"
+                  }
+                }
+              },
+              "origin": {
+                "summary": "Origin of another site",
+                "value": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "cross-origin request rejected"
+                  }
+                }
+              },
+              "site": {
+                "summary": "Sec-Fetch-Site: cross-site without Origin",
+                "value": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "cross-site request rejected"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Internal": {
+        "description": "An unexpected failure in the service (`internal`). Job failures are not reported this way: they are a job in state `failed` with an `error`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "error.schema.json"
+            },
+            "examples": {
+              "internal": {
+                "summary": "Unexpected failure",
+                "value": {
+                  "error": {
+                    "code": "internal",
+                    "message": "internal error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {}
+  }
+}
