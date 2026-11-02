@@ -101,11 +101,11 @@
     },
     {
       "id": "aes-like-checked",
-      "title": "Active-S-box bound of the AES-like kernel of crates/kernels for designs that pass the kernel-checked design checks, and for AES",
+      "title": "Active-S-box bound of the AES-like kernel of crates/kernels for any design, conditionally on three kernel-evaluable checks on its bytes",
       "appliesTo": {
         "model": "aes-like/gf256/v1"
       },
-      "specification": "Cryptificate.activityBound and the active-S-box count of the main Lean package, with the design checks minors4Ok (canonical minors), distinct offsets and a byte table covering every value; for AES, the main package encodings gfMat4, offsets4 and the FIPS 197 table aesSboxTable, equal to WideTrail AES.sbox",
+      "specification": "Cryptificate.activityBound and the active-S-box count of the main Lean package, with the design checks minors4Ok (canonical minors), distinct offsets and a byte table covering every value as hypotheses",
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
@@ -153,7 +153,62 @@
       "theorems": [
         "Cryptificate.Refinement.sboxOf_injective_iff",
         "Cryptificate.Refinement.sboxOf_injective_of_tableCovers",
-        "Cryptificate.Refinement.aes_like_encrypt_activity_bound_of_checks",
+        "Cryptificate.Refinement.aes_like_encrypt_activity_bound_of_checks"
+      ]
+    },
+    {
+      "id": "aes-like-aes",
+      "title": "Active-S-box bound of the AES-like kernel of crates/kernels for AES, with no design hypothesis",
+      "appliesTo": {
+        "model": "aes-like/gf256/v1",
+        "design": "AES: MixColumns [02 03 01 01 / 01 02 03 01 / 01 01 02 03 / 03 01 01 02] row-major, ShiftRows offsets [0 1 2 3], FIPS 197 S-box table"
+      },
+      "specification": "Cryptificate.activityBound and the active-S-box count of the main Lean package for the byte arrays aesMatrixBytes, aesOffsetBytes and aesSboxBytes, identified with the main package encodings gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2, offsets4 0 1 2 3 and the FIPS 197 table aesSboxTable, equal to WideTrail AES.sbox",
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "a494efbae0ae1411bd780fbdca796911c1c8f055ffcb701a113ec9d183e82a96"
+      },
+      "theorems": [
         "Cryptificate.Refinement.matrixOf_aesMatrixBytes",
         "Cryptificate.Refinement.offsetsOf_aesOffsetBytes",
         "Cryptificate.Refinement.sboxOf_aesSboxBytes",
@@ -626,7 +681,7 @@
       ],
       "extraAxioms": [],
       "hypotheses": [
-        "IsMDS (matrixOf m), DiffusionOptimal offsets and an S-box table without repeated entries are hypotheses of this theorem; aes_like_encrypt_activity_bound_of_checks (kernel aes-like-checked) derives them in this package from Boolean checks on the bytes, and the AES instance has none; the main package certificates (Lean v4.33.1) are not combined with it in one Lean environment",
+        "IsMDS (matrixOf m), DiffusionOptimal offsets and an S-box table without repeated entries are hypotheses of this theorem; aes_like_encrypt_activity_bound_of_checks (kernel aes-like-checked) derives them in this package from Boolean checks on the bytes, and the AES instance (kernel aes-like-aes) has none; the main package certificates (Lean v4.33.1) are not combined with it in one Lean environment",
         "at least r round keys (r <= round_keys.len())"
       ],
       "rustSources": [
@@ -871,7 +926,7 @@
     {
       "theorem": "Cryptificate.Refinement.matrixOf_aesMatrixBytes",
       "status": "proved",
-      "kernel": "aes-like-checked",
+      "kernel": "aes-like-aes",
       "statement": "Cryptificate.Refinement.matrixOf Cryptificate.Refinement.aesMatrixBytes = Cryptificate.gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2",
       "axioms": [
         "propext",
@@ -937,7 +992,7 @@
     {
       "theorem": "Cryptificate.Refinement.offsetsOf_aesOffsetBytes",
       "status": "proved",
-      "kernel": "aes-like-checked",
+      "kernel": "aes-like-aes",
       "statement": "Cryptificate.Refinement.offsetsOf Cryptificate.Refinement.aesOffsetBytes = Cryptificate.offsets4 0 1 2 3",
       "axioms": [
         "propext",
@@ -1003,7 +1058,7 @@
     {
       "theorem": "Cryptificate.Refinement.sboxOf_aesSboxBytes",
       "status": "proved",
-      "kernel": "aes-like-checked",
+      "kernel": "aes-like-aes",
       "statement": "Cryptificate.Refinement.sboxOf Cryptificate.Refinement.aesSboxBytes = AES.sbox",
       "axioms": [
         "propext",
@@ -1069,7 +1124,7 @@
     {
       "theorem": "Cryptificate.Refinement.aes_rust_activity_bound",
       "status": "proved",
-      "kernel": "aes-like-checked",
+      "kernel": "aes-like-aes",
       "statement": "∀ (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → ∀ r ≤ ks.length, ∀ (outX outY : ℕ → Aeneas.Std.Array Aeneas.Std.U8 16#usize), (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt x Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outX ↑n)) → (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt y Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outY ↑n)) → Cryptificate.activityBound r ≤ ∑ n ∈ Finset.range r, {p | Cryptificate.Refinement.stateOf (outX n) p + Cryptificate.Refinement.keysOf ks n p ≠ Cryptificate.Refinement.stateOf (outY n) p + Cryptificate.Refinement.keysOf ks n p}.card",
       "axioms": [
         "propext",
@@ -1138,7 +1193,7 @@
     {
       "theorem": "Cryptificate.Refinement.aes_rust_activity_bound_exists",
       "status": "proved",
-      "kernel": "aes-like-checked",
+      "kernel": "aes-like-aes",
       "statement": "∀ (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → ∀ r ≤ ks.length, ∃ outX outY, (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt x Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outX ↑n)) ∧ (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt y Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outY ↑n)) ∧ Cryptificate.activityBound r ≤ ∑ n ∈ Finset.range r, {p | Cryptificate.Refinement.stateOf (outX n) p + Cryptificate.Refinement.keysOf ks n p ≠ Cryptificate.Refinement.stateOf (outY n) p + Cryptificate.Refinement.keysOf ks n p}.card",
       "axioms": [
         "propext",
@@ -1207,7 +1262,7 @@
     {
       "theorem": "Cryptificate.Refinement.aes_rust_activity_bound_10",
       "status": "proved",
-      "kernel": "aes-like-checked",
+      "kernel": "aes-like-aes",
       "statement": "∀ (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → 10 ≤ ks.length → ∃ outX outY, (∀ (n : Aeneas.Std.Usize), ↑n < 10 → cryptificate_kernels.aes_like.encrypt x Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outX ↑n)) ∧ (∀ (n : Aeneas.Std.Usize), ↑n < 10 → cryptificate_kernels.aes_like.encrypt y Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outY ↑n)) ∧ 55 ≤ ∑ n ∈ Finset.range 10, {p | Cryptificate.Refinement.stateOf (outX n) p + Cryptificate.Refinement.keysOf ks n p ≠ Cryptificate.Refinement.stateOf (outY n) p + Cryptificate.Refinement.keysOf ks n p}.card",
       "axioms": [
         "propext",
@@ -1276,7 +1331,7 @@
     {
       "theorem": "Cryptificate.Refinement.aes_rust_activity_bound_4",
       "status": "proved",
-      "kernel": "aes-like-checked",
+      "kernel": "aes-like-aes",
       "statement": "∀ (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → 4 ≤ ks.length → ∃ outX outY, (∀ (n : Aeneas.Std.Usize), ↑n < 4 → cryptificate_kernels.aes_like.encrypt x Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outX ↑n)) ∧ (∀ (n : Aeneas.Std.Usize), ↑n < 4 → cryptificate_kernels.aes_like.encrypt y Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outY ↑n)) ∧ 25 ≤ ∑ n ∈ Finset.range 4, {p | Cryptificate.Refinement.stateOf (outX n) p + Cryptificate.Refinement.keysOf ks n p ≠ Cryptificate.Refinement.stateOf (outY n) p + Cryptificate.Refinement.keysOf ks n p}.card",
       "axioms": [
         "propext",
