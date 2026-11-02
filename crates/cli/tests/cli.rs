@@ -39,12 +39,11 @@ fn run_in(dir: &Path, args: &[&str], input: &str, env: &[(&str, &str)]) -> Outpu
         cmd.env(k, v);
     }
     let mut child = cmd.spawn().expect("engine starts");
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(input.as_bytes())
-        .unwrap();
+    // An engine that rejects its arguments exits without reading the input,
+    // so the write may find the pipe already closed.
+    if let Err(e) = child.stdin.take().unwrap().write_all(input.as_bytes()) {
+        assert_eq!(e.kind(), std::io::ErrorKind::BrokenPipe, "{e}");
+    }
     let out = child.wait_with_output().unwrap();
     let stdout = String::from_utf8(out.stdout).unwrap();
     Output {
