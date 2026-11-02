@@ -21,6 +21,7 @@ import type {
   NotEstablishedReason,
   Witness,
 } from '@cryptificate/schema';
+import { sameType } from './acceptance.js';
 import type { ClaimVerdict, ExpectedTheorem } from './acceptance.js';
 import type { RefinementStatus } from './refinement.js';
 
@@ -62,6 +63,62 @@ function notEstablished(info: ClaimInfo, reason: NotEstablishedReason, note: str
   };
 }
 
+/**
+ * The statement a certificate proves for an S-box quality claim with this
+ * witness, as the Lean audit prints it; null for any other witness. The
+ * values shown with the claim are taken from the witness only when the
+ * accepted statement is exactly this one.
+ */
+export function sboxQualityStatement(w: Witness | null): string | null {
+  const byte = (h: string): number | null => (/^[0-9A-Fa-f]{2}$/.test(h) ? parseInt(h, 16) : null);
+  const gf = (n: number): string => `(Cryptificate.gf ${n})`;
+  if (w?.kind === 'sbox-differential') {
+    const [a, b] = [byte(w.inputDifference), byte(w.outputDifference)];
+    if (a === null || b === null) return null;
+    const u = w.uniformity;
+    return (
+      `Cryptificate.differentialUniformity CryptificateJob.candSboxTable = ${u} ∧ Cryptificate.gf ${a} ≠ 0 ∧ ` +
+      `diffCount CryptificateJob.candSboxTable ${gf(a)} ${gf(b)} = ${u}`
+    );
+  }
+  if (w?.kind === 'sbox-linearity') {
+    const [a, b] = [byte(w.inputMask), byte(w.outputMask)];
+    if (a === null || b === null) return null;
+    const l = w.linearity;
+    return (
+      `Cryptificate.linearity CryptificateJob.candSboxTable = ${l} ∧ Cryptificate.gf ${b} ≠ 0 ∧ ` +
+      `(Cryptificate.walsh CryptificateJob.candSboxTable ${gf(a)} ${gf(b)}).natAbs = ${l}`
+    );
+  }
+  return null;
+}
+
+/** Claims whose statement is an exact value, shown with its witness when proved. */
+const VALUE_CLAIMS: ReadonlySet<ClaimId> = new Set<ClaimId>(['sbox.differential', 'sbox.linearity']);
+
+/** Title and note of a proved S-box quality claim whose witness the statement repeats. */
+function valueClaimText(w: Witness): { title: string; note: string } | null {
+  if (w.kind === 'sbox-differential') {
+    return {
+      title: `Differential uniformity of the S-box table is ${w.uniformity}`,
+      note:
+        `No nonzero input difference and output difference occur together for more than ${w.uniformity} of the 256 inputs; ` +
+        `input difference ${w.inputDifference.toUpperCase()} gives output difference ${w.outputDifference.toUpperCase()} for exactly ${w.uniformity}. ` +
+        'This is a property of the table alone, not a bound on any trail or differential of the cipher.',
+    };
+  }
+  if (w.kind === 'sbox-linearity') {
+    return {
+      title: `Linearity of the S-box table is ${w.linearity}`,
+      note:
+        `No Walsh coefficient at a nonzero output mask exceeds ${w.linearity} in absolute value (nonlinearity ${128 - w.linearity / 2}); ` +
+        `the one at input mask ${w.inputMask.toUpperCase()} and output mask ${w.outputMask.toUpperCase()} reaches it. ` +
+        'This is a property of the table alone, not a bound on any linear trail or hull of the cipher.',
+    };
+  }
+  return null;
+}
+
 function leanClaim(info: ClaimInfo, verdict: ClaimVerdict, expect: ExpectedTheorem | undefined, witness: Witness | null, note: string): Claim {
   const label =
     verdict.status === 'refuted'
@@ -73,6 +130,14 @@ function leanClaim(info: ClaimInfo, verdict: ClaimVerdict, expect: ExpectedTheor
   if (verdict.audit) {
     evidence.type = verdict.audit.type;
     evidence.axioms = [...verdict.audit.axioms];
+  }
+  if (verdict.status === 'proved' && VALUE_CLAIMS.has(info.id) && verdict.audit) {
+    const w = expect?.witness ?? witness;
+    const statement = sboxQualityStatement(w);
+    const text = w && statement !== null && sameType(verdict.audit.type, statement) ? valueClaimText(w) : null;
+    if (w && text) {
+      return { id: info.id, chain: info.chain, title: text.title, status: 'proved', evidence, witness: w, note: `${note} ${text.note}` };
+    }
   }
   return {
     id: info.id,

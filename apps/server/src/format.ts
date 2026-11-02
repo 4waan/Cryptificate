@@ -71,6 +71,10 @@ function witnessText(c: Claim): string {
       return `S(${w.x1}) = S(${w.x2}) = ${w.y}`;
     case 'power-collision':
       return `${w.x1}^${w.exponent} = ${w.x2}^${w.exponent}${w.note ? ` (${w.note})` : ''}`;
+    case 'sbox-differential':
+      return `uniformity ${w.uniformity}, at input difference ${w.inputDifference} and output difference ${w.outputDifference}`;
+    case 'sbox-linearity':
+      return `linearity ${w.linearity}, at input mask ${w.inputMask} and output mask ${w.outputMask}`;
     default:
       return '';
   }

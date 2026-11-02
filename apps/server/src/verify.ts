@@ -55,6 +55,9 @@ export function extractBundle(bundlePath: string): { dir: string; files: string[
 }
 
 const RECHECKED = new Set(['matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'circuit.equivalence']);
+// The S-box quality claims are re-checked like the other design claims.
+RECHECKED.add('sbox.differential');
+RECHECKED.add('sbox.linearity');
 
 function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean): VerifyRow[] {
   const rows: VerifyRow[] = [];

@@ -45,6 +45,8 @@ test('story 1: AES with the known shared-sum circuit', { skip }, async () => {
   for (const id of ['matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'circuit.equivalence']) {
     assert.equal(status(r, id).status, 'proved', id);
   }
+  assert.equal(status(r, 'sbox.differential').title, 'Differential uniformity of the S-box table is 4');
+  assert.equal(status(r, 'sbox.linearity').title, 'Linearity of the S-box table is 32');
 });
 
 test('story 2: one wire goes wrong', { skip }, async () => {
