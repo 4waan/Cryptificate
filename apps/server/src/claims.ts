@@ -93,8 +93,11 @@ export function sboxQualityStatement(w: Witness | null): string | null {
   return null;
 }
 
-/** Claims whose statement is an exact value, shown with its witness when proved. */
-const VALUE_CLAIMS: ReadonlySet<ClaimId> = new Set<ClaimId>(['sbox.differential', 'sbox.linearity']);
+/**
+ * Claims whose statement is an exact value, shown with its witness when
+ * proved. `verify` compares their witnesses as well as their status.
+ */
+export const VALUE_CLAIMS: ReadonlySet<ClaimId> = new Set<ClaimId>(['sbox.differential', 'sbox.linearity']);
 
 /** Title and note of a proved S-box quality claim whose witness the statement repeats. */
 function valueClaimText(w: Witness): { title: string; note: string } | null {

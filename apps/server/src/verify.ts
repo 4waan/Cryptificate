@@ -11,7 +11,8 @@ import { validateAnalysisRequest, validateExperimentRequest } from '@cryptificat
 import type { AnalysisReport, AnalysisRequest, Claim, ExperimentReport, Report } from '@cryptificate/schema';
 import { runAnalysis, ANALYSIS_STEPS } from './analysis.js';
 import { checkCertificate } from './certificate.js';
-import { buildAnalysisClaims } from './claims.js';
+import { sameEcho } from './acceptance.js';
+import { buildAnalysisClaims, VALUE_CLAIMS } from './claims.js';
 import { JobContext } from './context.js';
 import type { PipelineEnv } from './context.js';
 import { readTarGz } from './tar.js';
@@ -54,20 +55,47 @@ export function extractBundle(bundlePath: string): { dir: string; files: string[
   return { dir, files: [...files.keys()].sort() };
 }
 
-const RECHECKED = new Set(['matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'circuit.equivalence']);
-// The S-box quality claims are re-checked like the other design claims.
-RECHECKED.add('sbox.differential');
-RECHECKED.add('sbox.linearity');
+const RECHECKED: ReadonlySet<string> = new Set([
+  'matrix.mds',
+  'offsets.dispersion',
+  'sbox.bijective',
+  'sbox.differential',
+  'sbox.linearity',
+  'activity.bound',
+  'external.mds',
+  'internal.invertible',
+  'activity.outer',
+  'circuit.equivalence',
+]);
+
+export interface CompareOptions {
+  /**
+   * The bundle records a Lean source digest and it differs from the digest of
+   * the certificate regenerated now, so the bundle was produced by a different
+   * engine or template set and may predate claims the installed engine adds.
+   */
+  olderCertificate?: boolean;
+}
+
+/** Value of a proved value claim as shown in a row: its status and witness. */
+function valueText(c: Claim): string {
+  const w = c.witness;
+  if (w?.kind === 'sbox-differential') return `${c.status} (uniformity ${w.uniformity} at ${w.inputDifference}/${w.outputDifference})`;
+  if (w?.kind === 'sbox-linearity') return `${c.status} (linearity ${w.linearity} at ${w.inputMask}/${w.outputMask})`;
+  return c.witness ? `${c.status} (witness)` : c.status;
+}
 
 /**
- * Claims added after bundles were first recorded. A bundle that lacks one
- * predates it, so the recomputed claim is reported as not recorded instead
- * of a mismatch; any other re-checked claim missing from a bundle is still a
- * mismatch.
+ * Compare recorded claims with the recomputed ones. A re-checked claim
+ * matches when its status is the same; a value claim (VALUE_CLAIMS) also
+ * needs the same witness, since its status alone does not carry the value.
+ *
+ * The value claims were added after bundles were first recorded. A bundle
+ * that lacks both of them and whose certificate differs from the regenerated
+ * one (`olderCertificate`) is reported as not recorded for them instead of a
+ * mismatch; any other missing re-checked claim is a mismatch.
  */
-const ADDED_AFTER_FIRST_BUNDLES = new Set(['sbox.differential', 'sbox.linearity']);
-
-export function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean): VerifyRow[] {
+export function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean, opts: CompareOptions = {}): VerifyRow[] {
   const rows: VerifyRow[] = [];
   for (const rc of recorded) {
     const now = recomputed.find((c) => c.id === rc.id);
@@ -83,12 +111,18 @@ export function compareClaims(subject: string, recorded: readonly Claim[], recom
       rows.push({ subject, claim: rc.id, recorded: rc.status, recomputed: 'missing', result: 'mismatch' });
       continue;
     }
+    if (VALUE_CLAIMS.has(rc.id)) {
+      const same = now.status === rc.status && sameEcho(rc.witness ?? null, now.witness ?? null);
+      rows.push({ subject, claim: rc.id, recorded: valueText(rc), recomputed: valueText(now), result: same ? 'match' : 'mismatch' });
+      continue;
+    }
     rows.push({ subject, claim: rc.id, recorded: rc.status, recomputed: now.status, result: now.status === rc.status ? 'match' : 'mismatch' });
   }
+  const predatesValueClaims = (opts.olderCertificate ?? false) && !recorded.some((r) => VALUE_CLAIMS.has(r.id));
   for (const c of recomputed) {
     if (!recorded.some((r) => r.id === c.id) && RECHECKED.has(c.id)) {
-      const result = ADDED_AFTER_FIRST_BUNDLES.has(c.id) ? 'not recorded' : 'mismatch';
-      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result });
+      const result = VALUE_CLAIMS.has(c.id) && predatesValueClaims ? 'not recorded' : 'mismatch';
+      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: VALUE_CLAIMS.has(c.id) ? valueText(c) : c.status, result });
     }
   }
   return rows;
@@ -114,10 +148,21 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
         const result = await runAnalysis(verifyEnv, ctx, v.value);
         const now = result.report as AnalysisReport | null;
         const recomputedDigest = now?.inputDigest ?? null;
-        let rows = compareClaims('design', (report as AnalysisReport).claims, now?.claims ?? [], opts.native ?? false);
+        const recordedSource = report.provenance.leanSourceSha256;
+        const recomputedSource = now?.provenance.leanSourceSha256;
+        const olderCertificate = recordedSource !== undefined && recomputedSource !== undefined && recordedSource !== recomputedSource;
+        let rows = compareClaims('design', (report as AnalysisReport).claims, now?.claims ?? [], opts.native ?? false, { olderCertificate });
         rows = rows.map((r) => ({ ...r, subject: r.claim.startsWith('circuit') || r.claim.startsWith('native') || r.claim.startsWith('rust') ? 'implementation' : 'design' }));
         if (recomputedDigest && recomputedDigest !== report.inputDigest) notes.push('The recomputed input digest differs from the recorded one.');
         if (result.state !== 'completed') notes.push(`The re-run ended with state ${result.state}.`);
+        const notRecorded = rows.filter((r) => r.result === 'not recorded').map((r) => r.claim);
+        if (notRecorded.length > 0) {
+          notes.push(
+            `The bundle does not record ${notRecorded.join(', ')}, which the installed engine produces. Its Lean certificate differs from the ` +
+              'regenerated one, as for a bundle recorded before these claims existed; the bundle is not signed, so verify cannot rule out ' +
+              'that they were removed from it.',
+          );
+        }
         notes.push('Timings in the bundle are historical and were not re-measured.');
         return finalize(report, recomputedDigest, rows, notes);
       }
