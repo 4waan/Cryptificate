@@ -319,6 +319,35 @@ test('report --format html renders experiment reports and bundles; other formats
   });
 });
 
+test('report --format html renders analysis and experiment bundles together, in input order', async () => {
+  await withFixture(async (fx) => {
+    const bundles = join(ROOT, 'examples', 'bundles');
+    mkdirSync(join(fx.root, 'evidence'));
+    for (const name of ['aes-wrong-wire', 'beat-the-reference', 'identity']) {
+      writeFileSync(join(fx.root, 'evidence', `${name}.tar.gz`), readFileSync(join(bundles, name, `${name}.tar.gz`)));
+    }
+    const r = await run(fx, ['report', 'evidence/*.tar.gz', '--format', 'html']);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stdout, /<title>Cryptificate evidence reports<\/title>/);
+    const order = ['aes-wrong-wire', 'beat-the-reference', 'identity'].map((n) => r.stdout.indexOf(`npx cryptificate verify evidence/${n}.tar.gz`));
+    assert.ok(order.every((i) => i > 0) && order[0]! < order[1]! && order[1]! < order[2]!, `in input order: ${order.join(', ')}`);
+    assert.ok(r.stdout.includes('<h1>Analysis ') && r.stdout.includes('<h1>Experiment '));
+    assert.ok(!r.stdout.includes('Inputs not read or not completed'));
+    // an unreadable input is listed on the page and exits 2; the others still render
+    writeFileSync(join(fx.root, 'evidence', 'broken.tar.gz'), 'not a bundle');
+    const broken = await run(fx, ['report', 'evidence/*.tar.gz', '--format', 'html']);
+    assert.equal(broken.code, 2);
+    assert.match(broken.stdout, /Inputs not read or not completed/);
+    assert.match(broken.stderr, /evidence\/broken\.tar\.gz: error:/);
+    assert.ok(broken.stdout.includes('npx cryptificate verify evidence/identity.tar.gz'));
+    // saved check results carry a policy and cannot share a page with experiments
+    writeFileSync(join(fx.root, 'check.json'), JSON.stringify({ format: 'cryptificate-check/v1', failOn: 'refuted', claims: null, results: [] }));
+    const saved = await run(fx, ['report', 'evidence/beat-the-reference.tar.gz', 'check.json', '--format', 'html']);
+    assert.equal(saved.code, 2);
+    assert.match(saved.stderr, /not with saved check or verify results/);
+  });
+});
+
 test('help and unknown commands', async () => {
   await withFixture(async (fx) => {
     const help = await run(fx, ['--help']);

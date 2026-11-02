@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { IMPLEMENTATION_CLAIMS, designClaimsFor, htmlDocument, htmlElement as h, htmlFragment, reportArticle, reportTitle } from '@cryptificate/schema';
-import type { AnalysisReport, Claim, ExecutionState, HtmlChild, HtmlToolchain } from '@cryptificate/schema';
+import type { AnalysisReport, Claim, ExecutionState, ExperimentReport, HtmlChild, HtmlToolchain } from '@cryptificate/schema';
 import { formatAnalysis, table, witnessText } from './format.js';
 import type { Style } from './format.js';
 import { locateJson, positionOf } from './json-locate.js';
@@ -777,6 +777,48 @@ export function checkToHtml(run: CheckRun, opts: HtmlOptions = {}): string {
     }));
   const one = run.results.length === 1 ? run.results[0]!.report : null;
   return htmlDocument(one ? reportTitle(one) : 'Cryptificate check', [run.failOn !== 'none' || !one ? gateHtml(run, lines) : null, ...articles]);
+}
+
+/** One input of a combined evidence report page, in the order given. */
+export type EvidenceInput =
+  | { kind: 'analysis'; entry: Pick<CheckEntry, 'input' | 'state' | 'report' | 'error'>; toolchain?: HtmlToolchain }
+  | { kind: 'experiment'; file: string; report: ExperimentReport; toolchain?: HtmlToolchain };
+
+/**
+ * Analysis and experiment reports as one HTML document, in input order and
+ * without a policy (`report --format html` when an experiment is among the
+ * inputs). An input that could not be read, or whose run did not complete,
+ * is listed first; a single readable input renders as its report alone.
+ * Exit 0 when every input was read and its run completed, 2 otherwise.
+ */
+export function evidenceToHtml(inputs: readonly EvidenceInput[]): { html: string; exitCode: number; problems: string[] } {
+  const problems: string[] = [];
+  const lines: HtmlChild[] = [];
+  const articles: HtmlChild[] = [];
+  const reports: (AnalysisReport | ExperimentReport)[] = [];
+  const problem = (file: string, why: string): void => {
+    problems.push(`${file}: ${why}`);
+    lines.push(htmlFragment(h('code', null, file), `: ${why}`));
+  };
+  for (const i of inputs) {
+    const file = i.kind === 'analysis' ? i.entry.input.file : i.file;
+    const report = i.kind === 'analysis' ? i.entry.report : i.report;
+    if (!report) {
+      problem(file, `error: ${(i.kind === 'analysis' ? i.entry.error : undefined) ?? 'not read'}`);
+      continue;
+    }
+    const state = i.kind === 'analysis' ? i.entry.state : (report.execution?.state ?? 'completed');
+    if (state !== 'completed') problem(file, `run ${state}`);
+    reports.push(report);
+    articles.push(reportArticle(report, { context: file, toolchain: i.toolchain ?? null, ...(/\.(tar\.gz|tgz)$/i.test(file) ? { bundleName: file } : {}) }));
+  }
+  const exitCode = problems.length ? exitCodeOf('error') : exitCodeOf('pass');
+  const one = inputs.length === 1 && reports.length === 1 ? reports[0]! : null;
+  const summary =
+    lines.length && !one
+      ? h('section', { class: 'gate', id: 'gate', 'aria-labelledby': 'gate-h' }, h('h2', { id: 'gate-h' }, 'Inputs not read or not completed'), h('ul', null, lines.map((l) => h('li', null, l))))
+      : null;
+  return { html: htmlDocument(one ? reportTitle(one) : 'Cryptificate evidence reports', [summary, ...articles]), exitCode, problems };
 }
 
 /** A `verify` result as one HTML document: the policy outcome and, per bundle, recorded against recomputed statuses. */

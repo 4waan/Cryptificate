@@ -8,7 +8,6 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
-import { htmlDocument, reportArticle, reportTitle } from '@cryptificate/schema';
 import type { AnalysisReport, AnalysisRequest, ExecutionState, ExperimentReport, ExperimentRequest, HtmlToolchain, ProgramTarget, Report } from '@cryptificate/schema';
 import { buildBundle } from './bundle.js';
 import { ANALYSIS_BUDGET_MS, ANALYSIS_STEPS, runAnalysis } from './analysis.js';
@@ -33,6 +32,7 @@ import {
   checkToText,
   evaluateCheckEntry,
   evaluateVerifyEntry,
+  evidenceToHtml,
   makeCheckRun,
   makeVerifyRun,
   toJson,
@@ -43,7 +43,7 @@ import {
   verifyToSarif,
   verifyToText,
 } from './report-formats.js';
-import type { CheckEntry, CheckInput, CheckRun, GateRun, HtmlOptions, VerifyEntry, VerifyRun } from './report-formats.js';
+import type { CheckEntry, CheckInput, CheckRun, EvidenceInput, GateRun, HtmlOptions, VerifyEntry, VerifyRun } from './report-formats.js';
 import { createApp } from './server.js';
 import { readTarGz } from './tar.js';
 import { readToolchain } from './toolchain.js';
@@ -65,8 +65,9 @@ Commands:
         Re-derive bundles' claims with the installed engine and Lean checker.
   report <result.json|report.json|bundle.tar.gz|glob>... [GATE OPTIONS]
         Render saved results (check or verify --format json output, a report.json or a
-        bundle) in another format, without running anything. With --format html, experiment
-        reports and bundles are accepted too.
+        bundle) in another format, without running anything. With --format html and no
+        --fail-on or --claims, experiment reports and bundles are accepted too, alone or
+        with analysis reports and bundles (not with saved check or verify results).
 
 Gate options (check, verify, report):
   --format text|json|sarif|junit|markdown|html   output format (default text); html is a
@@ -531,7 +532,7 @@ async function cmdReport(argv: string[], io: Io): Promise<number> {
   const gate = gateOptions(values);
   const files = expand(positionals, io, 'report needs at least one result file');
   const all = files.map((f) => loadSaved(f, io.cwd));
-  if (all.some((l) => l.kind === 'experiment')) return reportExperiments(all, gate, io);
+  if (all.some((l) => l.kind === 'experiment')) return reportEvidence(all, gate, io);
   const loaded = all as Exclude<Loaded, { kind: 'experiment' }>[];
   const kinds = new Set(loaded.map((l) => l.kind));
   if (kinds.size > 1) fail('report cannot mix verify results with check results, reports or bundles');
@@ -555,28 +556,32 @@ async function cmdReport(argv: string[], io: Io): Promise<number> {
 
 /**
  * Experiment reports render only as HTML evidence reports: the gate formats
- * and the policy describe analysis claims. Exit 0 when every experiment
- * completed, 2 otherwise.
+ * and the policy describe analysis claims. Analysis reports and bundles given
+ * alongside render on the same page, in input order; saved check or verify
+ * results, which carry a policy, cannot be mixed in. Exit 0 when every input
+ * was read and its run completed, 2 otherwise.
  */
-function reportExperiments(loaded: Loaded[], gate: GateOptions, io: Io): number {
-  const usage = 'report renders experiment reports only with --format html, one or more experiments at a time, and without --fail-on or --claims';
+function reportEvidence(loaded: Loaded[], gate: GateOptions, io: Io): number {
+  const usage =
+    'report renders experiment reports only with --format html and without --fail-on or --claims, alone or with analysis reports and bundles (not with saved check or verify results)';
   if (gate.format !== 'html' || gate.failOn !== undefined || gate.claims !== null) fail(usage);
-  const experiments = loaded.filter((l): l is Extract<Loaded, { kind: 'experiment' }> => l.kind === 'experiment');
-  if (experiments.length !== loaded.length) fail(usage);
-  const articles = experiments.map((l) =>
-    reportArticle(l.report, { context: l.file, toolchain: l.toolchain ?? null, ...(/\.(tar\.gz|tgz)$/i.test(l.file) ? { bundleName: l.file } : {}) }),
-  );
-  const title = experiments.length === 1 ? reportTitle(experiments[0]!.report) : 'Cryptificate experiments';
-  const doc = htmlDocument(title, articles);
+  const inputs: EvidenceInput[] = [];
+  for (const l of loaded) {
+    if (l.kind === 'experiment') inputs.push({ kind: 'experiment', file: l.file, report: l.report, ...(l.toolchain ? { toolchain: l.toolchain } : {}) });
+    else if (l.kind === 'check' && !l.recorded) for (const entry of l.entries) inputs.push({ kind: 'analysis', entry, ...(l.toolchain ? { toolchain: l.toolchain } : {}) });
+    else fail(usage);
+  }
+  const { html, exitCode, problems } = evidenceToHtml(inputs);
+  for (const p of problems) io.stderr.write(`cryptificate: ${p}\n`);
   if (gate.output) {
     const target = resolve(io.cwd, gate.output);
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, doc);
+    writeFileSync(target, html);
     io.stderr.write(`html: ${target}\n`);
   } else {
-    io.stdout.write(doc);
+    io.stdout.write(html);
   }
-  return experiments.every((l) => (l.report.execution?.state ?? 'completed') === 'completed') ? 0 : EXIT_ERROR;
+  return exitCode;
 }
 
 async function cmdServe(argv: string[]): Promise<number> {
