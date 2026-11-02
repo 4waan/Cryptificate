@@ -16,7 +16,7 @@ import { JobContext } from './context.js';
 import type { PipelineEnv } from './context.js';
 import { readTarGz } from './tar.js';
 
-export type MatchKind = 'match' | 'mismatch' | 'historical' | 'not re-checked';
+export type MatchKind = 'match' | 'mismatch' | 'historical' | 'not re-checked' | 'not recorded';
 
 export interface VerifyRow {
   subject: string;
@@ -59,7 +59,15 @@ const RECHECKED = new Set(['matrix.mds', 'offsets.dispersion', 'sbox.bijective',
 RECHECKED.add('sbox.differential');
 RECHECKED.add('sbox.linearity');
 
-function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean): VerifyRow[] {
+/**
+ * Claims added after bundles were first recorded. A bundle that lacks one
+ * predates it, so the recomputed claim is reported as not recorded instead
+ * of a mismatch; any other re-checked claim missing from a bundle is still a
+ * mismatch.
+ */
+const ADDED_AFTER_FIRST_BUNDLES = new Set(['sbox.differential', 'sbox.linearity']);
+
+export function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean): VerifyRow[] {
   const rows: VerifyRow[] = [];
   for (const rc of recorded) {
     const now = recomputed.find((c) => c.id === rc.id);
@@ -79,7 +87,8 @@ function compareClaims(subject: string, recorded: readonly Claim[], recomputed: 
   }
   for (const c of recomputed) {
     if (!recorded.some((r) => r.id === c.id) && RECHECKED.has(c.id)) {
-      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result: 'mismatch' });
+      const result = ADDED_AFTER_FIRST_BUNDLES.has(c.id) ? 'not recorded' : 'mismatch';
+      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result });
     }
   }
   return rows;
