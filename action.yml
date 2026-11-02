@@ -210,15 +210,17 @@ runs:
         [ -n "$INPUT_TARGET" ] && args+=(--target "$INPUT_TARGET")
         [ "$INPUT_STEP_SUMMARY" = "true" ] || args+=(--no-step-summary)
         [ "$INPUT_PROOF_CACHE" = "true" ] || args+=(--no-cache)
-        node "$cli" "${args[@]}"
-        code=$?
+        # Actions runs bash with -e: keep going when check exits 1 or 2.
+        code=0
+        node "$cli" "${args[@]}" || code=$?
         outcome=error
         [ "$code" -eq 0 ] && outcome=pass
         [ "$code" -eq 1 ] && outcome=policy-failure
         sarif=""
         if [ -f "$out/result.json" ]; then
-          node "$cli" report "$out/result.json" --format sarif --output "$out/cryptificate.sarif" --no-step-summary > /dev/null
-          node "$cli" report "$out/result.json" --format junit --output "$out/cryptificate.junit.xml" --no-step-summary > /dev/null
+          # report exits with the recorded policy's status; the files are written either way
+          node "$cli" report "$out/result.json" --format sarif --output "$out/cryptificate.sarif" --no-step-summary > /dev/null || true
+          node "$cli" report "$out/result.json" --format junit --output "$out/cryptificate.junit.xml" --no-step-summary > /dev/null || true
           [ -f "$out/cryptificate.sarif" ] && sarif="$out/cryptificate.sarif"
         fi
         {
