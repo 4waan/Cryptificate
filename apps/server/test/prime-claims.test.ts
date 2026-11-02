@@ -103,3 +103,14 @@ test('the echoed inputs of a prime-field design include its modulus', () => {
   // BN254 designs have no modulus member and echo none.
   assert.equal(derivedEcho({ design: design('poseidon2-bn254') })['candModulus'], undefined);
 });
+
+test('the modulus of a prime-field design is derived even when the design does not state it', () => {
+  // koalabear-t4.json names its field and has no modulus member; it is used here without
+  // normalization, which would fill the member in.
+  const raw = design('koalabear-t4');
+  assert.equal((raw as { modulus?: string }).modulus, undefined);
+  assert.equal(derivedEcho({ design: raw })['candModulus'], '2130706433');
+  // A custom prime with no modulus at all is refused rather than echoed without one.
+  const custom = { ...raw, field: 'prime' } as AnalysisRequest['design'];
+  assert.throws(() => derivedEcho({ design: custom }), /has no modulus/);
+});

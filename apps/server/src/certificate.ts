@@ -2,6 +2,7 @@
  * One certificate check: emit the Lean file from templates (engine), run the
  * Lean checker, and accept or reject each expected theorem.
  */
+import { PRIME_FIELD_PRESETS } from '@cryptificate/schema';
 import type { AnalysisRequest, ClaimId, NotEstablishedReason, Witness } from '@cryptificate/schema';
 import { acceptCertificate, parseLeanOutput, sameEcho } from './acceptance.js';
 import type { AcceptanceResult, ExpectedTheorem, LeanOutcome } from './acceptance.js';
@@ -75,8 +76,14 @@ export function derivedEcho(req: AnalysisRequest): Record<string, unknown> {
     // the S-box is echoed as its request spec: {"kind":"aes"} or {"kind":"table","table":[...]}
     out['candSboxTable'] = d.sbox.kind === 'aes' ? { kind: 'aes' } : { kind: 'table', table: d.sbox.table };
   } else {
-    // A prime-field design names its modulus; normalization always states it.
-    if (d.model === 'hades/prime/v1' && d.modulus !== undefined) out['candModulus'] = d.modulus;
+    if (d.model === 'hades/prime/v1') {
+      // The modulus gives every other prime-field claim its meaning, so it is always derived from
+      // the request, never taken from the engine's echo table. Normalization states it; a design
+      // that names a preset without stating it still gets the preset's modulus.
+      const modulus = d.modulus ?? PRIME_FIELD_PRESETS.find((f) => f.id === d.field)?.modulus;
+      if (modulus === undefined) throw new Error(`prime-field design over "${d.field}" has no modulus`);
+      out['candModulus'] = modulus;
+    }
     out['candExternal'] = d.external;
     out['candInternal'] = d.internal;
     out['candExponent'] = d.sbox.exponent;
