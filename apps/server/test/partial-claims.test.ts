@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { AnalysisRequest, Claim, ClaimId } from '@cryptificate/schema';
 import type { ClaimVerdict, ExpectedTheorem } from '../src/acceptance.js';
-import { buildAnalysisClaims } from '../src/claims.js';
+import { buildAnalysisClaims, checkedTotalWindow } from '../src/claims.js';
 import { compareClaims, predatesAddedClaims, recordedRevision } from '../src/verify.js';
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -41,14 +41,27 @@ const FULL_ROUNDS: Array<[ClaimId, string]> = [
   ['activity.outer', 'hades_activity'],
 ];
 
-test('reference parameters: charged windows and 34 active S-boxes over all rounds', () => {
-  const pairs: Array<[ClaimId, string]> = [...FULL_ROUNDS, ['activity.partial', 'partial_active'], ['activity.total', 'hades_total_activity']];
-  const claims = buildAnalysisClaims({
+/** The statement of `hades_total_activity` for window length `l`, as the template writes it. */
+function totalType(l: number): string {
+  const t = JSON.parse(readFileSync(`${root}lean/templates/hades_total_activity.json`, 'utf8')) as { expectedType: string };
+  return t.expectedType.replace('{{OBS_LENGTH}}', String(l));
+}
+
+/** The claims of the reference design with `activity.total` checked at window `checked`. */
+function referenceClaims(checked: number, diagnosed: number | null): Claim[] {
+  const pairs: Array<[ClaimId, string]> = [...FULL_ROUNDS, ['activity.partial', 'partial_active']];
+  const total = verdict('activity.total', 'hades_total_activity', 'proved');
+  total.audit = { ...total.audit!, type: totalType(checked) };
+  return buildAnalysisClaims({
     request: { design: design('poseidon2-bn254') },
-    expect: pairs.map(([c, t]) => expectation(c, t, 'proved')),
-    verdicts: pairs.map(([c, t]) => verdict(c, t, 'proved')),
-    diagnostics: { partial: { window: 3 } },
+    expect: [...pairs.map(([c, t]) => expectation(c, t, 'proved')), expectation('activity.total', 'hades_total_activity', 'proved')],
+    verdicts: [...pairs.map(([c, t]) => verdict(c, t, 'proved')), total],
+    diagnostics: { partial: { window: diagnosed } },
   });
+}
+
+test('reference parameters: charged windows and 34 active S-boxes over all rounds', () => {
+  const claims = referenceClaims(3, 3);
   const ids = claims.filter((c) => c.chain === 'design').map((c) => c.id);
   assert.deepEqual(ids, ['external.mds', 'internal.invertible', 'sbox.bijective', 'activity.outer', 'activity.partial', 'activity.total']);
   assert.equal(byId(claims, 'activity.partial').status, 'proved');
@@ -56,6 +69,22 @@ test('reference parameters: charged windows and 34 active S-boxes over all round
   const total = byId(claims, 'activity.total');
   assert.equal(total.status, 'proved');
   assert.equal(total.title, 'At least 34 active S-boxes over all 64 rounds');
+});
+
+test('the total bound in the title is the one Lean checked, not the unchecked window', () => {
+  assert.equal(checkedTotalWindow({ claim: 'activity.total', theorem: 't', status: 'proved', accepted: true, detail: '', audit: { theorem: 't', type: totalType(2), axioms: AXIOMS } }), 2);
+  // The diagnostics claim windows of two; Lean checked windows of three.
+  const disagree = byId(referenceClaims(3, 2), 'activity.total');
+  assert.equal(disagree.status, 'proved');
+  assert.equal(disagree.title, 'Active S-box bound over the whole permutation');
+  // No window in the diagnostics: the generic title as well.
+  assert.equal(byId(referenceClaims(3, null), 'activity.total').title, 'Active S-box bound over the whole permutation');
+  // An audited type without the window, or a verdict that was not accepted, names no bound.
+  const v: ClaimVerdict = { claim: 'activity.total', theorem: 't', status: 'proved', accepted: true, detail: '', audit: { theorem: 't', type: 'T', axioms: AXIOMS } };
+  assert.equal(checkedTotalWindow(v), null);
+  assert.equal(checkedTotalWindow({ ...v, audit: { ...v.audit!, type: totalType(3) }, accepted: false, status: 'not_established' }), null);
+  // Windows of two, checked and diagnosed: 16 + 28.
+  assert.equal(byId(referenceClaims(2, 2), 'activity.total').title, 'At least 44 active S-boxes over all 64 rounds');
 });
 
 test('a bypass refutes activity.partial with its witness and leaves the total bound unestablished', () => {

@@ -168,8 +168,7 @@ const ACTIVITY_PRECONDITIONS: Partial<Record<ClaimId, ClaimId[]>> = {
 
 /**
  * The window length `L` the (unchecked) diagnostics found for the partial
- * rounds: every `L` consecutive partial rounds activate an S-box. Lean
- * checks the claim that uses it; this only names the bound in the title.
+ * rounds: every `L` consecutive partial rounds activate an S-box.
  */
 function partialWindow(diagnostics: unknown): number | null {
   if (!diagnostics || typeof diagnostics !== 'object') return null;
@@ -179,7 +178,26 @@ function partialWindow(diagnostics: unknown): number | null {
   return typeof w === 'number' && Number.isInteger(w) && w > 0 ? w : null;
 }
 
-function activityTitle(req: AnalysisRequest, info: ClaimInfo, diagnostics: unknown): string {
+/**
+ * The window length `L` in the statement Lean accepted for `activity.total`,
+ * whose bound ends in `candPartialRounds / L`. `null` unless the verdict was
+ * accepted with an audited type that names exactly one such `L`.
+ */
+export function checkedTotalWindow(verdict: ClaimVerdict | undefined): number | null {
+  if (!verdict || !verdict.accepted || verdict.claim !== 'activity.total' || !verdict.audit) return null;
+  const found = [...verdict.audit.type.matchAll(/\bCryptificateJob\.candPartialRounds \/ (\d{1,4})(?!\d)/g)];
+  if (found.length !== 1) return null;
+  const w = Number(found[0]![1]);
+  return Number.isInteger(w) && w > 0 ? w : null;
+}
+
+/**
+ * The title of an activity claim. The bound in it comes from the request and,
+ * for `activity.total`, from the window length of the statement Lean checked;
+ * the unchecked diagnostics only have to agree with it, and the generic title
+ * is used otherwise.
+ */
+function activityTitle(req: AnalysisRequest, info: ClaimInfo, diagnostics: unknown, verdict: ClaimVerdict | undefined): string {
   const d = req.design;
   if (info.id === 'activity.bound' && d.model === 'aes-like/gf256/v1' && d.width === 4) {
     return `At least ${aesLikeActivityBound(d.rounds)} active S-boxes over ${d.rounds} rounds`;
@@ -188,10 +206,12 @@ function activityTitle(req: AnalysisRequest, info: ClaimInfo, diagnostics: unkno
     // Only the full rounds are charged; the partial rounds add nothing to the bound.
     return `At least ${hadesOuterActivityBound(d.fullRounds)} active S-boxes in the ${d.fullRounds} full rounds`;
   }
-  const window = partialWindow(diagnostics);
-  if (info.id === 'activity.total' && d.model === 'hades/bn254/v1' && window !== null) {
-    // The full rounds charge their bound; each disjoint window of partial rounds charges one.
-    return `At least ${hadesTotalActivityBound(d.fullRounds, d.partialRounds, window)} active S-boxes over all ${d.fullRounds + d.partialRounds} rounds`;
+  if (info.id === 'activity.total' && d.model === 'hades/bn254/v1') {
+    const window = checkedTotalWindow(verdict);
+    if (window !== null && window === partialWindow(diagnostics)) {
+      // The full rounds charge their bound; each disjoint window of partial rounds charges one.
+      return `At least ${hadesTotalActivityBound(d.fullRounds, d.partialRounds, window)} active S-boxes over all ${d.fullRounds + d.partialRounds} rounds`;
+    }
   }
   return info.title;
 }
@@ -245,7 +265,7 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
       continue;
     }
     if (pre) {
-      const title = activityTitle(request, info, diagnostics);
+      const title = activityTitle(request, info, diagnostics, byClaim.get(info.id));
       // The bound counts active S-boxes of trails; it only applies to this
       // design when its diffusion layer and S-box have been certified.
       const missing = pre.filter((p) => !isProved(p));
