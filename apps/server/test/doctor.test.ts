@@ -5,10 +5,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { DoctorCheck, DoctorProbes, DoctorReport } from '../src/doctor.js';
-import { MIN_NODE_MAJOR, workspaceVersion } from '../src/doctor.js';
+import { MIN_NODE_MAJOR, shellQuote, workspaceVersion } from '../src/doctor.js';
 import { Engine } from '../src/engine.js';
 import { makeFixture, runCli } from './helpers.js';
 import type { Fixture } from './helpers.js';
@@ -217,4 +218,13 @@ test('doctor usage errors, and the minimum Node.js version matches package.json'
   const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8')) as { engines: { node: string } };
   assert.equal(pkg.engines.node, `>=${MIN_NODE_MAJOR}`);
   assert.equal(workspaceVersion(fileURLToPath(new URL('../../../../', import.meta.url))), '0.1.0');
+});
+
+test('the paths in the fix commands are quoted for the shell', () => {
+  assert.equal(shellQuote('/home/me/Cryptificate/lean'), '/home/me/Cryptificate/lean');
+  for (const path of ['/home/me/My Projects/lean', "/tmp/it's here", '/tmp/a;b && c', '/tmp/$HOME `x`']) {
+    const quoted = shellQuote(path);
+    const r = spawnSync('bash', ['-c', `printf %s ${quoted}`], { encoding: 'utf8' });
+    assert.equal(r.stdout, path, quoted);
+  }
 });

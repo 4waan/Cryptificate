@@ -57,6 +57,11 @@ export const DEFAULT_SERVICE_URL = 'http://127.0.0.1:4173';
 const LAKE_CHECK_MS = 180_000;
 const SERVICE_MS = 2000;
 
+/** `s` as one POSIX shell word: unchanged when it holds only safe characters, else single-quoted. */
+export function shellQuote(s: string): string {
+  return /^[A-Za-z0-9_\/.,:@%+=-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
 export function findElan(): string | null {
   const onPath = which('elan');
   if (onPath) return onPath;
@@ -223,9 +228,9 @@ export async function runDoctor(env: PipelineEnv, probes: DoctorProbes): Promise
   add(
     mathlibOk
       ? { id: 'mathlib', title: 'Mathlib build', status: 'pass', detail: `Mathlib.olean present (${tc.pins.mathlib})` }
-      : { id: 'mathlib', title: 'Mathlib build', status: 'fail', detail: `no Mathlib.olean under ${join(leanDir, '.lake', 'packages', 'mathlib')}`, fix: `cd ${leanDir} && lake exe cache get` },
+      : { id: 'mathlib', title: 'Mathlib build', status: 'fail', detail: `no Mathlib.olean under ${join(leanDir, '.lake', 'packages', 'mathlib')}`, fix: `cd ${shellQuote(leanDir)} && lake exe cache get` },
   );
-  const leanBuildFix = `cd ${leanDir} && lake build Cryptificate`;
+  const leanBuildFix = `cd ${shellQuote(leanDir)} && lake build Cryptificate`;
   if (!env.lake || !toolchainOk || !mathlibOk) {
     const missing = [!env.lake ? 'lake' : null, !toolchainOk ? 'the pinned toolchain' : null, !mathlibOk ? 'the Mathlib build' : null].filter(Boolean).join(', ');
     add({ id: 'lean-build', title: 'Certificate library', status: 'skip', detail: `not checked: needs ${missing} first` });
@@ -247,7 +252,7 @@ export async function runDoctor(env: PipelineEnv, probes: DoctorProbes): Promise
   }
 
   // Engine
-  const engineFix = `cd ${root} && cargo build --release --locked --bin cryptificate-engine`;
+  const engineFix = `cd ${shellQuote(root)} && cargo build --release --locked --bin cryptificate-engine`;
   const expected = workspaceVersion(root);
   if (!env.engine.path) {
     add({ id: 'engine', title: 'Engine', status: 'fail', detail: 'cryptificate-engine was not found (CRYPTIFICATE_ENGINE, target/release, target/debug or PATH)', fix: engineFix });
@@ -342,7 +347,7 @@ export async function runDoctor(env: PipelineEnv, probes: DoctorProbes): Promise
       title: 'Local service',
       status: 'warn',
       detail: `${url} is not reachable (${reason(e)}); check, verify and report do not need it, the workbench and the Python client do`,
-      fix: `cryptificate serve, or npm start in ${root}`,
+      fix: `cryptificate serve, or cd ${shellQuote(root)} && npm start`,
     });
   }
 
