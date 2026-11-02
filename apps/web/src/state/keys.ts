@@ -7,6 +7,7 @@ import {
   inputProblems,
   redo,
   runIsActive,
+  runNoun,
   setOverlay,
   startRun,
   stopRun,
@@ -54,7 +55,7 @@ export function handleAppKey(e: KeyEventLike, focused: TargetLike | null, go: (v
     if (key) {
       e.preventDefault();
       void stopRun(key);
-      announce('Stopping the running job.');
+      announce(`Stopping ${runNoun(s.runs[key]!)}.`);
     }
     return;
   }

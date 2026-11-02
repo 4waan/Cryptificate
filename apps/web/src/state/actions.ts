@@ -478,10 +478,26 @@ export function canCheck(s: AppState = getState()): boolean {
   return !(prev && runIsActive(prev) && !isStale(inputs, prev.inputs));
 }
 
-/** The run Escape and the Stop command act on: the running analysis, else the running experiment. */
+/**
+ * The run Escape and the Stop command act on: the running job the current
+ * view shows first (the experiment on Experiments, the check in the
+ * workspace, the story's own runs in the story), else any other running job.
+ */
 export function activeRunKey(s: AppState = getState()): string | undefined {
-  const keys = [s.current.analysis, s.current.experiment, ...Object.values(s.story.runs)];
+  const story = Object.values(s.story.runs);
+  const { analysis, experiment } = s.current;
+  const keys =
+    s.view === 'experiments'
+      ? [experiment, analysis, ...story]
+      : s.view === 'story'
+        ? [...story, analysis, experiment]
+        : [analysis, experiment, ...story];
   return keys.find((k) => k !== undefined && runIsActive(s.runs[k]));
+}
+
+/** The running job Escape would stop, in words: "the check" or "the experiment". */
+export function runNoun(run: Pick<Run, 'kind'>): string {
+  return run.kind === 'analysis' ? 'the check' : 'the experiment';
 }
 
 /* ---------------- connection ---------------- */

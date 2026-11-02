@@ -36,6 +36,23 @@ describe('command palette commands', () => {
     expect(byId('export.share').disabled).toMatch(/Fix the input problems/);
   });
 
+  it('names the job Stop acts on, following the view', () => {
+    const run = (key: string, kind: 'analysis' | 'experiment') => ({
+      key,
+      kind,
+      inputs: { design: getState().design },
+      source: 'live' as const,
+      state: 'running' as const,
+      steps: [],
+      report: null,
+    });
+    setState({ runs: { a: run('a', 'analysis'), x: run('x', 'experiment') }, current: { analysis: 'a', experiment: 'x' } });
+    const stop = () => appCommands(getState(), ctx).find((c) => c.id === 'run.stop')!;
+    expect(stop().label).toBe('Stop the check');
+    setState({ view: 'experiments' });
+    expect(stop().label).toBe('Stop the experiment');
+  });
+
   it('lists every shortcut it handles', () => {
     const text = JSON.stringify(shortcutRows('Ctrl'));
     for (const k of ['Enter', 'Esc', 'K', '?', 'Z']) expect(text).toContain(`"${k}"`);

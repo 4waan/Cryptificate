@@ -16,6 +16,7 @@ import {
   setPrefs,
   setStoryStep,
   startRun,
+  runNoun,
   stopRun,
   undo,
 } from '../state/actions';
@@ -217,8 +218,8 @@ export function appCommands(s: AppState, ctx: { setTheme(t: Theme): void; mod: s
     {
       id: 'run.stop',
       group: 'Run',
-      label: 'Stop the running job',
-      keywords: 'cancel abort',
+      label: running ? `Stop ${runNoun(s.runs[running]!)}` : 'Stop the running job',
+      keywords: 'cancel abort running job',
       shortcut: 'Esc',
       disabled: running ? undefined : 'Nothing is running.',
       run: () => {

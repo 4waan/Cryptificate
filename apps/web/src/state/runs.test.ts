@@ -14,7 +14,7 @@ vi.mock('../data/api', async (importOriginal) => {
 });
 
 const { ApiError } = await import('../data/api');
-const { autoView, checkNow, reconnectDelayMs, startRun, stopRun, retryNow, setDesign } = await import('./actions');
+const { activeRunKey, autoView, checkNow, reconnectDelayMs, runNoun, startRun, stopRun, retryNow, setDesign } = await import('./actions');
 const { getState, initialState, setState } = await import('./store');
 
 const caps = { version: '0.4.0', limits: { maxQueued: 2, analysisBudgetSeconds: 90 }, profiles: [] } as unknown as Capabilities;
@@ -105,6 +105,44 @@ describe('live runs against a busy service', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(api.stopJob).toHaveBeenCalledWith('j1');
     expect(getState().current.analysis).toBe(second);
+  });
+});
+
+describe('which job Escape stops', () => {
+  const run = (key: string, kind: 'analysis' | 'experiment', state: 'running' | 'completed' = 'running') => ({
+    key,
+    kind,
+    inputs: { design: getState().design },
+    source: 'live' as const,
+    state,
+    steps: [],
+    report: null,
+  });
+  beforeEach(() =>
+    setState({
+      ...initialState(),
+      runs: { a: run('a', 'analysis'), x: run('x', 'experiment'), s: run('s', 'analysis') },
+      current: { analysis: 'a', experiment: 'x' },
+      story: { ...initialState().story, runs: { step2: 's' } },
+    }),
+  );
+
+  it('prefers the job the current view shows', () => {
+    setState({ view: 'workspace' });
+    expect(activeRunKey()).toBe('a');
+    setState({ view: 'experiments' });
+    expect(activeRunKey()).toBe('x');
+    setState({ view: 'story' });
+    expect(activeRunKey()).toBe('s');
+  });
+
+  it('falls back to another running job, and names it', () => {
+    setState((s) => ({ view: 'experiments', runs: { ...s.runs, x: run('x', 'experiment', 'completed') } }));
+    expect(activeRunKey()).toBe('a');
+    expect(runNoun(getState().runs.a!)).toBe('the check');
+    expect(runNoun(getState().runs.x!)).toBe('the experiment');
+    setState((s) => ({ runs: { ...s.runs, a: run('a', 'analysis', 'completed'), s: run('s', 'analysis', 'completed') } }));
+    expect(activeRunKey()).toBeUndefined();
   });
 });
 
