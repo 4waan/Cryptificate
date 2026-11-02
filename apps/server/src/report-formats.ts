@@ -16,7 +16,7 @@ import { formatAnalysis, table, witnessText } from './format.js';
 import type { Style } from './format.js';
 import { locateJson, positionOf } from './json-locate.js';
 import type { Position } from './json-locate.js';
-import { UNAVAILABLE_REASONS, exitCodeOf, inScope, unavailable, violates, combine } from './policy.js';
+import { UNAVAILABLE_REASONS, absentClaims, exitCodeOf, inScope, unavailable, violates, combine } from './policy.js';
 import type { FailOn, Outcome } from './policy.js';
 import type { VerifyResult, VerifyRow } from './verify.js';
 
@@ -50,6 +50,8 @@ export interface CheckEntry {
   violations: string[];
   /** Ids of in-scope claims that a missing tool left unchecked (counted only under a policy). */
   unavailable: string[];
+  /** --claims ids the report does not carry (counted only under a policy). */
+  absent?: string[];
 }
 
 export interface CheckRun {
@@ -104,10 +106,11 @@ export function evaluateCheckEntry(
   const scoped = e.report.claims.filter((c) => inScope(c, only));
   const violations = scoped.filter((c) => violates(c.status, failOn)).map((c) => c.id);
   const missing = failOn === 'none' ? [] : scoped.filter(unavailable).map((c) => c.id);
+  const absent = failOn === 'none' ? [] : absentClaims(only, e.report.claims.map((c) => c.id));
   let outcome: Outcome = 'pass';
-  if (e.state !== 'completed' || missing.length > 0) outcome = 'error';
+  if (e.state !== 'completed' || missing.length > 0 || absent.length > 0) outcome = 'error';
   else if (violations.length > 0) outcome = 'policy-failure';
-  return { ...base, outcome, violations, unavailable: missing };
+  return { ...base, outcome, violations, unavailable: missing, ...(absent.length > 0 ? { absent } : {}) };
 }
 
 export function makeCheckRun(entries: CheckEntry[], failOn: FailOn, only: ReadonlySet<string> | null): CheckRun {
@@ -135,13 +138,18 @@ function rowInScope(r: VerifyRow, only: ReadonlySet<string> | null): boolean {
   return rechecked(r) && r.reason !== 'not-run';
 }
 
+function absentText(ids: readonly string[]): string {
+  return `requested claim${ids.length > 1 ? 's' : ''} ${ids.join(', ')}`;
+}
+
 /**
  * Evaluate one verified bundle. The policy only ever reads recomputed
  * statuses: a status the bundle records about itself is never gated on.
  *   error           the bundle could not be read; the re-run did not complete;
  *                   nothing could be re-checked; a missing tool decided a
  *                   mismatch, or (under a policy) an in-scope status; or
- *                   (under a policy) an in-scope claim verify cannot re-check;
+ *                   (under a policy) an in-scope claim verify cannot re-check
+ *                   or a --claims id the bundle does not carry;
  *   policy-failure  a re-checked claim differs from the bundle, the digest
  *                   differs, or an in-scope recomputed status violates the policy;
  *   pass            otherwise.
@@ -151,6 +159,8 @@ export function evaluateVerifyEntry(e: { bundle: string; result: VerifyResult | 
   if (!e.result) return { ...base, outcome: 'error', violations: [], problems: [] };
   const r = e.result;
   const problems: string[] = [];
+  const absent = failOn === 'none' ? [] : absentClaims(only, r.rows.map((row) => row.claim));
+  if (absent.length > 0) problems.push(`${absentText(absent)} not in the bundle`);
   if (r.state !== 'completed') problems.push(`the re-run ended with state ${r.state ?? 'unknown'}`);
   if (!r.rows.some(rechecked)) problems.push('no claim could be re-checked');
   for (const row of r.rows) {
@@ -286,12 +296,20 @@ export function checkToText(run: CheckRun, style: Style): string {
   return out;
 }
 
+/** Why a completed check input is an error under the policy. */
+function checkProblems(e: CheckEntry): string[] {
+  const out: string[] = [];
+  if (e.absent && e.absent.length > 0) out.push(`${absentText(e.absent)} not in this report`);
+  if (e.unavailable.length > 0) out.push(`${e.unavailable.join(', ')} could not be checked (a tool was unavailable)`);
+  return out;
+}
+
 function gateSummaryText(run: GateRun, style: Style): string {
   const lines = [`${style.bold('Policy')} ${policyText(run)}: ${style.status(run.outcome === 'pass' ? 'proved' : run.outcome === 'error' ? 'invalid' : 'refuted', outcomeText(run))} (exit ${run.exitCode})`];
   if (run.command === 'check') {
     for (const e of run.results) {
       if (e.outcome === 'error') {
-        const why = e.error ?? (e.state !== 'completed' ? `run ${e.state}` : `${e.unavailable.join(', ')} could not be checked (a tool was unavailable)`);
+        const why = e.error ?? (e.state !== 'completed' ? `run ${e.state}` : checkProblems(e).join('; '));
         lines.push(`  ${e.input.file}: error: ${why}`);
       } else if (e.violations.length > 0) {
         const byId = new Map(e.report?.claims.map((c) => [c.id, c.status]) ?? []);
@@ -374,6 +392,9 @@ export function checkToMarkdown(run: CheckRun): string {
     const r = e.report;
     const origin = r.provenance.origin === 'cached' ? `cached exact result${r.provenance.cachedFrom ? ` of run ${mdCode(r.provenance.cachedFrom)}` : ''}` : r.provenance.origin;
     out.push(`Run ${r.execution.state}, ${origin}. Inputs ${mdCode(r.inputDigest)}. Checker ${mdCode(r.provenance.checker)}, Lean ${mdCode(r.provenance.toolchain.lean)}.`, '');
+    if (e.outcome === 'error' && e.state === 'completed' && e.absent && e.absent.length > 0) {
+      out.push(`Error: requested ${e.absent.map(mdCode).join(', ')} not in this report.`, '');
+    }
     if (e.outcome === 'error' && e.state === 'completed' && e.unavailable.length > 0) {
       out.push(`Error: ${e.unavailable.map(mdCode).join(', ')} could not be checked because a tool was unavailable.`, '');
     }
@@ -497,6 +518,10 @@ export function checkToJUnit(run: CheckRun): string {
       return { ...base, skipped: `${message}${scope}: ${c.note}` };
     });
     if (e.state !== 'completed') cases.push({ classname: 'cryptificate.run', name: 'run', file: e.input.file, error: { type: e.state, message: `run ${e.state}`, body: e.error ?? '' } });
+    if (e.absent && e.absent.length > 0) {
+      const message = `${absentText(e.absent)} not in this report`;
+      cases.push({ classname: 'cryptificate.policy', name: 'claims', file: e.input.file, error: { type: 'absent-claim', message, body: message } });
+    }
     return { name: e.input.file, props, cases };
   });
   return junitDocument('cryptificate check', suites);
@@ -610,6 +635,9 @@ export function checkToSarif(run: CheckRun, opts: SarifOptions): Record<string, 
     }
     if (e.state !== 'completed') {
       notifications.push({ level: 'error', message: { text: `${e.input.file}: run ${e.state}${e.error ? `: ${e.error}` : ''}` } });
+    }
+    if (e.absent && e.absent.length > 0) {
+      notifications.push({ level: 'error', message: { text: `${e.input.file}: ${absentText(e.absent)} not in this report` }, locations: [{ physicalLocation: { artifactLocation: { uri: artifactUri(e.input.file, opts.cwd) } } }] });
     }
     version ??= driverVersion(e.report.provenance.checker);
     for (const c of e.report.claims) {

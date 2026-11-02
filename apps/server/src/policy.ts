@@ -8,10 +8,12 @@
  *   2  usage error, unreadable or invalid input, or a run that did not complete
  *      (engine failure, Lean failure or timeout, cancellation), or, when a policy
  *      is set, an in-scope claim that could not be checked because the engine,
- *      Lean or the native toolchain was unavailable. 2 takes precedence over 1.
+ *      Lean or the native toolchain was unavailable, a --claims id the input
+ *      does not carry, or (verify) an in-scope claim verify cannot re-check.
+ *      2 takes precedence over 1.
  */
 import type { Claim, ClaimStatus, NotEstablishedReason } from '@cryptificate/schema';
-import { CLAIM_STATUSES } from '@cryptificate/schema';
+import { CLAIM_STATUSES, IMPLEMENTATION_CLAIMS, MODELS, designClaimsFor } from '@cryptificate/schema';
 
 export type FailOn = 'none' | 'refuted' | 'not-established' | 'any';
 
@@ -29,12 +31,30 @@ export function parseFailOn(value: string | undefined): FailOn {
   throw new UsageError(`--fail-on must be one of ${FAIL_ON.join(', ')} (got "${value}")`);
 }
 
-/** Claim ids given with --claims, or null for the default scope. */
+/** Every claim id a report can carry, over all design models. */
+export const KNOWN_CLAIM_IDS: ReadonlySet<string> = new Set([...MODELS.flatMap((m) => designClaimsFor(m).map((c) => c.id)), ...IMPLEMENTATION_CLAIMS.map((c) => c.id)]);
+
+/**
+ * Claim ids given with --claims, or null for the default scope. An id that
+ * no report can carry (a typo, or the wrong case) is a usage error, so a
+ * misspelt scope never passes vacuously.
+ */
 export function parseClaimList(values: readonly string[] | undefined): Set<string> | null {
   if (!values || values.length === 0) return null;
   const ids = values.flatMap((v) => v.split(',')).map((s) => s.trim()).filter(Boolean);
   if (ids.length === 0) return null;
+  const unknown = ids.filter((id) => !KNOWN_CLAIM_IDS.has(id));
+  if (unknown.length > 0) {
+    throw new UsageError(`--claims: unknown claim id${unknown.length > 1 ? 's' : ''} ${unknown.map((id) => `"${id}"`).join(', ')}; known ids are ${[...KNOWN_CLAIM_IDS].join(', ')}`);
+  }
   return new Set(ids);
+}
+
+/** Requested claim ids that an input does not carry at all. */
+export function absentClaims(only: ReadonlySet<string> | null, present: Iterable<string>): string[] {
+  if (!only) return [];
+  const have = new Set(present);
+  return [...only].filter((id) => !have.has(id));
 }
 
 /** Whether the policy rejects a claim with this status. */
@@ -54,7 +74,8 @@ export function violates(status: string, failOn: FailOn): boolean {
 }
 
 /**
- * Claims the policy applies to. With --claims, exactly those ids. Otherwise
+ * Claims the policy applies to. With --claims, exactly those ids (an input
+ * that lacks one of them is an error under a policy, not a pass). Otherwise
  * every claim except those the run did not attempt by design (reason
  * `not-run`: no circuit submitted, or timing, which only experiments measure).
  */

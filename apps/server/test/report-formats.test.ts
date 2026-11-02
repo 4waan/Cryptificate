@@ -16,7 +16,7 @@ import type { AnalysisReport } from '@cryptificate/schema';
 import type { Style } from '../src/format.js';
 import { expandGlob, expandInputs } from '../src/glob.js';
 import { locateJson, positionOf } from '../src/json-locate.js';
-import { parseFailOn, violates } from '../src/policy.js';
+import { KNOWN_CLAIM_IDS, parseClaimList, parseFailOn, violates } from '../src/policy.js';
 import type { FailOn } from '../src/policy.js';
 import {
   artifactUri,
@@ -359,6 +359,31 @@ test('verify outcomes: a re-run that did not complete or lacked a tool is an err
   const nothing: VerifyResult = { ...okResult, ok: false, rows: okResult.rows.filter((r) => r.result !== 'match') };
   assert.equal(ev(nothing, 'none').outcome, 'error');
   assert.deepEqual(ev(nothing, 'none').problems, ['no claim could be re-checked']);
+});
+
+test('--claims: unknown ids are usage errors; an id an input does not carry is an error under a policy', () => {
+  assert.deepEqual([...parseClaimList(['matrix.mds,offsets.dispersion', ' external.mds '])!], ['matrix.mds', 'offsets.dispersion', 'external.mds']);
+  assert.equal(parseClaimList(undefined), null);
+  assert.equal(parseClaimList([' , ']), null);
+  for (const typo of ['matrix.mdss', 'MATRIX.MDS', 'mds']) assert.throws(() => parseClaimList(['offsets.dispersion', typo]), new RegExp(`unknown claim id "${typo.replace(/\./g, '\\.')}"`));
+  for (const id of ['matrix.mds', 'external.mds', 'internal.invertible', 'activity.outer', 'circuit.equivalence', 'native.correctness', 'native.timing', 'rust.refinement']) assert.ok(KNOWN_CLAIM_IDS.has(id), id);
+  // a gate across AES-like and HADES designs on matrix.mds: the Poseidon2 report has external.mds instead
+  const mixed = checkRun(['aes-wrong-wire', 'poseidon2-exponent3'], 'refuted', false, new Set(['matrix.mds']));
+  assert.equal(mixed.exitCode, 2);
+  assert.deepEqual(mixed.results.map((e) => [e.outcome, e.absent]), [
+    ['pass', undefined],
+    ['error', ['matrix.mds']],
+  ]);
+  assert.match(checkToText(mixed, PLAIN), /poseidon2-exponent3\/report\.json: error: requested claim matrix\.mds not in this report/);
+  assert.match(checkToMarkdown(mixed), /Error: requested `matrix\.mds` not in this report\./);
+  assert.match(checkToJUnit(mixed), /<error type="absent-claim" message="requested claim matrix\.mds not in this report"/);
+  // without a policy, --claims gates nothing and an absent id is not an error
+  assert.equal(checkRun(['poseidon2-exponent3'], 'none', false, new Set(['matrix.mds'])).exitCode, 0);
+  // verify: the same rule for bundles
+  const okResult: VerifyResult = { ...VERIFY_RESULT, ok: true, rows: VERIFY_RESULT.rows.filter((r) => r.result !== 'mismatch') };
+  const absent = evaluateVerifyEntry({ bundle: 'b', result: okResult }, 'refuted', new Set(['offsets.dispersion', 'external.mds']));
+  assert.equal(absent.outcome, 'error');
+  assert.deepEqual(absent.problems, ['requested claim external.mds not in the bundle']);
 });
 
 test('fail-on values', () => {

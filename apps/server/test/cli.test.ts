@@ -186,6 +186,13 @@ test('check --format json is a self-describing result that report renders again 
     const relaxed = await run(noTools, ['report', 'result.json', '--fail-on', 'none', '--format', 'markdown']);
     assert.equal(relaxed.code, 0);
     assert.match(relaxed.stdout, /\*\*Result: completed\*\*/);
+    // a misspelt --claims id is a usage error, never a vacuous pass
+    for (const typo of ['matrix.mdss', 'MATRIX.MDS']) {
+      const r = await run(noTools, ['report', 'result.json', '--fail-on', 'refuted', '--claims', typo]);
+      assert.equal(r.code, 2, typo);
+      assert.match(r.stderr, new RegExp(`--claims: unknown claim id "${typo.replace('.', '\\.')}"`));
+    }
+    assert.equal((await run(fx, ['check', 'designs/aes.json', '-q', '--fail-on', 'refuted', '--claims', 'matrix.mds,offset.dispersion'])).code, 2);
     const unknown = await run(noTools, ['report', 'circuit.json']);
     assert.equal(unknown.code, 2);
     assert.match(unknown.stdout, /is not a check or verify result, an analysis report or a bundle/);
