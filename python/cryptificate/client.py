@@ -15,15 +15,36 @@ TERMINAL_STATES = ("completed", "failed", "timeout", "cancelled", "invalid")
 JsonDict = Dict[str, Any]
 
 
-class CryptificateError(Exception):
-    """An error response from the service, or a transport failure."""
+# Each operation of the HTTP API (schemas/openapi.json, operationId) and the
+# Client method that calls it. getWebUi serves the web workbench, not JSON.
+OPERATIONS = {
+    "getCapabilities": "capabilities",
+    "getOpenApi": "openapi",
+    "submitAnalysis": "analyze",
+    "submitExperiment": "experiment",
+    "getJob": "job",
+    "stopJob": "stop",
+    "getJobBundle": "bundle",
+}
 
-    def __init__(self, status: int, code: str, message: str, errors: Optional[list] = None):
+
+class CryptificateError(Exception):
+    """An error response from the service, or a transport failure.
+
+    `status` is the HTTP status (0 when the service could not be reached),
+    `code` the stable error code from the response body (for example
+    "invalid-request", "queue-full", "not-found", "not-ready"), `errors` the
+    list of {path, code, message} issues of a 400 invalid-request response, and
+    `retry_after` the Retry-After delay in seconds of a 429 response.
+    """
+
+    def __init__(self, status: int, code: str, message: str, errors: Optional[list] = None, retry_after: Optional[int] = None):
         super().__init__(f"{status} {code}: {message}")
         self.status = status
         self.code = code
         self.message = message
         self.errors = errors or []
+        self.retry_after = retry_after
 
 
 class Client:
@@ -61,7 +82,11 @@ class Client:
                 errors = doc.get("errors", [])
             except (ValueError, AttributeError):
                 pass
-            raise CryptificateError(e.code, code, str(message), errors) from None
+            retry_after = None
+            header = e.headers.get("Retry-After") if e.headers is not None else None
+            if header is not None and header.strip().isdigit():
+                retry_after = int(header.strip())
+            raise CryptificateError(e.code, code, str(message), errors, retry_after) from None
         except urllib.error.URLError as e:
             raise CryptificateError(0, "unreachable", f"cannot reach {self.base_url}: {e.reason}") from None
 
@@ -74,6 +99,10 @@ class Client:
     def capabilities(self) -> JsonDict:
         """Profiles, limits and toolchain availability of the service."""
         return self._json("GET", "/api/capabilities")
+
+    def openapi(self) -> JsonDict:
+        """The OpenAPI 3.1 description of the HTTP API, with the JSON Schemas embedded."""
+        return self._json("GET", "/api/openapi.json")
 
     def analyze(self, design: Mapping[str, Any], program: Optional[Mapping[str, Any]] = None, target: Optional[str] = None) -> JsonDict:
         """Submit an analysis; returns the job summary {id, kind, state, origin}."""
@@ -104,7 +133,8 @@ class Client:
         return self._json("GET", f"/api/jobs/{job_id}")
 
     def stop(self, job_id: str) -> JsonDict:
-        """Stop a job; completed checkpoints are kept."""
+        """Stop a job; completed checkpoints are kept. Returns the job summary at the
+        time of the call: a running job may still read "running" until it has stopped."""
         return self._json("POST", f"/api/jobs/{job_id}/stop", {})["job"]
 
     def wait(self, job_id: str, poll: float = 1.0, timeout: Optional[float] = None, on_progress=None) -> JsonDict:
@@ -121,7 +151,10 @@ class Client:
             time.sleep(poll)
 
     def bundle(self, job_id: str, path: Union[str, Path]) -> Path:
-        """Download the evidence bundle (.tar.gz) of a finished job to `path`."""
+        """Download the evidence bundle (.tar.gz) of a finished job to `path`.
+
+        Raises CryptificateError with status 409 (code "not-ready") while the job is
+        queued or running, or when it ended without a report or was invalid."""
         target = Path(path)
         with self._request("GET", f"/api/jobs/{job_id}/bundle") as res:
             data = res.read()
