@@ -15,7 +15,10 @@ Runs, inside containers of IMAGE, with the repository's examples/ mounted at
   5. `serve` with the default bind address: healthy inside the container,
      not reachable through the published port;
   6. `serve --host 0.0.0.0` published on 127.0.0.1: capabilities, the web UI,
-     an analysis through the Python client, and a cross-origin POST refused.
+     an analysis through the Python client, and a cross-origin POST refused;
+  7. `serve --host 0.0.0.0` on another port given with `-e PORT`: healthy, and
+     answering through that port; with `--port` alone, `serve` prints a note
+     that the health check polls PORT.
 
 Standard library only. Exit status 0 when every step passed.
 """
@@ -43,6 +46,7 @@ DOCKER = os.environ.get("DOCKER", "docker")
 PORT = 4173  # inside the container
 HOST_PORT = int(os.environ.get("SMOKE_HOST_PORT", "4173"))
 LOOPBACK_ONLY_HOST_PORT = int(os.environ.get("SMOKE_LOOPBACK_HOST_PORT", "4174"))
+OTHER_PORT = int(os.environ.get("SMOKE_OTHER_PORT", "4175"))  # same number inside and on the host
 
 DESIGN_CLAIMS = {
     "matrix.mds": "proved",
@@ -138,11 +142,15 @@ def wait_logs(name: str, needle: str, timeout: float = 20.0) -> str:
     return logs
 
 
-def start_service(image: str, name: str, host_port: int, *args: str) -> None:
+def start_service(image: str, name: str, host_port: int, *args: str, container_port: int = PORT, env: Optional[Dict[str, str]] = None) -> None:
+    env_args: List[str] = []
+    for key, value in (env or {}).items():
+        env_args += ["-e", f"{key}={value}"]
     docker(
         "run", "-d", "--name", name,
         "--health-interval", "2s", "--health-start-period", "120s",
-        "-p", f"127.0.0.1:{host_port}:{PORT}",
+        "-p", f"127.0.0.1:{host_port}:{container_port}",
+        *env_args,
         image, *args,
     )
 
@@ -238,6 +246,41 @@ def step_published(image: str) -> None:
         docker("rm", "-f", name, check=False, capture=True)
 
 
+def step_other_port(image: str) -> None:
+    name = "cryptificate-smoke-port"
+    flag_name = "cryptificate-smoke-port-flag"
+    for n in (name, flag_name):
+        docker("rm", "-f", n, check=False, capture=True)
+    try:
+        # -e PORT moves both the service and the health check.
+        start_service(
+            image, name, OTHER_PORT, "serve", "--host", "0.0.0.0",
+            container_port=OTHER_PORT, env={"PORT": str(OTHER_PORT)},
+        )
+        wait_healthy(name)
+        caps = Client(f"http://127.0.0.1:{OTHER_PORT}").capabilities()
+        expect(caps["toolchain"]["engine"].get("available") is True, f"capabilities on port {OTHER_PORT}: {caps['toolchain']}")
+        logs = wait_logs(name, "listening on")
+        expect(f"listening on http://0.0.0.0:{OTHER_PORT}" in logs, f"serve did not listen on port {OTHER_PORT}:\n{logs}")
+        expect("health check polls port" not in logs, f"serve warned about the health check although PORT was set:\n{logs}")
+        docker("rm", "-f", name, check=False, capture=True)
+
+        # --port alone leaves PORT, and so the health check, on the default port.
+        docker("run", "-d", "--name", flag_name, image, "serve", "--port", str(OTHER_PORT))
+        logs = wait_logs(flag_name, "listening on")
+        expect(
+            f"health check polls port {PORT} (the PORT variable), not {OTHER_PORT}" in logs,
+            f"serve --port printed no note about the health check:\n{logs}",
+        )
+    except Exception:
+        for n in (name, flag_name):
+            docker("logs", n, check=False)
+        raise
+    finally:
+        for n in (name, flag_name):
+            docker("rm", "-f", n, check=False, capture=True)
+
+
 def main(argv: List[str]) -> int:
     if len(argv) != 1 or argv[0].startswith("-"):
         print("usage: python3 scripts/docker-smoke.py IMAGE", file=sys.stderr)
@@ -250,6 +293,7 @@ def main(argv: List[str]) -> int:
         ("command line: check and verify", lambda: step_cli(image, out)),
         ("serve: loopback by default", lambda: step_loopback_default(image)),
         ("serve: published on 127.0.0.1", lambda: step_published(image)),
+        ("serve: another port set with PORT", lambda: step_other_port(image)),
     ]
     try:
         for title, fn in steps:
