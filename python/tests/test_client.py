@@ -50,6 +50,8 @@ class FakeService(BaseHTTPRequestHandler):
                 return self._send(404, {"error": {"code": "not-found", "message": "no such job"}})
             if len(parts) == 4 and parts[3] == "bundle":
                 return self._send(200, b"\x1f\x8bfake", "application/gzip")
+            if len(parts) == 4 and parts[3] == "report.html":
+                return self._send(200, b"<!DOCTYPE html>\n<title>report</title>", "text/html; charset=utf-8")
             job["polls"] += 1
             state = "completed" if job["polls"] >= 2 else "running"
             report = {
@@ -109,6 +111,8 @@ class ClientTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             out = self.client.bundle(job["id"], Path(d) / "b.tar.gz")
             self.assertEqual(out.read_bytes()[:2], b"\x1f\x8b")
+            page = self.client.report_html(job["id"], Path(d) / "report.html")
+            self.assertTrue(page.read_bytes().startswith(b"<!DOCTYPE html>"))
 
     def test_experiment_body(self):
         self.client.experiment(aes_like_design(), profile="research", seed="c0ffee")

@@ -15,6 +15,7 @@ final = client.wait(job["id"])
 for claim in final["report"]["claims"]:
     print(claim["id"], claim["status"], claim["evidence"]["label"])
 client.bundle(job["id"], "evidence.tar.gz")
+client.report_html(job["id"], "report.html")  # the bundle's printable HTML evidence report
 ```
 
 Command line (the service must be running):
