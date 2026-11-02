@@ -1,4 +1,4 @@
-import { describeWitness, formatElement, witnessHeading } from '../lib/witness';
+import { describeWitness, formatElement, signedDecimal, witnessHeading } from '../lib/witness';
 import type { FieldName, Witness } from '../lib/types';
 
 interface CellsProps {
@@ -139,6 +139,19 @@ function WitnessBody({ witness: w, field }: { witness: Witness; field: FieldName
           <span className="witness-label">Map</span>
           <span className="mono">
             x ↦ x^{w.exponent}, {w.note.replace(/omega/g, 'ω')}
+          </span>
+        </div>
+      );
+    case 'partial-bypass':
+      return (
+        <div className="witness-rows">
+          <span className="witness-label">Difference v</span>
+          <Cells field="bn254" values={w.difference} highlight={w.positions} highlightLabel="S-box position, zero" tone="accent" prefix="v" />
+          <span className="witness-label">Signed</span>
+          <span className="mono">[{w.difference.map(signedDecimal).join(', ')}]</span>
+          <span className="witness-label">Partial rounds</span>
+          <span className="mono">
+            {w.partialRounds}, S-box at {w.positions.map((i) => `x${i}`).join(', ')}
           </span>
         </div>
       );

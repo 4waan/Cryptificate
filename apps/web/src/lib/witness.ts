@@ -1,4 +1,4 @@
-import { abbreviateDecimal } from './bn254';
+import { abbreviateDecimal, BN254_P, isBnDecimal, parseBn } from './bn254';
 import { fieldOps } from './field';
 import type { FieldName, Witness } from './types';
 
@@ -11,6 +11,18 @@ export function formatElement(field: FieldName, value: string, abbreviate = fals
 
 export function formatList(field: FieldName, values: readonly string[], abbreviate = false): string {
   return `[${values.map((v) => formatElement(field, v, abbreviate)).join(', ')}]`;
+}
+
+/**
+ * A BN254 element as a small signed number when it is one, so that `p - 1`
+ * reads as `-1`; other elements are abbreviated.
+ */
+export function signedDecimal(text: string): string {
+  if (!isBnDecimal(text)) return text;
+  const x = parseBn(text);
+  const neg = BN254_P - x;
+  if (x !== 0n && neg < 1_000_000n) return `-${neg}`;
+  return abbreviateDecimal(x.toString());
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -54,6 +66,15 @@ export function describeWitness(w: Witness, field: FieldName): string {
         `x ↦ x^${w.exponent} sends ${abbreviateDecimal(w.x1)} and ω = ${abbreviateDecimal(w.x2)} to the same value ` +
         `(${w.note.replace(/omega/g, 'ω')}), so it is not a permutation of the field.`
       );
+    case 'partial-bypass': {
+      const at = w.positions.map((i) => `x${i}`);
+      return (
+        `Two states that differ by [${w.difference.map(signedDecimal).join(', ')}] when they enter the partial rounds ` +
+        `give equal inputs to the S-box${at.length === 1 ? '' : 'es'} at ${joinWords(at)} in all ${w.partialRounds} partial ` +
+        `${plural(w.partialRounds, 'round', 'rounds')}, whatever the round constants: every power of the internal matrix ` +
+        `keeps the difference at zero there, so no partial-round S-box is active.`
+      );
+    }
   }
 }
 
@@ -70,5 +91,7 @@ export function witnessHeading(w: Witness): string {
       return 'S-box collision';
     case 'power-collision':
       return 'Power map collision';
+    case 'partial-bypass':
+      return 'Partial-round bypass';
   }
 }

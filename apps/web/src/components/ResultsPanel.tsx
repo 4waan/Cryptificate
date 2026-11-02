@@ -21,6 +21,8 @@ const DESIGN_CLAIMS: Record<FieldName, { id: ClaimId; title: string }[]> = {
     { id: 'internal.invertible', title: 'Internal matrix is invertible' },
     { id: 'sbox.bijective', title: 'Power map is a permutation' },
     { id: 'activity.outer', title: 'Active S-box bound in full rounds' },
+    { id: 'activity.partial', title: 'No difference passes the partial rounds without an active S-box' },
+    { id: 'activity.total', title: 'Active S-box bound over the whole permutation' },
   ],
 };
 
@@ -50,6 +52,9 @@ function missingReason(id: ClaimId, inputs: WorkspaceInputs, experiment: Experim
     return 'Not part of this analysis. Run an experiment to compile, test and time generated Rust.';
   }
   if (id === 'rust.refinement') return 'This run did not include a Rust-source refinement result.';
+  if (id === 'activity.partial' || id === 'activity.total') {
+    return 'This report was recorded before the partial-round claims were added; check the design again to derive them.';
+  }
   return 'This run did not report this claim.';
 }
 
