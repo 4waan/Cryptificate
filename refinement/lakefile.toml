@@ -34,11 +34,14 @@ roots = ["Extracted.CryptificateKernels", "Extracted.Gf256Aes"]
 
 # The execution model of the main Lean package (`lean/Cryptificate/Bridge.lean`), compiled
 # here from the same source files so that the AES-like refinement is stated against those
-# definitions rather than a copy of them.
+# definitions rather than a copy of them. The per-design checks of the main package (canonical
+# minors, offsets, byte tables and the FIPS 197 S-box table) are compiled the same way, so that
+# `Refinement.AesConcrete` can discharge the design hypotheses for concrete byte arrays.
 [[lean_lib]]
 name = "CryptificateBridge"
 srcDir = "../lean"
-roots = ["Cryptificate.Bridge", "Cryptificate.Diffusion.Activity"]
+roots = ["Cryptificate.Bridge", "Cryptificate.Diffusion.Activity", "Cryptificate.Encoding",
+  "Cryptificate.Sbox", "Cryptificate.Diffusion.Minors4", "Cryptificate.Diffusion.Offsets"]
 
 # Refinement proofs relating the generated code to the WideTrail specification.
 [[lean_lib]]
