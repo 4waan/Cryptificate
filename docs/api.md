@@ -228,8 +228,8 @@ Every error is JSON, `{"error": {"code", "message"}}`, plus `errors` for 400
 | 400 | `bad-json` | the body is not JSON |
 | 400 | `invalid-request` | the body is not a request of the documented shape (`errors` lists each issue) |
 | 403 | `forbidden` | the request failed the Host or Origin check |
-| 404 | `not-found` | no such job, no such API path (GET or POST), or no `schemas/openapi.json` in this installation |
-| 405 | `method-not-allowed` | another method on an API path, or a method other than GET and HEAD on a non-API path |
+| 404 | `not-found` | no such job; a GET or POST under `/api/` that matches no route, including a documented path with the other method (`GET /api/analyses`, `POST /api/capabilities`); or no `schemas/openapi.json` in this installation |
+| 405 | `method-not-allowed` | any method other than GET and POST under `/api/` (PUT, DELETE, PATCH, OPTIONS, and HEAD even on a GET endpoint), or a method other than GET and HEAD outside `/api/`; no `Allow` header is sent |
 | 409 | `not-ready` | bundle requested before the job finished, or for a job without a report or with an invalid request |
 | 413 | `body-too-large` | the body exceeds 256 KiB (a client still uploading may see the connection reset instead) |
 | 415 | `unsupported-media-type` | the body is not `Content-Type: application/json` |

@@ -53,8 +53,9 @@ const MIME: Record<string, string> = {
 /**
  * Every API route the service answers. The handler dispatches through this
  * table, and schemas/openapi.json describes exactly these operations (a test
- * checks both directions). Any other path under /api/ answers 404 for GET and
- * POST and 405 for other methods.
+ * checks both directions). A request under /api/ that matches no route (an
+ * unknown path, or a listed path with another method) answers 404 for GET and
+ * POST and 405 for any other method, HEAD included; no Allow header is sent.
  */
 export const API_ROUTES = [
   { method: 'GET', path: '/api/capabilities', operationId: 'getCapabilities' },

@@ -335,16 +335,23 @@ test('openapi: live responses of the service conform to the description', async 
     conform('stopJob', await call(port, 'POST', `/api/jobs/${missing}/stop`));
     conform('getJobBundle', await call(port, 'GET', `/api/jobs/${missing}/bundle`));
 
-    // methods the description does not list are not served on described paths
+    // methods the description does not list are not served on described paths:
+    // GET and POST answer 404 (as for an unknown path), every other method 405,
+    // and no answer carries an Allow header (as the info description states)
     for (const [path, item] of Object.entries(paths)) {
       if (!path.startsWith('/api/')) continue;
       const concrete = path.replace('{id}', id);
-      for (const m of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']) {
+      for (const m of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']) {
         if (item[m.toLowerCase()]) continue;
         const r = await call(port, m, concrete, m === 'POST' || m === 'PUT' || m === 'PATCH' ? { body: '{}' } : {});
-        assert.ok(r.status === 404 || r.status === 405, `${m} ${path} answered ${r.status}`);
+        const want = m === 'GET' || m === 'POST' ? [404, 'not-found'] : [405, 'method-not-allowed'];
+        assert.equal(r.status, want[0], `${m} ${path}`);
+        assert.equal(r.headers['allow'], undefined, `${m} ${path}`);
+        if (m !== 'HEAD') assert.equal(JSON.parse(r.body.toString('utf8')).error.code, want[1], `${m} ${path}`);
       }
     }
+    const info = String((spec['info'] as Obj)['description']);
+    assert.ok(info.includes('404 `not-found` when its method is GET or POST, and 405 `method-not-allowed` for any other method'), 'the fallback rule is stated in info.description');
     assertExercised(seen, [
       'getCapabilities 200',
       'getCapabilities 403',
