@@ -4,6 +4,10 @@ import { ComputedMatrix, circuitFromDesign, generateCircuit } from '../component
 import { DesignEditor } from '../components/DesignEditor';
 import { IconCircuit, IconInfo, IconPlay, IconPlus, IconTrash, IconUndo, IconWarning } from '../components/icons';
 import { ImportExport } from '../components/ImportExport';
+import { LiveChecks, currentReport, previewItems } from '../components/LiveChecks';
+import { modLabel } from '../components/Overlays';
+import { AlertsMenu, AutoCheckSwitch } from '../components/RunControls';
+import { ServiceCard } from '../components/ServiceCard';
 import { ResultsPanel } from '../components/ResultsPanel';
 import { RunProgress, isActive } from '../components/RunProgress';
 import { WorkspaceToolbar } from '../components/WorkspaceToolbar';
@@ -11,9 +15,12 @@ import { findRecording } from '../data/replay';
 import { isStale, type WorkspaceInputs } from '../lib/canonical';
 import { matrixDiff } from '../lib/circuit';
 import { targetMatrix } from '../lib/design';
+import { useDebouncedValue } from '../lib/useDebounced';
 import { aesSharedSum, hadesSharedSum, identityProgram } from '../lib/presets';
 import type { ExperimentReport } from '../lib/types';
 import {
+  canCheck,
+  checkNow,
   clearNotice,
   dismissReplaced,
   inputProblems,
@@ -123,6 +130,10 @@ export function WorkspaceView() {
   const runs = useAppState((s) => s.runs);
   const current = useAppState((s) => s.current);
   const source = useAppState(dataSource);
+  const connection = useAppState((s) => s.connection);
+  const checkable = useAppState((s) => canCheck(s));
+  const showServiceCard =
+    connection.status === 'unreachable' || (connection.status === 'checking' && connection.message !== undefined);
 
   const inputs = useMemo(() => ({ design, program, target: program ? target : undefined }), [design, program, target]);
   const problems = useMemo(() => inputProblems(inputs), [inputs]);
@@ -148,6 +159,11 @@ export function WorkspaceView() {
   if (!searchNote && circuitDiffers) {
     searchNote = 'Your circuit does not compute the matrix, so the search starts from the matrix alone and leaves your circuit out of the comparison.';
   }
+  // Browser diagnostics, recomputed shortly after the inputs settle.
+  const settled = useDebouncedValue(inputs, 150);
+  const preview = useMemo(() => previewItems(settled), [settled]);
+  const leanReport = currentReport(analysis, inputs);
+  const mod = modLabel();
   const experimentReport =
     experiment?.report?.kind === 'experiment' && !isStale(inputs, experiment.inputs)
       ? (experiment.report as ExperimentReport)
@@ -156,12 +172,15 @@ export function WorkspaceView() {
   return (
     <div>
       <h1 className="visually-hidden">Workspace</h1>
+      {showServiceCard ? <ServiceCard connection={connection} /> : null}
       <div className="actionbar" role="region" aria-label="Run">
         <button
           type="button"
           className="btn btn-primary"
-          disabled={problems.length > 0 || isActive(analysis)}
-          onClick={() => startRun('analysis')}
+          disabled={!checkable}
+          onClick={() => checkNow()}
+          aria-keyshortcuts="Control+Enter Meta+Enter"
+          title={`${mod}+Enter`}
         >
           <IconPlay size={12} /> {source === 'live' ? 'Check design and circuit' : 'Show the check'}
         </button>
@@ -170,9 +189,13 @@ export function WorkspaceView() {
           className="btn"
           disabled={problems.length > 0 || isActive(experiment)}
           onClick={() => startRun('experiment', 'quick')}
+          aria-keyshortcuts="Control+Shift+Enter Meta+Shift+Enter"
+          title={`${mod}+Shift+Enter`}
         >
           {source === 'live' ? 'Run quick experiment' : 'Show the quick experiment'}
         </button>
+        <AutoCheckSwitch source={source} />
+        <AlertsMenu />
         {analysis?.report && !isActive(analysis) ? (
           <button
             type="button"
@@ -189,10 +212,9 @@ export function WorkspaceView() {
             </span>
           ) : busy ? (
             <RunProgress run={(isActive(analysis) ? analysis : experiment)!} compact />
-          ) : source === 'replay' ? null : (
-            <span className="muted">Runs on the local service; Lean and native timing happen on this machine.</span>
-          )}
+          ) : null}
         </div>
+        <LiveChecks items={preview} report={leanReport} problems={problems.length} />
       </div>
 
       <WorkspaceToolbar field={design.field} problems={problems.length} />
@@ -270,7 +292,7 @@ export function WorkspaceView() {
           <h2 id="results-heading">Results</h2>
           <span className="panel-sub">Design guarantees on the left, implementation correspondence on the right</span>
         </div>
-        <ResultsPanel run={analysis} inputs={inputs} experiment={experimentReport} />
+        <ResultsPanel run={analysis} inputs={inputs} experiment={experimentReport} preview={preview} source={source} />
       </section>
     </div>
   );

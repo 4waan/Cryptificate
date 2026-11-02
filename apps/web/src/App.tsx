@@ -1,9 +1,30 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Header, type DisplayOrigin } from './components/Header';
+import { CommandPalette, ShortcutsDialog } from './components/Overlays';
 import { isStale } from './lib/canonical';
 import { parseHash } from './lib/route';
-import { historyShortcut, keepsNativeUndo } from './lib/shortcuts';
-import { checkConnection, openShareLink, redo, setStoryStep, setView, undo } from './state/actions';
+import { appShortcut, historyShortcut, isTextField, keepsNativeUndo } from './lib/shortcuts';
+import { titleWithMark } from './lib/signals';
+import {
+  activeRunKey,
+  announce,
+  canCheck,
+  checkConnection,
+  checkNow,
+  inputProblems,
+  openShareLink,
+  redo,
+  restorePrefs,
+  runIsActive,
+  setOverlay,
+  setStoryStep,
+  setView,
+  startAutoCheck,
+  startRun,
+  stopRun,
+  undo,
+} from './state/actions';
+import { startSignals } from './state/signals';
 import {
   dataSource,
   getState,
@@ -14,6 +35,7 @@ import {
   type Run,
   type Theme,
   type View,
+  workspaceInputs,
 } from './state/store';
 import { ExperimentsView } from './views/ExperimentsView';
 import { StoryView } from './views/StoryView';
@@ -99,7 +121,51 @@ export function App() {
     sync();
     window.addEventListener('hashchange', sync);
     void checkConnection();
+    restorePrefs();
+    const stopSignals = startSignals();
+    const stopAuto = startAutoCheck();
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing) return;
+      const s = getState();
+      const shortcut = appShortcut(e, isTextField(document.activeElement as HTMLElement | null));
+      if (shortcut === 'palette') {
+        e.preventDefault();
+        setOverlay(s.overlay === 'palette' ? null : 'palette');
+        return;
+      }
+      // While a dialog is open it handles its own keys.
+      if (s.overlay) return;
+      if (shortcut === 'help') {
+        e.preventDefault();
+        setOverlay('help');
+        return;
+      }
+      if (shortcut === 'stop') {
+        const key = activeRunKey(s);
+        if (key) {
+          e.preventDefault();
+          void stopRun(key);
+          announce('Stopping the running job.');
+        }
+        return;
+      }
+      if (shortcut === 'check' || shortcut === 'experiment') {
+        if (s.view === 'story') return;
+        e.preventDefault();
+        if (inputProblems(workspaceInputs(s)).length) {
+          announce('Fix the input problems before checking.');
+          return;
+        }
+        if (shortcut === 'check') {
+          if (canCheck(s)) checkNow();
+          else announce('These inputs are being checked already.');
+        } else {
+          const ex = s.current.experiment ? s.runs[s.current.experiment] : undefined;
+          if (runIsActive(ex)) announce('An experiment is already running.');
+          else startRun('experiment', 'quick');
+        }
+        return;
+      }
       const history = historyShortcut(e);
       if (history && getState().view === 'workspace' && !keepsNativeUndo(document.activeElement as HTMLElement | null)) {
         e.preventDefault();
@@ -119,6 +185,8 @@ export function App() {
     return () => {
       window.removeEventListener('hashchange', sync);
       window.removeEventListener('keydown', onKey);
+      stopSignals();
+      stopAuto();
     };
   }, []);
 
@@ -130,9 +198,17 @@ export function App() {
     () => ({ story: 'Guided story', workspace: 'Workspace', experiments: 'Experiments' })[view],
     [view],
   );
+  const running = useAppState((s) => activeRunKey(s) !== undefined);
+  const attention = useAppState((s) => s.attention);
+  const overlay = useAppState((s) => s.overlay);
   useEffect(() => {
-    document.title = `${title} · Cryptificate`;
-  }, [title]);
+    document.title = titleWithMark(`${title} · Cryptificate`, running ? 'running' : attention);
+  }, [title, running, attention]);
+  const changeTheme = useCallback((t: Theme) => {
+    setState({ theme: t });
+    applyTheme(t);
+  }, []);
+  const closeOverlay = useCallback(() => setOverlay(null), []);
 
   return (
     <div className="app">
@@ -152,10 +228,7 @@ export function App() {
         stale={stale}
         connection={connection}
         theme={theme}
-        onTheme={(t) => {
-          setState({ theme: t });
-          applyTheme(t);
-        }}
+        onTheme={changeTheme}
       />
       <main id="main" className="main" tabIndex={-1} style={{ outline: 'none' }}>
         {view === 'story' ? <StoryView /> : null}
@@ -165,8 +238,13 @@ export function App() {
       <footer className="footer">
         Cryptificate checks circuits and diffusion claims with Lean on top of the WideTrail library, and measures
         generated Rust on your machine. Results describe the inputs shown; timings describe the machine that ran them.
-        {quiet ? <span> Native timing in progress: animations are paused.</span> : null}
+        {quiet ? <span> Native timing in progress: animations are paused.</span> : null}{' '}
+        <button type="button" className="linklike" onClick={() => setOverlay('help')} aria-keyshortcuts="?">
+          Keyboard shortcuts (?)
+        </button>
       </footer>
+      {overlay === 'help' ? <ShortcutsDialog onClose={closeOverlay} /> : null}
+      {overlay === 'palette' ? <CommandPalette onClose={closeOverlay} setTheme={changeTheme} /> : null}
     </div>
   );
 }
