@@ -66,7 +66,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -114,7 +114,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -173,7 +173,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -506,7 +506,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -556,7 +556,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -608,7 +608,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -660,7 +660,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -713,7 +713,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -763,7 +763,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -813,7 +813,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -865,7 +865,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -917,7 +917,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -971,7 +971,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1021,7 +1021,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1087,7 +1087,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1156,7 +1156,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1226,7 +1226,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1292,7 +1292,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1358,7 +1358,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1424,7 +1424,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1493,7 +1493,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1562,7 +1562,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1631,7 +1631,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1700,7 +1700,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1769,7 +1769,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -1838,7 +1838,7 @@
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "c6bb12469bd5318c471f034ef180901e7ee9890c6b08b135a5b9df43a9435763"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",

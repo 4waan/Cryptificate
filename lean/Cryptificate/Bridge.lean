@@ -192,7 +192,7 @@ theorem aesLikeCipherExec_of_lt (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → 
   induction n with
   | zero => rfl
   | succ n ih =>
-    simp only [aesLikeCipherExec, aesLikeCipherRound, if_pos h, ih (by omega), aesLikeExec_succ]
+    simp only [aesLikeCipherExec, aesLikeCipherRound, h, ↓reduceIte, ih (by omega), aesLikeExec_succ]
 
 /-- After its `r` rounds, the round-by-round execution is `aesLikeCipher`. -/
 theorem aesLikeCipherExec_self (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → Fin 4)
@@ -201,7 +201,7 @@ theorem aesLikeCipherExec_self (M : Matrix (Fin 4) (Fin 4) K) (off : Fin 4 → F
   cases r with
   | zero => rfl
   | succ n =>
-    simp only [aesLikeCipherExec, aesLikeCipherRound, lt_irrefl, if_false,
+    simp only [aesLikeCipherExec, aesLikeCipherRound, lt_self_iff_false, ↓reduceIte,
       aesLikeCipherExec_of_lt M off sbox keys x (Nat.lt_succ_self n), aesLikeCipher_succ]
 
 /-! ### Active S-boxes of an execution pair -/
