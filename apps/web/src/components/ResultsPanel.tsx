@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { isStale, normalizeAnalysisRequest, type WorkspaceInputs } from '../lib/canonical';
 import { downloadJson } from '../lib/download';
 import { previewDesign, previewEquivalence, type PreviewItem } from '../lib/preview';
+import { exportReport } from '../lib/report';
 import type { AnalysisReport, Claim, ClaimId, ExperimentReport, FieldName } from '../lib/types';
 import { startRun } from '../state/actions';
 import type { Run } from '../state/store';
@@ -186,6 +187,24 @@ export function ClaimChains({
   );
 }
 
+/**
+ * Downloads the self-contained HTML evidence report of a finished run: the
+ * page `--format html` writes and bundles carry as report.html.
+ */
+export function ExportReportButton({ report, run }: { report: AnalysisReport | ExperimentReport; run: Run }) {
+  if (isActive(run) || run.state === 'unavailable') return null;
+  return (
+    <button
+      type="button"
+      className="btn btn-sm"
+      onClick={() => exportReport(report, run)}
+      title="Download a self-contained HTML report of this run, printable to PDF"
+    >
+      <IconDownload size={12} /> Export report
+    </button>
+  );
+}
+
 /** Who checked the result and with which pinned toolchain, plus the evidence bundle. */
 export function ProvenanceLine({ report, run }: { report: AnalysisReport | ExperimentReport; run: Run }) {
   const p = report.provenance;
@@ -210,6 +229,7 @@ export function ProvenanceLine({ report, run }: { report: AnalysisReport | Exper
           <IconDownload size={12} /> Evidence bundle
         </a>
       ) : null}
+      <ExportReportButton report={report} run={run} />
     </p>
   );
 }
