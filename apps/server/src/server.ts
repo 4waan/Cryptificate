@@ -30,6 +30,47 @@ export interface ServerOptions {
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
 
+/** Bind addresses that keep the service on the loopback interface. */
+export const LOOPBACK_BIND_ADDRESSES: readonly string[] = ['127.0.0.1', 'localhost', '::1'];
+
+/**
+ * The address `serve` binds: `--host` when given, else `CRYPTIFICATE_HOST`,
+ * else 127.0.0.1. Nothing else widens it: the container image keeps the
+ * loopback default, and binding all interfaces takes one of these explicitly.
+ */
+export function serveHost(flag: string | undefined, env: Readonly<Record<string, string | undefined>>): string {
+  if (flag !== undefined && flag.trim() !== '') return flag.trim();
+  const fromEnv = env['CRYPTIFICATE_HOST']?.trim();
+  return fromEnv ? fromEnv : '127.0.0.1';
+}
+
+/**
+ * Lines `serve` prints about its bind address: a warning for any address
+ * other than loopback, and inside the container image (which sets
+ * CRYPTIFICATE_CONTAINER=1) how to reach the service from the host.
+ */
+export function bindNotes(host: string, port: number, env: Readonly<Record<string, string | undefined>>): string[] {
+  const inContainer = env['CRYPTIFICATE_CONTAINER'] === '1';
+  if (!LOOPBACK_BIND_ADDRESSES.includes(host)) {
+    const notes = [`warning: binding to ${host}. The service has no authentication; anyone who can reach this address can run jobs.`];
+    if (inContainer) {
+      notes.push(
+        `note: publish the port on the host's loopback interface only (docker run -p 127.0.0.1:${port}:${port}) and open http://127.0.0.1:${port}/. ` +
+          'Writes are accepted only from that origin, so keep the same port number on both sides.',
+      );
+    }
+    return notes;
+  }
+  if (inContainer) {
+    return [
+      "note: listening on the container's own loopback interface, which a published port (docker run -p) does not reach. " +
+        `To open the workbench from the host, start the container with --host 0.0.0.0 (or CRYPTIFICATE_HOST=0.0.0.0) and publish -p 127.0.0.1:${port}:${port}. ` +
+        'See docs/docker.md.',
+    ];
+  }
+  return [];
+}
+
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',

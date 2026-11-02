@@ -39,7 +39,11 @@ function readRecord(p: string): CheckRecord | null {
   }
 }
 
-export function refinementStatus(paths: Paths, field: FieldName): RefinementStatus {
+export function refinementStatus(
+  paths: Paths,
+  field: FieldName,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): RefinementStatus {
   if (field !== 'gf256') {
     return { status: 'unsupported', note: 'Refinement proofs exist for the GF(2^8) kernels only; BN254 arithmetic is not covered.' };
   }
@@ -58,6 +62,12 @@ export function refinementStatus(paths: Paths, field: FieldName): RefinementStat
   }
   const checked = readRecord(join(paths.home, 'refinement.json'));
   if (!checked || checked.checked !== true || checked.kernelsSha256 !== current) {
+    if (env['CRYPTIFICATE_CONTAINER'] === '1') {
+      return {
+        status: 'not_established',
+        note: 'The container image does not check the refinement proofs: they need a second Lean toolchain and Mathlib build. Check them from a source checkout (scripts/setup.sh --with-refinement).',
+      };
+    }
     return { status: 'not_established', note: 'The refinement proofs have not been checked on this machine (scripts/setup.sh --with-refinement).' };
   }
   return {

@@ -7,7 +7,7 @@ import type { Server } from 'node:http';
 import type { AnalysisReport, Job } from '@cryptificate/schema';
 import type { JobContext, PipelineEnv, PipelineResult } from '../src/context.js';
 import { JobManager } from '../src/jobs.js';
-import { checkRequestOrigin, createApp, makeOriginPolicy } from '../src/server.js';
+import { bindNotes, checkRequestOrigin, createApp, makeOriginPolicy, serveHost } from '../src/server.js';
 import { readTarGz } from '../src/tar.js';
 import { AES_DESIGN, makeFixture } from './helpers.js';
 
@@ -109,6 +109,45 @@ test('origin policy: loopback Host required, cross-origin writes rejected', () =
   assert.notEqual(ok('POST', { host: '127.0.0.1:4173', 'sec-fetch-site': 'cross-site' }), null);
   const dev = makeOriginPolicy('127.0.0.1', 4173, ['http://localhost:5173']);
   assert.equal(checkRequestOrigin({ method: 'POST', headers: { host: '127.0.0.1:4173', origin: 'http://localhost:5173' } }, dev), null);
+});
+
+test('serve binds loopback unless --host or CRYPTIFICATE_HOST names another address', () => {
+  assert.equal(serveHost(undefined, {}), '127.0.0.1');
+  assert.equal(serveHost(undefined, { CRYPTIFICATE_HOST: '' }), '127.0.0.1');
+  assert.equal(serveHost(undefined, { CRYPTIFICATE_HOST: '  ' }), '127.0.0.1');
+  // The container marker alone never widens the bind address.
+  assert.equal(serveHost(undefined, { CRYPTIFICATE_CONTAINER: '1' }), '127.0.0.1');
+  assert.equal(serveHost(undefined, { CRYPTIFICATE_HOST: '0.0.0.0' }), '0.0.0.0');
+  assert.equal(serveHost('::1', { CRYPTIFICATE_HOST: '0.0.0.0' }), '::1');
+  assert.equal(serveHost('0.0.0.0', {}), '0.0.0.0');
+
+  assert.deepEqual(bindNotes('127.0.0.1', 4173, {}), []);
+  assert.deepEqual(bindNotes('localhost', 4173, {}), []);
+  const wide = bindNotes('0.0.0.0', 4173, {});
+  assert.equal(wide.length, 1);
+  assert.match(wide[0] ?? '', /^warning: binding to 0\.0\.0\.0\. The service has no authentication/);
+  const inside = bindNotes('127.0.0.1', 4173, { CRYPTIFICATE_CONTAINER: '1' });
+  assert.equal(inside.length, 1);
+  assert.match(inside[0] ?? '', /does not reach/);
+  assert.match(inside[0] ?? '', /--host 0\.0\.0\.0/);
+  assert.match(inside[0] ?? '', /-p 127\.0\.0\.1:4173:4173/);
+  const wideInside = bindNotes('0.0.0.0', 8080, { CRYPTIFICATE_CONTAINER: '1' });
+  assert.equal(wideInside.length, 2);
+  assert.match(wideInside[0] ?? '', /^warning: binding to 0\.0\.0\.0/);
+  assert.match(wideInside[1] ?? '', /-p 127\.0\.0\.1:8080:8080/);
+});
+
+test('origin policy when bound to all interfaces: Host must still be loopback', () => {
+  // What the container image does with --host 0.0.0.0: the bind address adds no
+  // allowed Host name, so DNS-rebinding and LAN Host headers stay rejected.
+  const policy = makeOriginPolicy('0.0.0.0', 4173);
+  const ok = (method: string, headers: Record<string, string>) => checkRequestOrigin({ method, headers }, policy);
+  assert.equal(ok('GET', { host: '127.0.0.1:4173' }), null);
+  assert.equal(ok('POST', { host: '127.0.0.1:4173', origin: 'http://127.0.0.1:4173' }), null);
+  assert.notEqual(ok('GET', { host: '0.0.0.0:4173' }), null);
+  assert.notEqual(ok('GET', { host: '192.168.1.20:4173' }), null);
+  // A different published host port is a different origin.
+  assert.notEqual(ok('POST', { host: '127.0.0.1:8080', origin: 'http://127.0.0.1:8080' }), null);
 });
 
 test('HTTP: validation, content type, body limit and same-origin', async () => {

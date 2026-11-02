@@ -19,7 +19,7 @@ import { makeEnv } from './env.js';
 import { resolvePaths } from './paths.js';
 import { killAll } from './proc.js';
 import { runLean } from './leanrun.js';
-import { createApp } from './server.js';
+import { bindNotes, createApp, serveHost } from './server.js';
 import { readToolchain } from './toolchain.js';
 import { verifyBundle } from './verify.js';
 
@@ -27,7 +27,8 @@ const USAGE = `Usage: cryptificate <command> [options]
 
 Commands:
   serve [--port 4173] [--host 127.0.0.1] [--allow-origin URL]
-        Run the local service and web UI.
+        Run the local service and web UI. It binds 127.0.0.1 unless --host or
+        CRYPTIFICATE_HOST names another address; it has no authentication.
   check <design.json> [--program p.json] [--target matrix|external|internal] [--json out.json]
         [--bundle out.tar.gz] [--no-cache]
         Check a design (and optionally a circuit) and print the claims.
@@ -41,7 +42,8 @@ Commands:
 Exit status: 0 when the run completed (whatever the claims say) or every re-checked claim
 matched; 1 when a run failed, timed out or was stopped, or verify found a difference;
 2 for invalid input or usage.
-Environment: CRYPTIFICATE_HOME (state directory), CRYPTIFICATE_ENGINE, CRYPTIFICATE_LAKE.
+Environment: CRYPTIFICATE_HOME (state directory), CRYPTIFICATE_ENGINE, CRYPTIFICATE_LAKE,
+PORT and CRYPTIFICATE_HOST (serve defaults), CRYPTIFICATE_ALLOWED_ORIGINS (comma-separated).
 `;
 
 function fail(message: string, code = 2): never {
@@ -242,18 +244,14 @@ async function cmdServe(argv: string[]): Promise<number> {
     args: argv,
     options: {
       port: { type: 'string', default: process.env['PORT'] ?? '4173' },
-      host: { type: 'string', default: '127.0.0.1' },
+      host: { type: 'string' },
       'allow-origin': { type: 'string', multiple: true },
     },
   });
   const port = Number(values.port);
   if (!Number.isInteger(port) || port < 0 || port > 65535) fail(`invalid port ${values.port}`);
-  const host = values.host ?? '127.0.0.1';
-  if (!['127.0.0.1', 'localhost', '::1'].includes(host)) {
-    process.stderr.write(
-      `warning: binding to ${host}. The service has no authentication; anyone who can reach this address can run jobs.\n`,
-    );
-  }
+  const host = serveHost(values.host, process.env);
+  for (const line of bindNotes(host, port, process.env)) process.stderr.write(`${line}\n`);
   const env = makeEnv();
   const jobs = new JobManager({ env });
   const loaded = jobs.loadExisting();

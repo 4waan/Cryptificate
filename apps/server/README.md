@@ -15,8 +15,9 @@ npm test -w apps/server
 
 ## HTTP API
 
-The service binds `127.0.0.1` unless `--host` says otherwise (it then warns: there is no
-authentication). Every request must carry a loopback `Host` header; `POST` requests with an
+The service binds `127.0.0.1` unless `--host` or `CRYPTIFICATE_HOST` names another address (it
+then warns: there is no authentication). The container image keeps this default; see
+[docs/docker.md](../../docs/docker.md). Every request must carry a loopback `Host` header; `POST` requests with an
 `Origin` header must come from the service's own origin (or one given with `--allow-origin` /
 `CRYPTIFICATE_ALLOWED_ORIGINS`), and `Sec-Fetch-Site: cross-site` is refused. JSON bodies must be
 `application/json` and at most 256 KiB; they are shape-checked against the public schema before the
@@ -83,4 +84,8 @@ shell files from the bundle. Exit status 0 means every re-checked claim matched.
 | `CRYPTIFICATE_ENGINE` | engine binary (default `target/release/cryptificate-engine`, then `debug`, then `PATH`) |
 | `CRYPTIFICATE_LAKE` | `lake` launcher (default `PATH`, then `~/.elan/bin/lake`) |
 | `CRYPTIFICATE_ALLOWED_ORIGINS` | extra comma-separated origins allowed to `POST` |
+| `CRYPTIFICATE_HOST` | `serve` bind address when `--host` is not given (default `127.0.0.1`) |
+| `PORT` | `serve` port when `--port` is not given (default `4173`) |
+| `CRYPTIFICATE_ROOT` | the checkout whose `lean/`, templates and web UI are used (default: found from the service's own location) |
+| `CRYPTIFICATE_CONTAINER` | set to `1` by the container image: `serve` explains how to publish the port, and `rust.refinement` says the image does not check the refinement proofs |
 | `NO_COLOR` | plain terminal output (also automatic when stdout is not a TTY) |
