@@ -28,6 +28,18 @@ export function pastedCells(text: string, field: FieldName): string[] | null {
 }
 
 /**
+ * How a run of `count` pasted values starting at flat index `start` fits an
+ * n×n grid: 'fits', 'overflows' past the last cell, or 'none' when the text
+ * did not read as a run of values. A run as long as the whole grid counts as
+ * a matrix, whose own parse error is more useful.
+ */
+export function planCellPaste(cells: string[] | null, start: number, n: number): 'fits' | 'overflows' | 'none' {
+  if (!cells) return 'none';
+  if (start + cells.length <= n * n) return 'fits';
+  return cells.length < n * n ? 'overflows' : 'none';
+}
+
+/**
  * Square matrix editor. Hex cells for GF(2^8), decimal cells for BN254.
  * Arrow keys move between cells; invalid cells are marked inline. Cells
  * are normalized on blur ("1" becomes 01, "0x1b" becomes 1B). Pasting a
@@ -97,7 +109,8 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
     }
     const cells = pastedCells(text, field);
     const start = r * n + c;
-    if (cells && start + cells.length <= n * n) {
+    const plan = planCellPaste(cells, start, n);
+    if (cells && plan === 'fits') {
       const flat = values.flat();
       cells.forEach((v, k) => {
         flat[start + k] = v;
@@ -109,7 +122,13 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
       });
       return;
     }
-    setPasteNote({ error: true, text: `Paste not applied. ${full.error}` });
+    setPasteNote({
+      error: true,
+      text:
+        cells && plan === 'overflows'
+          ? `Paste not applied: ${cells.length} values from row ${r + 1}, column ${c + 1} run past the last cell.`
+          : `Paste not applied. ${full.error}`,
+    });
   };
 
   return (
