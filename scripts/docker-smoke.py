@@ -4,7 +4,7 @@
     python3 scripts/docker-smoke.py IMAGE
 
 Runs, inside containers of IMAGE, with the repository's examples/ mounted at
-/work/examples:
+/work/examples (steps 1 to 4 without network access):
 
   1. `cryptificate --version`;
   2. `check examples/designs/aes.json`: the four design claims are proved;
@@ -101,7 +101,7 @@ def docker(*args: str, check: bool = True, capture: bool = False) -> subprocess.
 
 def run_cli(image: str, out: Path, *args: str) -> None:
     docker(
-        "run", "--rm", "--no-healthcheck",
+        "run", "--rm", "--no-healthcheck", "--network", "none",
         "-v", f"{ROOT / 'examples'}:/work/examples:ro",
         "-v", f"{out}:/work/out",
         image, *args,
