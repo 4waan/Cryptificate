@@ -25,6 +25,9 @@ private def claimTheorems : List Name := [
   `Cryptificate.Refinement.aes_like_encrypt_refines,
   `Cryptificate.Refinement.aes_like_encrypt_eq,
   `Cryptificate.Refinement.aes_like_encrypt_activity_bound,
+  `Cryptificate.Refinement.sboxOf_injective_iff,
+  `Cryptificate.Refinement.sboxOf_injective_of_tableCovers,
+  `Cryptificate.Refinement.aes_like_encrypt_activity_bound_of_checks,
   `Cryptificate.Refinement.Gf256Crate.gf256crate_mul_refines,
   `Cryptificate.Refinement.Gf256Crate.gf256crate_mul_field,
   `Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels

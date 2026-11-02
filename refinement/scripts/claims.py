@@ -51,6 +51,25 @@ KERNELS = {
         'specSources': ['lean/Cryptificate/Bridge.lean',
                         'lean/Cryptificate/Diffusion/Activity.lean'],
     },
+    'aes-like-checked': {
+        'title': ('Active-S-box bound of the AES-like kernel of crates/kernels for designs that pass '
+                  'the kernel-checked design checks'),
+        'appliesTo': {'model': 'aes-like/gf256/v1'},
+        'rust': ['crates/kernels/src/aes_like.rs', 'crates/kernels/src/gf256.rs',
+                 'refinement/rust/kernels.rs'],
+        'extracted': 'refinement/Extracted/CryptificateKernels.lean',
+        'proof': 'refinement/Refinement/AesConcrete.lean',
+        'spec': ('Cryptificate.activityBound and the active-S-box count of the main Lean package, '
+                 'with the design checks minors4Ok (canonical minors), distinct offsets and a '
+                 'byte table covering every value'),
+        # Compiled by this package (Lean v4.35.0) from the main package's source files.
+        'specSources': ['lean/Cryptificate/Bridge.lean',
+                        'lean/Cryptificate/Diffusion/Activity.lean',
+                        'lean/Cryptificate/Encoding.lean',
+                        'lean/Cryptificate/Sbox.lean',
+                        'lean/Cryptificate/Diffusion/Minors4.lean',
+                        'lean/Cryptificate/Diffusion/Offsets.lean'],
+    },
     'gf256-crate': {
         'title': ('Multiplication of the crates.io gf256 crate 0.3.1, polynomial 0x11B, features '
                   'no-tables and no-xmul (expanded source)'),
@@ -65,9 +84,13 @@ KERNELS = {
 ENOUGH_KEYS = ('at least `rounds` round keys (rounds <= round_keys.len()); with fewer, the Rust '
                'code indexes past the slice and the theorem says nothing')
 DESIGN_HYPOTHESES = ('IsMDS (matrixOf m), DiffusionOptimal offsets and an S-box table without '
-                     'repeated entries are hypotheses, not proved here; the main package proves '
-                     'them per design on Lean v4.33.1, and a certificate is not combined with this '
-                     'theorem in one Lean environment')
+                     'repeated entries are hypotheses of this theorem; '
+                     'aes_like_encrypt_activity_bound_of_checks (kernel aes-like-checked) derives '
+                     'them in this package from Boolean checks on the bytes; the main package '
+                     'certificates (Lean v4.33.1) are not combined with it in one Lean environment')
+
+CHECKS = ('the design checks are hypotheses, each a Boolean the kernel evaluates for concrete '
+          'bytes: minors4Ok (matrixOf m) = true, offsetsDistinct o = true, tableCovers t = true')
 
 # theorem -> (kernel, hypotheses and preconditions in words; the statement has them formally)
 THEOREMS = [
@@ -83,6 +106,10 @@ THEOREMS = [
     ('Cryptificate.Refinement.aes_like_encrypt_eq', 'aes-like', [ENOUGH_KEYS]),
     ('Cryptificate.Refinement.aes_like_encrypt_activity_bound', 'aes-like',
      [DESIGN_HYPOTHESES, 'at least r round keys (r <= round_keys.len())']),
+    ('Cryptificate.Refinement.sboxOf_injective_iff', 'aes-like-checked', []),
+    ('Cryptificate.Refinement.sboxOf_injective_of_tableCovers', 'aes-like-checked', []),
+    ('Cryptificate.Refinement.aes_like_encrypt_activity_bound_of_checks', 'aes-like-checked',
+     [CHECKS, 'at least r round keys (r <= round_keys.len())']),
     ('Cryptificate.Refinement.Gf256Crate.gf256crate_mul_refines', 'gf256-crate',
      ['SizeOfU8: core::mem::size_of::<u8>() returns 1 (not modelled by the Aeneas library; '
       'the extraction declares gf256_aes.core.mem.size_of as an uninterpreted function)']),
