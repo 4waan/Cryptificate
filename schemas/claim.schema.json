@@ -7,6 +7,7 @@
   "properties": {
     "id": {
       "enum": [
+        "field.prime",
         "matrix.mds",
         "offsets.dispersion",
         "sbox.bijective",
