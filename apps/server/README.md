@@ -12,13 +12,14 @@ npx cryptificate experiment examples/designs/aes.json --profile quick
 npx cryptificate verify bundle.tar.gz
 npx cryptificate check 'designs/*.json' --fail-on refuted --format sarif --output cryptificate.sarif
 npx cryptificate report result.json --format junit
+npx cryptificate report bundle.tar.gz --format html --output report.html
 npm test -w apps/server
 ```
 
 ## CI gate
 
 `check`, `verify` and `report` accept several files or patterns and share `--format
-text|json|sarif|junit|markdown`, `--output FILE`, `--fail-on none|refuted|not-established|any`,
+text|json|sarif|junit|markdown|html`, `--output FILE`, `--fail-on none|refuted|not-established|any`,
 `--claims ID,...` and `--no-step-summary`; with `GITHUB_STEP_SUMMARY` set they append a Markdown
 report to it. Exit status: 0 passed, 1 the policy failed (or `verify` found a difference), 2 usage
 error, unusable input, a run that did not complete, or, under a policy, an in-scope claim left
@@ -42,6 +43,7 @@ engine sees them.
 | `GET /api/jobs/:id` | `Job`: state, progress steps, partial or final report, `bundle` flag |
 | `POST /api/jobs/:id/stop` | stops the job's whole process group; completed checkpoints are kept |
 | `GET /api/jobs/:id/bundle` | deterministic `.tar.gz` evidence bundle (`409` while the job runs) |
+| `GET /api/jobs/:id/report.html` | the bundle's `report.html` as a download, with a `Content-Security-Policy` header (`409` while the job runs) |
 
 Errors are `{"error": {code, message, path?}}`; validation errors add `errors: [{path, code, message}]`.
 Status codes: `400` invalid JSON or shape, `403` Host/Origin policy, `404`, `405`, `409`, `413` body
@@ -79,7 +81,7 @@ confirmation sessions, for a candidate whose equivalence Lean proved.
 ## Bundles and `verify`
 
 A bundle holds `inputs.json`, `report.json`, `lean/`, `toolchain.json`, `native/`, `search/`,
-`engine/diagnose.json` and `VERIFY.md`, with sorted entries, zero mtimes and no timestamps. `native/` keeps the
+`engine/diagnose.json`, `VERIFY.md` and `report.html` (a rendering of `report.json`), with sorted entries, zero mtimes and no timestamps. `native/` keeps the
 generated variant crates, the kernels they link against (checked against the digest of the copy embedded in the
 engine), the harness source and the raw correctness and timing records, described in `native/SOURCES.md`.
 `cryptificate verify` extracts it to a fresh temporary directory, reads only `inputs.json` and

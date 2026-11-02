@@ -169,9 +169,11 @@ npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 
 `verify` reads the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It runs no code from the bundle. Timings stay attached to the machine that produced them. The [recorded bundles](examples/bundles) from the demo are in the repository.
 
+For an audit or a pull request, `npx cryptificate report <bundle> --format html --output report.html` writes one printable HTML file with the inputs and their digest, both claim chains with the exact Lean statements and axioms, counterexamples, timing intervals and provenance; it runs no scripts and loads nothing from the network. New bundles carry it as `report.html`, and the workbench's **Export report** button downloads it ([details](docs/ci.md#html-evidence-report)).
+
 ## Use it in CI
 
-`cryptificate check` gates a pull request on the claims of your design and circuit files. It takes several files or patterns, applies a policy with `--fail-on refuted|not-established|any` and exits 0 when the policy holds, 1 when it fails and 2 when an input could not be checked, including when Lean or the engine is missing. Results come out as text, JSON, SARIF 2.1.0, JUnit XML or Markdown, and the Markdown goes to the GitHub job summary.
+`cryptificate check` gates a pull request on the claims of your design and circuit files. It takes several files or patterns, applies a policy with `--fail-on refuted|not-established|any` and exits 0 when the policy holds, 1 when it fails and 2 when an input could not be checked, including when Lean or the engine is missing. Results come out as text, JSON, SARIF 2.1.0, JUnit XML, Markdown or a self-contained HTML evidence report, and the Markdown goes to the GitHub job summary.
 
 ```yaml
 - uses: actions/checkout@v4

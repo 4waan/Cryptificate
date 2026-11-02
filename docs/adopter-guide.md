@@ -101,6 +101,8 @@ npx cryptificate verify aes-check.tar.gz
 
 `verify` reads only the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It never runs Lean, Rust or shell code from the bundle. Recorded timings are shown as historical; measuring again creates a new experiment.
 
+To attach the evidence to an audit or a pull request, use the bundle's `report.html`, the workbench's **Export report** button, or `npx cryptificate report aes-check.tar.gz --format html --output report.html`: one HTML file with no scripts and no external requests that prints cleanly to PDF. It is a view of `report.json`, not evidence; the bundle is what `verify` re-checks.
+
 ## 7. Bring your own implementation language
 
 Measured variants only need to export `mix_batch(input, output, column_count)` from a shared library. An OxCaml, C or assembly implementation can be compared against the Rust variants under the same harness and statistics. The ABI, layout and correctness corpus are in [batch-interface.md](batch-interface.md).

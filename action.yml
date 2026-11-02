@@ -219,6 +219,7 @@ runs:
         if [ -f "$out/result.json" ]; then
           node "$cli" report "$out/result.json" --format sarif --output "$out/cryptificate.sarif" --no-step-summary > /dev/null
           node "$cli" report "$out/result.json" --format junit --output "$out/cryptificate.junit.xml" --no-step-summary > /dev/null
+          node "$cli" report "$out/result.json" --format html --output "$out/cryptificate.html" --no-step-summary > /dev/null
           [ -f "$out/cryptificate.sarif" ] && sarif="$out/cryptificate.sarif"
         fi
         {
