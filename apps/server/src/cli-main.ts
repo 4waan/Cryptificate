@@ -5,7 +5,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
 import type { AnalysisReport, AnalysisRequest, ExecutionState, ExperimentReport, ExperimentRequest, ProgramTarget, Report } from '@cryptificate/schema';
@@ -93,6 +93,8 @@ Gate options (check, verify, report):
                         policy recorded in a check or verify result)
   --claims ID[,ID...]   restrict the policy to these claim ids (an unknown id is an error)
   --no-step-summary     do not append Markdown to $GITHUB_STEP_SUMMARY
+  --uri-base DIR        make SARIF file locations relative to DIR (default the working
+                        directory; in CI the repository root, e.g. $GITHUB_WORKSPACE)
 
 <design.json> may hold a CandidateDesign or a full request object. Patterns are expanded by
 cryptificate (*, ?, [..], **); --program, --json and --bundle need a single input.
@@ -239,6 +241,7 @@ const GATE_OPTIONS = {
   'fail-on': { type: 'string' },
   claims: { type: 'string', multiple: true },
   'no-step-summary': { type: 'boolean' },
+  'uri-base': { type: 'string' },
 } as const;
 
 interface GateOptions {
@@ -247,9 +250,14 @@ interface GateOptions {
   failOn: FailOn | undefined;
   claims: Set<string> | null;
   stepSummary: boolean;
+  /** Absolute directory SARIF artifact URIs are relative to, or undefined for the working directory. */
+  uriBase: string | undefined;
 }
 
-function gateOptions(values: { format?: string; output?: string; 'fail-on'?: string; claims?: string[]; 'no-step-summary'?: boolean }): GateOptions {
+function gateOptions(
+  values: { format?: string; output?: string; 'fail-on'?: string; claims?: string[]; 'no-step-summary'?: boolean; 'uri-base'?: string },
+  cwd: string,
+): GateOptions {
   const format = (values.format ?? 'text') as Format;
   if (!FORMATS.includes(format)) fail(`--format must be one of ${FORMATS.join(', ')} (got "${values.format}")`);
   return {
@@ -258,6 +266,7 @@ function gateOptions(values: { format?: string; output?: string; 'fail-on'?: str
     failOn: values['fail-on'] === undefined ? undefined : parseFailOn(values['fail-on']),
     claims: parseClaimList(values.claims),
     stepSummary: !(values['no-step-summary'] ?? false),
+    uriBase: values['uri-base'] === undefined ? undefined : resolve(cwd, values['uri-base']),
   };
 }
 
@@ -275,7 +284,7 @@ function textOf(run: GateRun, style: Style): string {
   return run.command === 'check' ? checkToText(run, style) : verifyToText(run, style);
 }
 
-export function render(run: GateRun, format: Format, cwd: string, style: Style): string {
+export function render(run: GateRun, format: Format, cwd: string, style: Style, uriBase?: string): string {
   const read = (p: string): string | null => {
     try {
       return readFileSync(p, 'utf8');
@@ -289,7 +298,7 @@ export function render(run: GateRun, format: Format, cwd: string, style: Style):
     case 'json':
       return toJson(run);
     case 'sarif':
-      return toSarifText(run.command === 'check' ? checkToSarif(run, { cwd, read }) : verifyToSarif(run, { cwd, read }));
+      return toSarifText(run.command === 'check' ? checkToSarif(run, { cwd, read, uriBase }) : verifyToSarif(run, { cwd, read, uriBase }));
     case 'junit':
       return run.command === 'check' ? checkToJUnit(run) : verifyToJUnit(run);
     case 'markdown':
@@ -304,11 +313,11 @@ function emit(run: GateRun, opts: GateOptions, io: Io): void {
   if (opts.output) {
     const target = resolve(io.cwd, opts.output);
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, render(run, opts.format, io.cwd, PLAIN));
+    writeFileSync(target, render(run, opts.format, io.cwd, PLAIN, opts.uriBase));
     io.stdout.write(render(run, 'text', io.cwd, makeStyle(io.stdout)));
     io.stderr.write(`${opts.format}: ${target}\n`);
   } else {
-    io.stdout.write(render(run, opts.format, io.cwd, opts.format === 'text' ? makeStyle(io.stdout) : PLAIN));
+    io.stdout.write(render(run, opts.format, io.cwd, opts.format === 'text' ? makeStyle(io.stdout) : PLAIN, opts.uriBase));
   }
   const summary = io.environ['GITHUB_STEP_SUMMARY'];
   if (opts.stepSummary && summary) {
@@ -371,7 +380,8 @@ async function cmdCheck(argv: string[], io: Io): Promise<number> {
     'fail-on': values['fail-on'] ?? cfg?.failOn,
     claims: values.claims ?? cfg?.claims,
     'no-step-summary': values['no-step-summary'],
-  });
+    'uri-base': values['uri-base'],
+  }, io.cwd);
   const failOn = gate.failOn ?? 'none';
   const target = values.target ?? cfg?.target;
   const runIo: Io = { ...io, cwd: runCwd };
@@ -432,7 +442,7 @@ async function cmdCheck(argv: string[], io: Io): Promise<number> {
     if (bundleDir) await writeBundle(env, dir, report, join(bundleDir, bundleName(file, taken)), io.stderr);
     if (!quiet) io.stderr.write(`job directory: ${dir}\n`);
   }
-  const run = makeCheckRun(entries, failOn, gate.claims);
+  const run = makeCheckRun(entries, failOn, gate.claims, runCwd);
   emit(run, gate, runIo);
   return run.exitCode;
 }
@@ -489,7 +499,7 @@ async function cmdVerify(argv: string[], io: Io): Promise<number> {
     allowPositionals: true,
     options: { native: { type: 'boolean' }, keep: { type: 'boolean' }, json: { type: 'string' }, ...GATE_OPTIONS },
   });
-  const gate = gateOptions(values);
+  const gate = gateOptions(values, io.cwd);
   const failOn = gate.failOn ?? 'none';
   const bundles = expand(positionals, io, 'verify needs at least one bundle');
   if (bundles.length > 1 && values.json) fail('--json needs a single bundle; use --format json --output FILE for several');
@@ -547,7 +557,15 @@ function loadSaved(file: string, cwd: string): Loaded {
   }
   const o = (doc && typeof doc === 'object' ? doc : {}) as Record<string, unknown>;
   if (o['format'] === 'cryptificate-check/v1' && Array.isArray(o['results'])) {
-    return { kind: 'check', entries: o['results'] as CheckEntry[], failOn: parseFailOn(o['failOn'] as string), claims: (o['claims'] as string[] | null) ?? null, recorded: true };
+    // Relative input paths are relative to the recorded base: make them relative to cwd.
+    const base = typeof o['base'] === 'string' && isAbsolute(o['base']) ? o['base'] : null;
+    const rebase = (p: string): string => (base === null || isAbsolute(p) ? p : posixRelative(cwd, resolve(base, p)));
+    const entries = (o['results'] as CheckEntry[]).map((e) =>
+      base === null || !e.input
+        ? e
+        : { ...e, input: { ...e.input, file: rebase(e.input.file), ...(e.input.programFile !== undefined ? { programFile: rebase(e.input.programFile) } : {}) } },
+    );
+    return { kind: 'check', entries, failOn: parseFailOn(o['failOn'] as string), claims: (o['claims'] as string[] | null) ?? null, recorded: true };
   }
   if (o['format'] === 'cryptificate-verify/v1' && Array.isArray(o['results'])) {
     return { kind: 'verify', entries: o['results'] as VerifyEntry[], failOn: parseFailOn(o['failOn'] as string), claims: (o['claims'] as string[] | null) ?? null, recorded: true };
@@ -570,7 +588,7 @@ function loadSaved(file: string, cwd: string): Loaded {
 
 async function cmdReport(argv: string[], io: Io): Promise<number> {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { ...GATE_OPTIONS } });
-  const gate = gateOptions(values);
+  const gate = gateOptions(values, io.cwd);
   const files = expand(positionals, io, 'report needs at least one result file');
   const loaded = files.map((f) => loadSaved(f, io.cwd));
   const kinds = new Set(loaded.map((l) => l.kind));
@@ -585,7 +603,7 @@ async function cmdReport(argv: string[], io: Io): Promise<number> {
     run = makeVerifyRun(entries, failOn, claims);
   } else {
     const entries = loaded.flatMap((l) => l.entries as CheckEntry[]).map((e) => evaluateCheckEntry(e, failOn, claims));
-    run = makeCheckRun(entries, failOn, claims);
+    run = makeCheckRun(entries, failOn, claims, io.cwd);
   }
   emit(run, gate, io);
   return run.exitCode;

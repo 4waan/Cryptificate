@@ -27,7 +27,9 @@ inputs:
     description: "Circuit target for every input: matrix, external or internal (default from each file)."
     default: ""
   working-directory:
-    description: Directory the input patterns and output paths are relative to.
+    description: >-
+      Directory the input patterns are relative to and the command runs in. The SARIF file
+      locations are relative to the repository root ($GITHUB_WORKSPACE) whatever it is.
     default: "."
   upload-sarif:
     description: Upload the SARIF log to GitHub code scanning (needs the security-events write permission).
@@ -229,8 +231,9 @@ runs:
         [ "$code" -eq 1 ] && outcome=policy-failure
         sarif=""
         if [ -f "$out/result.json" ]; then
-          # report exits with the recorded policy's status; the files are written either way
-          node "$cli" report "$out/result.json" --format sarif --output "$out/cryptificate.sarif" --no-step-summary > /dev/null || true
+          # report exits with the recorded policy's status; the files are written either way.
+          # The SARIF file locations are relative to the repository root, as code scanning reads them.
+          node "$cli" report "$out/result.json" --format sarif --output "$out/cryptificate.sarif" --uri-base "${GITHUB_WORKSPACE:-$PWD}" --no-step-summary > /dev/null || true
           node "$cli" report "$out/result.json" --format junit --output "$out/cryptificate.junit.xml" --no-step-summary > /dev/null || true
           [ -f "$out/cryptificate.sarif" ] && sarif="$out/cryptificate.sarif"
         fi

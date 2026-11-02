@@ -60,6 +60,12 @@ export interface CheckRun {
   failOn: FailOn;
   /** Claim ids the policy is restricted to, or null for the default scope. */
   claims: string[] | null;
+  /**
+   * Absolute directory that relative input paths (`input.file`, `input.programFile`)
+   * are relative to: the working directory, or the directory of cryptificate.json
+   * when the inputs came from it. `report` resolves the paths against it.
+   */
+  base?: string;
   outcome: Outcome;
   exitCode: number;
   results: CheckEntry[];
@@ -113,9 +119,18 @@ export function evaluateCheckEntry(
   return { ...base, outcome, violations, unavailable: missing, ...(absent.length > 0 ? { absent } : {}) };
 }
 
-export function makeCheckRun(entries: CheckEntry[], failOn: FailOn, only: ReadonlySet<string> | null): CheckRun {
+export function makeCheckRun(entries: CheckEntry[], failOn: FailOn, only: ReadonlySet<string> | null, base?: string): CheckRun {
   const outcome = combine(entries.map((e) => e.outcome));
-  return { format: 'cryptificate-check/v1', command: 'check', failOn, claims: only ? [...only] : null, outcome, exitCode: exitCodeOf(outcome), results: entries };
+  return {
+    format: 'cryptificate-check/v1',
+    command: 'check',
+    failOn,
+    claims: only ? [...only] : null,
+    ...(base !== undefined ? { base } : {}),
+    outcome,
+    exitCode: exitCodeOf(outcome),
+    results: entries,
+  };
 }
 
 /** Whether verify re-derived this row with the installed tools. */
@@ -222,10 +237,13 @@ const RULE_TITLES: ReadonlyMap<string, { title: string; chain: string }> = (() =
   return m;
 })();
 
-/** Path for annotations: forward slashes, relative to `cwd` when inside it. */
-export function artifactUri(file: string, cwd: string): string {
+/**
+ * Path for annotations: `file` (relative to `cwd`, or absolute) with forward
+ * slashes, relative to `base` when inside it, otherwise a file:// URI.
+ */
+export function artifactUri(file: string, cwd: string, base: string = cwd): string {
   const abs = isAbsolute(file) ? file : resolve(cwd, file);
-  const rel = relative(cwd, abs);
+  const rel = relative(base, abs);
   if (rel && !rel.startsWith('..') && !isAbsolute(rel)) return rel.split(sep).join('/');
   return pathToFileURL(abs).href;
 }
@@ -554,7 +572,10 @@ export function verifyToJUnit(run: VerifyRun): string {
 // SARIF 2.1.0
 
 export interface SarifOptions {
+  /** Directory relative input paths are resolved against. */
   cwd: string;
+  /** Directory artifact URIs are made relative to (default cwd): the repository root for code scanning. */
+  uriBase?: string;
   read: FileReader;
 }
 
@@ -629,7 +650,7 @@ export function checkToSarif(run: CheckRun, opts: SarifOptions): Record<string, 
       notifications.push({
         level: 'error',
         message: { text: `${e.input.file}: ${e.error ?? 'not checked'}` },
-        locations: [{ physicalLocation: { artifactLocation: { uri: artifactUri(e.input.file, opts.cwd) } } }],
+        locations: [{ physicalLocation: { artifactLocation: { uri: artifactUri(e.input.file, opts.cwd, opts.uriBase) } } }],
       });
       continue;
     }
@@ -637,7 +658,7 @@ export function checkToSarif(run: CheckRun, opts: SarifOptions): Record<string, 
       notifications.push({ level: 'error', message: { text: `${e.input.file}: run ${e.state}${e.error ? `: ${e.error}` : ''}` } });
     }
     if (e.absent && e.absent.length > 0) {
-      notifications.push({ level: 'error', message: { text: `${e.input.file}: ${absentText(e.absent)} not in this report` }, locations: [{ physicalLocation: { artifactLocation: { uri: artifactUri(e.input.file, opts.cwd) } } }] });
+      notifications.push({ level: 'error', message: { text: `${e.input.file}: ${absentText(e.absent)} not in this report` }, locations: [{ physicalLocation: { artifactLocation: { uri: artifactUri(e.input.file, opts.cwd, opts.uriBase) } } }] });
     }
     version ??= driverVersion(e.report.provenance.checker);
     for (const c of e.report.claims) {
@@ -650,7 +671,7 @@ export function checkToSarif(run: CheckRun, opts: SarifOptions): Record<string, 
       else if (!inScope(c, only)) [kind, level] = ['notApplicable', 'none'];
       else [kind, level] = ['open', 'none'];
       const loc = claimLocation(c, e.input);
-      const uri = artifactUri(loc.file, opts.cwd);
+      const uri = artifactUri(loc.file, opts.cwd, opts.uriBase);
       const pos = positionOf(positions(loc.file), loc.pointer);
       const physicalLocation: Record<string, unknown> = { artifactLocation: { uri } };
       if (pos) physicalLocation['region'] = { startLine: pos.line, startColumn: pos.column };
@@ -689,7 +710,7 @@ export function verifyToSarif(run: VerifyRun, opts: SarifOptions): Record<string
   const results: unknown[] = [];
   const notifications: unknown[] = [];
   for (const e of run.results) {
-    const uri = artifactUri(e.bundle, opts.cwd);
+    const uri = artifactUri(e.bundle, opts.cwd, opts.uriBase);
     if (!e.result) {
       notifications.push({ level: 'error', message: { text: `${e.bundle}: ${e.error ?? 'not verified'}` }, locations: [{ physicalLocation: { artifactLocation: { uri } } }] });
       continue;

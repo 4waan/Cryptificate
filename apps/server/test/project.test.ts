@@ -177,3 +177,42 @@ test('an invalid or missing configuration is a usage error (exit 2) with every p
     assert.match(missing.stderr, /cannot read nowhere\.json: ENOENT/);
   });
 });
+
+type Sarif = { runs: { results: { ruleId: string; locations: { physicalLocation: { artifactLocation: { uri: string }; region?: { startLine: number } } }[] }[] }[] };
+
+function matrixLocation(sarif: Sarif): { uri: string; line: number | undefined } {
+  const hit = sarif.runs[0]!.results.find((x) => x.ruleId === 'matrix.mds' && x.locations[0]!.physicalLocation.artifactLocation.uri.endsWith('identity.json'));
+  assert.ok(hit, 'a matrix.mds result for identity.json');
+  const l = hit.locations[0]!.physicalLocation;
+  return { uri: l.artifactLocation.uri, line: l.region?.startLine };
+}
+
+test('report resolves the inputs of a saved check result against its recorded base, wherever it runs', async () => {
+  await withProject(async (fx) => {
+    writeConfig(fx, { inputs: ['designs/identity.json'], failOn: 'refuted' });
+    // check from sub/deeper: the inputs are relative to the directory of cryptificate.json
+    const saved = await runCli(fx, ['check', '-q', '--format', 'json', '--output', 'result.json'], { cwd: join(fx.root, 'sub', 'deeper') });
+    assert.equal(saved.code, 1, saved.stderr);
+    const doc = JSON.parse(readFileSync(join(fx.root, 'sub', 'deeper', 'result.json'), 'utf8')) as CheckRun;
+    assert.deepEqual([doc.base, doc.results.map((e) => e.input.file)], [fx.root, ['designs/identity.json']]);
+
+    const sarif = await runCli(fx, ['report', 'result.json', '--format', 'sarif'], { cwd: join(fx.root, 'sub', 'deeper') });
+    assert.equal(sarif.code, 1, sarif.stderr);
+    const loc = matrixLocation(JSON.parse(sarif.stdout) as Sarif);
+    assert.equal(typeof loc.line, 'number', 'the input was found from sub/deeper, so the location has a region');
+    assert.match(loc.uri, /^file:\/\/.*\/designs\/identity\.json$/, 'outside the working directory: a file URI');
+
+    // --uri-base makes the locations relative to another directory, e.g. the repository root
+    const based = await runCli(fx, ['report', 'result.json', '--format', 'sarif', '--uri-base', '../..'], { cwd: join(fx.root, 'sub', 'deeper') });
+    assert.deepEqual(matrixLocation(JSON.parse(based.stdout) as Sarif), { uri: 'designs/identity.json', line: loc.line });
+
+    // the text and JSON outputs name the inputs relative to where report runs
+    const json = await runCli(fx, ['report', 'result.json', '--format', 'json'], { cwd: join(fx.root, 'sub', 'deeper') });
+    const again = JSON.parse(json.stdout) as CheckRun;
+    assert.deepEqual([again.base, again.results.map((e) => e.input.file)], [join(fx.root, 'sub', 'deeper'), ['../../designs/identity.json']]);
+
+    // check takes --uri-base as well
+    const direct = await runCli(fx, ['check', '-q', '--format', 'sarif', '--uri-base', fx.root], { cwd: join(fx.root, 'sub') });
+    assert.deepEqual(matrixLocation(JSON.parse(direct.stdout) as Sarif), { uri: 'designs/identity.json', line: loc.line });
+  });
+});
