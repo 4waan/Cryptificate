@@ -1,12 +1,11 @@
 import { useRef } from 'react';
-import { fieldOps } from '../lib/field';
-import type { FieldName } from '../lib/types';
+import { fieldOps, type DisplayField } from '../lib/field';
 import { IconWarning } from './icons';
 
 interface Props {
   id: string;
   label: string;
-  field: FieldName;
+  field: DisplayField;
   values: string[][];
   onChange: (next: string[][]) => void;
   /** Cells to emphasise, as "row,col". */
@@ -67,7 +66,7 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
           {label}
         </div>
         <div
-          className={`matrix${field === 'bn254' ? ' decimal' : ''}`}
+          className={`matrix${field !== 'gf256' ? ' decimal' : ''}`}
           style={{ gridTemplateColumns: `repeat(${n}, auto)` }}
         >
           {values.map((row, r) =>
@@ -87,7 +86,7 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
                   aria-label={`${label}, row ${r + 1}, column ${c + 1}`}
                   aria-invalid={invalid}
                   aria-describedby={invalid ? `${id}-errors` : undefined}
-                  title={field === 'bn254' ? v : undefined}
+                  title={field !== 'gf256' ? v : undefined}
                   style={emphasis.includes(`${r},${c}`) ? { borderColor: 'var(--accent)', borderWidth: 2 } : undefined}
                   onChange={(e) => setCell(r, c, e.target.value)}
                   onBlur={() => canonicalize(r, c)}
@@ -117,7 +116,7 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
 }
 
 /** Read-only matrix display. */
-export function MatrixView({ values, label, field }: { values: string[][]; label: string; field: FieldName }) {
+export function MatrixView({ values, label, field }: { values: string[][]; label: string; field: DisplayField }) {
   const f = fieldOps(field);
   return (
     <figure style={{ margin: 0 }} className="stack" aria-label={label}>

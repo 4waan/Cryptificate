@@ -1,27 +1,29 @@
-import { abbreviateDecimal, BN254_P, isBnDecimal, parseBn } from './bn254';
-import { fieldOps } from './field';
-import type { FieldName, Witness } from './types';
+import { abbreviateDecimal, BN254_P } from './bn254';
+import { fieldOps, primeModulusOf, type DisplayField } from './field';
+import type { Witness } from './types';
 
-/** Display form of one element: uppercase hex for GF(2^8), decimal for BN254. */
-export function formatElement(field: FieldName, value: string, abbreviate = false): string {
+/** Display form of one element: uppercase hex for GF(2^8), decimal for a prime field. */
+export function formatElement(field: DisplayField, value: string, abbreviate = false): string {
   const f = fieldOps(field);
   const text = f.isValid(value) ? f.canonical(value) : value;
-  return field === 'bn254' && abbreviate ? abbreviateDecimal(text) : text;
+  return field !== 'gf256' && abbreviate ? abbreviateDecimal(text) : text;
 }
 
-export function formatList(field: FieldName, values: readonly string[], abbreviate = false): string {
+export function formatList(field: DisplayField, values: readonly string[], abbreviate = false): string {
   return `[${values.map((v) => formatElement(field, v, abbreviate)).join(', ')}]`;
 }
 
 /**
- * A BN254 element as a small signed number when it is one, so that `p - 1`
- * reads as `-1`; other elements are abbreviated.
+ * An element of a prime field (BN254 unless `field` names another) as a
+ * small signed number when it is one, so that `p - 1` reads as `-1`; other
+ * elements are abbreviated.
  */
-export function signedDecimal(text: string): string {
-  if (!isBnDecimal(text)) return text;
-  const x = parseBn(text);
-  const neg = BN254_P - x;
-  if (x !== 0n && neg < 1_000_000n) return `-${neg}`;
+export function signedDecimal(text: string, field: DisplayField = 'bn254'): string {
+  const p = field === 'bn254' ? BN254_P : primeModulusOf(field);
+  if (p === null || !fieldOps(field).isValid(text)) return text;
+  const x = BigInt(text);
+  const neg = p - x;
+  if (x !== 0n && neg < 1_000_000n && neg < x) return `-${neg}`;
   return abbreviateDecimal(x.toString());
 }
 
@@ -35,7 +37,7 @@ function joinWords(items: string[]): string {
 }
 
 /** One plain-language sentence explaining what the witness shows. */
-export function describeWitness(w: Witness, field: FieldName): string {
+export function describeWitness(w: Witness, field: DisplayField): string {
   switch (w.kind) {
     case 'branch': {
       const total = w.inputWeight + w.outputWeight;
@@ -69,7 +71,7 @@ export function describeWitness(w: Witness, field: FieldName): string {
     case 'partial-bypass': {
       const at = w.positions.map((i) => `x${i}`);
       return (
-        `Two states that differ by [${w.difference.map(signedDecimal).join(', ')}] when they enter the partial rounds ` +
+        `Two states that differ by [${w.difference.map((x) => signedDecimal(x, field)).join(', ')}] when they enter the partial rounds ` +
         `give equal inputs to the S-box${at.length === 1 ? '' : 'es'} at ${joinWords(at)} in all ${w.partialRounds} partial ` +
         `${plural(w.partialRounds, 'round', 'rounds')}, whatever the round constants: with M the internal matrix, M^j v ` +
         `is zero there for every j < ${w.partialRounds}, so no partial-round S-box is active.`
