@@ -102,7 +102,7 @@ function valueClaimText(w: Witness): { title: string; note: string } | null {
     return {
       title: `Differential uniformity of the S-box table is ${w.uniformity}`,
       note:
-        `No nonzero input difference and output difference occur together for more than ${w.uniformity} of the 256 inputs; ` +
+        `For no nonzero input difference a and output difference b (b may be 00) do more than ${w.uniformity} of the 256 inputs x satisfy S(x ⊕ a) ⊕ S(x) = b; ` +
         `input difference ${w.inputDifference.toUpperCase()} gives output difference ${w.outputDifference.toUpperCase()} for exactly ${w.uniformity}. ` +
         'This is a property of the table alone, not a bound on any trail or differential of the cipher.',
     };

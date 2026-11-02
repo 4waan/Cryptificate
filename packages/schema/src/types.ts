@@ -212,9 +212,10 @@ export interface SboxCollisionWitness {
 }
 
 /**
- * The differential uniformity of a byte S-box: no nonzero input difference
- * and output difference occur together for more inputs than `uniformity`,
- * and this pair does.
+ * The differential uniformity of a byte S-box: for no nonzero input
+ * difference a and output difference b (b may be 00) do more than
+ * `uniformity` of the 256 inputs x satisfy S(x ⊕ a) ⊕ S(x) = b, and for
+ * this pair exactly `uniformity` do.
  */
 export interface SboxDifferentialWitness {
   kind: 'sbox-differential';
