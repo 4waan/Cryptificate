@@ -49,6 +49,18 @@ export function describeWitness(w: Witness, field: FieldName): string {
       );
     case 'sbox-collision':
       return `S(${w.x1.toUpperCase()}) = S(${w.x2.toUpperCase()}) = ${w.y.toUpperCase()}: two inputs share an output, so the S-box is not a permutation.`;
+    case 'sbox-differential':
+      return (
+        `Input difference ${w.inputDifference.toUpperCase()} becomes output difference ${w.outputDifference.toUpperCase()} on ` +
+        `${w.uniformity} of the 256 inputs, and no nonzero input difference reaches any output difference more often: ` +
+        `the differential uniformity is ${w.uniformity}.`
+      );
+    case 'sbox-linearity':
+      return (
+        `Input mask ${w.inputMask.toUpperCase()} and output mask ${w.outputMask.toUpperCase()} have a Walsh coefficient of ` +
+        `absolute value ${w.linearity}, the largest at a nonzero output mask: the linearity is ${w.linearity} ` +
+        `(nonlinearity ${128 - w.linearity / 2}).`
+      );
     case 'power-collision':
       return (
         `x ↦ x^${w.exponent} sends ${abbreviateDecimal(w.x1)} and ω = ${abbreviateDecimal(w.x2)} to the same value ` +
@@ -70,5 +82,9 @@ export function witnessHeading(w: Witness): string {
       return 'S-box collision';
     case 'power-collision':
       return 'Power map collision';
+    case 'sbox-differential':
+      return 'Largest difference-table entry';
+    case 'sbox-linearity':
+      return 'Largest Walsh coefficient';
   }
 }

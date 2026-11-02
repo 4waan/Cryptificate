@@ -125,6 +125,30 @@ function WitnessBody({ witness: w, field }: { witness: Witness; field: FieldName
           <Cells field="gf256" values={[w.y]} highlight={[0]} highlightLabel="collision" prefix="S" />
         </div>
       );
+    case 'sbox-differential':
+      return (
+        <div className="witness-rows">
+          <span className="witness-label">Input difference a</span>
+          <Cells field="gf256" values={[w.inputDifference]} prefix="a" />
+          <span className="witness-label">Output difference b</span>
+          <Cells field="gf256" values={[w.outputDifference]} prefix="b" />
+          <span className="witness-label">Inputs x with S(x ⊕ a) ⊕ S(x) = b</span>
+          <span className="mono">{w.uniformity} of 256</span>
+        </div>
+      );
+    case 'sbox-linearity':
+      return (
+        <div className="witness-rows">
+          <span className="witness-label">Input mask a</span>
+          <Cells field="gf256" values={[w.inputMask]} prefix="a" />
+          <span className="witness-label">Output mask b</span>
+          <Cells field="gf256" values={[w.outputMask]} prefix="b" />
+          <span className="witness-label">|W(a, b)|</span>
+          <span className="mono">
+            {w.linearity} (nonlinearity {128 - w.linearity / 2})
+          </span>
+        </div>
+      );
     case 'power-collision':
       return (
         <div className="witness-rows">
