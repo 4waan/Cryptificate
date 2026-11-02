@@ -64,7 +64,7 @@ export function parseSavedWorkspace(text: string | null): SavedWorkspace | null 
   }
 }
 
-export function readSavedWorkspace(storage: StorageLike | null | undefined): SavedWorkspace | null {
+export function readSavedWorkspace(storage: Pick<Storage, 'getItem'> | null | undefined): SavedWorkspace | null {
   try {
     return parseSavedWorkspace(storage?.getItem(WORKSPACE_KEY) ?? null);
   } catch {
