@@ -16,7 +16,7 @@ import { formatAnalysis, table, witnessText } from './format.js';
 import type { Style } from './format.js';
 import { locateJson, positionOf } from './json-locate.js';
 import type { Position } from './json-locate.js';
-import { exitCodeOf, inScope, unavailable, violates, combine } from './policy.js';
+import { UNAVAILABLE_REASONS, exitCodeOf, inScope, unavailable, violates, combine } from './policy.js';
 import type { FailOn, Outcome } from './policy.js';
 import type { VerifyResult, VerifyRow } from './verify.js';
 
@@ -70,6 +70,12 @@ export interface VerifyEntry {
   outcome: Outcome;
   /** "subject claim" of the rows whose status the policy rejects. */
   violations: string[];
+  /**
+   * Why the bundle could not be gated: the re-run did not complete, a missing
+   * tool left a claim unchecked, or an in-scope claim cannot be re-checked.
+   * Any problem makes the outcome an error (exit 2).
+   */
+  problems: string[];
 }
 
 export interface VerifyRun {
@@ -109,9 +115,14 @@ export function makeCheckRun(entries: CheckEntry[], failOn: FailOn, only: Readon
   return { format: 'cryptificate-check/v1', command: 'check', failOn, claims: only ? [...only] : null, outcome, exitCode: exitCodeOf(outcome), results: entries };
 }
 
-/** The status a verify row ends with: recomputed when re-checked, recorded otherwise. */
-function rowStatus(r: VerifyRow): string {
-  return r.result === 'match' || r.result === 'mismatch' ? r.recomputed : r.recorded;
+/** Whether verify re-derived this row with the installed tools. */
+function rechecked(r: VerifyRow): boolean {
+  return r.result === 'match' || r.result === 'mismatch';
+}
+
+/** Whether a missing tool, not the re-check itself, decided the recomputed status. */
+function rowUnavailable(r: VerifyRow): boolean {
+  return rechecked(r) && r.recomputed === 'not_established' && (UNAVAILABLE_REASONS as readonly string[]).includes(r.recomputedReason ?? '');
 }
 
 /**
@@ -121,15 +132,40 @@ function rowStatus(r: VerifyRow): string {
  */
 function rowInScope(r: VerifyRow, only: ReadonlySet<string> | null): boolean {
   if (only) return only.has(r.claim);
-  return (r.result === 'match' || r.result === 'mismatch') && r.reason !== 'not-run';
+  return rechecked(r) && r.reason !== 'not-run';
 }
 
+/**
+ * Evaluate one verified bundle. The policy only ever reads recomputed
+ * statuses: a status the bundle records about itself is never gated on.
+ *   error           the bundle could not be read; the re-run did not complete;
+ *                   nothing could be re-checked; a missing tool decided a
+ *                   mismatch, or (under a policy) an in-scope status; or
+ *                   (under a policy) an in-scope claim verify cannot re-check;
+ *   policy-failure  a re-checked claim differs from the bundle, the digest
+ *                   differs, or an in-scope recomputed status violates the policy;
+ *   pass            otherwise.
+ */
 export function evaluateVerifyEntry(e: { bundle: string; result: VerifyResult | null; error?: string }, failOn: FailOn, only: ReadonlySet<string> | null): VerifyEntry {
   const base = { bundle: e.bundle, result: e.result, ...(e.error !== undefined ? { error: e.error } : {}) };
-  if (!e.result) return { ...base, outcome: 'error', violations: [] };
-  const violations = e.result.rows.filter((r) => rowInScope(r, only) && violates(rowStatus(r), failOn)).map((r) => `${r.subject} ${r.claim}`);
-  const outcome: Outcome = !e.result.ok || violations.length > 0 ? 'policy-failure' : 'pass';
-  return { ...base, outcome, violations };
+  if (!e.result) return { ...base, outcome: 'error', violations: [], problems: [] };
+  const r = e.result;
+  const problems: string[] = [];
+  if (r.state !== 'completed') problems.push(`the re-run ended with state ${r.state ?? 'unknown'}`);
+  if (!r.rows.some(rechecked)) problems.push('no claim could be re-checked');
+  for (const row of r.rows) {
+    const scoped = failOn !== 'none' && rowInScope(row, only);
+    if (rowUnavailable(row) && (row.result === 'mismatch' || scoped)) {
+      problems.push(`${row.subject} ${row.claim} could not be re-checked (${row.recomputedReason})`);
+    } else if (scoped && !rechecked(row)) {
+      problems.push(`${row.subject} ${row.claim} cannot be re-checked by verify (${row.result})`);
+    }
+  }
+  const violations = r.rows.filter((row) => rowInScope(row, only) && rechecked(row) && violates(row.recomputed, failOn)).map((row) => `${row.subject} ${row.claim}`);
+  let outcome: Outcome = 'pass';
+  if (problems.length > 0) outcome = 'error';
+  else if (!r.ok || violations.length > 0) outcome = 'policy-failure';
+  return { ...base, outcome, violations, problems };
 }
 
 export function makeVerifyRun(entries: VerifyEntry[], failOn: FailOn, only: ReadonlySet<string> | null): VerifyRun {
@@ -264,12 +300,20 @@ function gateSummaryText(run: GateRun, style: Style): string {
     }
   } else {
     for (const e of run.results) {
-      if (e.outcome === 'error') lines.push(`  ${e.bundle}: error: ${e.error ?? 'not verified'}`);
+      if (e.outcome === 'error') lines.push(`  ${e.bundle}: error: ${e.error ?? (e.problems.join('; ') || 'not verified')}`);
       else if (e.result && !e.result.ok) lines.push(`  ${e.bundle}: some claims do not match or could not be re-checked`);
       if (e.violations.length > 0) lines.push(`  ${e.bundle}: rejected by the policy: ${e.violations.join(', ')}`);
     }
   }
   return lines.join('\n');
+}
+
+const MATCH_LINE = 'All re-checked claims match.';
+
+/** Closing sentence of a verify result; never "match" for a re-run that did not complete. */
+function verdictLine(result: VerifyResult): string {
+  if (result.state !== 'completed') return `The re-run did not complete (${result.state}); the claims were not re-checked in full.`;
+  return result.ok ? MATCH_LINE : 'Some claims do not match or could not be re-checked.';
 }
 
 export function verifyResultText(result: VerifyResult, style: Style): string {
@@ -284,7 +328,7 @@ export function verifyResultText(result: VerifyResult, style: Style): string {
     '',
     ...result.notes,
     '',
-    result.ok ? style.status('match', 'All re-checked claims match.') : style.status('mismatch', 'Some claims do not match or could not be re-checked.'),
+    verdictLine(result) === MATCH_LINE ? style.status('match', MATCH_LINE) : style.status('mismatch', verdictLine(result)),
   );
   return lines.join('\n');
 }
@@ -361,13 +405,14 @@ export function verifyToMarkdown(run: VerifyRun): string {
     }
     const r = e.result;
     out.push(`${r.kind} ${mdCode(r.id)}; inputs recorded ${mdCode(r.inputDigest.recorded)}${r.inputDigest.recomputed ? `, recomputed ${mdCode(r.inputDigest.recomputed)}` : ''}.`, '');
+    if (e.problems.length > 0) out.push(`Error: ${mdCell(e.problems.join('; '))}.`, '');
     out.push('| Subject | Claim | Recorded | Recomputed | Result |', '| --- | --- | --- | --- | --- |');
     for (const row of r.rows) {
       const violated = e.violations.includes(`${row.subject} ${row.claim}`);
       const result = row.result === 'mismatch' ? '**mismatch**' : row.result;
       out.push(`| ${mdCell(row.subject)} | ${mdCode(row.claim)} | ${mdCell(row.recorded)} | ${mdCell(row.recomputed)} | ${result}${violated ? ' (fails policy)' : ''} |`);
     }
-    out.push('', ...r.notes.map((n) => `- ${mdCell(n)}`), '', r.ok ? 'All re-checked claims match.' : 'Some claims do not match or could not be re-checked.', '');
+    out.push('', ...r.notes.map((n) => `- ${mdCell(n)}`), '', verdictLine(r), '');
   }
   return out.join('\n');
 }
@@ -468,12 +513,12 @@ export function verifyToJUnit(run: VerifyRun): string {
       const base: JCase = { classname: `cryptificate.verify.${r.subject}`, name: r.claim, file: e.bundle };
       const message = `recorded ${r.recorded}, recomputed ${r.recomputed}`;
       if (r.result === 'mismatch') return { ...base, failure: { type: 'mismatch', message, body: message } };
-      if (e.violations.includes(`${r.subject} ${r.claim}`)) return { ...base, failure: { type: rowStatus(r), message, body: message } };
+      if (e.violations.includes(`${r.subject} ${r.claim}`)) return { ...base, failure: { type: r.recomputed, message, body: message } };
       if (r.result === 'match') return base;
       return { ...base, skipped: `${r.result}: ${message}` };
     });
-    if (!e.result.ok && !e.result.rows.some((r) => r.result === 'mismatch')) {
-      cases.push({ classname: 'cryptificate.verify', name: 'bundle', file: e.bundle, failure: { type: 'not-re-checked', message: 'No claim could be re-checked', body: e.result.notes.join('\n') } });
+    if (e.problems.length > 0) {
+      cases.push({ classname: 'cryptificate.verify', name: 'bundle', file: e.bundle, error: { type: 'not-re-checked', message: e.problems.join('; '), body: e.result.notes.join('\n') } });
     }
     return { name: e.bundle, props, cases };
   });
@@ -626,7 +671,7 @@ export function verifyToSarif(run: VerifyRun, opts: SarifOptions): Record<string
       let kind: SarifKind;
       let level: SarifLevel;
       if (r.result === 'mismatch') [kind, level] = ['fail', 'error'];
-      else if (violated) [kind, level] = ['fail', rowStatus(r) === 'refuted' ? 'error' : 'warning'];
+      else if (violated) [kind, level] = ['fail', r.recomputed === 'refuted' ? 'error' : 'warning'];
       else if (r.result === 'match') [kind, level] = ['pass', 'none'];
       else if (r.result === 'historical') [kind, level] = ['informational', 'none'];
       else [kind, level] = ['open', 'none'];
@@ -642,9 +687,7 @@ export function verifyToSarif(run: VerifyRun, opts: SarifOptions): Record<string
         properties: { claimId: r.claim, subject: r.subject, recorded: r.recorded, recomputed: r.recomputed, result: r.result, policyViolation: violated, reportId: e.result.id },
       });
     }
-    if (!e.result.ok && !e.result.rows.some((r) => r.result === 'mismatch')) {
-      notifications.push({ level: 'error', message: { text: `${e.bundle}: no claim could be re-checked` } });
-    }
+    for (const p of e.problems) notifications.push({ level: 'error', message: { text: `${e.bundle}: ${p}` }, locations: [{ physicalLocation: { artifactLocation: { uri } } }] });
   }
   return sarifLog(run, rules, results, notifications, undefined);
 }

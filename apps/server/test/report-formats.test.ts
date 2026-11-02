@@ -89,6 +89,7 @@ const VERIFY_RESULT: VerifyResult = {
   kind: 'analysis',
   id: '9421acab267bd47776b29d832356e9f9',
   inputDigest: { recorded: 'sha256:e55f3e07cf131691b0cd8aca16972ba3ea957bb50d043f3bd76de552b5171616', recomputed: 'sha256:e55f3e07cf131691b0cd8aca16972ba3ea957bb50d043f3bd76de552b5171616' },
+  state: 'completed',
   rows: [
     { subject: 'design', claim: 'matrix.mds', recorded: 'refuted', recomputed: 'refuted', result: 'match' },
     { subject: 'design', claim: 'offsets.dispersion', recorded: 'proved', recomputed: 'proved', result: 'match' },
@@ -310,6 +311,54 @@ test('policy outcomes: scope, statuses and exit codes', () => {
   assert.equal(evaluateVerifyEntry({ bundle: 'b', result: okResult }, 'refuted', null).outcome, 'policy-failure');
   assert.equal(evaluateVerifyEntry({ bundle: 'b', result: okResult }, 'refuted', new Set(['offsets.dispersion'])).outcome, 'pass');
   assert.equal(evaluateVerifyEntry({ bundle: 'b', result: null, error: 'x' }, 'none', null).outcome, 'error');
+});
+
+test('verify outcomes: a re-run that did not complete or lacked a tool is an error, never a pass or a policy failure', () => {
+  const okResult: VerifyResult = { ...VERIFY_RESULT, ok: true, rows: VERIFY_RESULT.rows.filter((r) => r.result !== 'mismatch') };
+  const ev = (result: VerifyResult, failOn: FailOn, only: Set<string> | null = null) => evaluateVerifyEntry({ bundle: 'b', result }, failOn, only);
+  // the re-run failed (Lean missing): every row "matches" not_established, yet nothing was checked
+  const noLean: VerifyResult = {
+    ...VERIFY_RESULT,
+    state: 'failed',
+    ok: true,
+    rows: [
+      { subject: 'design', claim: 'matrix.mds', recorded: 'not_established', recomputed: 'not_established', result: 'match', reason: 'lean-unavailable', recomputedReason: 'lean-unavailable' },
+      { subject: 'design', claim: 'offsets.dispersion', recorded: 'not_established', recomputed: 'not_established', result: 'match', reason: 'lean-unavailable', recomputedReason: 'lean-unavailable' },
+    ],
+  };
+  for (const failOn of ['none', 'refuted', 'any'] as const) {
+    const e = ev(noLean, failOn);
+    assert.equal(e.outcome, 'error', failOn);
+    assert.match(e.problems[0]!, /the re-run ended with state failed/);
+  }
+  assert.equal(makeVerifyRun([ev(noLean, 'refuted')], 'refuted', null).exitCode, 2);
+  // a bundle of proved claims re-checked without Lean: mismatches caused by the missing tool are errors (2), not policy failures (1)
+  const mismatchNoLean: VerifyResult = {
+    ...VERIFY_RESULT,
+    state: 'failed',
+    ok: false,
+    rows: [{ subject: 'design', claim: 'matrix.mds', recorded: 'proved', recomputed: 'not_established', result: 'mismatch', recomputedReason: 'lean-unavailable' }],
+  };
+  assert.equal(ev(mismatchNoLean, 'refuted').outcome, 'error');
+  // the same with a completed state (e.g. only the native toolchain missing): still an error
+  const nativeMissing: VerifyResult = { ...mismatchNoLean, state: 'completed', rows: [{ ...mismatchNoLean.rows[0]!, claim: 'native.correctness', subject: 'implementation', recomputedReason: 'native-unavailable' }, ...okResult.rows] };
+  const nm = ev(nativeMissing, 'none');
+  assert.equal(nm.outcome, 'error');
+  assert.deepEqual(nm.problems, ['implementation native.correctness could not be re-checked (native-unavailable)']);
+  // a real mismatch stays a policy failure
+  assert.equal(ev(VERIFY_RESULT, 'refuted').outcome, 'policy-failure');
+  // an in-scope claim that verify does not re-check is an error under a policy, never gated on the recorded status
+  for (const id of ['native.correctness', 'native.timing']) {
+    const e = ev(okResult, 'any', new Set([id]));
+    assert.equal(e.outcome, 'error', id);
+    assert.deepEqual(e.violations, []);
+    assert.match(e.problems[0]!, new RegExp(`${id.replace('.', '\\.')} cannot be re-checked by verify`));
+  }
+  assert.equal(ev(okResult, 'none', new Set(['native.correctness'])).outcome, 'pass');
+  // nothing re-checked at all is an error
+  const nothing: VerifyResult = { ...okResult, ok: false, rows: okResult.rows.filter((r) => r.result !== 'match') };
+  assert.equal(ev(nothing, 'none').outcome, 'error');
+  assert.deepEqual(ev(nothing, 'none').problems, ['no claim could be re-checked']);
 });
 
 test('fail-on values', () => {

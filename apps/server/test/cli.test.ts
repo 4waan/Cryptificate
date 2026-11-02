@@ -226,6 +226,38 @@ test('verify: several bundles, policy on re-checked claims, JSON and JUnit outpu
   });
 });
 
+test('verify exit code 2 when Lean is missing, whatever the bundle records', async () => {
+  await withFixture(async (fx) => {
+    const made = await run(fx, ['check', 'designs/aes.json', 'designs/identity.json', '-q', '--bundle-dir', 'bundles']);
+    assert.equal(made.code, 0, made.stderr);
+    const noLean = { ...fx, env: { ...fx.env, lake: null } };
+    // a bundle whose claims are all proved: the missing tool is not a mismatch (1) but an error (2)
+    const aes = await run(noLean, ['verify', 'bundles/aes.tar.gz', '--fail-on', 'refuted']);
+    assert.equal(aes.code, 2, aes.stdout);
+    assert.match(aes.stdout, /Policy --fail-on refuted: error \(exit 2\)\n {2}bundles\/aes\.tar\.gz: error: the re-run ended with state failed/);
+    assert.equal((await run(noLean, ['verify', 'bundles/aes.tar.gz'])).code, 2);
+    // a design with a refuted claim: never a pass because nothing could be re-checked
+    const id = await run(noLean, ['verify', 'bundles/identity.tar.gz', '--fail-on', 'refuted', '--format', 'json']);
+    assert.equal(id.code, 2, id.stdout);
+    const doc = JSON.parse(id.stdout) as VerifyRun;
+    assert.equal(doc.results[0]!.outcome, 'error');
+    assert.equal(doc.results[0]!.result!.state, 'failed');
+    assert.ok(doc.results[0]!.result!.rows.some((r) => r.recomputedReason === 'lean-unavailable'));
+  });
+  // a bundle made without Lean records not_established claims; re-checking it without Lean must not pass either
+  await withFixture(
+    async (fx) => {
+      const made = await run(fx, ['check', 'designs/identity.json', '-q', '--bundle', 'identity.tar.gz']);
+      assert.equal(made.code, 2, made.stdout);
+      assert.ok(existsSync(join(fx.root, 'identity.tar.gz')));
+      const r = await run(fx, ['verify', 'identity.tar.gz', '--fail-on', 'refuted']);
+      assert.equal(r.code, 2, r.stdout);
+      assert.doesNotMatch(r.stdout, /passed/);
+    },
+    { noLake: true },
+  );
+});
+
 test('help and unknown commands', async () => {
   await withFixture(async (fx) => {
     const help = await run(fx, ['--help']);

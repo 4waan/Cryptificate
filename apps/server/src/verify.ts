@@ -8,9 +8,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
-import type { AnalysisReport, AnalysisRequest, Claim, ExperimentReport, Report } from '@cryptificate/schema';
+import type { AnalysisReport, AnalysisRequest, Claim, ExecutionState, ExperimentReport, Report } from '@cryptificate/schema';
 import { runAnalysis, ANALYSIS_STEPS } from './analysis.js';
 import { checkCertificate } from './certificate.js';
+import type { CertificateCheck } from './certificate.js';
 import { buildAnalysisClaims } from './claims.js';
 import { JobContext } from './context.js';
 import type { PipelineEnv } from './context.js';
@@ -26,12 +27,20 @@ export interface VerifyRow {
   result: MatchKind;
   /** Why the recorded claim was not established, when the bundle says (e.g. "not-run"). */
   reason?: string;
+  /** Why the recomputed claim was not established (e.g. "lean-unavailable"). */
+  recomputedReason?: string;
 }
 
 export interface VerifyResult {
   kind: Report['kind'];
   id: string;
   inputDigest: { recorded: string; recomputed: string | null };
+  /**
+   * Execution state of the re-run: of the analysis, or for an experiment the
+   * first candidate re-check that did not complete. Anything but "completed"
+   * means the bundle could not be re-checked in full.
+   */
+  state: ExecutionState;
   rows: VerifyRow[];
   ok: boolean;
   notes: string[];
@@ -74,11 +83,19 @@ function compareClaims(subject: string, recorded: readonly Claim[], recomputed: 
       rows.push({ subject, claim: rc.id, recorded: rc.status, recomputed: 'missing', result: 'mismatch' });
       continue;
     }
-    rows.push({ subject, claim: rc.id, recorded: rc.status, recomputed: now.status, result: now.status === rc.status ? 'match' : 'mismatch', ...(rc.reason ? { reason: rc.reason } : {}) });
+    rows.push({
+      subject,
+      claim: rc.id,
+      recorded: rc.status,
+      recomputed: now.status,
+      result: now.status === rc.status ? 'match' : 'mismatch',
+      ...(rc.reason ? { reason: rc.reason } : {}),
+      ...(now.reason ? { recomputedReason: now.reason } : {}),
+    });
   }
   for (const c of recomputed) {
     if (!recorded.some((r) => r.id === c.id) && RECHECKED.has(c.id)) {
-      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result: 'mismatch' });
+      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result: 'mismatch', ...(c.reason ? { recomputedReason: c.reason } : {}) });
     }
   }
   return rows;
@@ -109,7 +126,7 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
         if (recomputedDigest && recomputedDigest !== report.inputDigest) notes.push('The recomputed input digest differs from the recorded one.');
         if (result.state !== 'completed') notes.push(`The re-run ended with state ${result.state}.`);
         notes.push('Timings in the bundle are historical and were not re-measured.');
-        return finalize(report, recomputedDigest, rows, notes);
+        return finalize(report, result.state, recomputedDigest, rows, notes);
       }
       // experiment: re-check the equivalence claim of every recorded candidate
       const exp = report as ExperimentReport;
@@ -118,6 +135,7 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
       const design = v.value.design;
       const target = design.model === 'hades/bn254/v1' ? 'external' : 'matrix';
       const rows: VerifyRow[] = [];
+      let state: ExecutionState = 'completed';
       const ctx = new JobContext(report.id, work, controller.signal, Math.max(300_000, exp.candidates.length * 200_000), [], () => {});
       for (const cand of exp.candidates) {
         log(`re-checking circuit equivalence of ${cand.id}`);
@@ -128,6 +146,7 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
           continue;
         }
         const cert = await checkCertificate(verifyEnv, ctx, req, { subdir: `lean/${cand.id.replace(/[^A-Za-z0-9_-]/g, '_')}`, emitStep: `emit:${cand.id}`, leanStep: `lean:${cand.id}` });
+        if (state === 'completed') state = certificateState(cert);
         const claims = buildAnalysisClaims({
           request: req,
           expect: cert.emit?.expect.filter((e) => e.claim === 'circuit.equivalence') ?? [],
@@ -138,14 +157,22 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
         });
         const now = claims.find((c) => c.id === 'circuit.equivalence');
         const status = now?.status ?? 'missing';
-        rows.push({ subject: cand.id, claim: 'circuit.equivalence', recorded: cand.equivalence.status, recomputed: status, result: status === cand.equivalence.status ? 'match' : 'mismatch' });
+        rows.push({
+          subject: cand.id,
+          claim: 'circuit.equivalence',
+          recorded: cand.equivalence.status,
+          recomputed: status,
+          result: status === cand.equivalence.status ? 'match' : 'mismatch',
+          ...(now?.reason ? { recomputedReason: now.reason } : {}),
+        });
         if (cand.native) rows.push({ subject: cand.id, claim: 'native.correctness', recorded: cand.native.passed ? 'passed' : 'failed', recomputed: '-', result: 'not re-checked' });
       }
       if (exp.measurements) {
         rows.push({ subject: 'measurements', claim: 'native.timing', recorded: exp.measurements.verdict, recomputed: '-', result: 'historical' });
       }
+      if (state !== 'completed') notes.push(`A re-check ended with state ${state}.`);
       notes.push('Benchmark results are historical measurements from the machine that produced the bundle.');
-      return finalize(report, null, rows, notes);
+      return finalize(report, state, null, rows, notes);
     } finally {
       rmSync(work, { recursive: true, force: true });
     }
@@ -155,9 +182,25 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
   }
 }
 
-function finalize(report: Report, recomputedDigest: string | null, rows: VerifyRow[], notes: string[]): VerifyResult {
+/** Execution state of one certificate check, as the analysis pipeline would record it. */
+function certificateState(cert: CertificateCheck): ExecutionState {
+  if (cert.emitError) {
+    const k = cert.emitError.kind;
+    return k === 'cancelled' || k === 'timeout' || k === 'invalid' ? k : 'failed';
+  }
+  if (cert.problem?.reason === 'cancelled') return 'cancelled';
+  if (cert.problem?.reason === 'not-run') return 'timeout';
+  if (cert.problem) return 'failed';
+  const o = cert.outcome;
+  if (!o) return 'completed';
+  if (o.cancelled) return 'cancelled';
+  if (o.timedOut) return 'timeout';
+  return o.unavailable || o.exitCode !== 0 ? 'failed' : 'completed';
+}
+
+function finalize(report: Report, state: ExecutionState, recomputedDigest: string | null, rows: VerifyRow[], notes: string[]): VerifyResult {
   const digestOk = recomputedDigest === null || recomputedDigest === report.inputDigest;
   const ok = digestOk && rows.every((r) => r.result !== 'mismatch') && rows.some((r) => r.result === 'match');
   if (!rows.some((r) => r.result === 'match')) notes.push('No claim could be re-checked.');
-  return { kind: report.kind, id: report.id, inputDigest: { recorded: report.inputDigest, recomputed: recomputedDigest }, rows, ok, notes };
+  return { kind: report.kind, id: report.id, inputDigest: { recorded: report.inputDigest, recomputed: recomputedDigest }, state, rows, ok, notes };
 }
