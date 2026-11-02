@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CircuitEditor } from '../components/CircuitEditor';
 import { ComputedMatrix, circuitFromDesign, generateCircuit } from '../components/ComputedMatrix';
 import { DesignEditor } from '../components/DesignEditor';
@@ -72,12 +72,32 @@ function WorkspaceNotices() {
   );
 }
 
+/**
+ * One polite live region that stays mounted. A new announcement first
+ * clears the text, then sets it on the next frame, so screen readers
+ * speak repeated and back-to-back messages.
+ */
+function Announcer() {
+  const announcement = useAppState((s) => s.announcement);
+  const [text, setText] = useState('');
+  useEffect(() => {
+    if (!announcement.text) return;
+    setText('');
+    const frame = requestAnimationFrame(() => setText(announcement.text));
+    return () => cancelAnimationFrame(frame);
+  }, [announcement]);
+  return (
+    <p className="visually-hidden" role="status" aria-live="polite">
+      {text}
+    </p>
+  );
+}
+
 export function WorkspaceView() {
   const design = useAppState((s) => s.design);
   const program = useAppState((s) => s.program);
   const target = useAppState((s) => s.target);
   const highlight = useAppState((s) => s.highlight);
-  const announcement = useAppState((s) => s.announcement);
   const runs = useAppState((s) => s.runs);
   const current = useAppState((s) => s.current);
   const source = useAppState(dataSource);
@@ -136,9 +156,7 @@ export function WorkspaceView() {
 
       <WorkspaceToolbar field={design.field} problems={problems.length} />
       <WorkspaceNotices />
-      <p className="visually-hidden" role="status" aria-live="polite" key={announcement.n}>
-        {announcement.text}
-      </p>
+      <Announcer />
 
       <div className="grid-inputs">
         <DesignEditor design={design} target={target} />

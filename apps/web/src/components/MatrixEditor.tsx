@@ -42,6 +42,7 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
   values.forEach((row, r) => row.forEach((v, c) => (!f.isValid(v) ? errors.push({ r, c }) : null)));
   const [pasteNote, setPasteNote] = useState<{ error: boolean; text: string } | null>(null);
   const [importing, setImporting] = useState(false);
+  const pasteToggleRef = useRef<HTMLButtonElement>(null);
 
   const focusCell = (r: number, c: number) => {
     const el = refs.current[r * n + c];
@@ -176,6 +177,7 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
         <>
           <div className="row matrix-tools">
             <button
+              ref={pasteToggleRef}
               type="button"
               className="btn btn-sm"
               aria-expanded={importing}
@@ -195,8 +197,14 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
                 onChange(m);
                 setPasteNote({ error: false, text: note });
                 setImporting(false);
+                // The box unmounts; send focus to the first cell so keyboard users stay in the grid.
+                focusCell(0, 0);
               }}
-              onClose={() => setImporting(false)}
+              onClose={() => {
+                // Move focus before the box unmounts, so it never falls back to the page.
+                pasteToggleRef.current?.focus();
+                setImporting(false);
+              }}
             />
           ) : null}
         </>
@@ -267,19 +275,19 @@ function MatrixImport({
           </div>
         </div>
       ) : null}
-      <div id={`${id}-result`} role="status" aria-live="polite">
+      <p id={`${id}-result`} className={parsed && !parsed.ok ? 'error-text' : 'small muted'} role="status" aria-live="polite">
         {parsed?.ok ? (
-          <div className="stack" style={{ gap: 6 }}>
-            <MatrixView values={parsed.matrix} label="Preview" field={field} />
-            {parsed.notes.length ? <p className="small muted">{parsed.notes.join(' ')}</p> : null}
-          </div>
+          <span>
+            Reads as a {n}×{n} matrix{parsed.notes.length ? `. ${parsed.notes.join(' ')}` : '.'}
+          </span>
         ) : parsed ? (
-          <p className="error-text">
+          <>
             <IconWarning />
             <span>{parsed.error}</span>
-          </p>
+          </>
         ) : null}
-      </div>
+      </p>
+      {parsed?.ok ? <MatrixView values={parsed.matrix} label="Preview" field={field} /> : null}
       <div className="row">
         <button
           type="button"
