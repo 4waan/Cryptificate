@@ -2396,7 +2396,9 @@ input[type='radio'] {
 .seg-tag {
   margin-left: 6px;
   padding: 0 4px;
-  border: 1px dashed currentColor;
+  /* Solid: dashed borders are reserved for unchecked previews. */
+  border: 1px solid var(--line-strong);
+  color: var(--text-muted);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 0.62rem;
