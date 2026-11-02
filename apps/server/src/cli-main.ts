@@ -70,16 +70,18 @@ Gate options (check, verify, report):
   --fail-on none|refuted|not-established|any
                         claim statuses that fail the run (default none; report keeps the
                         policy recorded in a check or verify result)
-  --claims ID[,ID...]   restrict the policy to these claim ids
+  --claims ID[,ID...]   restrict the policy to these claim ids (an unknown id is an error)
   --no-step-summary     do not append Markdown to $GITHUB_STEP_SUMMARY
 
 <design.json> may hold a CandidateDesign or a full request object. Patterns are expanded by
 cryptificate (*, ?, [..], **); --program, --json and --bundle need a single input.
 Exit status (check, verify, report): 0 passed; 1 the policy failed (an in-scope claim has a
-rejected status, or verify found a claim that differs from the bundle or could re-check none);
-2 usage error, unreadable or invalid input, a run that failed, timed out or was stopped, or,
-under a policy, an in-scope claim left unchecked because the engine, Lean or the native
-toolchain was unavailable. experiment: 0 completed, 1 failed, timed out or stopped, 2 invalid.
+rejected status, or verify re-checked a claim that differs from the bundle); 2 usage error,
+unreadable or invalid input, a run or re-run that failed, timed out or was stopped, a verify
+that could re-check nothing or whose mismatch came from a missing tool, or, under a policy,
+an in-scope claim left unchecked because the engine, Lean or the native toolchain was
+unavailable, a --claims id an input does not carry, or (verify) an in-scope claim verify
+does not re-check. experiment: 0 completed, 1 failed, timed out or stopped, 2 invalid.
 Environment: CRYPTIFICATE_HOME (state directory), CRYPTIFICATE_ENGINE, CRYPTIFICATE_LAKE,
 GITHUB_STEP_SUMMARY.
 `;

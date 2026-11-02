@@ -17,7 +17,7 @@ inputs:
     description: "Claim statuses that fail the job: none, refuted, not-established or any."
     default: refuted
   claims:
-    description: Comma-separated claim ids the policy is restricted to (default every claim the run attempts).
+    description: Comma-separated claim ids the policy is restricted to (default every claim the run attempts). An unknown id, or an id an input's report does not carry, fails the job with exit status 2.
     default: ""
   target:
     description: "Circuit target for every input: matrix, external or internal (default from each file)."

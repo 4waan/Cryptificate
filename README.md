@@ -48,7 +48,7 @@ git clone https://github.com/4waan/Cryptificate && cd Cryptificate && npm start
 2. **Check it.** Cryptificate generates a Lean certificate for your exact values and checks it. A fresh 4×4 MDS certificate takes about three seconds.
 3. **Read the evidence.** The report shows two chains side by side: *design guarantees* (MDS, offsets, S-box, activity bound) and *implementation correspondence* (circuit equivalence, Rust-source refinement, native correctness, timing). Every refutation comes with concrete bytes you can check by hand.
 4. **Search and measure.** A bounded search proposes cheaper circuits. Each candidate is proved equivalent in Lean and run against 9,214 test inputs before it is timed against the textbook circuit and the direct implementation.
-5. **Share it.** Download the evidence bundle. `cryptificate verify` regenerates every claim from the bundle's inputs with the installed checker.
+5. **Share it.** Download the evidence bundle. `cryptificate verify` regenerates the design and circuit claims from the bundle's inputs with the installed checker.
 
 ## Demo
 
