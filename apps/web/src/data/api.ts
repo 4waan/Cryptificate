@@ -1,3 +1,4 @@
+import { parseRetryAfter } from '../lib/retry';
 import type {
   AnalysisRequest,
   Capabilities,
@@ -17,6 +18,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     readonly path?: string,
+    /** Seconds from Retry-After, when the service sent one (429). */
+    readonly retryAfter?: number,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -39,8 +42,12 @@ async function readError(res: Response): Promise<ApiError> {
   } catch {
     // Body was not JSON; keep the status text.
   }
-  if (res.status === 429) message = 'The service is busy: two jobs are already waiting. Try again when one finishes.';
-  return new ApiError(message, res.status, code, path);
+  let retryAfter: number | undefined;
+  if (res.status === 429) {
+    message = 'The service is busy: one job is running and its queue is full.';
+    retryAfter = parseRetryAfter(res.headers?.get?.('retry-after'));
+  }
+  return new ApiError(message, res.status, code, path, retryAfter);
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
