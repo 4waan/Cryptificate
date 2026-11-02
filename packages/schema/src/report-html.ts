@@ -270,8 +270,8 @@ function legend(): SafeHtml {
     h(
       'ul',
       null,
-      h('li', null, statusBadge('proved'), ' Lean checked a theorem stating the property for the exact submitted values.'),
-      h('li', null, statusBadge('refuted'), ' Lean (or, for native correctness, the generated code) produced a concrete counterexample for the exact submitted values.'),
+      h('li', null, statusBadge('proved'), ' The evidence named in the claim establishes the property for the exact submitted values: a Lean-checked theorem, or, for native correctness, agreement on every recorded test case (testing, not a proof).'),
+      h('li', null, statusBadge('refuted'), ' A concrete counterexample for the exact submitted values: checked by Lean, or, for native correctness, a test case on which the generated code gave a wrong output.'),
       h('li', null, statusBadge('not_established'), ' This method did not establish the property. It is not a counterexample; a timeout or a missing tool lands here.'),
       h('li', null, statusBadge('unsupported'), ' The input is outside the supported model.'),
     ),
