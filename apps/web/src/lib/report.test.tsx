@@ -6,7 +6,7 @@ import { renderReportHtml } from '@cryptificate/schema';
 import { ExportReportButton } from '../components/ResultsPanel';
 import type { Run } from '../state/store';
 import type { AnalysisReport, ExperimentReport } from './types';
-import { reportHtml, reportHtmlOptions } from './report';
+import { reportHtml, reportHtmlOptions, serverReportUrl } from './report';
 import { aesDesign } from './presets';
 
 function recorded<T>(name: string): T {
@@ -18,13 +18,25 @@ function run(over: Partial<Run>): Run {
 }
 
 describe('Export report', () => {
-  it('uses the shared renderer: the same page as --format html and report.html', () => {
+  it('downloads a live run\'s page from the service: the bundle\'s report.html', () => {
     const report = recorded<AnalysisReport>('aes-wrong-wire');
     const live = run({ jobId: 'f'.repeat(32) });
-    expect(reportHtmlOptions(live, report)).toEqual({ bundleName: `cryptificate-${'f'.repeat(32)}.tar.gz` });
-    expect(reportHtml(report, live)).toBe(renderReportHtml(report, { bundleName: `cryptificate-${'f'.repeat(32)}.tar.gz` }));
+    expect(serverReportUrl(live)).toBe(`/api/jobs/${'f'.repeat(32)}/report.html`);
+    const markup = renderToStaticMarkup(<ExportReportButton report={report} run={live} />);
+    expect(markup).toContain(`href="/api/jobs/${'f'.repeat(32)}/report.html"`);
+    expect(markup).toContain('download');
+    expect(serverReportUrl(run({ source: 'replay', recordingId: 'aes-wrong-wire', jobId: 'f'.repeat(32) }))).toBeNull();
+    expect(serverReportUrl(run({}))).toBeNull();
+  });
+
+  it('renders a recorded run\'s page in the browser with the shared renderer', () => {
+    const report = recorded<AnalysisReport>('aes-wrong-wire');
     const replay = run({ source: 'replay', recordingId: 'aes-wrong-wire' });
+    expect(reportHtmlOptions(replay)).toEqual({ context: 'recorded run aes-wrong-wire', bundleName: 'aes-wrong-wire.tar.gz' });
+    expect(renderToStaticMarkup(<ExportReportButton report={report} run={replay} />)).toMatch(/^<button/);
     const html = reportHtml(report, replay);
+    expect(html).toBe(renderReportHtml(report, { context: 'recorded run aes-wrong-wire', bundleName: 'aes-wrong-wire.tar.gz' }));
+    expect(html).not.toContain('Recorded toolchain (toolchain.json)');
     expect(html).toContain('Cryptificate evidence report · recorded run aes-wrong-wire');
     expect(html).toContain('npx cryptificate verify aes-wrong-wire.tar.gz');
     expect(html).toContain(report.inputDigest);

@@ -160,7 +160,7 @@ GitHub code scanning shows `fail` results as alerts. How it presents `pass`, `op
 
 Printing it from a browser (Save as PDF) gives a light A4 or Letter document. For `check` the policy outcome comes first when a policy applies or there are several inputs; for `verify` the page shows the recorded and recomputed status of every claim. The page renders what the report records and adds no claim of its own; the evidence is the bundle.
 
-Every evidence bundle also carries the same page as `report.html`, rendered from its own `report.json` and `toolchain.json`, and the workbench's **Export report** button downloads it for the run on screen. `verify` never reads `report.html`. Bundles recorded before `report.html` existed render with `cryptificate report <bundle> --format html`.
+Every evidence bundle also carries the same page as `report.html`, rendered from its own (path-scrubbed) `report.json` and `toolchain.json`; the local service serves it on its own at `GET /api/jobs/:id/report.html`. The workbench's **Export report** button downloads that page for a live run. For a recorded run, which has no service behind it, the button renders the page in the browser with the same renderer from the recorded `report.json`; that page has no *Recorded toolchain (toolchain.json)* section. `verify` never reads `report.html`. Bundles recorded before `report.html` existed render with `cryptificate report <bundle> --format html`.
 
 ## Re-checking bundles in CI
 

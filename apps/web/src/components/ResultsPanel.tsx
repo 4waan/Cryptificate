@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { isStale, normalizeAnalysisRequest, type WorkspaceInputs } from '../lib/canonical';
 import { downloadJson } from '../lib/download';
 import { previewDesign, previewEquivalence, type PreviewItem } from '../lib/preview';
-import { exportReport } from '../lib/report';
+import { exportReport, serverReportUrl } from '../lib/report';
 import type { AnalysisReport, Claim, ClaimId, ExperimentReport, FieldName } from '../lib/types';
 import { startRun } from '../state/actions';
 import type { Run } from '../state/store';
@@ -188,11 +188,21 @@ export function ClaimChains({
 }
 
 /**
- * Downloads the self-contained HTML evidence report of a finished run: the
- * page `--format html` writes and bundles carry as report.html.
+ * Downloads the self-contained HTML evidence report of a finished run. For a
+ * live run it is the bundle's report.html, served by the local service; for a
+ * recorded run it is rendered in the browser by the same renderer from the
+ * recorded report, without the bundle's toolchain.json section.
  */
 export function ExportReportButton({ report, run }: { report: AnalysisReport | ExperimentReport; run: Run }) {
   if (isActive(run) || run.state === 'unavailable') return null;
+  const href = serverReportUrl(run);
+  if (href) {
+    return (
+      <a className="btn btn-sm" href={href} download title="Download this run's evidence bundle report.html, printable to PDF">
+        <IconDownload size={12} /> Export report
+      </a>
+    );
+  }
   return (
     <button
       type="button"

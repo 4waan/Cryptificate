@@ -169,7 +169,7 @@ npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 
 `verify` reads the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It runs no code from the bundle. Timings stay attached to the machine that produced them. The [recorded bundles](examples/bundles) from the demo are in the repository.
 
-For an audit or a pull request, `npx cryptificate report <bundle> --format html --output report.html` writes one printable HTML file with the inputs and their digest, both claim chains with the exact Lean statements and axioms, counterexamples, timing intervals and provenance; it runs no scripts and loads nothing from the network. New bundles carry it as `report.html`, and the workbench's **Export report** button downloads it ([details](docs/ci.md#html-evidence-report)).
+For an audit or a pull request, `npx cryptificate report <bundle> --format html --output report.html` writes one printable HTML file with the inputs and their digest, both claim chains with the exact Lean statements and axioms, counterexamples, timing intervals and provenance; it runs no scripts and loads nothing from the network. New bundles carry it as `report.html`, and the workbench's **Export report** button downloads a live run's `report.html` from the local service, or renders a recorded run's page in the browser with the same renderer ([details](docs/ci.md#html-evidence-report)).
 
 ## Use it in CI
 
