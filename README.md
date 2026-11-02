@@ -138,7 +138,7 @@ Every report labels its origin: **Live** or **Cached exact result**. Editing any
 | MDS, offsets and activity bound for a fresh matrix | 3.3–8.5 s |
 | HADES: external MDS, internal invertibility, exponent, activity | 3.9–4.4 s |
 
-**Every push re-checks everything.** [CI](https://github.com/4waan/Cryptificate/actions/workflows/checks.yml) rebuilds the Lean library, runs every certificate example, re-checks the refinement proofs on Lean 4.35 and runs the Rust, Node and Python test suites.
+**Every push re-checks everything.** [CI](https://github.com/4waan/Cryptificate/actions/workflows/checks.yml) rebuilds the Lean library, runs every certificate example, re-checks the refinement proofs on Lean 4.35, runs the Rust, Node and Python test suites, and runs the GitHub Action on example designs, one of which must fail the gate.
 
 ## From Rust source to the model
 
@@ -169,6 +169,20 @@ npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 
 `verify` reads the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It runs no code from the bundle. Timings stay attached to the machine that produced them. The [recorded bundles](examples/bundles) from the demo are in the repository.
 
+## Use it in CI
+
+`cryptificate check` gates a pull request on the claims of your design and circuit files. It takes several files or patterns, applies a policy with `--fail-on refuted|not-established|any` and exits 0 when the policy holds, 1 when it fails and 2 when an input could not be checked, including when Lean or the engine is missing. Results come out as text, JSON, SARIF 2.1.0, JUnit XML or Markdown, and the Markdown goes to the GitHub job summary.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: 4waan/Cryptificate@main
+  with:
+    inputs: designs/*.json
+    fail-on: refuted
+```
+
+The action at the repository root installs the pinned Lean toolchain, fetches the Mathlib cache, builds the engine and the command, runs the check, uploads the SARIF log to code scanning, where each refuted claim points at its line in your file and carries its counterexample, and uploads one evidence bundle per input as an artifact. The options, the policy scope and the exit codes are in [docs/ci.md](docs/ci.md).
+
 ## Architecture
 
 ```text
@@ -194,7 +208,7 @@ npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 | [`apps/web`](apps/web) | The workbench, also published online |
 | [`python/`](python) | Python client |
 | [`examples/`](examples) | Designs, circuits, evidence bundles and measurements |
-| [`docs/`](docs) | [Evidence model](docs/evidence-model.md), [architecture](docs/architecture.md), [batch interface](docs/batch-interface.md), [adopter guide](docs/adopter-guide.md), [research directions](docs/research-directions.md) |
+| [`docs/`](docs) | [Evidence model](docs/evidence-model.md), [architecture](docs/architecture.md), [batch interface](docs/batch-interface.md), [adopter guide](docs/adopter-guide.md), [CI](docs/ci.md), [research directions](docs/research-directions.md) |
 
 ## Built on WideTrail
 
