@@ -78,6 +78,31 @@ test('a bypass refutes activity.partial with its witness and leaves the total bo
   assert.equal(total.title, 'Active S-box bound over the whole permutation');
 });
 
+test('no partial rounds: activity.partial and activity.total are out of scope, not refuted', () => {
+  const d = { ...design('poseidon2-bn254'), partialRounds: 0 } as AnalysisRequest['design'];
+  const pairs: Array<[ClaimId, string]> = [...FULL_ROUNDS];
+  const claims = buildAnalysisClaims({
+    request: { design: d },
+    expect: pairs.map(([c, t]) => expectation(c, t, 'proved')),
+    verdicts: pairs.map(([c, t]) => verdict(c, t, 'proved')),
+    diagnostics: { partial: { window: null, bypass: null }, claims: [{ claim: 'activity.partial', holds: null, witness: null }] },
+    skipped: [
+      { claim: 'activity.partial', reason: 'not applicable: the design has no partial rounds, so there is no partial-round S-box to activate or to bypass' },
+      { claim: 'activity.total', reason: 'not established by this method: the design has no partial rounds, so every S-box is in the full rounds and activity.outer gives the bound; no certificate is emitted for this claim' },
+    ],
+  });
+  assert.equal(byId(claims, 'activity.outer').status, 'proved');
+  const partial = byId(claims, 'activity.partial');
+  assert.equal(partial.status, 'not_established');
+  assert.equal(partial.reason, 'out-of-scope');
+  assert.equal(partial.witness, null);
+  assert.match(partial.note, /no partial rounds/);
+  const total = byId(claims, 'activity.total');
+  assert.equal(total.status, 'not_established');
+  assert.equal(total.reason, 'out-of-scope');
+  assert.match(total.note, /activity\.outer gives the bound/);
+});
+
 test('verify: partial-round claims missing from an older bundle are not mismatches', () => {
   const claim = (id: ClaimId, status: Claim['status']): Claim => ({ id, chain: 'design', title: id, status, evidence: { kind: 'lean', label: 'Lean-checked proof' }, witness: null, note: '' });
   const recorded = [claim('external.mds', 'proved'), claim('activity.outer', 'proved')];

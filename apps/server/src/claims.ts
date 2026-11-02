@@ -231,6 +231,19 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
 
   for (const info of designClaimsFor(request.design.model)) {
     const pre = ACTIVITY_PRECONDITIONS[info.id];
+    if (info.id === 'activity.total' && request.design.model === 'hades/bn254/v1' && request.design.partialRounds === 0) {
+      // No partial rounds: activity.partial does not apply, and activity.outer
+      // already counts every S-box; no certificate is emitted for this claim.
+      const skipped = inp.skipped?.find((x) => x.claim === info.id);
+      claims.push(
+        notEstablished(
+          info,
+          'out-of-scope',
+          skipped ? capitalize(skipped.reason) : `The design has no partial rounds, so activity.outer gives the bound; ${NOT_ESTABLISHED_TEXT}.`,
+        ),
+      );
+      continue;
+    }
     if (pre) {
       const title = activityTitle(request, info, diagnostics);
       // The bound counts active S-boxes of trails; it only applies to this
