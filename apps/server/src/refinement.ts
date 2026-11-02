@@ -7,7 +7,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { FieldName } from '@cryptificate/schema';
+import type { FieldName, PrimeFieldName } from '@cryptificate/schema';
 import type { Paths } from './paths.js';
 import { sha256Hex } from './toolchain.js';
 
@@ -39,9 +39,12 @@ function readRecord(p: string): CheckRecord | null {
   }
 }
 
-export function refinementStatus(paths: Paths, field: FieldName): RefinementStatus {
-  if (field !== 'gf256') {
+export function refinementStatus(paths: Paths, field: FieldName | PrimeFieldName): RefinementStatus {
+  if (field === 'bn254') {
     return { status: 'unsupported', note: 'Refinement proofs exist for the GF(2^8) kernels only; BN254 arithmetic is not covered.' };
+  }
+  if (field !== 'gf256') {
+    return { status: 'unsupported', note: 'Refinement proofs exist for the GF(2^8) kernels only; prime-field arithmetic is not covered.' };
   }
   const recorded = readText(join(paths.root, 'refinement', 'extract.sha256'));
   const kernel = readText(join(paths.root, KERNEL));

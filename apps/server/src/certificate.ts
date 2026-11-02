@@ -75,6 +75,8 @@ export function derivedEcho(req: AnalysisRequest): Record<string, unknown> {
     // the S-box is echoed as its request spec: {"kind":"aes"} or {"kind":"table","table":[...]}
     out['candSboxTable'] = d.sbox.kind === 'aes' ? { kind: 'aes' } : { kind: 'table', table: d.sbox.table };
   } else {
+    // A prime-field design names its modulus; normalization always states it.
+    if (d.model === 'hades/prime/v1' && d.modulus !== undefined) out['candModulus'] = d.modulus;
     out['candExternal'] = d.external;
     out['candInternal'] = d.internal;
     out['candExponent'] = d.sbox.exponent;

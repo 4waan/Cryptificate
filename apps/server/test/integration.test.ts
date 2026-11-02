@@ -103,6 +103,50 @@ test('partial rounds: 34 for the reference, a checked bypass for the external ma
   assert.equal(status(bad, 'activity.total').status, 'not_established');
 });
 
+test('prime fields: KoalaBear and BabyBear at width four, and a deliberately bad design', { skip }, async () => {
+  for (const [name, total] of [
+    ['koalabear-t4', 'At least 25 active S-boxes over all 28 rounds'],
+    ['babybear-t4', 'At least 23 active S-boxes over all 21 rounds'],
+  ] as const) {
+    const r = await analyze(name);
+    for (const id of ['field.prime', 'external.mds', 'internal.invertible', 'sbox.bijective', 'activity.outer', 'activity.partial', 'activity.total']) {
+      assert.equal(status(r, id).status, 'proved', `${name} ${id}`);
+    }
+    assert.equal(status(r, 'field.prime').evidence.theorem, 'CryptificateJob.field_prime');
+    assert.equal(status(r, 'external.mds').title, 'External matrix is MDS (branch number 5)');
+    assert.equal(status(r, 'activity.outer').title, 'At least 20 active S-boxes in the 8 full rounds');
+    assert.equal(status(r, 'activity.total').title, total);
+  }
+  const bad = await analyze('babybear-t4-bad');
+  assert.equal(status(bad, 'field.prime').status, 'proved');
+  const sbox = status(bad, 'sbox.bijective');
+  assert.equal(sbox.status, 'refuted');
+  assert.equal(sbox.witness?.kind === 'power-collision' ? sbox.witness.x2 : null, '1314723123');
+  const partial = status(bad, 'activity.partial');
+  assert.equal(partial.status, 'refuted');
+  assert.deepEqual(partial.witness?.kind === 'partial-bypass' ? partial.witness.difference : null, ['0', '1', '2013265920', '0']);
+  assert.equal(status(bad, 'activity.outer').reason, 'precondition-failed');
+});
+
+test('verify: a KoalaBear bundle re-checks claim by claim', { skip }, async () => {
+  const home = mkdtempSync(join(tmpdir(), 'cryptificate-it-'));
+  try {
+    const req = { design: example('designs', 'koalabear-t4') } as AnalysisRequest;
+    const jobDir = join(home, 'job');
+    const ctx = new JobContext('2'.repeat(32), jobDir, new AbortController().signal, 300_000, ANALYSIS_STEPS);
+    const result = await runAnalysis({ ...env, noCache: true }, ctx, req);
+    assert.equal(result.state, 'completed', JSON.stringify(result.error ?? ctx.steps));
+    const report = result.report as AnalysisReport;
+    const bundlePath = join(home, 'koalabear.tar.gz');
+    writeFileSync(bundlePath, buildBundle({ jobDir, report, toolchain: await env.toolchain(), paths: env.paths }));
+    const v = await verifyBundle({ ...env, paths: { ...env.paths, home: join(home, 'verify') } }, bundlePath);
+    assert.equal(v.ok, true, JSON.stringify(v.rows));
+    assert.ok(v.rows.some((r) => r.claim === 'field.prime' && r.result === 'match'), JSON.stringify(v.rows));
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test('partial rounds: none at all is out of scope, not a bypass', { skip }, async () => {
   const home = mkdtempSync(join(tmpdir(), 'cryptificate-it-'));
   try {

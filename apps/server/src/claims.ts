@@ -10,8 +10,9 @@ import {
   NOT_ESTABLISHED_TEXT,
   aesLikeActivityBound,
   designClaimsFor,
-  hadesOuterActivityBound,
-  hadesTotalActivityBound,
+  externalMdsTitle,
+  hadesOuterActivityBoundWidth,
+  hadesTotalActivityBoundWidth,
   nativeCorrectnessLabel,
 } from '@cryptificate/schema';
 import type {
@@ -151,6 +152,7 @@ function capitalize(s: string): string {
 
 /** What each precondition of an activity bound asks for, in words. */
 const PRECONDITION_TEXT: Partial<Record<ClaimId, string>> = {
+  'field.prime': 'a prime modulus',
   'matrix.mds': 'the MDS property of the matrix',
   'offsets.dispersion': 'distinct row offsets',
   'sbox.bijective': 'a bijective S-box',
@@ -165,6 +167,17 @@ const ACTIVITY_PRECONDITIONS: Partial<Record<ClaimId, ClaimId[]>> = {
   'activity.outer': ['external.mds', 'internal.invertible', 'sbox.bijective'],
   'activity.total': ['external.mds', 'internal.invertible', 'sbox.bijective', 'activity.partial'],
 };
+
+/**
+ * Preconditions of an activity bound for a design model. Over a prime field
+ * below 2^64 every bound also needs the modulus proved prime (every claim of
+ * such a certificate uses the field structure that primality gives).
+ */
+function activityPreconditions(model: AnalysisRequest['design']['model'], id: ClaimId): ClaimId[] | undefined {
+  const pre = ACTIVITY_PRECONDITIONS[id];
+  if (pre && model === 'hades/prime/v1') return ['field.prime', ...pre];
+  return pre;
+}
 
 /**
  * The window length `L` the (unchecked) diagnostics found for the partial
@@ -202,15 +215,15 @@ function activityTitle(req: AnalysisRequest, info: ClaimInfo, diagnostics: unkno
   if (info.id === 'activity.bound' && d.model === 'aes-like/gf256/v1' && d.width === 4) {
     return `At least ${aesLikeActivityBound(d.rounds)} active S-boxes over ${d.rounds} rounds`;
   }
-  if (info.id === 'activity.outer' && d.model === 'hades/bn254/v1') {
+  if (info.id === 'activity.outer' && (d.model === 'hades/bn254/v1' || d.model === 'hades/prime/v1')) {
     // Only the full rounds are charged; the partial rounds add nothing to the bound.
-    return `At least ${hadesOuterActivityBound(d.fullRounds)} active S-boxes in the ${d.fullRounds} full rounds`;
+    return `At least ${hadesOuterActivityBoundWidth(d.fullRounds, d.width)} active S-boxes in the ${d.fullRounds} full rounds`;
   }
-  if (info.id === 'activity.total' && d.model === 'hades/bn254/v1') {
+  if (info.id === 'activity.total' && (d.model === 'hades/bn254/v1' || d.model === 'hades/prime/v1')) {
     const window = checkedTotalWindow(verdict);
     if (window !== null && window === partialWindow(diagnostics)) {
       // The full rounds charge their bound; each disjoint window of partial rounds charges one.
-      return `At least ${hadesTotalActivityBound(d.fullRounds, d.partialRounds, window)} active S-boxes over all ${d.fullRounds + d.partialRounds} rounds`;
+      return `At least ${hadesTotalActivityBoundWidth(d.fullRounds, d.partialRounds, window, d.width)} active S-boxes over all ${d.fullRounds + d.partialRounds} rounds`;
     }
   }
   return info.title;
@@ -250,8 +263,9 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
   const isProved = (id: ClaimId): boolean => claims.some((c) => c.id === id && c.status === 'proved');
 
   for (const info of designClaimsFor(request.design.model)) {
-    const pre = ACTIVITY_PRECONDITIONS[info.id];
-    if (info.id === 'activity.total' && request.design.model === 'hades/bn254/v1' && request.design.partialRounds === 0) {
+    const pre = activityPreconditions(request.design.model, info.id);
+    const d = request.design;
+    if (info.id === 'activity.total' && (d.model === 'hades/bn254/v1' || d.model === 'hades/prime/v1') && d.partialRounds === 0) {
       // No partial rounds: activity.partial does not apply, and activity.outer
       // already counts every S-box; no certificate is emitted for this claim.
       const skipped = inp.skipped?.find((x) => x.claim === info.id);
@@ -283,6 +297,11 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
       // A bound can only be proved or not established, never refuted.
       if (c.status === 'refuted') claims.push(notEstablished({ ...info, title }, 'lean-failed', NOT_ESTABLISHED_TEXT));
       else claims.push(c);
+      continue;
+    }
+    if (info.id === 'external.mds' && d.model === 'hades/prime/v1') {
+      // The branch number of an MDS matrix is its width plus one.
+      claims.push(fromLean(info, externalMdsTitle(d.width)));
       continue;
     }
     claims.push(fromLean(info));

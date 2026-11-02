@@ -55,7 +55,7 @@ export function extractBundle(bundlePath: string): { dir: string; files: string[
   return { dir, files: [...files.keys()].sort() };
 }
 
-const RECHECKED = new Set(['matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'activity.partial', 'activity.total', 'circuit.equivalence']);
+const RECHECKED = new Set(['field.prime', 'matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'activity.partial', 'activity.total', 'circuit.equivalence']);
 
 /**
  * Claims that reports did not carry before a later release. A bundle that
