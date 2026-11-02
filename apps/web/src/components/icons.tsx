@@ -261,3 +261,24 @@ export function StatusPill({
     </span>
   );
 }
+
+export const IconBell = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 11.5V7.5a4 4 0 018 0v4l1 1.5H3z" />
+    <path d="M6.5 14.5h3" />
+  </Svg>
+);
+
+export const IconKeyboard = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="1.5" y="4" width="13" height="8.5" rx="1" />
+    <path d="M4 6.8h.01M6.5 6.8h.01M9 6.8h.01M11.5 6.8h.01M5 9.8h6" />
+  </Svg>
+);
+
+export const IconTerminal = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
+    <path d="M4.5 6l2 2-2 2M8 10.5h3.5" />
+  </Svg>
+);
