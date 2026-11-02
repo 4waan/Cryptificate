@@ -437,7 +437,18 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    fn encrypt_with_last_round_accepts_rounds_plus_one_keys() {
+        let keys = [[0u8; 16]; 11];
+        let mut state = [0u8; 16];
+        let sbox = aes_sbox();
+        encrypt_with_last_round(&mut state, &AES_MATRIX, &AES_OFFSETS, &sbox, &keys, 10);
+    }
+
+    #[test]
+    // The same call as above with one key fewer. The expected message names the
+    // missing key `round_keys[rounds]`, index 10 of a 10-key slice; any other
+    // panic fails the test.
+    #[should_panic(expected = "index out of bounds: the len is 10 but the index is 10")]
     fn encrypt_with_last_round_needs_rounds_plus_one_keys() {
         let keys = [[0u8; 16]; 10];
         let mut state = [0u8; 16];
