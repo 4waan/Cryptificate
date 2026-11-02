@@ -149,7 +149,7 @@ export function RunProgress({ run, compact = false, now: fixedNow }: { run: Run;
         <p className="small muted">
           The service runs one job at a time and keeps a short queue, and both are full. This{' '}
           {run.kind === 'analysis' ? 'check' : 'experiment'} is submitted again automatically (attempt{' '}
-          {(run.attempts ?? 0) + 1} of {BUSY_MAX_ATTEMPTS + 1}).
+          {(run.attempts ?? 0) + 1} of {BUSY_MAX_ATTEMPTS}).
         </p>
       ) : null}
       {run.error ? (

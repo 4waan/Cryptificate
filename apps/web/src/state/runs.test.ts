@@ -59,7 +59,8 @@ describe('live runs against a busy service', () => {
     const run = getState().runs[key]!;
     expect(api.createJob).toHaveBeenCalledTimes(6);
     expect(run.state).toBe('failed');
-    expect(run.error).toMatch(/stayed busy/);
+    expect(run.error).toMatch(/stayed busy for all 6 attempts, so nothing was checked/);
+    expect(run.attempts).toBe(6);
     expect(run.finishedAt).toBeDefined();
   });
 

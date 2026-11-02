@@ -6,7 +6,9 @@
  */
 
 /** Resubmissions after a 429 before the run is reported as failed. */
-export const BUSY_MAX_ATTEMPTS = 5;
+export const BUSY_MAX_RETRIES = 5;
+/** Submissions in all: the first one plus the retries. User-facing text counts these. */
+export const BUSY_MAX_ATTEMPTS = BUSY_MAX_RETRIES + 1;
 /** Longest wait between resubmissions, whatever Retry-After says. */
 export const BUSY_MAX_DELAY_MS = 60_000;
 const BUSY_MIN_DELAY_MS = 1_000;

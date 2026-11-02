@@ -9,7 +9,7 @@ import { record, redo as redoHistory, undo as undoHistory } from '../lib/history
 import type { Preset } from '../lib/library';
 import { readSavedWorkspace, writeSavedWorkspace, type SavedWorkspace } from '../lib/persist';
 import { readPrefs, writePrefs } from '../lib/prefs';
-import { BUSY_MAX_ATTEMPTS, busyRetryDelayMs, queueRoom } from '../lib/retry';
+import { BUSY_MAX_ATTEMPTS, BUSY_MAX_RETRIES, busyRetryDelayMs, queueRoom } from '../lib/retry';
 import { decodeShare, encodeShare, shareUrl, ShareError } from '../lib/share';
 import { sameSnapshot, type Snapshot } from '../lib/snapshot';
 import type { CandidateDesign, ExperimentProfile, JobKind, Program, ProgramTarget } from '../lib/types';
@@ -335,8 +335,9 @@ async function submitLive(key: string): Promise<void> {
     const latest = getState().runs[key];
     if (!latest || latest.state === 'cancelled') return;
     if (e?.status === 429) {
+      // `attempts` counts the refusals so far; the next submission is number attempts + 1.
       const attempt = (latest.attempts ?? 0) + 1;
-      if (attempt <= BUSY_MAX_ATTEMPTS) {
+      if (attempt <= BUSY_MAX_RETRIES) {
         const delay = busyRetryDelayMs(attempt, e.retryAfter);
         updateRun(key, { state: 'retrying', attempts: attempt, retryAt: Date.now() + delay, error: undefined });
         retryTimers.set(key, window.setTimeout(() => resubmit(key), delay));
@@ -344,7 +345,8 @@ async function submitLive(key: string): Promise<void> {
       }
       settle(key, {
         state: 'failed',
-        error: `The service stayed busy after ${BUSY_MAX_ATTEMPTS} attempts. Try again when its current job finishes.`,
+        attempts: attempt,
+        error: `The service stayed busy for all ${BUSY_MAX_ATTEMPTS} attempts, so nothing was checked. Try again when its current job finishes.`,
       });
       return;
     }
