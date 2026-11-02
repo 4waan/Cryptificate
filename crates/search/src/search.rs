@@ -48,6 +48,8 @@ pub fn weighted_cost(field: FieldKind, ops: &OpCounts) -> usize {
             ops.add + XTIME_WEIGHT * ops.xtime + GF256_MUL_WEIGHT * (ops.mul - ops.xtime)
         }
         FieldKind::Bn254 => ops.add + BN254_MUL_WEIGHT * ops.mul,
+        // Never reached: `input::field_at` admits gf256 and bn254 only.
+        other => unreachable!("the search does not cover field {other}"),
     }
 }
 
@@ -322,6 +324,8 @@ pub fn synthesize_attempt(matrix: &AnyMatrix, seed: &str, index: usize) -> (AnyP
     let program = match matrix {
         AnyMatrix::Gf256(m) => AnyProgram::Gf256(synthesize_gf256(m, &strategy, &mut rng)),
         AnyMatrix::Bn254(m) => AnyProgram::Bn254(synthesize_bn254(m, &strategy, &mut rng)),
+        // Never reached: `input::matrix_at` builds gf256 and bn254 matrices only.
+        AnyMatrix::Prime(..) => unreachable!("the search does not cover other prime fields"),
     };
     (program, strategy.label(field))
 }
@@ -403,6 +407,8 @@ pub fn baselines(matrix: &AnyMatrix) -> Vec<BaselineRecord> {
                 push("baseline-known", CandidateOrigin::BaselineKnown, k.into());
             }
         }
+        // Never reached: `input::matrix_at` builds gf256 and bn254 matrices only.
+        AnyMatrix::Prime(..) => unreachable!("the search does not cover other prime fields"),
     }
     out
 }

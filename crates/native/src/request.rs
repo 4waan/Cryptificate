@@ -314,7 +314,8 @@ pub fn parse_native_request(v: &Value) -> Result<NativeRequest> {
     let extra_cases = match o.opt("extraCases") {
         None => match field {
             FieldKind::Gf256 => ExtraCases::Gf256(Vec::new()),
-            FieldKind::Bn254 => ExtraCases::Bn254(Vec::new()),
+            // `input::field_at` admits gf256 and bn254 only.
+            _ => ExtraCases::Bn254(Vec::new()),
         },
         Some(x) => {
             let path = o.path("extraCases");
@@ -334,7 +335,8 @@ pub fn parse_native_request(v: &Value) -> Result<NativeRequest> {
                         .map(|(i, c)| input::vector_at::<Gf256>(c, &at(&path, i), width))
                         .collect::<Result<_>>()?,
                 ),
-                FieldKind::Bn254 => ExtraCases::Bn254(
+                // `input::field_at` admits gf256 and bn254 only.
+                _ => ExtraCases::Bn254(
                     items
                         .iter()
                         .enumerate()
