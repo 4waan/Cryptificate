@@ -109,13 +109,16 @@ export function jsonEqual(a: unknown, b: unknown): boolean {
   return ak.length === bk.length && ak.every((k) => Object.prototype.hasOwnProperty.call(bo, k) && jsonEqual(ao[k], bo[k]));
 }
 
-/** Resolve a JSON Pointer (without the leading '#') inside a document. */
+/**
+ * Resolve a JSON Pointer (RFC 6901, plain string form: no leading '#' and no
+ * percent-decoding) inside a document. Returns undefined when nothing is there.
+ */
 export function resolveJsonPointer(doc: unknown, pointer: string): unknown {
   if (pointer === '') return doc;
   if (!pointer.startsWith('/')) return undefined;
   let cur: unknown = doc;
   for (const raw of pointer.slice(1).split('/')) {
-    const part = decodeURIComponent(raw).replace(/~1/g, '/').replace(/~0/g, '~');
+    const part = raw.replace(/~1/g, '/').replace(/~0/g, '~');
     if (cur === null || typeof cur !== 'object') return undefined;
     if (Array.isArray(cur)) {
       if (!/^(0|[1-9][0-9]*)$/.test(part)) return undefined;
@@ -152,7 +155,13 @@ export class SchemaRegistry {
   /** Resolve a reference against a base URI to the schema it names. */
   resolve(ref: string, base: string): { schema: unknown; base: string } {
     const abs = new URL(ref, base);
-    const fragment = abs.hash.replace(/^#/, '');
+    // A URI fragment is percent-encoded (RFC 6901 section 6); the pointer inside it is not.
+    let fragment: string;
+    try {
+      fragment = decodeURIComponent(abs.hash.replace(/^#/, ''));
+    } catch {
+      throw new UnsupportedSchemaError(`malformed fragment in $ref ${ref} (from ${base})`);
+    }
     abs.hash = '';
     const doc = this.docs.get(abs.href);
     if (doc === undefined) throw new UnsupportedSchemaError(`unresolvable $ref ${ref} (from ${base})`);

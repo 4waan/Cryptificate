@@ -96,6 +96,18 @@ test('jsonschema: pointer helpers and structural equality', () => {
   assert.equal(resolveJsonPointer(doc, '/a/0/~0d'), 2);
   assert.equal(resolveJsonPointer(doc, '/a/01'), undefined);
   assert.equal(resolveJsonPointer(doc, ''), doc);
+  // a plain JSON Pointer is not percent-decoded: '%' is an ordinary character
+  const pct = { 'a%20b': 1, '100%': 2, 'a b': 3 };
+  assert.equal(resolveJsonPointer(pct, '/a%20b'), 1);
+  assert.equal(resolveJsonPointer(pct, '/100%'), 2);
+  assert.equal(resolveJsonPointer(pct, '/a b'), 3);
+  assert.equal(resolveJsonPointer(pct, '/100%25'), undefined);
+  // in a $ref the pointer sits in a URI fragment, which is percent-decoded once
+  const reg = new SchemaRegistry().add('https://example.invalid/p.json', { $defs: { 'a b': { type: 'string' }, '100%': { type: 'integer' } } });
+  assert.deepEqual(reg.validate('https://example.invalid/p.json#/$defs/a%20b', 'x'), []);
+  assert.deepEqual(reg.validate('https://example.invalid/p.json#/$defs/100%25', 7), []);
+  assert.equal(reg.validate('https://example.invalid/p.json#/$defs/100%25', 'x').length, 1);
+  assert.throws(() => reg.validate('https://example.invalid/p.json#/$defs/100%', 7), UnsupportedSchemaError);
   assert.ok(jsonEqual({ a: [1, { b: null }] }, { a: [1, { b: null }] }));
   assert.ok(!jsonEqual({ a: 1 }, { a: 1, b: undefined }));
   assert.ok(!jsonEqual([1], { 0: 1 }));
