@@ -1,0 +1,16 @@
+{
+  "name": "const_witness_internal_prime",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "WIDTH",
+    "KERNEL_ENTRIES"
+  ],
+  "requires": [
+    "const_modulus_prime"
+  ],
+  "field": "prime"
+}
