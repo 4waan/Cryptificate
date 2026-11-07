@@ -121,7 +121,11 @@ test('HTTP: validation, content type, body limit and same-origin', async () => {
     const bad = await call(s.port, 'POST', '/api/analyses', { body: JSON.stringify({ design: { ...AES_DESIGN, matrix: [[2]] } }) });
     assert.equal(bad.status, 400);
     assert.equal(bad.json<{ error: { code: string } }>().error.code, 'invalid-request');
-    assert.ok(bad.json<{ errors: unknown[] }>().errors.length > 0);
+    const badBody = bad.json<{ error: { code: string; message: string; path?: string }; errors: { path: string; message: string }[] }>();
+    assert.ok(badBody.errors.length > 0);
+    // The first issue's JSON Pointer is also the error's own path, as JobError.path documents.
+    assert.equal(badBody.error.path, badBody.errors[0]!.path);
+    assert.equal(badBody.error.message, `${badBody.errors[0]!.path}: ${badBody.errors[0]!.message}`);
 
     const numbers = await call(s.port, 'POST', '/api/analyses', { body: JSON.stringify({ design: { ...AES_DESIGN, matrix: AES_DESIGN.matrix.map((r) => r.map((e) => Number(e))) } }) });
     assert.equal(numbers.status, 400);

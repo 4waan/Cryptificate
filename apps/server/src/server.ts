@@ -55,6 +55,8 @@ export class HttpError extends Error {
     readonly code: string,
     message: string,
     readonly extra: Record<string, unknown> = {},
+    /** JSON Pointer to the offending part of the request, sent as `error.path`. */
+    readonly path?: string,
   ) {
     super(message);
   }
@@ -152,8 +154,16 @@ function send(res: ServerResponse, status: number, body: unknown, headers: Recor
   res.end(text);
 }
 
-function sendError(res: ServerResponse, status: number, code: string, message: string, extra: Record<string, unknown> = {}, headers: Record<string, string> = {}): void {
-  const body: ErrorResponse & Record<string, unknown> = { error: { code, message }, ...extra };
+function sendError(
+  res: ServerResponse,
+  status: number,
+  code: string,
+  message: string,
+  extra: Record<string, unknown> = {},
+  headers: Record<string, string> = {},
+  path?: string,
+): void {
+  const body: ErrorResponse & Record<string, unknown> = { error: path === undefined ? { code, message } : { code, message, path }, ...extra };
   send(res, status, body, headers);
 }
 
@@ -172,9 +182,7 @@ async function parseJsonBody(req: IncomingMessage): Promise<unknown> {
 
 function invalid(errors: ValidationIssue[]): HttpError {
   const first = errors[0];
-  return new HttpError(400, 'invalid-request', first ? `${first.path}: ${first.message}` : 'invalid request', {
-    errors,
-  });
+  return new HttpError(400, 'invalid-request', first ? `${first.path}: ${first.message}` : 'invalid request', { errors }, first?.path);
 }
 
 export async function capabilities(env: PipelineEnv): Promise<Capabilities> {
@@ -369,7 +377,7 @@ export function createApp(opts: ServerOptions): Server {
         return;
       }
       if (e instanceof HttpError) {
-        sendError(res, e.status, e.code, e.message, e.extra, e.status === 413 ? { connection: 'close' } : {});
+        sendError(res, e.status, e.code, e.message, e.extra, e.status === 413 ? { connection: 'close' } : {}, e.path);
       } else {
         sendError(res, 500, 'internal', 'internal error');
       }

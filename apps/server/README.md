@@ -31,7 +31,7 @@ engine sees them.
 | `POST /api/jobs/:id/stop` | stops the job's whole process group; completed checkpoints are kept |
 | `GET /api/jobs/:id/bundle` | deterministic `.tar.gz` evidence bundle (`409` while the job runs) |
 
-Errors are `{"error": {code, message, path?}}`; validation errors add `errors: [{path, code, message}]`.
+Errors are `{"error": {code, message, path?}}`; validation errors (400 `invalid-request`) add `errors: [{path, code, message}]` and set `error.path` to the first issue's path.
 Status codes: `400` invalid JSON or shape, `403` Host/Origin policy, `404`, `405`, `409`, `413` body
 too large, `415` wrong content type, `429` queue full (one running job plus two queued).
 
