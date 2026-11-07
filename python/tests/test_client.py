@@ -11,6 +11,7 @@ from cryptificate import (
     AES_MIXCOLUMNS,
     Client,
     CryptificateError,
+    PRIME_FIELDS,
     ProgramBuilder,
     aes_like_design,
     aes_shared_sum_program,
@@ -19,6 +20,8 @@ from cryptificate import (
     gf,
     hades_design,
     identity_program,
+    one_plus_diagonal,
+    poseidon2_external,
     prime_design,
 )
 from cryptificate.__main__ import main
@@ -226,6 +229,19 @@ class HelpersTest(unittest.TestCase):
         self.assertRaises(ValueError, prime_design, "prime", m4, internal, 8, 2, 3)
         self.assertRaises(ValueError, prime_design, "babybear", m4, internal, 8, 2, 3, modulus=7)
         self.assertRaises(ValueError, prime_design, "bn254", m4, internal, 8, 2, 3)
+
+    def test_poseidon2_widths(self):
+        # Plonky3's BabyBear width 16: V = [-2, 1, 2, 1/2, ...] modulo p.
+        p = PRIME_FIELDS["babybear"]
+        inv = lambda x: pow(x, p - 2, p)
+        v = [-2, 1, 2, inv(2), 3, 4, -inv(2), -3, -4, inv(2**8), inv(4), inv(8), inv(2**27), -inv(2**8), -inv(16), -inv(2**27)]
+        d = prime_design("babybear", poseidon2_external(16), one_plus_diagonal(v), 8, 13, 7)
+        examples = Path(__file__).resolve().parents[2] / "examples" / "designs"
+        example = json.loads((examples / "babybear-t16.json").read_text())
+        self.assertEqual({**example, "modulus": str(p)}, d)
+        self.assertEqual(poseidon2_external(8)[0], [4, 6, 2, 2, 2, 3, 1, 1])
+        self.assertEqual(poseidon2_external(2), [[2, 1], [1, 2]])
+        self.assertRaises(ValueError, poseidon2_external, 6)
 
 
 if __name__ == "__main__":

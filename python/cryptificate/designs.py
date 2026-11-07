@@ -119,7 +119,12 @@ def prime_design(
     modulus: Optional[int] = None,
     constants: Optional[Sequence[Sequence[Element]]] = None,
 ) -> Dict[str, Any]:
-    """A HADES design over a prime field below 2^64 (`hades/prime/v1`), width 3 or 4.
+    """A HADES design over a prime field below 2^64 (`hades/prime/v1`).
+
+    The width is that of `external`: 2, 3, 4, 8, 12, 16 or 24 (the Poseidon2
+    widths). Above 4 the report checks `external.m4_mds` and
+    `external.invertible` instead of enumerating the external matrix's minors;
+    `poseidon2_external` and `one_plus_diagonal` build Poseidon2's matrices.
 
     `field` is one of PRIME_FIELDS, or "prime" with an explicit `modulus`. Elements
     are reduced modulo p. `partial_mask=None` puts the partial-round S-box on
@@ -256,3 +261,24 @@ def bn_shared_sum_program() -> Dict[str, Any]:
     p = ProgramBuilder("bn254", 3, "shared-sum")
     s = p.sum([0, 1, 2])
     return p.build([p.add(s, i) for i in range(3)])
+
+
+# Plonky3's 4 x 4 block of the Poseidon2 external matrix (`MDSMat4`).
+POSEIDON2_M4 = [[2, 3, 1, 1], [1, 2, 3, 1], [1, 1, 2, 3], [3, 1, 1, 2]]
+
+
+def poseidon2_external(width: int, m4: Sequence[Sequence[int]] = POSEIDON2_M4) -> List[List[int]]:
+    """The Poseidon2 external matrix: [[2, 1], [1, 2]] for width 2, and
+    circ(2 M4, M4, ..., M4) for a multiple of 4 (2 M4 on the diagonal blocks,
+    M4 elsewhere)."""
+    if width == 2:
+        return [[2, 1], [1, 2]]
+    if width < 4 or width % 4:
+        raise ValueError("the Poseidon2 external matrix has width 2 or a multiple of 4")
+    return [[(2 if i // 4 == j // 4 else 1) * m4[i % 4][j % 4] for j in range(width)] for i in range(width)]
+
+
+def one_plus_diagonal(diagonal: Sequence[int]) -> List[List[int]]:
+    """The Poseidon2 internal matrix 1 * 1^T + diag(V); reduce it with `prime_design`."""
+    n = len(diagonal)
+    return [[1 + (diagonal[i] if i == j else 0) for j in range(n)] for i in range(n)]
