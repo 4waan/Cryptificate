@@ -189,7 +189,7 @@ Every report labels its origin: **Live**, **Cached exact result**, or **Recorded
 | MDS, offsets and activity bound for a fresh matrix | 3.3–8.5 s |
 | HADES: external MDS, internal invertibility, exponent, full-round activity | 3.9–4.4 s |
 | HADES with the partial rounds: window certificate and whole-permutation bound, or a bypass | 3.9–4.8 s |
-| HADES over BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime, width 3 or 4: primality and every design claim | 4.2–5.8 s |
+| HADES over BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime, width 2, 3 or 4: primality and every design claim | 3.2–5.8 s |
 | Differential uniformity and linearity of a submitted byte table | 10.5–11.5 s |
 | Poseidon2 widths 8 to 24 (Plonky3 instances): primality, inverse witnesses of both matrices, `M₄`, the low-weight refutation and the partial rounds | 4.4–6.8 s |
 | HADES with explicit round constants: the Grain procedure run in the kernel (KoalaBear `t = 4`, 52 constants; BN254 `t = 3`, 80 constants of 254 bits, 192 layout entries) | 3.9–6.4 s |
@@ -264,7 +264,7 @@ For an audit or a pull request, `npx cryptificate report <bundle> --format html 
 
 | Path | What it holds |
 |---|---|
-| [`lean/`](lean) | Circuit semantics, canonical-minor MDS certificates, counterexample lemmas, offsets, the execution bridge, S-box and exponent certificates, Pratt primality certificates, HADES full-round and partial-round bounds at widths 3 and 4, packed inverse-witness checks for the Poseidon2 widths 2 to 24, the Grain round-constant generator, the audit command and the certificate templates |
+| [`lean/`](lean) | Circuit semantics, canonical-minor MDS certificates, counterexample lemmas, offsets, the execution bridge, S-box and exponent certificates, Pratt primality certificates, HADES full-round bounds at widths 2 to 4 and partial-round certificates at every profile width, packed inverse-witness checks for the Poseidon2 widths 2 to 24, the Grain round-constant generator, the audit command and the certificate templates |
 | [`refinement/`](refinement) | Charon/Aeneas translations of `crates/kernels` and the gf256 crate, with their Lean proofs |
 | [`crates/`](crates) | `core` (validation, diagnostics, certificate emission), `cli` (`cryptificate-engine`), `search`, `native` (code generation and timing harness), `kernels` |
 | [`apps/server`](apps/server) | [HTTP API](docs/api.md), job queue, proof acceptance, bundles and the `cryptificate` CLI |
