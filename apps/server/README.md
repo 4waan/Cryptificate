@@ -10,6 +10,7 @@ npx cryptificate serve                       # http://127.0.0.1:4173/
 npx cryptificate check examples/designs/aes.json --program examples/programs/aes-known-shared-sum.json
 npx cryptificate experiment examples/designs/aes.json --profile quick
 npx cryptificate verify bundle.tar.gz
+npx cryptificate import RC.rs --base examples/designs/poseidon2-bn254.json -o design.json
 npm test -w apps/server
 ```
 
@@ -72,11 +73,12 @@ generated variant crates, the kernels they link against (checked against the dig
 engine), the harness source and the raw correctness and timing records, described in `native/SOURCES.md`.
 `cryptificate verify` extracts it to a fresh temporary directory, reads only `inputs.json` and
 `report.json`, regenerates and checks the certificate with the installed engine and Lean, and prints
-a per-claim table (`match`, `mismatch`, `not re-checked`, `historical`, `not recorded`). A bundle
-whose checker revision (`report.provenance.checker`) is a commit of the local checkout whose claim
-list does not yet name `activity.partial` and `activity.total`, and that records neither, has no
-status to compare for them; they are derived, shown as `not recorded` and not counted as a mismatch.
-Any other bundle that lacks one of them (a newer, dirty or unknown revision, or no git history to
+a per-claim table (`match`, `mismatch`, `not re-checked`, `historical`, `not recorded`). Claims were added
+in groups: `activity.partial` and `activity.total`, then `constants.grain`. A bundle whose checker
+revision (`report.provenance.checker`) is a commit of the local checkout whose claim list names no
+claim of a group, and that records none of them, has no status to compare for that group; its claims
+are derived, shown as `not recorded` and not counted as a mismatch. Any other bundle that lacks one of
+them (a newer, dirty or unknown revision, or no git history to
 look it up in) counts the omission as a mismatch, as for every other re-checked claim. It never runs
 Lean, Rust or shell files from the bundle. Exit status 0 means every re-checked claim matched.
 
