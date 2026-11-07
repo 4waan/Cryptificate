@@ -7,10 +7,13 @@ This Lean package connects Rust code to WideTrail's mathematics through the chai
    pure Lean program (`Extracted/`). Every function returns a `Result`; a Rust panic
    (overflow, out-of-range shift or index) becomes a failure;
 3. **Executable mathematical model**: WideTrail's `GF256.xtime` and `GF256.rawMul` on
-   `BitVec 8`, and the AES-like execution model `aesLikeRound` / `aesLikeExec`, with the AES
+   `BitVec 8`, the AES-like execution model `aesLikeRound` / `aesLikeExec`, with the AES
    final round `aesLikeFinalRound` / `aesLikeCipher`, of the main Lean package
-   (`lean/Cryptificate/Bridge.lean`) over WideTrail's field `GF256`;
-4. **Named properties**: WideTrail's field laws for `GF256`, and the wide-trail active-S-box bound.
+   (`lean/Cryptificate/Bridge.lean`) over WideTrail's field `GF256`, and arithmetic modulo the
+   BN254 scalar-field prime;
+4. **Named properties**: WideTrail's field laws for `GF256`, the wide-trail active-S-box bound,
+   and the operations of WideTrail's field `Poseidon2.BN254.F = ZMod p` under the Montgomery
+   decoding.
 
 `STATUS.md` lists, link by link, what is proved, what is trusted and what is not established,
 with the exact theorem statements. `claims.json` is the machine-readable list of the proved
@@ -25,9 +28,13 @@ theorems (statement, axioms, toolchain pins, SHA-256 of the Rust sources they co
 | the same file: `final_round`, `encrypt_with_last_round` (last round without column mixing, then a final key) | `Extracted/CryptificateKernels.lean` | `Refinement/AesLike.lean` | `aes_like_final_round_refines`, `aes_like_encrypt_with_last_round_refines`, `aes_like_encrypt_with_last_round_activity_bound` |
 | the same, with the design checked on its bytes; AES | `Extracted/CryptificateKernels.lean` | `Refinement/AesConcrete.lean` | `aes_like_encrypt_activity_bound_of_checks`, `aes_rust_activity_bound`, `aes_rust_activity_bound_10` (`≥ 55`), `aes_rust_activity_bound_4` (`≥ 25`); with the final round `aes_like_encrypt_with_last_round_activity_bound_of_checks`, `aes_rust_cipher_activity_bound`, `aes_rust_cipher_activity_bound_10` (`≥ 55`) |
 | gf256 crate 0.3.1, `0x11B`, `no-tables`, `no-xmul`: `mul` (expanded source) | `Extracted/Gf256Aes.lean` | `Refinement/Gf256Crate.lean` | `gf256crate_mul_refines`, `gf256crate_mul_eq_kernels` |
-| BN254 `Fr` (arkworks) | fails in Aeneas (`bn254-probe/`) | none | not established |
+| `crates/kernels/src/bn254_mont.rs`: `mul` (CIOS), `add`, `sub`, `to_mont`, `from_mont` on `[u64; 4]` | `Extracted/CryptificateKernels.lean` | `Refinement/BN254Mont.lean` | `bn254_mont_mul_refines`, `bn254_mont_add_refines`, `bn254_mont_sub_refines`, `bn254_mont_to_mont_refines`, `bn254_mont_from_mont_refines`, `*_eq` |
+| BN254 `Fr` (arkworks), which the native BN254 variants call | fails in Aeneas (`bn254-probe/`) | none | not established |
 
-All theorems are in namespace `Cryptificate.Refinement` and hold for every input. They use the
+All theorems are in namespace `Cryptificate.Refinement` (the BN254 ones in its sub-namespace
+`BN254Mont`). The GF(2⁸), AES-like and gf256-crate theorems hold for every input; the BN254
+`mul`, `add` and `sub` theorems assume canonical operands (limbs holding a value below `p`; for
+`mul` only the first operand), and `to_mont`, `from_mont` hold for every input. They use the
 axioms `propext`, `Classical.choice`, `Quot.sound` only, except the gf256-crate theorems, which
 also mention `gf256_aes.core.mem.size_of`, the uninterpreted function the extraction declares for
 `core::mem::size_of`; they assume `size_of::<u8>() = 1`. `Refinement/Axioms.lean` pins every
@@ -38,7 +45,7 @@ kernel only: no `native_decide`, `bv_decide` or `sorry`.
 
 | Path | Content |
 | --- | --- |
-| `rust/kernels.rs` | Extraction root: includes the unmodified `crates/kernels/src/{gf256,aes_like}.rs` as crate `cryptificate_kernels` |
+| `rust/kernels.rs` | Extraction root: includes the unmodified `crates/kernels/src/{gf256,aes_like,bn254_mont}.rs` as crate `cryptificate_kernels` |
 | `rust/gf256_aes_expanded.rs` | Expanded gf256 crate configuration, the input of the second extraction |
 | `gf256crate/` | Configuration of the gf256 crate, `expand.sh`, the assembly script and a 65,536-product cross-check |
 | `extract.sh`, `extract.sha256` | Reproduce both extractions and check every hash |
