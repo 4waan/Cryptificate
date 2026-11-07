@@ -31,7 +31,7 @@ import {
   startRun,
   undo,
 } from '../state/actions';
-import { dataSource, useAppState } from '../state/store';
+import { dataSource, useAppState, type Run } from '../state/store';
 
 /** Notices above the editors: a loaded share link, or edits a story step replaced. */
 function WorkspaceNotices() {
@@ -82,6 +82,11 @@ function WorkspaceNotices() {
   );
 }
 
+/** A run that stopped, failed, timed out or was rejected before any report: nothing was checked. */
+function endedWithoutReport(run: Run | undefined): boolean {
+  return !!run && !run.report && ['failed', 'timeout', 'cancelled', 'invalid'].includes(run.state);
+}
+
 /** In replay mode, whether a recorded quick experiment exists for these inputs (null while looking). */
 function useRecordedSearch(inputs: WorkspaceInputs, enabled: boolean): boolean | null {
   const [found, setFound] = useState<{ inputs: WorkspaceInputs; ok: boolean } | null>(null);
@@ -118,7 +123,12 @@ export function WorkspaceView() {
   const problems = useMemo(() => inputProblems(inputs), [inputs]);
   const analysis = current.analysis ? runs[current.analysis] : undefined;
   const experiment = current.experiment ? runs[current.experiment] : undefined;
-  const busy = isActive(analysis) || isActive(experiment);
+  // The run bar's status: the running job, else the latest one that ended without a report (its
+  // error is in the result area or on Experiments). Same element throughout, so the end is read out.
+  const ended = [analysis, experiment]
+    .filter((r): r is Run => endedWithoutReport(r))
+    .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))[0];
+  const status = isActive(analysis) ? analysis : isActive(experiment) ? experiment : ended;
   const canGenerate = useMemo(() => circuitFromDesign(design, target) !== null, [design, target]);
   const recorded = useRecordedSearch(inputs, source === 'replay' && program !== null && problems.length === 0);
   const circuitDiffers = useMemo(() => {
@@ -175,7 +185,7 @@ export function WorkspaceView() {
         </button>
         <AutoCheckSwitch source={source} />
         <AlertsMenu />
-        {analysis?.report && !isActive(analysis) ? (
+        {analysis && !isActive(analysis) && (analysis.report || endedWithoutReport(analysis)) ? (
           <button
             type="button"
             className="btn btn-quiet"
@@ -189,8 +199,11 @@ export function WorkspaceView() {
             <span className="error-text">
               {problems.length} input {problems.length === 1 ? 'problem' : 'problems'} to fix before checking
             </span>
-          ) : busy ? (
-            <RunProgress run={(isActive(analysis) ? analysis : experiment)!} compact />
+          ) : status ? (
+            <>
+              <RunProgress run={status} compact />
+              {status.kind === 'experiment' && !isActive(status) ? <a href="#/experiments">See why on Experiments</a> : null}
+            </>
           ) : null}
         </div>
         <LiveChecks items={preview} report={leanReport} state={analysis?.state} problems={problems.length} />

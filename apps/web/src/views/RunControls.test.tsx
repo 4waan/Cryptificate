@@ -44,3 +44,31 @@ describe('one Stop button and one status region per running job', () => {
     expect(html).toContain('aria-label="Steps"');
   });
 });
+
+describe('the workspace run bar after a job ends', () => {
+  beforeEach(() => setState({ ...initialState(), design: aesDesign(), program: null }));
+
+  it('keeps the status of an experiment that ended without a report, and points to why', () => {
+    const r: Run = { ...active('experiment'), state: 'failed', finishedAt: Date.now(), error: 'The local service could not be reached.' };
+    setState({ runs: { [r.key]: r }, current: { experiment: r.key } });
+    const html = renderToStaticMarkup(<WorkspaceView />);
+    expect(html).toMatch(/<strong>Experiment \(quick\):<\/strong> Failed/);
+    expect(html).toContain('href="#/experiments"');
+    expect(count(html, stopButtons)).toBe(0);
+  });
+
+  it('offers the way to the result area for a check that ended without a report', () => {
+    const r: Run = { ...active('analysis'), state: 'failed', finishedAt: Date.now(), error: 'Invalid request' };
+    setState({ runs: { [r.key]: r }, current: { analysis: r.key } });
+    const html = renderToStaticMarkup(<WorkspaceView />);
+    expect(html).toMatch(/<strong>Analysis:<\/strong> Failed/);
+    expect(html).toContain('Jump to results');
+    expect(html).toContain('Invalid request');
+  });
+
+  it('shows no run status once a job has completed', () => {
+    const r: Run = { ...active('experiment'), state: 'completed', finishedAt: Date.now() };
+    setState({ runs: { [r.key]: r }, current: { experiment: r.key } });
+    expect(renderToStaticMarkup(<WorkspaceView />)).not.toContain('<strong>Experiment (quick):</strong>');
+  });
+});
