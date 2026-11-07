@@ -1,3 +1,4 @@
+import { parseRetryAfter } from '../lib/retry';
 import type {
   AnalysisRequest,
   Capabilities,
@@ -17,6 +18,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     readonly path?: string,
+    /** Seconds from Retry-After, when the service sent one (429). */
+    readonly retryAfter?: number,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -30,17 +33,27 @@ async function readError(res: Response): Promise<ApiError> {
   let message = res.statusText || `Request failed with status ${res.status}`;
   let path: string | undefined;
   try {
-    const body = (await res.json()) as { error?: { code?: string; message?: string; path?: string } };
+    const body = (await res.json()) as {
+      error?: { code?: string; message?: string; path?: string };
+      errors?: { path?: string }[];
+    };
     if (body.error) {
       code = body.error.code ?? code;
       message = body.error.message ?? message;
-      path = body.error.path;
+      // A validation error (400) names the first issue's JSON Pointer; older services sent it only in errors[].
+      path = body.error.path ?? body.errors?.[0]?.path;
+      // The service prefixes the message with that pointer; it is shown beside the message instead.
+      if (path && message.startsWith(`${path}: `)) message = message.slice(path.length + 2);
     }
   } catch {
     // Body was not JSON; keep the status text.
   }
-  if (res.status === 429) message = 'The service is busy: two jobs are already waiting. Try again when one finishes.';
-  return new ApiError(message, res.status, code, path);
+  let retryAfter: number | undefined;
+  if (res.status === 429) {
+    message = 'The service is busy: one job is running and its queue is full.';
+    retryAfter = parseRetryAfter(res.headers?.get?.('retry-after'));
+  }
+  return new ApiError(message, res.status, code, path, retryAfter);
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
