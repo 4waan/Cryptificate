@@ -84,6 +84,13 @@ const CASES: &[(&str, &str, Option<&str>)] = &[
     ("koalabear-t4", "koalabear-t4", None),
     ("babybear-t4", "babybear-t4", None),
     ("babybear-t4-bad", "babybear-t4-bad", None),
+    ("koalabear-t4-grain", "koalabear-t4-grain", None),
+    (
+        "koalabear-t4-grain-edited",
+        "koalabear-t4-grain-edited",
+        None,
+    ),
+    ("poseidon2-bn254-grain", "poseidon2-bn254-grain", None),
 ];
 
 fn analysis_request(design: &str, program: Option<&str>) -> String {
@@ -118,7 +125,13 @@ fn essential_diagnostics(d: &Value) -> Value {
         }
     }
     for key in [
-        "offsets", "activity", "partial", "total", "modulus", "prime",
+        "offsets",
+        "activity",
+        "partial",
+        "total",
+        "modulus",
+        "prime",
+        "constants",
     ] {
         if d.get(key).is_some() {
             out[key] = d[key].clone();
