@@ -876,6 +876,9 @@ fn repo_prime_fields() {
             (claim_ids::ACTIVITY_TOTAL.to_string(), Status::Proved),
         ]
     );
+    // The example gives no round constants, so constants.grain is skipped.
+    assert_eq!(e.skipped.len(), 1, "{:?}", e.skipped);
+    assert_eq!(e.skipped[0].claim, claim_ids::CONSTANTS_GRAIN);
     for fragment in [
         "field_prime",
         "external_mds_prime4",
@@ -887,7 +890,6 @@ fn repo_prime_fields() {
     ] {
         assert!(e.fragments.iter().any(|f| f == fragment), "{fragment}");
     }
-    assert!(e.skipped.is_empty(), "{:?}", e.skipped);
     // The modulus, its Pratt certificate and the width-four encoders.
     assert!(e.source.contains("def candModulus : ℕ := 2130706433"));
     assert!(e.source.contains(
@@ -934,7 +936,11 @@ fn repo_prime_fields() {
     let skipped: Vec<&str> = e.skipped.iter().map(|s| s.claim.as_str()).collect();
     assert_eq!(
         skipped,
-        vec![claim_ids::ACTIVITY_OUTER, claim_ids::ACTIVITY_TOTAL]
+        vec![
+            claim_ids::ACTIVITY_OUTER,
+            claim_ids::ACTIVITY_TOTAL,
+            claim_ids::CONSTANTS_GRAIN
+        ]
     );
     assert!(e.fragments.iter().any(|f| f == "partial_bypass_prime"));
     assert!(e
@@ -996,4 +1002,72 @@ fn repo_prime_width_three_and_short_bypass() {
         claim_ids::EXTERNAL_MDS,
         Status::Refuted,
     );
+}
+
+#[test]
+fn repo_grain_constants() {
+    let Some(set) = repo_templates() else { return };
+    let last = |e: &Emission| check_emission(&set, e).last().cloned().unwrap();
+    // Explicit constants over KoalaBear: the kernel runs the generator.
+    let e = emit_with(&request("koalabear-t4-grain", None), &set).unwrap();
+    assert_eq!(
+        last(&e),
+        (claim_ids::CONSTANTS_GRAIN.to_string(), Status::Proved)
+    );
+    assert!(e.fragments.iter().any(|f| f == "constants_grain_prime"));
+    assert!(e.fragments.iter().any(|f| f == "const_constants"));
+    assert!(e
+        .source
+        .contains("def candConstants : List ℕ := [585747831, 728734464,"));
+    assert_eq!(
+        e.inputs_echo["candConstants"][4],
+        json!(["245687908", "0", "0", "0"])
+    );
+    let grain = e
+        .expect
+        .iter()
+        .find(|x| x.claim == claim_ids::CONSTANTS_GRAIN)
+        .unwrap();
+    assert_eq!(
+        grain.expected_type,
+        "Cryptificate.Grain.poseidon2Constants CryptificateJob.candModulus 4 \
+         CryptificateJob.candFullRounds CryptificateJob.candPartialRounds = some \
+         CryptificateJob.candConstants"
+    );
+
+    // One constant changed: refuted at its index with the generated value.
+    let e = emit_with(&request("koalabear-t4-grain-edited", None), &set).unwrap();
+    assert_eq!(
+        last(&e),
+        (claim_ids::CONSTANTS_GRAIN.to_string(), Status::Refuted)
+    );
+    assert!(e.fragments.iter().any(|f| f == "constants_not_grain_prime"));
+    let grain = e
+        .expect
+        .iter()
+        .find(|x| x.claim == claim_ids::CONSTANTS_GRAIN)
+        .unwrap();
+    assert!(grain
+        .expected_type
+        .contains("candPartialRounds 16 = some 245687908 ∧ CryptificateJob.candConstants[16]? ≠ some 245687908"));
+
+    // Explicit BN254 constants and the profile's reference constants.
+    let e = emit_with(&request("poseidon2-bn254-grain", None), &set).unwrap();
+    assert_eq!(
+        last(&e),
+        (claim_ids::CONSTANTS_GRAIN.to_string(), Status::Proved)
+    );
+    assert!(e.fragments.iter().any(|f| f == "constants_grain_bn254"));
+    let e = emit_with(&request("poseidon2-bn254", None), &set).unwrap();
+    assert_eq!(
+        last(&e),
+        (claim_ids::CONSTANTS_GRAIN.to_string(), Status::Proved)
+    );
+    assert!(e
+        .fragments
+        .iter()
+        .any(|f| f == "constants_grain_reference_bn254"));
+    // No candConstants: the reference certificate names the library's list.
+    assert!(!e.fragments.iter().any(|f| f == "const_constants"));
+    assert!(e.inputs_echo.get("candConstants").is_none());
 }

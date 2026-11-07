@@ -1,0 +1,17 @@
+{
+  "name": "constants_not_grain_bn254",
+  "kind": "claim",
+  "claim": "constants.grain",
+  "status": "refuted",
+  "theorem": "CryptificateJob.constants_not_grain",
+  "expectedType": "Cryptificate.Grain.constantAt Poseidon2.BN254.modulus 3 CryptificateJob.candFullRounds CryptificateJob.candPartialRounds {{INDEX}} = some {{EXPECTED}} ∧ CryptificateJob.candConstants[{{INDEX}}]? ≠ some {{EXPECTED}}",
+  "placeholders": [
+    "INDEX",
+    "EXPECTED"
+  ],
+  "requires": [
+    "const_rounds_hades",
+    "const_constants"
+  ],
+  "field": "bn254"
+}
