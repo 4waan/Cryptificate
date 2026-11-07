@@ -22,6 +22,10 @@ You change a cipher component: the MixColumns matrix, the circuit that computes 
 
 </div>
 
+## What's new in 0.2.0
+
+Partial-round and whole-permutation bounds for Poseidon2 (at least 34 active S-boxes for the pinned BN254 instance), a prime-field profile for BabyBear, KoalaBear, Mersenne31, Goldilocks and custom primes with Lean-checked primality and the Poseidon2 widths 2, 3, 4, 8, 12, 16 and 24, Grain round-constant conformance, exact S-box differential uniformity and linearity, an end-to-end AES theorem from the Rust kernel (final round included) and a proved BN254 Montgomery kernel. For adopters: a CI gate with a GitHub Action, HTML evidence reports, `init` and `doctor`, an OpenAPI description and a container image. What each item proves, and what it does not, is in the [changelog](CHANGELOG.md#020---2026-11-07).
+
 ## Start in one step
 
 **In your browser, with nothing to install:** open the guided story at **[4waan.github.io/Cryptificate](https://4waan.github.io/Cryptificate/)** and click through the four steps.
