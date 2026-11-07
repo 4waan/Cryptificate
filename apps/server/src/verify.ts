@@ -55,18 +55,19 @@ export function extractBundle(bundlePath: string): { dir: string; files: string[
   return { dir, files: [...files.keys()].sort() };
 }
 
-const RECHECKED = new Set(['field.prime', 'matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'activity.partial', 'activity.total', 'circuit.equivalence']);
+const RECHECKED = new Set(['field.prime', 'matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'activity.partial', 'activity.total', 'constants.grain', 'circuit.equivalence']);
 
 /**
- * Claims that reports did not carry before a later release. A bundle that
- * provably predates them (see `predatesAddedClaims`) has no status for them
- * to compare with: when it lacks all of them they are re-derived and shown as
- * `not recorded`. Any other bundle that lacks one of them is a mismatch, as
- * for every other re-checked claim.
+ * Claims that reports did not carry before a later release, in the groups in
+ * which they were added. A bundle that provably predates a group (see
+ * `predatesAddedClaims`) has no status for its claims to compare with: when it
+ * lacks all of them they are re-derived and shown as `not recorded`. Any other
+ * bundle that lacks one of them is a mismatch, as for every other re-checked
+ * claim.
  */
-const ADDED_LATER = ['activity.partial', 'activity.total'];
+const ADDED_LATER: readonly (readonly string[])[] = [['activity.partial', 'activity.total'], ['constants.grain']];
 
-/** The schema file whose claim list gained `ADDED_LATER`. */
+/** The schema file whose claim list gained the claims of `ADDED_LATER`. */
 const CLAIM_LIST_FILE = 'packages/schema/src/constants.ts';
 
 /**
@@ -88,22 +89,23 @@ export function recordedRevision(checker: unknown): string | null {
 }
 
 /**
- * Whether the checker that recorded a bundle provably predates the claims in
- * `ADDED_LATER`: its revision is a commit of the local checkout whose claim
- * list does not name them. Without git, without that commit, or with a dirty
- * or missing revision this cannot be shown, and the answer is `false`.
+ * The claims of `ADDED_LATER` that the checker which recorded a bundle
+ * provably predates: its revision is a commit of the local checkout whose
+ * claim list names none of the claims of their group. Without git, without
+ * that commit, or with a dirty or missing revision this cannot be shown, and
+ * the answer is empty.
  */
-export async function predatesAddedClaims(root: string, checker: unknown): Promise<boolean> {
+export async function predatesAddedClaims(root: string, checker: unknown): Promise<string[]> {
   const rev = recordedRevision(checker);
-  if (!rev) return false;
+  if (!rev) return [];
   const r = await run('git', ['-C', root, 'show', `${rev}:${CLAIM_LIST_FILE}`], { timeoutMs: 10000 });
-  if (r.code !== 0) return false;
-  return ADDED_LATER.every((id) => !r.stdout.includes(`'${id}'`));
+  if (r.code !== 0) return [];
+  return ADDED_LATER.filter((group) => group.every((id) => !r.stdout.includes(`'${id}'`))).flat();
 }
 
-export function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean, predatesAdded = false): VerifyRow[] {
-  // Only a bundle that predates the claims and lacks all of them may omit them.
-  const omitsAdded = predatesAdded && ADDED_LATER.every((id) => !recorded.some((r) => r.id === id));
+export function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean, predated: readonly string[] = []): VerifyRow[] {
+  // Only a bundle that predates a group of added claims and lacks all of them may omit them.
+  const omitted = ADDED_LATER.filter((group) => group.every((id) => predated.includes(id) && !recorded.some((r) => r.id === id))).flat();
   const rows: VerifyRow[] = [];
   for (const rc of recorded) {
     const now = recomputed.find((c) => c.id === rc.id);
@@ -123,7 +125,7 @@ export function compareClaims(subject: string, recorded: readonly Claim[], recom
   }
   for (const c of recomputed) {
     if (!recorded.some((r) => r.id === c.id) && RECHECKED.has(c.id)) {
-      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result: omitsAdded && ADDED_LATER.includes(c.id) ? 'not recorded' : 'mismatch' });
+      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result: omitted.includes(c.id) ? 'not recorded' : 'mismatch' });
     }
   }
   return rows;
@@ -157,7 +159,7 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
         if (recomputedDigest && recomputedDigest !== report.inputDigest) notes.push('The recomputed input digest differs from the recorded one.');
         const unrecorded = rows.filter((r) => r.result === 'not recorded').map((r) => r.claim);
         if (unrecorded.length > 0) notes.push(`The bundle has no recorded status for ${unrecorded.join(' and ')}: it was recorded by ${String(checker)}, whose claim list does not name them. They were derived now and are not compared.`);
-        const lacking = rows.filter((r) => r.recorded === 'missing' && r.result === 'mismatch' && ADDED_LATER.includes(r.claim)).map((r) => r.claim);
+        const lacking = rows.filter((r) => r.recorded === 'missing' && r.result === 'mismatch' && ADDED_LATER.some((group) => group.includes(r.claim))).map((r) => r.claim);
         if (lacking.length > 0) notes.push(`The bundle has no recorded status for ${lacking.join(' and ')}, and its checker (${String(checker ?? 'not recorded')}) could not be shown to predate them in this checkout, so the omission counts as a mismatch.`);
         if (result.state !== 'completed') notes.push(`The re-run ended with state ${result.state}.`);
         notes.push('Timings in the bundle are historical and were not re-measured.');

@@ -73,6 +73,8 @@ function witnessText(c: Claim): string {
       return `${w.x1}^${w.exponent} = ${w.x2}^${w.exponent}${w.note ? ` (${w.note})` : ''}`;
     case 'partial-bypass':
       return `difference [${w.difference.join(',')}] stays zero at positions ${w.positions.join(',')} through ${w.partialRounds} partial rounds`;
+    case 'constant-mismatch':
+      return `round ${w.round}, position ${w.position} (index ${w.index}): submitted ${w.actual}, the Grain procedure generates ${w.expected}`;
     default:
       return '';
   }

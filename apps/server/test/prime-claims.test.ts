@@ -63,7 +63,7 @@ function koalaClaims(pairs: Array<[ClaimId, string]>): Claim[] {
 test('KoalaBear width four: the modulus claim first, bounds for branch number five', () => {
   const claims = koalaClaims(PROVED);
   const ids = claims.filter((c) => c.chain === 'design').map((c) => c.id);
-  assert.deepEqual(ids, ['field.prime', 'external.mds', 'internal.invertible', 'sbox.bijective', 'activity.outer', 'activity.partial', 'activity.total']);
+  assert.deepEqual(ids, ['field.prime', 'external.mds', 'internal.invertible', 'sbox.bijective', 'activity.outer', 'activity.partial', 'activity.total', 'constants.grain']);
   assert.equal(byId(claims, 'field.prime').title, 'Modulus is prime');
   assert.equal(byId(claims, 'field.prime').status, 'proved');
   assert.equal(byId(claims, 'external.mds').title, 'External matrix is MDS (branch number 5)');
