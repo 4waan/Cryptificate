@@ -71,8 +71,10 @@ min(180 s, remaining budget); on expiry the process group is killed and the clai
 `not_established` (never `refuted`). A certificate is accepted per theorem only if Lean exited 0,
 the `CRYPTIFICATE_AUDIT` line for the theorem is present, its type equals the expected type, its
 axioms are within `propext`, `Classical.choice`, `Quot.sound`, and every `CRYPTIFICATE_INPUT` echo
-equals the value derived from the normalized request. Activity bounds are only proved together
-with MDS and distinct offsets. Completed, clean results are cached under a key of the input digest,
+equals the value derived from the normalized request. An activity bound is attempted only after
+its preconditions are proved (AES: `matrix.mds`, `offsets.dispersion`, `sbox.bijective`; HADES:
+`external.mds`, `internal.invertible`, `sbox.bijective`, plus `field.prime` over prime fields and
+`activity.partial` for `activity.total`). Completed, clean results are cached under a key of the input digest,
 toolchain pins, checker version and the digests of the templates, the Lean library and the generated
 source; a hit is reported with origin `cached` and the id of the run it came from. The
 `rust.refinement` claim of a hit is not copied: it is recomputed from the current refinement
