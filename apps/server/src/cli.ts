@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * cryptificate serve | check | experiment | verify
+ * cryptificate serve | check | experiment | verify | import
  */
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -22,6 +22,8 @@ import { runLean } from './leanrun.js';
 import { createApp } from './server.js';
 import { readToolchain } from './toolchain.js';
 import { verifyBundle } from './verify.js';
+import { IMPORT_FORMATS, ImportError, detectFormat, intoDesign, parseConstants } from './import.js';
+import type { ImportFormat } from './import.js';
 
 const USAGE = `Usage: cryptificate <command> [options]
 
@@ -36,6 +38,11 @@ Commands:
         Search, check and measure circuits for the design's matrix.
   verify <bundle.tar.gz> [--native] [--keep] [--json out.json]
         Re-derive a bundle's claims with the installed engine and Lean checker.
+  import <constants-file> --base <design.json> [--format plonky3|horizen|json|csv] [--name NAME]
+        [-o out.json]
+        Put round constants from an implementation's file (Plonky3 split arrays, a HorizenLabs
+        poseidon2 instance or printed list, JSON or CSV) into a copy of a HADES design, in the
+        Poseidon2 layout; check the result to compare them with the Grain procedure.
 
 <design.json> may hold a CandidateDesign or a full request object.
 Exit status: 0 when the run completed (whatever the claims say) or every re-checked claim
@@ -237,6 +244,51 @@ async function cmdVerify(argv: string[]): Promise<number> {
   return result.ok ? 0 : 1;
 }
 
+function cmdImport(argv: string[]): number {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      base: { type: 'string' },
+      format: { type: 'string' },
+      name: { type: 'string' },
+      output: { type: 'string', short: 'o' },
+    },
+  });
+  if (positionals.length !== 1) fail('import needs exactly one constants file\n\n' + USAGE);
+  if (!values.base) fail('import needs --base <design.json>: the design whose constants are replaced\n\n' + USAGE);
+  if (values.format !== undefined && !(IMPORT_FORMATS as readonly string[]).includes(values.format)) {
+    fail(`unknown format "${values.format}" (expected ${IMPORT_FORMATS.join(', ')})`);
+  }
+  const path = positionals[0]!;
+  let text: string;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch (e) {
+    fail(`cannot read ${path}: ${(e as NodeJS.ErrnoException).code ?? (e as Error).message}`);
+  }
+  const base = readJsonFile(values.base);
+  const baseDesign = base && typeof base === 'object' && 'design' in base ? (base as { design: unknown }).design : base;
+  const width = baseDesign && typeof baseDesign === 'object' ? (baseDesign as Record<string, unknown>)['width'] : undefined;
+  try {
+    const format = (values.format as ImportFormat | undefined) ?? detectFormat(path, text);
+    const imported = parseConstants(format, text, { name: values.name, width: typeof width === 'number' ? width : undefined });
+    const { design, notices } = intoDesign(base, imported);
+    const json = `${JSON.stringify(design, null, 2)}\n`;
+    if (values.output) writeFileSync(resolve(values.output), json);
+    else process.stdout.write(json);
+    process.stderr.write(
+      `read ${imported.source} (${format}): ${imported.rows.length} rounds of width ${imported.width}, ` +
+        `R_F = ${imported.fullRounds}, R_P = ${imported.partialRounds}\n`,
+    );
+    for (const n of notices) process.stderr.write(`note: ${n}\n`);
+    return 0;
+  } catch (e) {
+    if (e instanceof ImportError) fail(`${path}: ${e.message}`);
+    throw e;
+  }
+}
+
 async function cmdServe(argv: string[]): Promise<number> {
   const { values } = parseArgs({
     args: argv,
@@ -317,6 +369,8 @@ export async function main(argv: string[]): Promise<number> {
       return cmdExperiment(rest);
     case 'verify':
       return cmdVerify(rest);
+    case 'import':
+      return cmdImport(rest);
     case undefined:
     case '-h':
     case '--help':
