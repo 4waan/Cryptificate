@@ -81,7 +81,7 @@ export function describeWitness(w: Witness, field: DisplayField): string {
       return (
         `The round constant of round ${w.round} at position ${w.position} (index ${w.index} of the flat list) is ` +
         `${abbreviateDecimal(w.actual)}, and the Grain procedure for this field, width and round numbers generates ` +
-        `${abbreviateDecimal(w.expected)} there (Poseidon2 layout). Every earlier constant agrees.`
+        `${abbreviateDecimal(w.expected)} there (Poseidon2 layout).`
       );
   }
 }

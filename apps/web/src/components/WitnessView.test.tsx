@@ -193,8 +193,7 @@ describe('claim cards', () => {
     expect(html).toContain('245687909');
     expect(describeWitness(w, 'prime:2130706433')).toBe(
       'The round constant of round 4 at position 0 (index 16 of the flat list) is 245687909, and the Grain ' +
-        'procedure for this field, width and round numbers generates 245687908 there (Poseidon2 layout). Every ' +
-        'earlier constant agrees.',
+        'procedure for this field, width and round numbers generates 245687908 there (Poseidon2 layout).',
     );
   });
 });
