@@ -1,6 +1,6 @@
 {
   "name": "@cryptificate/server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local Cryptificate service and the cryptificate command-line tool",
   "license": "MIT",
   "private": true,
@@ -16,7 +16,7 @@
     "test:integration": "tsc -p tsconfig.json && CRYPTIFICATE_INTEGRATION=1 node --test --test-concurrency=1 dist/test/integration.test.js"
   },
   "dependencies": {
-    "@cryptificate/schema": "0.1.0"
+    "@cryptificate/schema": "0.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",

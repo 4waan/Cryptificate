@@ -178,7 +178,7 @@ dependencies = [
 
 [[package]]
 name = "cryptificate-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cryptificate-core",
  "cryptificate-native",
@@ -188,7 +188,7 @@ dependencies = [
 
 [[package]]
 name = "cryptificate-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cryptificate-kernels",
  "hex",
@@ -204,7 +204,7 @@ dependencies = [
 
 [[package]]
 name = "cryptificate-kernels"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-bn254",
  "ark-ff",
@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "cryptificate-native"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "cryptificate-core",
@@ -227,7 +227,7 @@ dependencies = [
 
 [[package]]
 name = "cryptificate-search"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cryptificate-core",
  "rand",

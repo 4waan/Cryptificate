@@ -9,8 +9,9 @@
 - A running service serves the same description at `GET /api/openapi.json`, as one
   self-contained document: the schemas are embedded under `components/schemas` and every
   reference is local, so code generators and API browsers can load it from the URL.
-- Every example in the description is a response recorded from a live service (version 0.1.0,
-  release engine, Lean checker), except the fixed body of the 500 response.
+- Every example in the description is a response recorded from a live service (release
+  engine, Lean checker), except the fixed body of the 500 response. They were recorded on the
+  release branch before its version was set to 0.2.0, so their version fields read 0.1.0.
 
 The test `apps/server/test/openapi.test.ts` keeps the description and the service in step: the
 routes the handler dispatches and the operations described are the same set, every example
