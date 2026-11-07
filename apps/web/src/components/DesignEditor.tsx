@@ -255,7 +255,7 @@ function WidthSwitch({ design }: { design: AesLikeDesign }) {
       </div>
       <span id={`${id}-width-hint`} className="field-hint">
         {experimental
-          ? `Experimental: requests carry "experimental": true. MDS, offsets, S-box and circuit equivalence are checked as at width 4; the active S-box bound is not established by this method.`
+          ? `Experimental: requests carry "experimental": true. No certificate template covers this width, so no Lean claim is established (out of scope); only native correctness of a circuit is tested, and the instant checks stay an unchecked browser preview.`
           : 'AES uses width 4; 3×3 and 2×2 are experimental. Changing the width loads a new matrix and a matching circuit (Undo restores).'}
       </span>
     </div>
