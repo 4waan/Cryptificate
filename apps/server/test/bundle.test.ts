@@ -4,8 +4,9 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gunzipSync, gzipSync } from 'node:zlib';
+import { renderReportHtml } from '@cryptificate/schema';
 import type { AnalysisReport } from '@cryptificate/schema';
-import { buildBundle } from '../src/bundle.js';
+import { buildBundle, bundleReportHtml } from '../src/bundle.js';
 import { createTarGz, readTarGz } from '../src/tar.js';
 import type { ToolchainInfo } from '../src/toolchain.js';
 import type { Paths } from '../src/paths.js';
@@ -105,6 +106,7 @@ test('bundles are byte-for-byte deterministic and carry no local paths', () => {
       'lean/Cert.lean',
       'lean/audit.txt',
       'native/src/user.rs',
+      'report.html',
       'report.json',
       'toolchain.json',
     ]);
@@ -115,6 +117,44 @@ test('bundles are byte-for-byte deterministic and carry no local paths', () => {
     }
     assert.match(files.get('lean/audit.txt')!.toString(), /^<jobs>\//);
     assert.deepEqual(JSON.parse(files.get('inputs.json')!.toString()), report.inputs);
+    // without a recorded toolchain.json the page falls back to the current pins, as the bundle does
+    assert.equal(bundleReportHtml({ jobDir, report, toolchain, paths }), files.get('report.html')!.toString('utf8'));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('bundles carry report.html: the rendering of the bundled report.json and toolchain.json, without local paths', () => {
+  const { root, jobDir, paths } = fixture();
+  try {
+    const withPath: AnalysisReport = {
+      ...report,
+      claims: [
+        {
+          id: 'matrix.mds',
+          chain: 'design',
+          title: 'Matrix is MDS (branch number 5)',
+          status: 'not_established',
+          evidence: { kind: 'diagnostic', label: 'Unchecked diagnostic' },
+          witness: null,
+          note: `Lean failed on ${jobDir}/lean/Cert.lean`,
+          reason: 'lean-failed',
+        },
+      ],
+    };
+    const recorded = { leanToolchain: 'leanprover/lean4:v4.33.1', lakeManifest: [], cargoLockSha256: 'ef'.repeat(32), rustc: 'rustc 1.97.0', checker: 'cryptificate 0.1.0' };
+    writeFileSync(join(jobDir, 'toolchain.json'), `${JSON.stringify(recorded, null, 2)}\n`);
+    const files = readTarGz(buildBundle({ jobDir, report: withPath, toolchain, paths }));
+    const html = files.get('report.html')!.toString('utf8');
+    assert.ok(!html.includes(root), 'no local path');
+    assert.ok(html.includes('Lean failed on &lt;jobs&gt;/'), 'paths are scrubbed as in report.json');
+    const bundled = JSON.parse(files.get('report.json')!.toString('utf8')) as AnalysisReport;
+    assert.equal(html, renderReportHtml(bundled, { toolchain: recorded, context: 'evidence bundle', bundleName: '<this-bundle>.tar.gz' }));
+    assert.ok(html.includes('ef'.repeat(32)), 'the recorded pins, not the current checkout');
+    // the page served on its own (GET /api/jobs/:id/report.html) is the bundle's, byte for byte
+    assert.equal(bundleReportHtml({ jobDir, report: withPath, toolchain, paths }), html);
+    assert.ok(!/<script|src=/i.test(html));
+    assert.match(files.get('VERIFY.md')!.toString(), /`report\.html`/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

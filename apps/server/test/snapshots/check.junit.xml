@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="cryptificate check" tests="25" failures="6" errors="1" skipped="7">
+  <testsuite name="examples/bundles/aes-wrong-wire/report.json" tests="8" failures="2" errors="0" skipped="1">
+    <properties>
+      <property name="failOn" value="not-established"/>
+      <property name="inputDigest" value="sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698"/>
+      <property name="reportId" value="e6e133abbac74ceb24a3f12851c7ab33"/>
+      <property name="execution" value="completed"/>
+      <property name="checker" value="cryptificate 0.1.0 (58e2000)"/>
+    </properties>
+    <testcase classname="cryptificate.design" name="matrix.mds: Matrix is MDS (branch number 5)" file="examples/bundles/aes-wrong-wire/report.json">
+      <system-out>Lean-checked proof. Lean checked CryptificateJob.matrix_mds using only the standard axioms.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.design" name="offsets.dispersion: Row offsets are pairwise distinct" file="examples/bundles/aes-wrong-wire/report.json">
+      <system-out>Lean-checked proof. Lean checked CryptificateJob.offsets_optimal using only the standard axioms.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.design" name="sbox.bijective: S-box is a permutation" file="examples/bundles/aes-wrong-wire/report.json">
+      <system-out>Lean-checked proof. Lean checked CryptificateJob.sbox_bijective using only the standard axioms.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.design" name="activity.bound: At least 25 active S-boxes over 4 rounds" file="examples/bundles/aes-wrong-wire/report.json">
+      <system-out>Lean-checked proof. Lean checked CryptificateJob.activity_bound using only the standard axioms.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="circuit.equivalence: Circuit computes the design matrix" file="examples/bundles/aes-wrong-wire/report.json">
+      <failure type="refuted" message="refuted (Lean-checked counterexample)">Lean checked a counterexample (CryptificateJob.circuit_mismatch).
+Counterexample: input [00,01,00,00]: expected [03,02,01,01], got [01,02,01,01]
+{&quot;actual&quot;:[&quot;01&quot;,&quot;02&quot;,&quot;01&quot;,&quot;01&quot;],&quot;differing&quot;:[0],&quot;expected&quot;:[&quot;03&quot;,&quot;02&quot;,&quot;01&quot;,&quot;01&quot;],&quot;input&quot;:[&quot;00&quot;,&quot;01&quot;,&quot;00&quot;,&quot;00&quot;],&quot;kind&quot;:&quot;distinguishing-input&quot;}</failure>
+      <system-out>Lean-checked counterexample. Lean checked a counterexample (CryptificateJob.circuit_mismatch).</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="native.correctness: Generated Rust matches the reference" file="examples/bundles/aes-wrong-wire/report.json">
+      <failure type="refuted" message="refuted (Generated Rust passed 549 correctness cases)">8666 of 9215 cases gave a wrong output.
+Counterexample: input [00,01,00,00]: expected [03,02,01,01], got [01,02,01,01]
+{&quot;actual&quot;:[&quot;01&quot;,&quot;02&quot;,&quot;01&quot;,&quot;01&quot;],&quot;differing&quot;:[0],&quot;expected&quot;:[&quot;03&quot;,&quot;02&quot;,&quot;01&quot;,&quot;01&quot;],&quot;input&quot;:[&quot;00&quot;,&quot;01&quot;,&quot;00&quot;,&quot;00&quot;],&quot;kind&quot;:&quot;distinguishing-input&quot;}</failure>
+      <system-out>Generated Rust passed 549 correctness cases. 8666 of 9215 cases gave a wrong output.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="rust.refinement: Rust kernel refines the Lean model" file="examples/bundles/aes-wrong-wire/report.json">
+      <system-out>Rust-source refinement (Aeneas). The GF(2^8) primitives add, xtime and mul of crates/kernels, extracted with Charon and Aeneas, refine the Lean field operations; Lean checked these proofs on this machine. They cover the arithmetic primitives the generated code calls, not the generated circuit code itself, which native correctness tests.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="native.timing: Native speed on this machine" file="examples/bundles/aes-wrong-wire/report.json">
+      <skipped message="not established (Unchecked diagnostic) (outside policy): Timing is measured by experiments, not by an analysis."/>
+      <system-out>Unchecked diagnostic. Timing is measured by experiments, not by an analysis.</system-out>
+    </testcase>
+  </testsuite>
+  <testsuite name="examples/bundles/repeated-offsets/report.json" tests="8" failures="2" errors="0" skipped="4">
+    <properties>
+      <property name="failOn" value="not-established"/>
+      <property name="inputDigest" value="sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f"/>
+      <property name="reportId" value="fe06f930a3fbde8c1ef468ec8ce10bef"/>
+      <property name="execution" value="completed"/>
+      <property name="checker" value="cryptificate 0.1.0 (e74b8e6)"/>
+    </properties>
+    <testcase classname="cryptificate.design" name="matrix.mds: Matrix is MDS (branch number 5)" file="examples/bundles/repeated-offsets/report.json">
+      <system-out>Lean-checked proof. Lean checked CryptificateJob.matrix_mds using only the standard axioms.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.design" name="offsets.dispersion: Row offsets are pairwise distinct" file="examples/bundles/repeated-offsets/report.json">
+      <failure type="refuted" message="refuted (Lean-checked counterexample)">Lean checked a counterexample (CryptificateJob.offsets_not_optimal).
+Counterexample: rows 1,2 share offset 1
+{&quot;kind&quot;:&quot;offset-collision&quot;,&quot;offset&quot;:1,&quot;rows&quot;:[1,2]}</failure>
+      <system-out>Lean-checked counterexample. Lean checked a counterexample (CryptificateJob.offsets_not_optimal).</system-out>
+    </testcase>
+    <testcase classname="cryptificate.design" name="sbox.bijective: S-box is a permutation" file="examples/bundles/repeated-offsets/report.json">
+      <system-out>Lean-checked proof. Lean checked CryptificateJob.sbox_bijective using only the standard axioms.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.design" name="activity.bound: At least 25 active S-boxes over 4 rounds" file="examples/bundles/repeated-offsets/report.json">
+      <failure type="not_established" message="not established (Unchecked diagnostic)">Not established by this method: the bound needs distinct row offsets to be proved first. This is not a refutation.</failure>
+      <system-out>Unchecked diagnostic. Not established by this method: the bound needs distinct row offsets to be proved first. This is not a refutation.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="circuit.equivalence: Circuit computes the design matrix" file="examples/bundles/repeated-offsets/report.json">
+      <skipped message="not established (Unchecked diagnostic) (outside policy): No circuit was submitted."/>
+      <system-out>Unchecked diagnostic. No circuit was submitted.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="native.correctness: Generated Rust matches the reference" file="examples/bundles/repeated-offsets/report.json">
+      <skipped message="not established (Unchecked diagnostic) (outside policy): No circuit was submitted."/>
+      <system-out>Unchecked diagnostic. No circuit was submitted.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="rust.refinement: Rust kernel refines the Lean model" file="examples/bundles/repeated-offsets/report.json">
+      <skipped message="not established (Unchecked diagnostic) (outside policy): No circuit was submitted."/>
+      <system-out>Unchecked diagnostic. No circuit was submitted.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="native.timing: Native speed on this machine" file="examples/bundles/repeated-offsets/report.json">
+      <skipped message="not established (Unchecked diagnostic) (outside policy): Timing is measured by experiments, not by an analysis."/>
+      <system-out>Unchecked diagnostic. Timing is measured by experiments, not by an analysis.</system-out>
+    </testcase>
+  </testsuite>
+  <testsuite name="examples/bundles/poseidon2-exponent3/report.json" tests="8" failures="2" errors="0" skipped="2">
+    <properties>
+      <property name="failOn" value="not-established"/>
+      <property name="inputDigest" value="sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4"/>
+      <property name="reportId" value="46ed3f101b10988d83bd4d768729da48"/>
+      <property name="execution" value="completed"/>
+      <property name="checker" value="cryptificate 0.1.0 (e74b8e6)"/>
+    </properties>
+    <testcase classname="cryptificate.design" name="external.mds: External matrix is MDS (branch number 4)" file="examples/bundles/poseidon2-exponent3/report.json">
+      <system-out>Lean-checked proof. Lean checked CryptificateJob.external_mds using only the standard axioms.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.design" name="internal.invertible: Internal matrix is invertible" file="examples/bundles/poseidon2-exponent3/report.json">
+      <system-out>Lean-checked proof. Lean checked CryptificateJob.internal_invertible using only the standard axioms.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.design" name="sbox.bijective: Power S-box is a permutation" file="examples/bundles/poseidon2-exponent3/report.json">
+      <failure type="refuted" message="refuted (Lean-checked counterexample)">Lean checked a counterexample (CryptificateJob.power_not_injective).
+Counterexample: 1^3 = 4407920970296243842393367215006156084916469457145843978461^3 (omega^3 = 1 = 1^3, where omega = 3^((p-1)/3) is not 1)
+{&quot;exponent&quot;:3,&quot;kind&quot;:&quot;power-collision&quot;,&quot;note&quot;:&quot;omega^3 = 1 = 1^3, where omega = 3^((p-1)/3) is not 1&quot;,&quot;x1&quot;:&quot;1&quot;,&quot;x2&quot;:&quot;4407920970296243842393367215006156084916469457145843978461&quot;}</failure>
+      <system-out>Lean-checked counterexample. Lean checked a counterexample (CryptificateJob.power_not_injective).</system-out>
+    </testcase>
+    <testcase classname="cryptificate.design" name="activity.outer: Active S-box bound for the full rounds" file="examples/bundles/poseidon2-exponent3/report.json">
+      <failure type="not_established" message="not established (Unchecked diagnostic)">Not established by this method: the bound needs a bijective S-box to be proved first. This is not a refutation.</failure>
+      <system-out>Unchecked diagnostic. Not established by this method: the bound needs a bijective S-box to be proved first. This is not a refutation.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="circuit.equivalence: Circuit computes the design matrix" file="examples/bundles/poseidon2-exponent3/report.json">
+      <system-out>Lean-checked circuit equivalence. Lean checked CryptificateJob.circuit_equivalence using only the standard axioms.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="native.correctness: Generated Rust matches the reference" file="examples/bundles/poseidon2-exponent3/report.json">
+      <system-out>Generated Rust passed 8278 correctness cases. Generated Rust matched the independently computed matrix product on all 8278 test vectors. This is testing, not a proof.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="rust.refinement: Rust kernel refines the Lean model" file="examples/bundles/poseidon2-exponent3/report.json">
+      <skipped message="unsupported (Unchecked diagnostic): Refinement proofs exist for the GF(2^8) kernels only; BN254 arithmetic is not covered."/>
+      <system-out>Unchecked diagnostic. Refinement proofs exist for the GF(2^8) kernels only; BN254 arithmetic is not covered.</system-out>
+    </testcase>
+    <testcase classname="cryptificate.implementation" name="native.timing: Native speed on this machine" file="examples/bundles/poseidon2-exponent3/report.json">
+      <skipped message="not established (Unchecked diagnostic) (outside policy): Timing is measured by experiments, not by an analysis."/>
+      <system-out>Unchecked diagnostic. Timing is measured by experiments, not by an analysis.</system-out>
+    </testcase>
+  </testsuite>
+  <testsuite name="examples/designs/missing.json" tests="1" failures="0" errors="1" skipped="0">
+    <properties>
+      <property name="failOn" value="not-established"/>
+    </properties>
+    <testcase classname="cryptificate.input" name="input" file="examples/designs/missing.json">
+      <error type="input-error" message="cannot read examples/designs/missing.json: ENOENT">cannot read examples/designs/missing.json: ENOENT</error>
+    </testcase>
+  </testsuite>
+</testsuites>

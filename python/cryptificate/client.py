@@ -127,3 +127,11 @@ class Client:
             data = res.read()
         target.write_bytes(data)
         return target
+
+    def report_html(self, job_id: str, path: Union[str, Path]) -> Path:
+        """Download the self-contained HTML evidence report of a finished job to `path`."""
+        target = Path(path)
+        with self._request("GET", f"/api/jobs/{job_id}/report.html") as res:
+            data = res.read()
+        target.write_bytes(data)
+        return target

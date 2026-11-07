@@ -32,6 +32,9 @@ A bundle contains:
 | `search/` | search history and seeds (experiments) |
 | `engine/diagnose.json` | the engine's unchecked diagnostics |
 | `VERIFY.md` | how to replay the bundle |
+| `report.html` | a self-contained, printable rendering of `report.json` (bundles made after it was added) |
+
+The recorded bundles here predate `report.html` and are kept byte for byte as recorded; render the page for any of them with `npx cryptificate report examples/bundles/<name>/<name>.tar.gz --format html --output report.html`.
 
 Bundles are deterministic: entries are sorted, every mtime is zero and no file holds a
 timestamp, so the same job always yields the same bytes.
@@ -42,7 +45,7 @@ timestamp, so the same job always yields the same bytes.
 npx cryptificate verify examples/bundles/<name>/<name>.tar.gz
 ```
 
-`verify` reads only `inputs.json` and `report.json`. It regenerates the Lean certificate with
+`verify` reads only `inputs.json` and `report.json` (never `report.html`). It regenerates the Lean certificate with
 the installed engine and templates, runs the installed Lean checker, recomputes each claim and
 prints a table comparing it with the recorded status (for the S-box differential uniformity
 and linearity claims, also with the recorded value and pair of bytes). Bundled Lean, Rust and shell files are
