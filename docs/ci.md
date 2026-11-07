@@ -67,7 +67,7 @@ A cold run downloads the Mathlib cache archives (about 0.9 GB for the pinned Mat
 
 Outputs: `exit-code`, `outcome` (`pass`, `policy-failure` or `error`), `result-file`, `sarif-file` and `bundle-dir`.
 
-The action does not build the Rust-source refinement proofs in `refinement/` (they use a different Lean toolchain), so `rust.refinement` is reported as not established for a GF(2⁸) circuit in CI. With `fail-on: not-established` or `any` and a circuit, restrict the policy with `claims` to the claims you need, or the job fails on that claim.
+The action does not build the Rust-source refinement proofs in `refinement/` (they use a different Lean toolchain), so `rust.refinement` is reported as not established for a GF(2⁸) circuit in CI. With `fail-on: not-established` or `any` and a circuit, restrict the policy with `claims` to the claims you need, or the job fails on that claim. The same applies to `hades/prime/v1` designs, to Poseidon2 widths above 4 and to BN254 circuits, whose reports carry claims the profile does not establish (see **Scope** below).
 
 ### Other CI systems
 
@@ -140,6 +140,12 @@ cryptificate: cryptificate.json is not a valid project configuration (2 problems
 | `any` | an in-scope claim that is not proved (refuted, not established or unsupported) |
 
 **Scope.** With `--claims`, the policy applies to exactly those claim ids. Under a policy other than `none`, an input whose report (or bundle) does not carry one of them is an error (exit 2), not a vacuous pass: a gate on `matrix.mds` over a HADES design, whose report has `external.mds` instead, fails with exit 2. Use one gate per design family, or list the ids of both. Without `--claims`, `check` applies the policy to every claim of the report except those the run does not attempt by design, which carry the reason `not-run`: the circuit claims when no circuit was submitted, and native timing, which only experiments measure.
+
+Claims a profile does not cover carry the reason `out-of-scope` or `precondition-failed` instead, and they stay in scope. Under `not-established` or `any` (and, for the wide external matrix, under `refuted` too), list the claims you gate on with `--claims` for these inputs:
+
+- **`hades/prime/v1` designs.** The four implementation claims (`circuit.equivalence`, `native.correctness`, `rust.refinement`, `native.timing`) are `out-of-scope`, because the profile takes no circuits; `constants.grain` is not established for a design that gives no round constants. A design whose eight design claims are all proved still fails `--fail-on not-established` without `--claims`. At widths 2 to 4 the design claims are `field.prime,external.mds,internal.invertible,sbox.bijective,activity.outer,activity.partial,activity.total` (with `constants.grain` when the design gives constants).
+- **Widths above 4.** `activity.outer` and `activity.total` are not established (they need an MDS external matrix), and `external.mds` of Poseidon2's `circ(2 M₄, M₄, …, M₄)` is refuted, which fails even `--fail-on refuted`. Gate on `field.prime,external.m4_mds,external.invertible,internal.invertible,sbox.bijective,activity.partial` instead (and `constants.grain` with constants). `activity.partial` is refuted when there are fewer partial rounds than the width, as for most of Plonky3's wide instances; leave it out of the list for those.
+- **BN254 circuits.** `rust.refinement` is `unsupported` (the native BN254 variants call arkworks' `Fr`), which `any` rejects.
 
 `verify` gates on recomputed statuses only, never on the status a bundle records about itself. By default it applies the policy to the claims it re-checked (again except `not-run` ones). A claim added after the bundle was recorded and shown as `not recorded` (see the server README) was re-derived as well, so the policy applies to its recomputed status like any other re-checked claim. With `--claims`, an id that `verify` does not re-check (`rust.refinement`, `native.timing`, and `native.correctness` without `--native`) is an error (exit 2) under a policy, because the only status available for it is the one the bundle records.
 
