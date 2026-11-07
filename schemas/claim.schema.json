@@ -60,7 +60,8 @@
                 "Unchecked diagnostic"
               ]
             },
-            { "type": "string", "pattern": "^Generated Rust passed [0-9]+ correctness cases$" }
+            { "type": "string", "pattern": "^Generated Rust passed [0-9]+ correctness cases$" },
+            { "type": "string", "pattern": "^Generated Rust failed [0-9]+ of [0-9]+ correctness cases$" }
           ]
         },
         "theorem": { "type": "string" },

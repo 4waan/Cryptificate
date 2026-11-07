@@ -8,8 +8,10 @@ import { WitnessView } from './WitnessView';
 const ALLOWED = new Set(ALLOWED_AXIOMS);
 
 /**
- * The evidence label as shown. A failed native run's label counts only the
- * passing cases; the total is added so "passed 39" is not read as success.
+ * The evidence label as shown. A refuted native run is labelled "Generated
+ * Rust failed F of N correctness cases"; reports recorded before 0.2.0 count
+ * only the passing cases, so the total is added there and "passed 39" is not
+ * read as success.
  */
 export function evidenceText(claim: Claim): string {
   const ev = claim.evidence;

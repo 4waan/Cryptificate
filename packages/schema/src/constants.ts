@@ -26,10 +26,22 @@ export function nativeCorrectnessLabel(cases: number): string {
   return `Generated Rust passed ${cases} correctness cases`;
 }
 
-/** Matches every evidence label, including the parametrised native one. */
+/**
+ * "Generated Rust failed F of N correctness cases", the label of a refuted
+ * native.correctness claim. Reports recorded before 0.2.0 carry the passing
+ * count in the label above instead.
+ */
+export function nativeCorrectnessFailedLabel(failures: number, cases: number): string {
+  return `Generated Rust failed ${failures} of ${cases} correctness cases`;
+}
+
+/** Matches every evidence label, including the parametrised native ones. */
 export function isEvidenceLabel(label: string): boolean {
   if ((Object.values(EVIDENCE_LABELS) as string[]).includes(label)) return true;
-  return /^Generated Rust passed \d+ correctness cases$/.test(label);
+  return (
+    /^Generated Rust passed \d+ correctness cases$/.test(label) ||
+    /^Generated Rust failed \d+ of \d+ correctness cases$/.test(label)
+  );
 }
 
 export const CLAIM_STATUSES: readonly ClaimStatus[] = [

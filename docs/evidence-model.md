@@ -61,6 +61,7 @@ For the prime-field profile the modulus is therefore stated in the normalized re
 | Lean-checked counterexample | A concrete input whose property violation Lean evaluated. | That witness. |
 | Rust-source refinement (Aeneas) | The recorded Rust source, translated by Charon and Aeneas, equals the mathematical model for all inputs. | Rust source, with Charon and Aeneas as the translation. |
 | Generated Rust passed N correctness cases | The compiled variant matched an independent evaluation on N recorded inputs. | The recorded corpus. |
+| Generated Rust failed F of N correctness cases | The compiled variant disagreed with the independent evaluation on F of N inputs; the claim is refuted and the witness is one failing input. Reports recorded before 0.2.0 label a refuted run "Generated Rust passed N correctness cases" with N the passing cases; read the status, not the label. | The recorded corpus. |
 | Native timing measured on this machine | Paired timings under the protocol in [batch-interface.md](batch-interface.md). | The recorded machine, compiler and workloads. |
 | Unchecked diagnostic | A value computed by the engine before Lean checks it. | A hint that guides certificate generation. |
 

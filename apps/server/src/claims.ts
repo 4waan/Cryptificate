@@ -13,6 +13,7 @@ import {
   externalMdsTitle,
   hadesOuterActivityBoundWidth,
   hadesTotalActivityBoundWidth,
+  nativeCorrectnessFailedLabel,
   nativeCorrectnessLabel,
 } from '@cryptificate/schema';
 import type {
@@ -471,13 +472,13 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
             note: `Generated Rust matched the independently computed matrix product on all ${n.cases} test vectors. This is testing, not a proof.`,
           });
         } else {
-          const passedCases = Math.max(0, n.cases - (n.failures ?? n.cases));
+          const failures = Math.min(n.cases, n.failures ?? n.cases);
           claims.push({
             id: info.id,
             chain: info.chain,
             title: info.title,
             status: 'refuted',
-            evidence: { kind: 'native', label: nativeCorrectnessLabel(passedCases), cases: n.cases },
+            evidence: { kind: 'native', label: nativeCorrectnessFailedLabel(failures, n.cases), cases: n.cases },
             witness: n.witness ?? null,
             note: n.detail ? capitalize(n.detail) : 'Generated Rust disagreed with the reference matrix product on a test vector.',
           });

@@ -52,6 +52,13 @@ pub mod labels {
     pub fn native_correctness(cases: u64) -> String {
         format!("Generated Rust passed {cases} correctness cases")
     }
+
+    /// `"Generated Rust failed F of N correctness cases"`, the label of a
+    /// refuted `native.correctness` claim. Reports recorded before 0.2.0
+    /// carry the passing count in [`native_correctness`] instead.
+    pub fn native_correctness_failed(failures: u64, cases: u64) -> String {
+        format!("Generated Rust failed {failures} of {cases} correctness cases")
+    }
 }
 
 /// Axioms a Lean certificate may depend on; anything else is rejected.

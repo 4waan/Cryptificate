@@ -9,6 +9,7 @@ import {
   hadesTotalActivityBoundWidth,
   isBnDecimal,
   isEvidenceLabel,
+  nativeCorrectnessFailedLabel,
   nativeCorrectnessLabel,
   normalizeAnalysisRequest,
   validateAnalysisRequest,
@@ -153,6 +154,8 @@ test('activity bound and evidence labels', () => {
   assert.deepEqual([2, 4, 6, 8, 160].map(hadesOuterActivityBound), [2, 8, 10, 16, 320]);
   assert.equal(isEvidenceLabel('Lean-checked proof'), true);
   assert.equal(isEvidenceLabel(nativeCorrectnessLabel(9214)), true);
+  assert.equal(nativeCorrectnessFailedLabel(8666, 9215), 'Generated Rust failed 8666 of 9215 correctness cases');
+  assert.equal(isEvidenceLabel(nativeCorrectnessFailedLabel(8666, 9215)), true);
   assert.equal(isEvidenceLabel('Verified'), false);
 });
 
