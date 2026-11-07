@@ -1,5 +1,6 @@
 import Cryptificate.PrimeField.Encoding
 import Cryptificate.Hades.Partial
+import Cryptificate.Diffusion.Branch
 
 /-!
 # Vector identities over `ZMod p` checked on lists of natural numbers
@@ -13,6 +14,9 @@ witness rather than with the width, and which therefore walk lists directly:
 * `checkKernel p n E v` and `checkNonzero p n v`: `v` is a nonzero vector that `E` sends to zero
   modulo `p` (`mulVec_eq_zero_of_check`, `pfVec_ne_zero_of_check`), the refutation of an
   invertibility claim;
+* `checkBranch p n E v`: `v` is nonzero modulo `p`, and `v` and `E v` together have at most `n`
+  entries that are nonzero modulo `p` (`not_isMDS_of_checkBranch`), the refutation of an MDS
+  claim at any width;
 * `checkInvariant p n r E mask B A`: `r` vectors that vanish on the masked positions and that `E`
   maps into their span with the coefficients `A` (`Hades.invariant_of_check`), the hypotheses of
   `Hades.powers_zero_of_invariant`.
@@ -152,6 +156,57 @@ theorem pfVec_ne_zero_of_check {p n : ℕ} {v : List ℕ} (h : checkNonzero p n 
 theorem pfVecs_zero (p r n : ℕ) [NeZero r] (B : List ℕ) : pfVecs p r n B 0 = pfVec p n B := by
   funext i
   simp [pfVecs, pfVec]
+
+/-- The first of `r` vectors read from a list is nonzero once `checkNonzero` accepts the list:
+the bypass witness of an invariant-subspace certificate. -/
+theorem pfVecs_zero_ne_zero_of_check {p r n : ℕ} [NeZero r] {B : List ℕ}
+    (h : checkNonzero p n B = true) : pfVecs p r n B 0 ≠ 0 := by
+  rw [pfVecs_zero]
+  exact pfVec_ne_zero_of_check h
+
+/-! ### Low-weight vectors -/
+
+/-- The number of `k < m` with `f k` nonzero modulo `p`. -/
+def nzCount (p : ℕ) (f : ℕ → ℕ) : ℕ → ℕ
+  | 0 => 0
+  | m + 1 => nzCount p f m + if f m % p = 0 then 0 else 1
+
+theorem nzCount_eq_sum (p : ℕ) (f : ℕ → ℕ) (m : ℕ) :
+    nzCount p f m = ∑ k ∈ Finset.range m, if f k % p = 0 then 0 else 1 := by
+  induction m with
+  | zero => rfl
+  | succ m ih => rw [nzCount, ih, Finset.sum_range_succ]
+
+/-- The weight of a vector over `ZMod p` whose entries are the numerals `f k` is the number of
+them that are nonzero modulo `p`. -/
+theorem weight_eq_nzCount {p n : ℕ} (f : ℕ → ℕ) (g : Fin n → ZMod p)
+    (hg : ∀ i, g i = ((f i.val : ℕ) : ZMod p)) : weight g = nzCount p f n := by
+  rw [weight, activePattern, Finset.card_filter, nzCount_eq_sum,
+    ← Fin.sum_univ_eq_sum_range (fun k => if f k % p = 0 then 0 else 1) n]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  have h : g i = 0 ↔ f i.val % p = 0 := by
+    rw [hg, ZMod.natCast_eq_zero_iff, Nat.dvd_iff_mod_eq_zero]
+  by_cases h0 : f i.val % p = 0
+  · rw [if_pos h0, if_neg (not_not.mpr (h.mpr h0))]
+  · rw [if_neg h0, if_pos (mt h.mp h0)]
+
+/-- **The low-weight check.** `v` is nonzero modulo `p`, and `v` and `E v` together have at most
+`n` entries that are nonzero modulo `p`. -/
+def checkBranch (p n : ℕ) (E v : List ℕ) : Bool :=
+  checkNonzero p n v &&
+    Nat.blt (nzCount p (fun k => v.getD k 0) n +
+      nzCount p (fun k => dot ((rows n n E).getD k []) v) n) (n + 1)
+
+/-- **An accepted low-weight vector refutes the MDS property** (`not_isMDS_of_witness`), with
+every product and every count evaluated on numerals. -/
+theorem not_isMDS_of_checkBranch {p n : ℕ} [Fact p.Prime] {E v : List ℕ}
+    (h : checkBranch p n E v = true) : ¬ IsMDS (pfMat p n E) := by
+  simp only [checkBranch, Bool.and_eq_true, Nat.blt_eq] at h
+  refine not_isMDS_of_witness (pfVec p n v) (pfVec_ne_zero_of_check h.1) ?_
+  rw [weight_eq_nzCount (fun k => v.getD k 0) (pfVec p n v) (fun i => rfl),
+    weight_eq_nzCount (fun k => dot ((rows n n E).getD k []) v) _ (fun i => by
+      rw [Matrix.mulVec, pfMat_row, pfVec_dotProduct (rows_getD_length n n E i.val) v])]
+  exact h.2
 
 /-! ### The masked rows of the powers of a matrix -/
 

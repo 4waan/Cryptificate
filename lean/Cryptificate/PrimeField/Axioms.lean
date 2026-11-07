@@ -13,11 +13,11 @@ import Cryptificate.Diffusion.Minors2
 The build fails if the Pratt checker, the power-map certificate over `ZMod p`, the width-four and
 any-dimension partial-round certificates, the packed matrix checks of wide widths (inverse
 witnesses, observability, short bypasses, the Poseidon2 block structure, Kronecker
-substitution), the list checks (kernel vectors, invariant subspaces), the width-two minors, or the
-primality of a named modulus starts depending on
-an axiom other than the three standard ones (`propext`, `Classical.choice`, `Quot.sound`), e.g.
-`sorryAx` or `Lean.ofReduceBool`. Certificates built from these theorems are audited again, claim
-by claim, by `#cryptificate_audit`.
+substitution), the list checks (kernel vectors, low-weight vectors, invariant subspaces), the
+width-two minors, or the primality of a named modulus starts depending on an axiom other than
+the three standard ones (`propext`, `Classical.choice`, `Quot.sound`), e.g. `sorryAx` or
+`Lean.ofReduceBool`. Certificates built from these theorems are audited again, claim by claim, by
+`#cryptificate_audit`.
 -/
 
 /--
@@ -127,6 +127,18 @@ info: 'Cryptificate.NatMatrix.pfVec_ne_zero_of_check' depends on axioms: [propex
 -/
 #guard_msgs in
 #print axioms Cryptificate.NatMatrix.pfVec_ne_zero_of_check
+
+/--
+info: 'Cryptificate.NatMatrix.pfVecs_zero_ne_zero_of_check' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.NatMatrix.pfVecs_zero_ne_zero_of_check
+
+/--
+info: 'Cryptificate.NatMatrix.not_isMDS_of_checkBranch' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Cryptificate.NatMatrix.not_isMDS_of_checkBranch
 
 /--
 info: 'Cryptificate.Hades.invariant_of_check' depends on axioms: [propext, Classical.choice, Quot.sound]
