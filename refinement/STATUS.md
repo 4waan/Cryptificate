@@ -196,11 +196,12 @@ arkworks; that is not done.
 ### The 64-bit prime fields: no Rust kernel to refine
 
 The prime-field profile (`hades/prime/v1`: BabyBear, KoalaBear, Mersenne31, Goldilocks or a
-custom prime below `2⁶⁴`) is checked in Lean only. `crates/kernels` has no arithmetic for these
-fields, and the engine offers no circuits, search or native measurement over them, so no Rust
-code computes over them and "Rust-source refinement (Aeneas)" does not apply. The `u128`
-modular arithmetic in `crates/core/src/prime.rs` only computes the diagnostics and the
-certificate data that Lean then checks; it is not part of any claim.
+custom prime below `2⁶⁴`, at each of its widths 2, 3, 4, 8, 12, 16 and 24) is checked in Lean
+only. `crates/kernels` has no arithmetic for these fields, and the engine offers no circuits,
+search or native measurement over them, so no Rust code computes over them and "Rust-source
+refinement (Aeneas)" does not apply. The `u128` modular arithmetic in `crates/core/src/prime.rs`
+and the inverse and observability witnesses of the wide widths only compute the diagnostics and the
+certificate data that Lean then checks; none of it is part of any claim.
 
 ## Trusted components
 

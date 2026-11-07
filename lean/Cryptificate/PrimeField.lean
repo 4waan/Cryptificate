@@ -36,7 +36,8 @@ computations:
   (`Hades.observable_of_checkObsP`), rows orthogonal to a vector prove a short bypass
   (`Hades.powers_zero_of_checkOrthP`), and one packed comparison proves that a matrix is the
   Poseidon2 external matrix `circ(2 M₄, M₄, …, M₄)` (`Hades.pfMat_eq_poseidon2External_of_checkP`).
-* `PrimeField.NatMatrix`: kernel vectors of singular matrices and invariant-subspace bypasses,
+* `PrimeField.NatMatrix`: kernel vectors of singular matrices, low-weight vectors that refute
+  the MDS property (`NatMatrix.not_isMDS_of_checkBranch`) and invariant-subspace bypasses,
   checked on lists, and the definition of `poseidon2External`.
 * `Diffusion.Minors2`: a `2 × 2` matrix is MDS once its `5` canonical minors are nonzero.
 -/
