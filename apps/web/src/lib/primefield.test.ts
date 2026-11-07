@@ -160,6 +160,22 @@ describe('Poseidon2 widths 2, 8, 12, 16 and 24', () => {
     expect(w2.some((i) => i.id === 'external.m4_mds')).toBe(false);
   });
 
+  it('previews a singular matrix with its kernel vector, as the engine reports it', () => {
+    // The vectors of crates/cli/tests/snapshots/babybear-t8-bad.json.
+    const items = previewDesign(example('babybear-t8-bad'));
+    const by = (id: string) => items.find((i) => i.id === id)!;
+    expect(by('external.invertible').outcome).toBe('fails');
+    expect(by('external.invertible').witness).toEqual({
+      kind: 'kernel',
+      vector: ['2013265920', '1', '0', '0', '0', '0', '0', '0'],
+    });
+    expect(by('internal.invertible').outcome).toBe('fails');
+    expect(by('internal.invertible').witness).toEqual({
+      kind: 'kernel',
+      vector: ['0', '2013265920', '1', '0', '0', '0', '0', '0'],
+    });
+  });
+
   it('accepts the wide widths and rejects the others', () => {
     for (const w of [2, 8, 12, 16, 24] as const) {
       expect(validateDesign(primeDesignWide('goldilocks', w)), `width ${w}`).toEqual([]);

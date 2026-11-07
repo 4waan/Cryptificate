@@ -133,13 +133,13 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
         ? `No square submatrix of order 1 or 2 is singular; the larger ones of a ${w} × ${w} matrix are not enumerated.`
         : `All ${MINOR_COUNTS[w] ?? '?'} square submatrices are nonsingular.`,
   };
-  const internalRank = rankAndKernel(f, d.internal).rank;
+  const { rank: internalRank, kernel: internalKernel } = rankAndKernel(f, d.internal);
   const internal: PreviewItem = {
     id: 'internal.invertible',
     chain: 'design',
     title: 'Internal matrix is invertible',
     outcome: internalRank === w ? 'holds' : 'fails',
-    witness: null,
+    witness: internalKernel ? { kind: 'kernel', vector: internalKernel } : null,
     note: internalRank === w ? 'The determinant is nonzero.' : 'The determinant is zero.',
   };
   const items = [
@@ -185,7 +185,7 @@ function wideExternalPreview(f: FieldOps, m: string[][]): PreviewItem[] {
       ),
     );
   const m4Witness = structured ? branchWitness(f, m4) : null;
-  const rank = rankAndKernel(f, m).rank;
+  const { rank, kernel } = rankAndKernel(f, m);
   return [
     {
       id: 'external.m4_mds',
@@ -204,7 +204,7 @@ function wideExternalPreview(f: FieldOps, m: string[][]): PreviewItem[] {
       chain: 'design',
       title: 'External matrix is invertible',
       outcome: rank === t ? 'holds' : 'fails',
-      witness: null,
+      witness: kernel ? { kind: 'kernel', vector: kernel } : null,
       note: rank === t ? 'The determinant is nonzero.' : 'The determinant is zero.',
     },
   ];
