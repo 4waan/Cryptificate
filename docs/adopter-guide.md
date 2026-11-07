@@ -4,7 +4,7 @@ This guide is for a research group that wants to use Cryptificate on its own des
 
 ## 1. Install
 
-Linux with 8 GB of RAM is enough. You need git, curl, a C toolchain, Rust (stable), Node 20+ and Python 3.10+.
+Linux with 8 GB of RAM is enough. You need git, curl, a C toolchain, Rust (stable), Node 20+ and Python 3.10+ (for the repository's scripts; the client package in [`python/`](../python) declares 3.9+).
 
 ```sh
 git clone https://github.com/4waan/Cryptificate
