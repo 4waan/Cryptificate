@@ -159,7 +159,7 @@ Before this interface, `check` returned 1 for a run that failed or timed out; it
 
 ## SARIF
 
-The log follows SARIF 2.1.0: one run, tool driver `Cryptificate` with one rule per claim id (`matrix.mds`, `offsets.dispersion`, `sbox.bijective`, `activity.bound`, `external.mds`, `internal.invertible`, `activity.outer`, `circuit.equivalence`, `native.correctness`, `rust.refinement`, `native.timing`), and one result per claim of each input.
+The log follows SARIF 2.1.0: one run, tool driver `Cryptificate` with one rule per claim id (`matrix.mds`, `offsets.dispersion`, `sbox.bijective`, `activity.bound`, `sbox.differential`, `sbox.linearity`, `field.prime`, `external.mds`, `internal.invertible`, `activity.outer`, `activity.partial`, `activity.total`, `circuit.equivalence`, `native.correctness`, `rust.refinement`, `native.timing`), and one result per claim of each input.
 
 | Claim | `kind` | `level` |
 | --- | --- | --- |
@@ -179,6 +179,10 @@ Locations point into the file you wrote, with a line and column:
 | `offsets.dispersion` | the repeated offset when refuted, otherwise `offsets` |
 | `sbox.bijective` | the colliding table entry or the exponent when refuted, otherwise `sbox` |
 | `activity.bound`, `activity.outer` | `rounds`, `fullRounds` |
+| `activity.partial` | `internal` when refuted by a bypass, otherwise `partialRounds` |
+| `activity.total` | `partialRounds` |
+| `field.prime` | `modulus` (the design when the modulus is omitted for a named field) |
+| `sbox.differential`, `sbox.linearity` | `sbox` |
 | `circuit.equivalence` | the first differing output of the circuit when refuted, otherwise the circuit |
 | other implementation claims | the circuit, or the top of the file when there is none |
 
