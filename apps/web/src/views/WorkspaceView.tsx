@@ -199,7 +199,9 @@ export function WorkspaceView() {
             <span className="error-text">
               {problems.length} input {problems.length === 1 ? 'problem' : 'problems'} to fix before checking
             </span>
-          ) : status ? (
+          ) : null}
+          {/* Editing is allowed while a job runs: its status and Stop button stay beside any input problems. */}
+          {status ? (
             <>
               <RunProgress run={status} compact />
               {status.kind === 'experiment' && !isActive(status) ? <a href="#/experiments">See why on Experiments</a> : null}

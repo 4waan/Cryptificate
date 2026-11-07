@@ -43,6 +43,18 @@ describe('one Stop button and one status region per running job', () => {
     expect(count(html, /<strong>Analysis:<\/strong>/g)).toBe(1);
     expect(html).toContain('aria-label="Steps"');
   });
+
+  it('on the Workspace view, for a running check while the inputs have a problem', () => {
+    const r = active('analysis');
+    const d = aesDesign();
+    // Editing is allowed during a check: a matrix that lost a row is an input problem.
+    setState({ design: { ...d, matrix: d.matrix.slice(0, 3) }, runs: { [r.key]: r }, current: { analysis: r.key } });
+    const html = renderToStaticMarkup(<WorkspaceView />);
+    expect(html).toMatch(/input problems? to fix before checking/);
+    expect(count(html, stopButtons)).toBe(1);
+    expect(count(html, /<strong>Analysis:<\/strong>/g)).toBe(1);
+    expect(html).toContain('Stop in the run bar at the top of the workspace');
+  });
 });
 
 describe('the workspace run bar after a job ends', () => {
