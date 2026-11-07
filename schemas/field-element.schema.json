@@ -34,11 +34,11 @@
       "items": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "$ref": "#/$defs/bn254" } }
     },
     "primeMatrix": {
-      "description": "A square matrix of width 3 or 4 over a prime field below 2^64; every row has the design's width.",
+      "description": "A square matrix of width 2, 3, 4, 8, 12, 16 or 24 over a prime field below 2^64; every row has the design's width.",
       "type": "array",
-      "minItems": 3,
-      "maxItems": 4,
-      "items": { "type": "array", "minItems": 3, "maxItems": 4, "items": { "$ref": "#/$defs/prime" } }
+      "minItems": 2,
+      "maxItems": 24,
+      "items": { "type": "array", "minItems": 2, "maxItems": 24, "items": { "$ref": "#/$defs/prime" } }
     }
   }
 }

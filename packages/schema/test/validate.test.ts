@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   aesLikeActivityBound,
   canonicalJson,
+  designClaimsFor,
   hadesOuterActivityBound,
   hadesOuterActivityBoundWidth,
   hadesTotalActivityBoundWidth,
@@ -244,4 +245,30 @@ test('normalizes prime-field designs as the engine does', () => {
   assert.equal(hadesOuterActivityBoundWidth(8, 4), 20);
   assert.equal(hadesOuterActivityBoundWidth(8, 3), hadesOuterActivityBound(8));
   assert.equal(hadesTotalActivityBoundWidth(8, 20, 4, 4), 25);
+});
+
+/** A width-`t` design over KoalaBear: J + I as both matrices. */
+function koalaWidth(t: number): Record<string, unknown> {
+  const m = () => Array.from({ length: t }, (_, i) => Array.from({ length: t }, (_, j) => (i === j ? '2' : '1')));
+  return { ...KOALA, width: t, external: m(), internal: m(), partialMask: Array.from({ length: t }, (_, i) => i === 0) };
+}
+
+test('accepts the Poseidon2 widths 2, 8, 12, 16 and 24 over a prime field', () => {
+  for (const t of [2, 3, 4, 8, 12, 16, 24]) assert.deepEqual(designErrors(koalaWidth(t)), [], `width ${t}`);
+  for (const t of [1, 5, 6, 20, 32]) assert.ok(designErrors(koalaWidth(t)).includes('/design/width enum'), `width ${t}`);
+  // Rows are checked against the declared width.
+  const short = koalaWidth(16);
+  (short['internal'] as string[][])[15] = Array(12).fill('1');
+  assert.deepEqual(designErrors(short), ['/design/internal/15 length']);
+});
+
+test('the wide external claims exist only above width four', () => {
+  const ids = (t?: number) => designClaimsFor('hades/prime/v1', t).map((c) => c.id);
+  for (const t of [undefined, 2, 3, 4]) {
+    assert.ok(!ids(t).includes('external.m4_mds') && !ids(t).includes('external.invertible'), `width ${t}`);
+  }
+  for (const t of [8, 12, 16, 24]) {
+    assert.deepEqual(ids(t).slice(0, 4), ['field.prime', 'external.mds', 'external.m4_mds', 'external.invertible'], `width ${t}`);
+  }
+  assert.ok(!designClaimsFor('hades/bn254/v1').some((c) => c.id === 'external.invertible'));
 });
