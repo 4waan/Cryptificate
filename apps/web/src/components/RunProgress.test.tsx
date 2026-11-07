@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { aesDesign } from '../lib/presets';
 import type { Capabilities } from '../lib/types';
 import { initialState, setState, type Run } from '../state/store';
-import { RunProgress, runStateText, runTiming } from './RunProgress';
+import { RunDetails, RunProgress, runStateText, runTiming } from './RunProgress';
 
 const caps = { limits: { analysisBudgetSeconds: 90, maxQueued: 2 }, profiles: [] } as unknown as Capabilities;
 
@@ -65,5 +65,25 @@ describe('RunProgress', () => {
   it('names auto-checks, and has no timing for replayed runs', () => {
     expect(renderToStaticMarkup(<RunProgress now={11_000} run={run({ auto: true })} />)).toContain('Auto-check:');
     expect(runTiming(run({ source: 'replay' }), 11_000, caps, {})).toBeNull();
+  });
+});
+
+describe('RunDetails', () => {
+  beforeEach(() => setState(initialState()));
+
+  it('shows the steps and retry explanation without a live region or buttons', () => {
+    const steps = run({ steps: [{ name: 'lean', state: 'running' }], stepStarts: { lean: 11_000 } });
+    const html = renderToStaticMarkup(<RunDetails now={12_500} run={steps} />);
+    expect(html).toContain('Lean check');
+    expect(html).not.toContain('role="status"');
+    expect(html).not.toContain('<button');
+    const busy = renderToStaticMarkup(<RunDetails now={12_100} run={run({ state: 'retrying', retryAt: 20_000, attempts: 1 })} />);
+    expect(busy).toContain('attempt 2 of 6');
+    expect(busy).not.toContain('<button');
+  });
+
+  it('renders nothing once the run has ended or while there is nothing to show', () => {
+    expect(renderToStaticMarkup(<RunDetails now={99_000} run={run({ state: 'completed', finishedAt: 13_200, steps: [{ name: 'lean', state: 'completed', ms: 900 }] })} />)).toBe('');
+    expect(renderToStaticMarkup(<RunDetails now={11_000} run={run({ state: 'submitting' })} />)).toBe('');
   });
 });

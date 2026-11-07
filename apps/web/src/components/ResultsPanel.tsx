@@ -8,7 +8,7 @@ import type { Run } from '../state/store';
 import { ClaimCard, MissingClaimCard, PreviewCard } from './ClaimCard';
 import { IconDownload, IconPlay, IconPreview, IconRefresh, IconWarning } from './icons';
 import { PREVIEW_LABEL, previewItems } from './LiveChecks';
-import { RunProgress, isActive } from './RunProgress';
+import { RunDetails, isActive } from './RunProgress';
 
 const DESIGN_CLAIMS: Record<FieldName, { id: ClaimId; title: string }[]> = {
   gf256: [
@@ -353,11 +353,8 @@ export function ResultsPanel({
           </button>
         </div>
       ) : null}
-      {active ? (
-        <div className="panel">
-          <RunProgress run={run} />
-        </div>
-      ) : null}
+      {/* The workspace action bar shows this run's status and its one Stop button; here are its steps. */}
+      <RunDetails run={run} className="panel" />
       {active && !stale ? (
         <LivePreview
           items={items}

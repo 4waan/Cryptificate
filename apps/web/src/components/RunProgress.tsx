@@ -79,16 +79,70 @@ function stepTime(st: Step, run: Run, now: number): string {
   return st.state.replace('_', ' ');
 }
 
-/** Status line, elapsed time and estimate, progress steps and a stop button for one run. */
+function runName(run: Run): string {
+  return run.kind === 'analysis' ? (run.auto ? 'Auto-check' : 'Analysis') : `Experiment (${run.profile ?? 'quick'})`;
+}
+
+/** The clock a run's display reads: ticking while it runs, still while native code is being timed. */
+function useRunClock(run: Run, fixedNow: number | undefined): number {
+  const ticking = isActive(run) && fixedNow === undefined && !isTimingStep(run);
+  const clock = useNow(ticking, 500);
+  return fixedNow ?? clock;
+}
+
+/** Estimated progress bar, step list and the busy-retry explanation; empty when there is nothing to show. */
+function detailParts(run: Run, now: number, fraction: number | undefined): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  if (fraction !== undefined) {
+    parts.push(
+      <div
+        key="bar"
+        className="run-bar"
+        role="progressbar"
+        aria-label="Estimated progress, from earlier runs in this browser"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(fraction * 100)}
+      >
+        <span style={{ width: `${Math.round(fraction * 100)}%` }} />
+      </div>,
+    );
+  }
+  if (run.steps.length) {
+    parts.push(
+      <ol key="steps" className="progress-steps" aria-label="Steps">
+        {run.steps.map((st) => (
+          <li key={st.name} data-state={st.state} title={st.detail}>
+            {st.state === 'running' ? <span className="spinner" aria-hidden="true" /> : null}
+            <span>{stepLabel(st.name)}</span>
+            <span className="muted">{stepTime(st, run, now)}</span>
+          </li>
+        ))}
+      </ol>,
+    );
+  }
+  if (run.state === 'retrying') {
+    parts.push(
+      <p key="retry" className="small muted">
+        The service runs one job at a time and keeps a short queue, and both are full. This{' '}
+        {run.kind === 'analysis' ? 'check' : 'experiment'} is submitted again automatically (attempt{' '}
+        {(run.attempts ?? 0) + 1} of {BUSY_MAX_ATTEMPTS}).
+      </p>,
+    );
+  }
+  return parts;
+}
+
+/**
+ * Status line, elapsed time and estimate, and the Stop (and Retry now) buttons for one run; the full form
+ * adds its progress bar and steps. A page shows one RunProgress per run: it is the run's live status region
+ * and its only Stop button. Another place that wants the steps uses RunDetails.
+ */
 export function RunProgress({ run, compact = false, now: fixedNow }: { run: Run; compact?: boolean; now?: number }) {
   const active = isActive(run);
   const capabilities = useAppState((s) => s.connection.capabilities);
   const timings = useAppState((s) => s.timings);
-  // Elapsed time stops updating while native code is being timed, so the page stays still.
-  const ticking = active && fixedNow === undefined && !isTimingStep(run);
-  const clock = useNow(ticking, 500);
-  const now = fixedNow ?? clock;
-  const what = run.kind === 'analysis' ? (run.auto ? 'Auto-check' : 'Analysis') : `Experiment (${run.profile ?? 'quick'})`;
+  const now = useRunClock(run, fixedNow);
   const timing = runTiming(run, now, capabilities, timings);
   const fraction = active && run.state === 'running' ? timing?.estimate?.fraction : undefined;
   return (
@@ -96,7 +150,7 @@ export function RunProgress({ run, compact = false, now: fixedNow }: { run: Run;
       <div className="row" style={{ gap: 'var(--space-2) var(--space-3)' }}>
         {active ? <span className="spinner" aria-hidden="true" /> : null}
         <span role="status" aria-live="polite" aria-atomic="true">
-          <strong>{what}:</strong> {run.state === 'retrying' ? 'Service busy, waiting to retry' : runStateText(run, now)}
+          <strong>{runName(run)}:</strong> {run.state === 'retrying' ? 'Service busy, waiting to retry' : runStateText(run, now)}
         </span>
         {timing ? (
           <span className="run-time small muted mono" title="Measured in this browser; approximate">
@@ -122,36 +176,7 @@ export function RunProgress({ run, compact = false, now: fixedNow }: { run: Run;
           </button>
         ) : null}
       </div>
-      {fraction !== undefined && !compact ? (
-        <div
-          className="run-bar"
-          role="progressbar"
-          aria-label="Estimated progress, from earlier runs in this browser"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(fraction * 100)}
-        >
-          <span style={{ width: `${Math.round(fraction * 100)}%` }} />
-        </div>
-      ) : null}
-      {!compact && run.steps.length ? (
-        <ol className="progress-steps" aria-label="Steps">
-          {run.steps.map((st) => (
-            <li key={st.name} data-state={st.state} title={st.detail}>
-              {st.state === 'running' ? <span className="spinner" aria-hidden="true" /> : null}
-              <span>{stepLabel(st.name)}</span>
-              <span className="muted">{stepTime(st, run, now)}</span>
-            </li>
-          ))}
-        </ol>
-      ) : null}
-      {run.state === 'retrying' && !compact ? (
-        <p className="small muted">
-          The service runs one job at a time and keeps a short queue, and both are full. This{' '}
-          {run.kind === 'analysis' ? 'check' : 'experiment'} is submitted again automatically (attempt{' '}
-          {(run.attempts ?? 0) + 1} of {BUSY_MAX_ATTEMPTS}).
-        </p>
-      ) : null}
+      {compact ? null : detailParts(run, now, fraction)}
       {/* Once the run has ended, ExecutionProblems shows the error with what it means. */}
       {active && run.error ? (
         <p className="error-text">
@@ -159,6 +184,29 @@ export function RunProgress({ run, compact = false, now: fixedNow }: { run: Run;
           {run.errorPath ? <span className="mono"> ({run.errorPath})</span> : null}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * The progress bar, steps and busy-retry explanation of a running run whose status and Stop button a compact
+ * RunProgress shows elsewhere on the page (the action bar). No live region and no buttons, so the page has one
+ * of each per run. Renders nothing once the run has ended or while there is nothing to show.
+ */
+export function RunDetails({ run, className, now: fixedNow }: { run: Run; className?: string; now?: number }) {
+  const capabilities = useAppState((s) => s.connection.capabilities);
+  const timings = useAppState((s) => s.timings);
+  const now = useRunClock(run, fixedNow);
+  if (!isActive(run)) return null;
+  const timing = runTiming(run, now, capabilities, timings);
+  const parts = detailParts(run, now, run.state === 'running' ? timing?.estimate?.fraction : undefined);
+  if (!parts.length) return null;
+  return (
+    <div className={['stack', 'run-progress', className].filter(Boolean).join(' ')} style={{ gap: 8 }}>
+      <p className="small muted" style={{ margin: 0 }}>
+        <strong>{runName(run)}</strong> progress. Stop it with Esc or the Stop button above.
+      </p>
+      {parts}
     </div>
   );
 }

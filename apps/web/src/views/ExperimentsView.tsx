@@ -11,7 +11,7 @@ import {
   StatusPill,
 } from '../components/icons';
 import { ExecutionProblems, UnverifiedPreview } from '../components/ResultsPanel';
-import { RunProgress, isActive } from '../components/RunProgress';
+import { RunDetails, RunProgress, isActive } from '../components/RunProgress';
 import { ServiceCard } from '../components/ServiceCard';
 import { budgetMs, formatDuration } from '../lib/progress';
 import { isStale } from '../lib/canonical';
@@ -406,11 +406,8 @@ export function ExperimentsView() {
           <IconWarning /> Fix the workspace inputs first: {problems[0]}
         </p>
       ) : null}
-      {run && isActive(run) ? (
-        <div className="panel">
-          <RunProgress run={run} />
-        </div>
-      ) : null}
+      {/* The action bar's RunProgress is the status and the one Stop button; this panel adds the steps. */}
+      {run ? <RunDetails run={run} className="panel" /> : null}
       {run && stale ? (
         run.source === 'replay' ? (
           <UnverifiedPreview inputs={inputs} reason="The workspace changed since this experiment." />
