@@ -20,7 +20,7 @@ A circuit can match its matrix perfectly while the matrix has weak diffusion (th
 | `proved` | Lean checked a theorem stating the property for the exact submitted values. |
 | `refuted` | Lean checked a concrete witness showing the property fails for the exact submitted values. |
 | `not_established` | This method did not establish the property. It is not a counterexample. Downstream claims whose prerequisites failed land here. |
-| `unsupported` | The input is outside the supported model (for example a width without release checks). |
+| `unsupported` | No method of this checker covers the claim for this input; today only `rust.refinement`, for BN254 circuits or a checkout without refinement proofs. |
 
 Execution outcomes are reported separately: `completed`, `failed`, `timeout`, `cancelled`, `invalid`. A timeout or a crashed worker never turns into `refuted`.
 
@@ -33,6 +33,45 @@ Above width 4 (the Poseidon2 widths 8, 12, 16 and 24) the external matrix's mino
 `activity.partial` is the one activity claim that can be refuted. Proved, it says that every window of `L` consecutive partial rounds of a HADES design activates an S-box for any two distinct states entering it, with `L` at most the number of partial rounds. Refuted, it comes with a nonzero difference that passes every partial round with no active S-box, whatever the round constants, and the refutation also states that the design has at least one partial round. A design with no partial rounds gets neither: `activity.partial` is then not established (out of scope), since a bypass of zero rounds would be vacuous. `activity.total` adds one active S-box per disjoint window to the full-round bound; it needs `external.mds`, `internal.invertible`, `sbox.bijective` and a proved `activity.partial`, and is otherwise not established.
 
 `sbox.differential` and `sbox.linearity` state an exact value rather than a yes-or-no property, so they are `proved` or `not_established`, never `refuted`. A proved one carries the value and a pair of bytes attaining it, both repeated in the checked statement: the largest difference-table entry outside row 0 for an input difference and an output difference, and the largest absolute Walsh coefficient for an input mask and a nonzero output mask. They describe the S-box table alone and are not bounds on trails, differentials or linear hulls of the cipher.
+
+## Claims
+
+One row per claim id. "Proved" gives the Lean statement (or, outside Lean, the evidence); the certificate names every candidate value (`candMatrix`, `candModulus`, …), and the service compares those names' printed values with the request. Widths are those of the claim's certificate templates; any other input gets the claim as not established (`out-of-scope`).
+
+| Claim | Proved means | Profiles and widths | Refuted with | Limits |
+|---|---|---|---|---|
+| `field.prime` | `Nat.Prime candModulus`, from a Pratt certificate (factorization of `p − 1` and a base of order `p − 1`) checked by kernel evaluation. | `hades/prime/v1`, every width | never refuted: a composite custom modulus is rejected as input | Says only that `p` is prime; every other claim of a prime-field certificate uses the field structure it gives, and the activity bounds need it proved. |
+| `matrix.mds` | `IsMDS candMatrix`: all 69 square minors of the `4 × 4` matrix are nonzero. | AES-like, width 4 | `branch`: a nonzero `v` with weight of `v` plus weight of `Mv` below 5 | The matrix over GF(2⁸) with `0x11B`, nothing about a circuit. |
+| `offsets.dispersion` | `DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 candOffsets)`: the row offsets are pairwise distinct, so every column spreads to every column. | AES-like, width 4 | `offset-collision`: two rows with the same offset | The ShiftRows-style permutation alone. |
+| `sbox.bijective` | AES-like: `Function.Bijective candSboxTable` (a left inverse checked on all 256 bytes). HADES: `Function.Bijective` of `x ↦ x^α` on the field (`PrimePower.ZModP.powMap candModulus candExponent` over a prime field). | every profile | `sbox-collision` (two bytes with one image) or `power-collision` (two field elements with one power) | A permutation, not a good S-box: see `sbox.differential` and `sbox.linearity`. |
+| `sbox.differential` | `differentialUniformity candSboxTable = δ`, with an input difference `a ≠ 0` and output difference `b` whose count is `δ`; the `sbox-differential` witness repeats them. | AES-like (byte tables) | never refuted: an exact value, not a yes-or-no property | The table alone; no bound on differentials or trails of the cipher. |
+| `sbox.linearity` | `linearity candSboxTable = L`: the largest absolute Walsh coefficient at a nonzero output mask, with masks attaining it (`sbox-linearity` witness). | AES-like (byte tables) | never refuted | The table alone; no bound on linear trails or hulls. |
+| `activity.bound` | For every injective S-box, key sequence and pair of distinct inputs, the design's `r` rounds have at least `⌊r/4⌋·25 + (5 if r mod 4 ≥ 2)` active S-boxes. | AES-like, width 4 | never refuted | Attempted only after `matrix.mds`, `offsets.dispersion` and `sbox.bijective` are proved (else `precondition-failed`). Counts active S-boxes; says nothing about probabilities. |
+| `external.mds` | `IsMDS candExternal`: every square minor of the external matrix is nonzero. | BN254 width 3; prime widths 2, 3 and 4 | `branch`: a nonzero `v` with too small a combined weight in `v` and `Mv`; above width 4 a singular submatrix of order at most 2, shown the same way | Above width 4 the minors are not enumerated: refuted or not established, never proved (see below). |
+| `external.m4_mds` | `candExternal = Hades.poseidon2External t M₄ ∧ IsMDS M₄`: the external matrix is `circ(2 M₄, M₄, …, M₄)` and its block `M₄` is MDS. | prime widths 8, 12, 16 and 24 | `branch` witness for `M₄` (the block structure still proved) | Not the MDS property of the whole matrix. A matrix of another form gets it as not established. |
+| `external.invertible` | `candExternal.det ≠ 0`, from an inverse matrix checked by packed multiplication. | prime widths 8, 12, 16 and 24 | `kernel`: a nonzero `x` with `Mx = 0` | Invertibility only. |
+| `internal.invertible` | `candInternal.det ≠ 0`: by the determinant formula at widths 3 and 4, from an inverse matrix checked by packed multiplication at the other widths. | every HADES width | `kernel`: a nonzero `x` with `Mx = 0` | Invertibility only; the partial rounds are `activity.partial`. |
+| `activity.outer` | For every mask, round constants and pair of distinct states, the full rounds have at least the HADES full-round bound of active S-boxes (branch number `t + 1` per pair of rounds). | BN254 width 3; prime widths 2, 3 and 4 | never refuted | Attempted only after `external.mds`, `internal.invertible`, `sbox.bijective` (and `field.prime`) are proved. Partial rounds are not counted. Not established above width 4. |
+| `activity.partial` | Every window of `L` consecutive partial rounds activates an S-box, for any round constants, with `L` at most the number of partial rounds (rows `eᵢ Mʲ` with nonzero determinant or a checked inverse). | BN254 width 3; every prime width | `partial-bypass`: a nonzero difference that every partial round keeps at zero on the S-box positions | About the partial rounds alone. Expected to be refuted when there are fewer partial rounds than the width. A design with no partial rounds gets it as not established. |
+| `activity.total` | The full-round bound plus one active S-box per disjoint window of `L` partial rounds, for any round constants. | BN254 width 3; prime widths 2, 3 and 4 | never refuted | Needs everything `activity.outer` needs and a proved `activity.partial`. |
+| `constants.grain` | `Grain.poseidon2Constants candModulus t R_F R_P = some candConstants`: the constants are those of the Poseidon2 reference procedure (see below). | every HADES width, with explicit constants (BN254 also with the reference constants) | `constant-mismatch`: a position and the value the procedure generates there | Provenance, not security. Not established without constants. |
+| `circuit.equivalence` | `candProgram.WellFormed ∧ ∀ x, candProgram.eval x = candMatrix.mulVec x` (or the BN254 external or internal matrix). | AES-like width 4; BN254 width 3 | `distinguishing-input`: an input, the matrix's output and the circuit's | The circuit model, not the compiled code. `not-run` without a circuit; no circuits over the 64-bit prime fields. |
+| `native.correctness` | Not Lean: the generated Rust matched an independent evaluation on every test vector (label "Generated Rust passed N correctness cases"). | GF(2⁸) and BN254 circuits | `distinguishing-input` from a failing test vector | Testing, not a proof. `not-run` without a circuit, `native-unavailable` without a Rust toolchain. |
+| `rust.refinement` | Not a certificate: the Aeneas refinement proofs of the GF(2⁸) kernels, checked on this machine by `scripts/setup.sh --with-refinement` while the kernel source keeps the extracted digest. | GF(2⁸) circuits | never refuted | Covers the arithmetic primitives the generated code calls, not the circuit code. `unsupported` for BN254 circuits (arkworks `Fr`) and for a checkout without the proofs; not established when the proofs were not checked here. |
+| `native.timing` | Never proved in an analysis: it is always not established there (`not-run`, or `out-of-scope` over the 64-bit prime fields). Experiments measure timing and report their verdict in the experiment report, under the protocol in [batch-interface.md](batch-interface.md). | experiments on GF(2⁸) and BN254 matrices | never refuted | The recorded machine, compiler and workloads. |
+
+### Why a claim is not established
+
+A claim that is not established carries a machine-readable `reason` beside its note:
+
+| Reason | Meaning |
+|---|---|
+| `not-run` | The run does not attempt the claim by design: no circuit was submitted, or timing in an analysis. CI policies skip these unless `--claims` names them ([ci.md](ci.md)). |
+| `out-of-scope` | No certificate template or method covers this input (an experimental width, a design without round constants, the implementation chain over the 64-bit prime fields). |
+| `precondition-failed` | A claim it needs was not proved (the activity bounds). |
+| `lean-failed`, `lean-timeout`, `cancelled` | The Lean run failed, ran out of time or was stopped. Never a refutation. |
+| `audit-missing-theorem`, `audit-type-mismatch`, `audit-forbidden-axiom`, `audit-input-mismatch` | Lean ran, but the result failed one of the [acceptance checks](#proof-acceptance). |
+| `lean-unavailable`, `engine-unavailable`, `native-unavailable` | A tool was missing. Under a CI policy this is an error, never a pass. |
 
 ## Round constants: provenance, not security
 
@@ -71,6 +110,7 @@ For the prime-field profile the modulus is therefore stated in the normalized re
 |---|---|
 | **Live** | Computed now, on this machine, for the inputs on screen. |
 | **Cached exact result** | Reused from an earlier check whose canonical inputs, toolchain pins, checker version and templates all match. The `rust.refinement` claim is recomputed for this machine, not reused. |
+| **Recorded run** | Replayed from a recorded bundle without a running service; nothing was checked now. |
 
 Editing any input marks every result as belonging to an earlier version until it is checked again.
 
