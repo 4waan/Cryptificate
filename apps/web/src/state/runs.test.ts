@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Capabilities } from '../lib/types';
+import type { AnalysisReport, Capabilities } from '../lib/types';
 
 const api = vi.hoisted(() => ({
   createJob: vi.fn(),
@@ -167,6 +167,17 @@ describe('auto-check view of the store', () => {
       current: { analysis: 'r' },
     });
     expect(autoView().last).toMatchObject({ unavailable: true, failed: false, active: false });
+  });
+
+  it('marks a completed fetch of a timed-out run\'s report as not finished', () => {
+    const inputs = { design: getState().design };
+    const report = { kind: 'analysis', claims: [], execution: { state: 'timeout', steps: [] } } as unknown as AnalysisReport;
+    setState({
+      prefs: { autoCheck: true, notify: false, sound: false },
+      runs: { r: { key: 'r', kind: 'analysis', inputs, source: 'replay', state: 'completed', steps: [], report, auto: true } },
+      current: { analysis: 'r' },
+    });
+    expect(autoView().last).toMatchObject({ failed: true, unavailable: false });
   });
 
   it('counts room in the service queue from this page’s own live jobs', () => {

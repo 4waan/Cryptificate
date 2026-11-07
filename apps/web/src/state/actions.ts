@@ -592,7 +592,10 @@ export function autoView(s: AppState = getState()): AutoView {
           digest: runDigest(last),
           active: runIsActive(last),
           auto: last.auto === true,
-          failed: ['failed', 'timeout', 'cancelled', 'invalid'].includes(last.state),
+          // A recorded or cached report of a run that did not finish is not "Up to date" either.
+          failed:
+            ['failed', 'timeout', 'cancelled', 'invalid'].includes(last.state) ||
+            (last.state === 'completed' && !!last.report?.execution && last.report.execution.state !== 'completed'),
           unavailable: last.state === 'unavailable',
         }
       : undefined,
