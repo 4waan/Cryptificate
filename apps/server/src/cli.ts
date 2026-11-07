@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * cryptificate serve | check | experiment | verify | report
+ * cryptificate init | check | doctor | serve | experiment | verify | report
  */
 import { EXIT_ERROR } from './policy.js';
 import { main } from './cli-main.js';
