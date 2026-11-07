@@ -7,7 +7,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { FieldName } from '@cryptificate/schema';
+import type { FieldName, PrimeFieldName } from '@cryptificate/schema';
 import type { Paths } from './paths.js';
 import { sha256Hex } from './toolchain.js';
 
@@ -39,12 +39,15 @@ function readRecord(p: string): CheckRecord | null {
   }
 }
 
-export function refinementStatus(paths: Paths, field: FieldName): RefinementStatus {
-  if (field !== 'gf256') {
+export function refinementStatus(paths: Paths, field: FieldName | PrimeFieldName): RefinementStatus {
+  if (field === 'bn254') {
     return {
       status: 'unsupported',
       note: "The native BN254 variants compute with arkworks' Fr, which no refinement proof covers. The proved BN254 Montgomery kernel (crates/kernels/src/bn254_mont.rs) is not the code these variants call.",
     };
+  }
+  if (field !== 'gf256') {
+    return { status: 'unsupported', note: 'No refinement proof covers arithmetic over this prime field; the refinement proofs cover the GF(2^8) kernels and the BN254 Montgomery kernel only.' };
   }
   const recorded = readText(join(paths.root, 'refinement', 'extract.sha256'));
   const kernel = readText(join(paths.root, KERNEL));

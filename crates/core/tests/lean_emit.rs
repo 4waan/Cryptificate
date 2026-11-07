@@ -335,9 +335,11 @@ fn check_emission(set: &TemplateSet, e: &Emission) -> Vec<(String, Status)> {
     assert_eq!(audits, theorems);
     for x in &e.expect {
         let meta = &set.get(&x.fragment).unwrap().meta;
-        assert_eq!(
-            meta.expected_type.as_deref(),
-            Some(x.expected_type.as_str())
+        let template = meta.expected_type.as_deref().unwrap();
+        assert!(
+            matches_template(template, &x.expected_type),
+            "{} does not instantiate {template}",
+            x.expected_type
         );
         assert_eq!(x.status == Status::Refuted, x.witness.is_some(), "{x:?}");
     }
@@ -356,6 +358,28 @@ fn check_emission(set: &TemplateSet, e: &Emission) -> Vec<(String, Status)> {
         .iter()
         .map(|x| (x.claim.clone(), x.status))
         .collect()
+}
+
+/// Whether `text` is `template` with each `{{NAME}}` replaced by a
+/// nonempty value of numerals, spaces and commas.
+fn matches_template(template: &str, text: &str) -> bool {
+    let Some(start) = template.find("{{") else {
+        return template == text;
+    };
+    let end = template[start..]
+        .find("}}")
+        .map_or(template.len(), |e| start + e + 2);
+    let (head, rest) = (&template[..start], &template[end..]);
+    let Some(tail) = text.strip_prefix(head) else {
+        return false;
+    };
+    (1..=tail.len()).any(|n| {
+        tail.is_char_boundary(n)
+            && tail[..n]
+                .bytes()
+                .all(|b| b.is_ascii_digit() || b == b' ' || b == b',')
+            && matches_template(rest, &tail[n..])
+    })
 }
 
 /// Whether `name` and everything it needs, transitively, are present.
@@ -644,6 +668,39 @@ fn repo_hades() {
         expect_claim(
             &set,
             &e,
+            "partial_active",
+            claim_ids::ACTIVITY_PARTIAL,
+            Status::Proved,
+        );
+        if holds {
+            expect_claim(
+                &set,
+                &e,
+                "hades_total_activity",
+                claim_ids::ACTIVITY_TOTAL,
+                Status::Proved,
+            );
+        } else {
+            // The whole-permutation bound needs a bijective S-box.
+            assert!(e
+                .expect
+                .iter()
+                .all(|x| x.claim != claim_ids::ACTIVITY_TOTAL));
+            assert!(e
+                .skipped
+                .iter()
+                .any(|s| s.claim == claim_ids::ACTIVITY_TOTAL));
+        }
+        if set.get("partial_active").is_some() {
+            // Rows e0, e0 M, e0 M^2 of the reference internal matrix.
+            assert!(e
+                .source
+                .contains("candMask 3\n        ![0, 1, 2] ![0, 0, 0]"));
+            assert!(e.source.contains("maskBits3 1 0 0"));
+        }
+        expect_claim(
+            &set,
+            &e,
             "circuit_equivalence_bn254_external",
             claim_ids::CIRCUIT_EQUIVALENCE,
             Status::Proved,
@@ -658,9 +715,285 @@ fn repo_hades() {
     }
 }
 
+/// `p - 1`, the BN254 encoding of `-1`.
+const MINUS_ONE: &str =
+    "21888242871839275222246405745257275088548364400416034343698204186575808495616";
+
+#[test]
+fn repo_hades_partial_bypass() {
+    let Some(set) = repo_templates() else { return };
+    // The external matrix reused as the internal matrix fixes [0, 1, -1].
+    let req = request("poseidon2-bypass", None);
+    let e = emit_with(&req, &set).unwrap();
+    check_emission(&set, &e);
+    expect_claim(
+        &set,
+        &e,
+        "partial_bypass",
+        claim_ids::ACTIVITY_PARTIAL,
+        Status::Refuted,
+    );
+    assert!(e
+        .expect
+        .iter()
+        .all(|x| x.claim != claim_ids::ACTIVITY_TOTAL));
+    if set.get("partial_bypass").is_some() {
+        let x = e
+            .expect
+            .iter()
+            .find(|x| x.claim == claim_ids::ACTIVITY_PARTIAL)
+            .unwrap();
+        assert_eq!(
+            x.witness,
+            Some(Witness::PartialBypass {
+                difference: vec!["0".into(), "1".into(), MINUS_ONE.into()],
+                positions: vec![0],
+                partial_rounds: 56,
+            })
+        );
+        assert!(e.source.contains(&format!("bnVec3 0 1 {MINUS_ONE}")));
+        // A line: the second spanning vector is zero, M v = 1 v.
+        assert!(e.source.contains("bnVec3 0 0 0"));
+        assert!(e.source.contains("![bn 1, bn 0, bn 0, bn 0]"));
+        assert_eq!(e.inputs_echo["witnessBypass"], json!(["0", "1", MINUS_ONE]));
+    }
+}
+
+#[test]
+fn repo_hades_partial_short_and_planes() {
+    let Some(set) = repo_templates() else { return };
+    let with = |edit: &dyn Fn(&mut Value)| {
+        let mut d = example("designs/poseidon2-bn254.json");
+        edit(&mut d);
+        let req = validate_analysis_request(&json!({ "design": d })).unwrap();
+        let e = emit_with(&req, &set).unwrap();
+        check_emission(&set, &e);
+        e
+    };
+    // Two partial rounds: [0, 1, -1] avoids coordinate 0 in both, but no
+    // subspace avoids it forever, so the short certificate is used.
+    let e = with(&|d| d["partialRounds"] = json!(2));
+    expect_claim(
+        &set,
+        &e,
+        "partial_bypass_short",
+        claim_ids::ACTIVITY_PARTIAL,
+        Status::Refuted,
+    );
+    if set.get("partial_bypass_short").is_some() {
+        let x = e
+            .expect
+            .iter()
+            .find(|x| x.claim == claim_ids::ACTIVITY_PARTIAL)
+            .unwrap();
+        // The refutation states that there is a partial round to bypass.
+        assert!(x
+            .expected_type
+            .starts_with("0 < CryptificateJob.candPartialRounds ∧ ∃ v, v ≠ 0 ∧"));
+    }
+    // No partial rounds: a bypass would be vacuous, so activity.partial is
+    // neither proved nor refuted, and activity.total is not emitted either.
+    let e = with(&|d| d["partialRounds"] = json!(0));
+    assert!(e
+        .expect
+        .iter()
+        .all(|x| x.claim != claim_ids::ACTIVITY_PARTIAL && x.claim != claim_ids::ACTIVITY_TOTAL));
+    let s = e
+        .skipped
+        .iter()
+        .find(|s| s.claim == claim_ids::ACTIVITY_PARTIAL)
+        .unwrap();
+    assert_eq!(s.predicted, Status::NotEstablished);
+    assert!(s.reason.contains("no partial rounds"), "{}", s.reason);
+    assert!(!e.source.contains("witnessBypass"));
+    expect_claim(
+        &set,
+        &e,
+        "hades_activity",
+        claim_ids::ACTIVITY_OUTER,
+        Status::Proved,
+    );
+    // A first row (2, 0, 0) keeps the plane x0 = 0 invariant.
+    let e = with(&|d| d["internal"] = json!([["2", "0", "0"], ["1", "2", "1"], ["1", "1", "3"]]));
+    expect_claim(
+        &set,
+        &e,
+        "partial_bypass",
+        claim_ids::ACTIVITY_PARTIAL,
+        Status::Refuted,
+    );
+    if set.get("partial_bypass").is_some() {
+        // b1 = e1, b2 = e2, M e1 = 2 e1 + e2, M e2 = e1 + 3 e2.
+        assert!(e.source.contains("bnVec3 0 1 0"));
+        assert!(e.source.contains("bnVec3 0 0 1"));
+        assert!(e.source.contains("![bn 2, bn 1, bn 1, bn 3]"));
+    }
+    // S-boxes on coordinates 0 and 1: two powers suffice.
+    let e = with(&|d| d["partialMask"] = json!([true, true, false]));
+    expect_claim(
+        &set,
+        &e,
+        "partial_active",
+        claim_ids::ACTIVITY_PARTIAL,
+        Status::Proved,
+    );
+    if set.get("partial_active").is_some() {
+        assert!(e.source.contains("maskBits3 1 1 0"));
+        assert!(e
+            .source
+            .contains("candMask 2\n        ![0, 0, 1] ![0, 1, 0]"));
+        let x = e
+            .expect
+            .iter()
+            .find(|x| x.claim == claim_ids::ACTIVITY_TOTAL)
+            .unwrap();
+        assert!(x.expected_type.contains("candPartialRounds / 2 ≤"));
+    }
+}
+
 #[test]
 fn emission_is_deterministic() {
     let Some(set) = repo_templates() else { return };
     let req = request("aes", Some("aes-wrong-wire"));
     assert_eq!(emit_with(&req, &set), emit_with(&req, &set));
+}
+
+#[test]
+fn repo_prime_fields() {
+    let Some(set) = repo_templates() else { return };
+    let req = request("koalabear-t4", None);
+    let e = emit_with(&req, &set).unwrap();
+    let claims = check_emission(&set, &e);
+    assert_eq!(
+        claims,
+        vec![
+            (claim_ids::FIELD_PRIME.to_string(), Status::Proved),
+            (claim_ids::EXTERNAL_MDS.to_string(), Status::Proved),
+            (claim_ids::INTERNAL_INVERTIBLE.to_string(), Status::Proved),
+            (claim_ids::SBOX_BIJECTIVE.to_string(), Status::Proved),
+            (claim_ids::ACTIVITY_OUTER.to_string(), Status::Proved),
+            (claim_ids::ACTIVITY_PARTIAL.to_string(), Status::Proved),
+            (claim_ids::ACTIVITY_TOTAL.to_string(), Status::Proved),
+        ]
+    );
+    for fragment in [
+        "field_prime",
+        "external_mds_prime4",
+        "internal_invertible_prime4",
+        "power_bijective_prime",
+        "hades_activity_prime4",
+        "partial_active_prime4",
+        "hades_total_activity_prime4",
+    ] {
+        assert!(e.fragments.iter().any(|f| f == fragment), "{fragment}");
+    }
+    assert!(e.skipped.is_empty(), "{:?}", e.skipped);
+    // The modulus, its Pratt certificate and the width-four encoders.
+    assert!(e.source.contains("def candModulus : ℕ := 2130706433"));
+    assert!(e.source.contains(
+        "Pratt.prime_of_checkFlat [2, 1, 0, 3, 2, 1, 2, 1, 7, 3, 2, 2, 1, 3, 1, 127, 3, 3, 2, 1, \
+         3, 2, 7, 1, 2130706433, 3, 2, 2, 24, 127, 1] candModulus"
+    ));
+    assert!(e
+        .source
+        .contains("pfMat candModulus 4 [5, 7, 1, 3, 4, 6, 1, 1, 1, 3, 5, 7, 1, 1, 4, 6]"));
+    assert!(e.source.contains("maskBits 4 [1, 0, 0, 0]"));
+    assert_eq!(e.inputs_echo["candModulus"], json!("2130706433"));
+    assert_eq!(e.inputs_echo["candExponent"], json!(3));
+    assert_eq!(
+        e.inputs_echo["candPartialMask"],
+        json!([true, false, false, false])
+    );
+    let total = e
+        .expect
+        .iter()
+        .find(|x| x.claim == claim_ids::ACTIVITY_TOTAL)
+        .unwrap();
+    assert!(total
+        .expected_type
+        .contains("* 5 + CryptificateJob.candFullRounds / 2 % 2"));
+    assert!(total.expected_type.contains("candPartialRounds / 4 ≤"));
+    assert!(total
+        .expected_type
+        .contains("Fin 4 → ZMod CryptificateJob.candModulus"));
+
+    // The deliberately bad BabyBear design: refutations with witnesses.
+    let req = request("babybear-t4-bad", None);
+    let e = emit_with(&req, &set).unwrap();
+    let claims = check_emission(&set, &e);
+    assert_eq!(
+        claims,
+        vec![
+            (claim_ids::FIELD_PRIME.to_string(), Status::Proved),
+            (claim_ids::EXTERNAL_MDS.to_string(), Status::Proved),
+            (claim_ids::INTERNAL_INVERTIBLE.to_string(), Status::Proved),
+            (claim_ids::SBOX_BIJECTIVE.to_string(), Status::Refuted),
+            (claim_ids::ACTIVITY_PARTIAL.to_string(), Status::Refuted),
+        ]
+    );
+    let skipped: Vec<&str> = e.skipped.iter().map(|s| s.claim.as_str()).collect();
+    assert_eq!(
+        skipped,
+        vec![claim_ids::ACTIVITY_OUTER, claim_ids::ACTIVITY_TOTAL]
+    );
+    assert!(e.fragments.iter().any(|f| f == "partial_bypass_prime"));
+    assert!(e
+        .source
+        .contains("pfVecs candModulus 2 4 [0, 1, 2013265920, 0,"));
+    assert_eq!(e.inputs_echo["witnessRoot"], json!("1314723123"));
+    assert_eq!(
+        e.inputs_echo["witnessBypass"],
+        json!(["0", "1", "2013265920", "0"])
+    );
+}
+
+#[test]
+fn repo_prime_width_three_and_short_bypass() {
+    let Some(set) = repo_templates() else { return };
+    let design = |external: Value, partial_rounds: u32| {
+        json!({
+            "model": "hades/prime/v1", "field": "prime", "modulus": "18446744073709551557",
+            "width": 3,
+            "external": external,
+            "internal": [["2","1","1"],["1","2","1"],["1","1","3"]],
+            "fullRounds": 8, "partialRounds": partial_rounds,
+            "sbox": {"kind": "power", "exponent": 5}
+        })
+    };
+    let mds = json!([["2", "1", "1"], ["1", "2", "1"], ["1", "1", "2"]]);
+    let req = validate_analysis_request(&json!({"design": design(mds.clone(), 22)})).unwrap();
+    let e = emit_with(&req, &set).unwrap();
+    check_emission(&set, &e);
+    for fragment in [
+        "external_mds_prime3",
+        "internal_invertible_prime3",
+        "partial_active_prime3",
+        "hades_total_activity_prime3",
+    ] {
+        assert!(e.fragments.iter().any(|f| f == fragment), "{fragment}");
+    }
+    assert_eq!(e.inputs_echo["candModulus"], json!("18446744073709551557"));
+    // Two partial rounds, a window of three: a short bypass.
+    let req = validate_analysis_request(&json!({"design": design(mds, 2)})).unwrap();
+    let e = emit_with(&req, &set).unwrap();
+    check_emission(&set, &e);
+    expect_claim(
+        &set,
+        &e,
+        "partial_bypass_short_prime",
+        claim_ids::ACTIVITY_PARTIAL,
+        Status::Refuted,
+    );
+    // A matrix that is not MDS: a low-weight witness.
+    let weak = json!([["1", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]]);
+    let req = validate_analysis_request(&json!({"design": design(weak, 22)})).unwrap();
+    let e = emit_with(&req, &set).unwrap();
+    check_emission(&set, &e);
+    expect_claim(
+        &set,
+        &e,
+        "external_not_mds_prime",
+        claim_ids::EXTERNAL_MDS,
+        Status::Refuted,
+    );
 }

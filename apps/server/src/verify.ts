@@ -14,9 +14,10 @@ import { checkCertificate } from './certificate.js';
 import { buildAnalysisClaims } from './claims.js';
 import { JobContext } from './context.js';
 import type { PipelineEnv } from './context.js';
+import { run } from './proc.js';
 import { readTarGz } from './tar.js';
 
-export type MatchKind = 'match' | 'mismatch' | 'historical' | 'not re-checked';
+export type MatchKind = 'match' | 'mismatch' | 'historical' | 'not re-checked' | 'not recorded';
 
 export interface VerifyRow {
   subject: string;
@@ -54,9 +55,55 @@ export function extractBundle(bundlePath: string): { dir: string; files: string[
   return { dir, files: [...files.keys()].sort() };
 }
 
-const RECHECKED = new Set(['matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'circuit.equivalence']);
+const RECHECKED = new Set(['field.prime', 'matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'activity.partial', 'activity.total', 'circuit.equivalence']);
 
-function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean): VerifyRow[] {
+/**
+ * Claims that reports did not carry before a later release. A bundle that
+ * provably predates them (see `predatesAddedClaims`) has no status for them
+ * to compare with: when it lacks all of them they are re-derived and shown as
+ * `not recorded`. Any other bundle that lacks one of them is a mismatch, as
+ * for every other re-checked claim.
+ */
+const ADDED_LATER = ['activity.partial', 'activity.total'];
+
+/** The schema file whose claim list gained `ADDED_LATER`. */
+const CLAIM_LIST_FILE = 'packages/schema/src/constants.ts';
+
+/**
+ * The commit named by a checker string `cryptificate <version> (<revision>)`,
+ * as `git describe --always --dirty --tags` printed it. `null` for a missing
+ * or malformed revision, and for a dirty tree, whose uncommitted changes may
+ * already have had the newer claims.
+ */
+export function recordedRevision(checker: unknown): string | null {
+  if (typeof checker !== 'string') return null;
+  const m = /^cryptificate \S+ \(([^()\s]+)\)$/.exec(checker);
+  if (!m) return null;
+  const rev = m[1]!;
+  if (rev.endsWith('-dirty')) return null;
+  const described = /-g([0-9a-f]{7,40})$/.exec(rev);
+  const name = described ? described[1]! : rev;
+  // A hash or a tag name; never anything git could read as an option.
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(name) ? name : null;
+}
+
+/**
+ * Whether the checker that recorded a bundle provably predates the claims in
+ * `ADDED_LATER`: its revision is a commit of the local checkout whose claim
+ * list does not name them. Without git, without that commit, or with a dirty
+ * or missing revision this cannot be shown, and the answer is `false`.
+ */
+export async function predatesAddedClaims(root: string, checker: unknown): Promise<boolean> {
+  const rev = recordedRevision(checker);
+  if (!rev) return false;
+  const r = await run('git', ['-C', root, 'show', `${rev}:${CLAIM_LIST_FILE}`], { timeoutMs: 10000 });
+  if (r.code !== 0) return false;
+  return ADDED_LATER.every((id) => !r.stdout.includes(`'${id}'`));
+}
+
+export function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean, predatesAdded = false): VerifyRow[] {
+  // Only a bundle that predates the claims and lacks all of them may omit them.
+  const omitsAdded = predatesAdded && ADDED_LATER.every((id) => !recorded.some((r) => r.id === id));
   const rows: VerifyRow[] = [];
   for (const rc of recorded) {
     const now = recomputed.find((c) => c.id === rc.id);
@@ -76,7 +123,7 @@ function compareClaims(subject: string, recorded: readonly Claim[], recomputed: 
   }
   for (const c of recomputed) {
     if (!recorded.some((r) => r.id === c.id) && RECHECKED.has(c.id)) {
-      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result: 'mismatch' });
+      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result: omitsAdded && ADDED_LATER.includes(c.id) ? 'not recorded' : 'mismatch' });
     }
   }
   return rows;
@@ -102,9 +149,16 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
         const result = await runAnalysis(verifyEnv, ctx, v.value);
         const now = result.report as AnalysisReport | null;
         const recomputedDigest = now?.inputDigest ?? null;
-        let rows = compareClaims('design', (report as AnalysisReport).claims, now?.claims ?? [], opts.native ?? false);
+        const recorded = (report as AnalysisReport).claims;
+        const checker = (report as AnalysisReport).provenance?.checker;
+        const predates = await predatesAddedClaims(env.paths.root, checker);
+        let rows = compareClaims('design', recorded, now?.claims ?? [], opts.native ?? false, predates);
         rows = rows.map((r) => ({ ...r, subject: r.claim.startsWith('circuit') || r.claim.startsWith('native') || r.claim.startsWith('rust') ? 'implementation' : 'design' }));
         if (recomputedDigest && recomputedDigest !== report.inputDigest) notes.push('The recomputed input digest differs from the recorded one.');
+        const unrecorded = rows.filter((r) => r.result === 'not recorded').map((r) => r.claim);
+        if (unrecorded.length > 0) notes.push(`The bundle has no recorded status for ${unrecorded.join(' and ')}: it was recorded by ${String(checker)}, whose claim list does not name them. They were derived now and are not compared.`);
+        const lacking = rows.filter((r) => r.recorded === 'missing' && r.result === 'mismatch' && ADDED_LATER.includes(r.claim)).map((r) => r.claim);
+        if (lacking.length > 0) notes.push(`The bundle has no recorded status for ${lacking.join(' and ')}, and its checker (${String(checker ?? 'not recorded')}) could not be shown to predate them in this checkout, so the omission counts as a mismatch.`);
         if (result.state !== 'completed') notes.push(`The re-run ended with state ${result.state}.`);
         notes.push('Timings in the bundle are historical and were not re-measured.');
         return finalize(report, recomputedDigest, rows, notes);

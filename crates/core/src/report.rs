@@ -14,10 +14,14 @@ pub mod claim_ids {
     pub const OFFSETS_DISPERSION: &str = "offsets.dispersion";
     pub const SBOX_BIJECTIVE: &str = "sbox.bijective";
     pub const ACTIVITY_BOUND: &str = "activity.bound";
+    // Design chain, HADES over a 64-bit prime field: the modulus is prime.
+    pub const FIELD_PRIME: &str = "field.prime";
     // Design chain, HADES (`sbox.bijective` is shared).
     pub const EXTERNAL_MDS: &str = "external.mds";
     pub const INTERNAL_INVERTIBLE: &str = "internal.invertible";
     pub const ACTIVITY_OUTER: &str = "activity.outer";
+    pub const ACTIVITY_PARTIAL: &str = "activity.partial";
+    pub const ACTIVITY_TOTAL: &str = "activity.total";
     // Implementation chain.
     pub const CIRCUIT_EQUIVALENCE: &str = "circuit.equivalence";
     pub const NATIVE_CORRECTNESS: &str = "native.correctness";
@@ -54,8 +58,33 @@ pub fn aes_like_activity_bound(rounds: u32) -> u32 {
 /// the partial rounds, `(h/2 + h/2)*4 + h%2 + h%2`, that is
 /// `2 * (4 * floor(h/2) + h mod 2)`. Partial rounds are not counted.
 pub fn hades_outer_activity_bound(full_rounds: u32) -> u32 {
+    hades_outer_activity_bound_width(full_rounds, 3)
+}
+
+/// HADES full-round activity bound for width `width` (branch number
+/// `width + 1` of an MDS external matrix):
+/// `(h/2 + h/2)*(width+1) + h%2 + h%2` with `h = full_rounds / 2`.
+pub fn hades_outer_activity_bound_width(full_rounds: u32, width: usize) -> u32 {
     let h = full_rounds / 2;
-    2 * (4 * (h / 2) + h % 2)
+    2 * ((width as u32 + 1) * (h / 2) + h % 2)
+}
+
+/// HADES activity bound over the whole permutation, width 3: the full-round
+/// bound plus one active S-box for each of the `partial_rounds / window`
+/// disjoint windows of `window` consecutive partial rounds.
+pub fn hades_total_activity_bound(full_rounds: u32, partial_rounds: u32, window: u32) -> u32 {
+    hades_total_activity_bound_width(full_rounds, partial_rounds, window, 3)
+}
+
+/// [`hades_total_activity_bound`] for width `width`.
+pub fn hades_total_activity_bound_width(
+    full_rounds: u32,
+    partial_rounds: u32,
+    window: u32,
+    width: usize,
+) -> u32 {
+    hades_outer_activity_bound_width(full_rounds, width)
+        + partial_rounds.checked_div(window).unwrap_or(0)
 }
 
 /// Which chain of the argument a claim belongs to.
@@ -128,6 +157,15 @@ pub enum Witness {
     },
     /// Two distinct S-box inputs with the same output.
     SboxCollision { x1: String, x2: String, y: String },
+    /// A nonzero difference that passes every partial round of a HADES
+    /// design with no active S-box: every power of the internal matrix below
+    /// `partialRounds` keeps it at zero on the masked `positions`.
+    #[serde(rename_all = "camelCase")]
+    PartialBypass {
+        difference: Vec<String>,
+        positions: Vec<usize>,
+        partial_rounds: u32,
+    },
     /// Two distinct field elements with the same power.
     PowerCollision {
         exponent: u32,
@@ -369,6 +407,10 @@ mod tests {
         assert_eq!(hades_outer_activity_bound(8), 16);
         assert_eq!(hades_outer_activity_bound(2), 2);
         assert_eq!(hades_outer_activity_bound(6), 10);
+        assert_eq!(hades_total_activity_bound(8, 56, 3), 34);
+        assert_eq!(hades_total_activity_bound(8, 2, 3), 16);
+        assert_eq!(hades_outer_activity_bound_width(8, 4), 20);
+        assert_eq!(hades_total_activity_bound_width(8, 20, 4, 4), 25);
         assert_eq!(aes_like_activity_bound(4), 25);
         assert_eq!(aes_like_activity_bound(6), 30);
         assert_eq!(aes_like_activity_bound(10), 55);

@@ -1,4 +1,5 @@
-import type { CandidateDesign, Instruction, Program, ProgramTarget } from './types';
+import { PRIME_FIELD_PRESETS } from './types';
+import type { CandidateDesign, HadesPrimeDesign, Instruction, Program, ProgramTarget } from './types';
 
 /**
  * Shape checks for imported JSON. Values that parse here can be shown in the
@@ -97,7 +98,51 @@ export function coerceDesign(x: unknown, path = ''): CandidateDesign {
       constants: parsedConstants,
     };
   }
-  fail(`${path}/model`, 'expected "aes-like/gf256/v1" or "hades/bn254/v1"');
+  if (x.model === 'hades/prime/v1') {
+    const fields = [...PRIME_FIELD_PRESETS.map((f) => f.id), 'prime'] as const;
+    const field = x.field;
+    if (typeof field !== 'string' || !(fields as readonly string[]).includes(field)) {
+      fail(`${path}/field`, `expected one of ${fields.map((f) => `"${f}"`).join(', ')}`);
+    }
+    if (x.modulus !== undefined && typeof x.modulus !== 'string') fail(`${path}/modulus`, 'the modulus is a decimal string');
+    const width = int(x.width, `${path}/width`);
+    if (width !== 3 && width !== 4) fail(`${path}/width`, 'expected 3 or 4');
+    const sbox = x.sbox;
+    if (!isObj(sbox) || sbox.kind !== 'power') fail(`${path}/sbox`, 'expected {"kind":"power","exponent":…}');
+    const mask = x.partialMask;
+    if (mask !== undefined && (!Array.isArray(mask) || mask.length !== width || mask.some((m) => typeof m !== 'boolean'))) {
+      fail(`${path}/partialMask`, `expected ${width} booleans`);
+    }
+    const constants = x.constants;
+    let parsedConstants: { kind: 'unspecified' } | { kind: 'explicit'; values: string[][] } = { kind: 'unspecified' };
+    if (constants === undefined || (isObj(constants) && constants.kind === 'unspecified')) parsedConstants = { kind: 'unspecified' };
+    else if (isObj(constants) && constants.kind === 'explicit' && Array.isArray(constants.values)) {
+      parsedConstants = {
+        kind: 'explicit',
+        values: constants.values.map((row, i) => {
+          if (!Array.isArray(row) || row.length !== width || row.some((v) => typeof v !== 'string')) {
+            fail(`${path}/constants/values/${i}`, `expected ${width} decimal strings`);
+          }
+          return row as string[];
+        }),
+      };
+    } else fail(`${path}/constants`, 'expected {"kind":"unspecified"} or explicit values');
+    const out: HadesPrimeDesign = {
+      model: 'hades/prime/v1',
+      field: field as HadesPrimeDesign['field'],
+      ...(typeof x.modulus === 'string' ? { modulus: x.modulus } : {}),
+      width: width as 3 | 4,
+      external: stringMatrix(x.external, width, `${path}/external`),
+      internal: stringMatrix(x.internal, width, `${path}/internal`),
+      fullRounds: int(x.fullRounds, `${path}/fullRounds`),
+      partialRounds: int(x.partialRounds, `${path}/partialRounds`),
+      sbox: { kind: 'power', exponent: int(sbox.exponent, `${path}/sbox/exponent`) },
+      partialMask: (mask as boolean[] | undefined) ?? Array.from({ length: width }, (_, i) => i === 0),
+      constants: parsedConstants,
+    };
+    return out;
+  }
+  fail(`${path}/model`, 'expected "aes-like/gf256/v1", "hades/bn254/v1" or "hades/prime/v1"');
 }
 
 export function coerceProgram(x: unknown, path = ''): Program {

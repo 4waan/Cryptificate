@@ -3,7 +3,9 @@
  * service, the web UI and the Python client.
  *
  * Field elements are always strings: GF(2^8) elements are two-digit hex
- * strings ("02", "1B"), BN254 scalars are canonical decimal strings.
+ * strings ("02", "1B"), elements of a prime field (BN254, BabyBear,
+ * KoalaBear, Mersenne31, Goldilocks or a custom prime) are canonical decimal
+ * strings in [0, p).
  * Counts, indices and measurements are JSON numbers.
  */
 
@@ -14,11 +16,19 @@
 export type GfHex = string;
 /** BN254 scalar field element: canonical decimal string in [0, p). */
 export type BnDecimal = string;
+/** Element of a prime field below 2^64: canonical decimal string in [0, p). */
+export type PrimeDecimal = string;
 /** Either encoding, depending on the field of the enclosing object. */
-export type FieldElement = GfHex | BnDecimal;
+export type FieldElement = GfHex | BnDecimal | PrimeDecimal;
 
+/** Fields of programs and of the GF(2^8) and BN254 models. */
 export type FieldName = 'gf256' | 'bn254';
-export type ModelId = 'aes-like/gf256/v1' | 'hades/bn254/v1';
+/**
+ * Fields of the prime-field profile (`hades/prime/v1`): four named primes and
+ * a custom prime below 2^64 given by `modulus`.
+ */
+export type PrimeFieldName = 'babybear' | 'koalabear' | 'mersenne31' | 'goldilocks' | 'prime';
+export type ModelId = 'aes-like/gf256/v1' | 'hades/bn254/v1' | 'hades/prime/v1';
 
 // ---------------------------------------------------------------------------
 // Candidate designs
@@ -65,6 +75,14 @@ export interface ExplicitConstants {
   values: BnDecimal[][];
 }
 
+/**
+ * Round constants not given (`hades/prime/v1` only, and its default): every
+ * claim holds for all round constants.
+ */
+export interface UnspecifiedConstants {
+  kind: 'unspecified';
+}
+
 export interface HadesDesign {
   model: 'hades/bn254/v1';
   field: 'bn254';
@@ -80,7 +98,33 @@ export interface HadesDesign {
   constants: ReferenceConstants | ExplicitConstants;
 }
 
-export type CandidateDesign = AesLikeDesign | HadesDesign;
+/**
+ * A HADES design over a prime field below 2^64. The modulus is part of the
+ * meaning of every claim: normalization always states it, and every
+ * certificate proves it prime (claim `field.prime`) before using it.
+ */
+export interface HadesPrimeDesign {
+  model: 'hades/prime/v1';
+  field: PrimeFieldName;
+  /**
+   * Decimal string. Required for `field: "prime"`; for a named field it may be
+   * omitted and is filled in by normalization (and must match if given).
+   */
+  modulus?: string;
+  width: 3 | 4;
+  external: PrimeDecimal[][];
+  internal: PrimeDecimal[][];
+  /** Even; half before and half after the partial rounds. */
+  fullRounds: number;
+  partialRounds: number;
+  sbox: SboxPower;
+  /** S-box positions active in partial rounds; defaults to position 0 only. */
+  partialMask?: boolean[];
+  /** Defaults to unspecified. */
+  constants?: UnspecifiedConstants | ExplicitConstants;
+}
+
+export type CandidateDesign = AesLikeDesign | HadesDesign | HadesPrimeDesign;
 
 // ---------------------------------------------------------------------------
 // Programs (linear circuits)
@@ -140,13 +184,16 @@ export interface ExperimentRequest {
 // Claims and evidence
 
 export type DesignClaimId =
+  | 'field.prime'
   | 'matrix.mds'
   | 'offsets.dispersion'
   | 'sbox.bijective'
   | 'activity.bound'
   | 'external.mds'
   | 'internal.invertible'
-  | 'activity.outer';
+  | 'activity.outer'
+  | 'activity.partial'
+  | 'activity.total';
 
 export type ImplementationClaimId =
   | 'circuit.equivalence'
@@ -217,12 +264,25 @@ export interface PowerCollisionWitness {
   note: string;
 }
 
+/**
+ * A nonzero difference that passes every partial round of a HADES design
+ * with no active S-box: every power of the internal matrix below
+ * `partialRounds` keeps it at zero on the masked `positions`.
+ */
+export interface PartialBypassWitness {
+  kind: 'partial-bypass';
+  difference: BnDecimal[];
+  positions: number[];
+  partialRounds: number;
+}
+
 export type Witness =
   | BranchWitness
   | OffsetCollisionWitness
   | DistinguishingInputWitness
   | SboxCollisionWitness
-  | PowerCollisionWitness;
+  | PowerCollisionWitness
+  | PartialBypassWitness;
 
 export type WitnessKind = Witness['kind'];
 

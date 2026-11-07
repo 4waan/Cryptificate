@@ -16,7 +16,7 @@ scripts/setup.sh
 
 ## 2. Describe a design
 
-Designs and circuits are JSON. Bytes are two hex digits; BN254 values are decimal strings.
+Designs and circuits are JSON. Bytes are two hex digits; elements of a prime field (BN254, BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime) are decimal strings.
 
 ```json
 {
@@ -109,6 +109,6 @@ A verdict of `locally confirmed` covers one machine and the recorded workloads. 
 
 ## Limits to keep in mind
 
-- Checked profiles: GF(2⁸) width 4 (AES-like, 4 to 32 rounds) and BN254 width 3 (HADES, up to 160 rounds). Other widths are experimental.
+- Checked profiles: GF(2⁸) width 4 (AES-like, 4 to 32 rounds), BN254 width 3 (HADES, up to 160 rounds), and HADES over BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime below 2⁶⁴ at widths 3 and 4 (design claims only: no circuits, search or native timing over these fields). Other widths are experimental or rejected.
 - Activity figures are conservative lower bounds on active S-boxes. They do not rank passing designs and they are not security levels.
 - Native timings describe the recorded machine and workload only.

@@ -1,4 +1,5 @@
-import { fieldOps } from './field';
+import { displayFieldOf, fieldOps } from './field';
+import { modulusOf } from './primefield';
 import { sha256Hex } from './sha256';
 import type { AnalysisRequest, CandidateDesign, ExperimentRequest, Instruction, Program, ProgramTarget } from './types';
 
@@ -41,6 +42,29 @@ export function normalizeDesign(design: CandidateDesign): CandidateDesign {
     };
     if (design.width !== 4) out.experimental = true;
     return out;
+  }
+  if (design.model === 'hades/prime/v1') {
+    // As the engine normalizes: the modulus stated, the default mask and
+    // unspecified constants filled in.
+    const p = modulusOf(design);
+    if (p === null) throw new Error('no modulus');
+    const f = fieldOps(displayFieldOf(design));
+    return {
+      model: design.model,
+      field: design.field,
+      modulus: p.toString(),
+      width: design.width,
+      external: design.external.map((row) => row.map((x) => f.canonical(x))),
+      internal: design.internal.map((row) => row.map((x) => f.canonical(x))),
+      fullRounds: design.fullRounds,
+      partialRounds: design.partialRounds,
+      sbox: { kind: 'power', exponent: design.sbox.exponent },
+      partialMask: design.partialMask ? [...design.partialMask] : Array.from({ length: design.width }, (_, i) => i === 0),
+      constants:
+        design.constants?.kind === 'explicit'
+          ? { kind: 'explicit', values: design.constants.values.map((r) => r.map((x) => f.canonical(x))) }
+          : { kind: 'unspecified' },
+    };
   }
   const f = fieldOps('bn254');
   return {

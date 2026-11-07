@@ -1,6 +1,7 @@
 //! Core definitions for Cryptificate.
 //!
-//! * [`field`]: GF(2^8) and BN254 scalar field elements behind one [`Field`] trait.
+//! * [`field`]: GF(2^8), BN254 scalar field and 64-bit prime field elements behind one [`Field`] trait.
+//! * [`prime`]: 64-bit prime fields, primality and Pratt certificates.
 //! * [`design`], [`program`], [`request`]: the public input types (normalized forms).
 //! * [`validate`]: untrusted JSON to normalized inputs, with coded errors ([`error`]).
 //! * [`canonical`]: canonical JSON and `sha256:` digests.
@@ -19,6 +20,7 @@ pub mod field;
 pub mod lean;
 pub mod limits;
 pub mod linalg;
+pub mod prime;
 pub mod program;
 pub mod report;
 pub mod request;
@@ -30,6 +32,7 @@ pub use design::{
 };
 pub use error::{ErrorCode, ValidationError};
 pub use field::{Bn254, Field, FieldKind, Gf256};
+pub use prime::{with_modulus, Fp, Modulus};
 pub use program::{AnyProgram, Instruction, Program};
 pub use request::{AnalysisRequest, ExperimentRequest, Profile};
 pub use validate::{

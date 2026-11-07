@@ -25,11 +25,14 @@ use crate::design::{AesLikeDesign, CandidateDesign, HadesDesign, SboxSpec, Targe
 use crate::field::{bn254_modulus, Bn254, Field, FieldKind, Gf256};
 use crate::limits;
 use crate::linalg::{
-    combinations, determinant, encode_vec, kernel_vector, mat_vec, submatrix, weight, Matrix,
+    basis, combinations, coordinates, determinant, encode_vec, kernel_vector, mat_vec,
+    nullspace_basis, rank, submatrix, vec_mat, weight, Matrix,
 };
+use crate::prime::{pratt_certificate, with_modulus, Fp, Modulus, PrattStep};
 use crate::program::Program;
 use crate::report::{
-    aes_like_activity_bound, claim_ids, hades_outer_activity_bound, labels, Status, Witness,
+    aes_like_activity_bound, claim_ids, hades_outer_activity_bound_width,
+    hades_total_activity_bound_width, labels, Status, Witness,
 };
 use crate::request::AnalysisRequest;
 use crate::AnyProgram;
@@ -340,18 +343,19 @@ pub fn analyze_sbox(source: SboxSource, table: &[Gf256]) -> SboxAnalysis {
 }
 
 // ---------------------------------------------------------------------------
-// Power maps over BN254
+// Power maps over a prime field
 // ---------------------------------------------------------------------------
 
 /// `1^e = omega^e` with `omega != 1`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-pub struct PowerCollision {
+pub struct PowerCollision<F = Bn254> {
     /// The base `a` with `omega = a^((p-1)/g)`.
     pub base: u64,
-    pub omega: Bn254,
+    pub omega: F,
 }
 
-/// Bijectivity of `x -> x^e` on the BN254 scalar field.
+/// Bijectivity of `x -> x^e` on a prime field `F_p` (the BN254 scalar field
+/// unless stated).
 ///
 /// The map is a bijection exactly when `gcd(e, p - 1) = 1`. Then
 /// `d = e^-1 mod (p - 1)` inverts it, and `k` is the integer with
@@ -360,7 +364,7 @@ pub struct PowerCollision {
 /// satisfies `omega^g = 1`, hence `omega^e = 1 = 1^e`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PowerAnalysis {
+pub struct PowerAnalysis<F = Bn254> {
     pub exponent: u32,
     /// `gcd(e, p - 1)`.
     pub gcd: u32,
@@ -370,15 +374,15 @@ pub struct PowerAnalysis {
     pub inverse_exponent: Option<BigUint>,
     /// `k` with `e * d = (p - 1) * k + 1`; `k < e`.
     pub k: Option<u64>,
-    pub collision: Option<PowerCollision>,
+    pub collision: Option<PowerCollision<F>>,
 }
 
-impl PowerAnalysis {
+impl<F: Field> PowerAnalysis<F> {
     /// The report witness for a collision.
     pub fn to_witness(&self) -> Option<Witness> {
         self.collision.map(|c| Witness::PowerCollision {
             exponent: self.exponent,
-            x1: Bn254::one().encode(),
+            x1: F::one().encode(),
             x2: c.omega.encode(),
             note: format!(
                 "omega^{e} = 1 = 1^{e}, where omega = {a}^((p-1)/{g}) is not 1",
@@ -416,15 +420,39 @@ fn is_small_prime(n: u64) -> bool {
 /// share of the group is, so the first few primes always suffice in practice.
 const MAX_COLLISION_BASE: u64 = 10_000;
 
-/// See [`PowerAnalysis`].
+/// See [`PowerAnalysis`]; over the BN254 scalar field.
 pub fn analyze_power(exponent: u32) -> PowerAnalysis {
-    let p = bn254_modulus();
+    analyze_power_mod(exponent, bn254_modulus(), Bn254::from_biguint)
+}
+
+/// See [`PowerAnalysis`]; over `Z/pZ` for the modulus of the current
+/// [`with_modulus`] scope.
+pub fn analyze_power_fp(exponent: u32) -> PowerAnalysis<Fp> {
+    let p = crate::prime::current_modulus().expect("analyze_power_fp runs under a modulus");
+    analyze_power_mod(exponent, &BigUint::from(p), |w| {
+        Fp(w.to_u64()
+            .expect("a residue of a 64-bit modulus fits a u64"))
+    })
+}
+
+/// See [`PowerAnalysis`]; `elem` maps a residue below `p` to the field.
+fn analyze_power_mod<F: Field>(
+    exponent: u32,
+    p: &BigUint,
+    elem: impl Fn(&BigUint) -> F,
+) -> PowerAnalysis<F> {
     let n: BigUint = p - 1u32;
     let e = BigUint::from(exponent);
     let r = (&n % &e).to_u64().expect("remainder is below the exponent");
     let g = gcd_u64(u64::from(exponent), r) as u32;
     if g == 1 {
-        let d = e.modinv(&n).expect("e is a unit modulo p - 1");
+        // Modulo `p - 1 = 1` every exponent is congruent to 0; `d = 1`
+        // still satisfies `e * d = (p - 1) * k + 1`, with `k = e - 1`.
+        let d = if n.is_one() {
+            BigUint::one()
+        } else {
+            e.modinv(&n).expect("e is a unit modulo p - 1")
+        };
         let ed = &e * &d;
         let k = (&ed - 1u32) / &n;
         debug_assert!(((&k * &n) + 1u32) == ed);
@@ -433,8 +461,8 @@ pub fn analyze_power(exponent: u32) -> PowerAnalysis {
             gcd: 1,
             bijective: true,
             k: Some(k.to_u64().expect("k is below the exponent")),
-            inverse_exponent: Some(d),
             collision: None,
+            inverse_exponent: Some(d),
         };
     }
     let cofactor = &n / BigUint::from(g);
@@ -442,9 +470,10 @@ pub fn analyze_power(exponent: u32) -> PowerAnalysis {
         .filter(|&a| is_small_prime(a))
         .find_map(|a| {
             let w = BigUint::from(a).modpow(&cofactor, p);
-            (!w.is_one()).then(|| PowerCollision {
+            // A base divisible by a small modulus gives 0, which is no root.
+            (!w.is_one() && w != BigUint::ZERO).then(|| PowerCollision {
                 base: a,
-                omega: Bn254::from_biguint(&w),
+                omega: elem(&w),
             })
         });
     if let Some(c) = &collision {
@@ -528,6 +557,227 @@ pub struct ActivityAnalysis {
 }
 
 // ---------------------------------------------------------------------------
+// Partial rounds
+// ---------------------------------------------------------------------------
+
+/// Row `position` of `M^power`, for a masked `position`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct ObservabilityRow<F> {
+    pub power: u32,
+    pub position: usize,
+    pub row: Vec<F>,
+}
+
+/// A nonzero difference that the partial rounds never bring to an S-box.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartialBypass<F> {
+    /// The difference, scaled so that its first nonzero coordinate is one.
+    pub difference: Vec<F>,
+    /// A basis of the largest subspace that every power of the internal
+    /// matrix keeps at zero on the masked positions, starting with
+    /// `difference`; empty when that subspace is zero and the difference
+    /// only survives the few partial rounds the design has.
+    pub invariant_basis: Vec<Vec<F>>,
+    /// `M b_k = sum_l coefficients[k][l] b_l` for the basis vectors `b_k`.
+    pub coefficients: Vec<Vec<F>>,
+}
+
+impl<F: Field> PartialBypass<F> {
+    /// Whether the difference lies in an invariant subspace, so that it
+    /// passes any number of partial rounds.
+    pub fn invariant(&self) -> bool {
+        !self.invariant_basis.is_empty()
+    }
+}
+
+/// Which differences can pass the partial rounds of a HADES design without
+/// reaching an S-box.
+///
+/// In a partial round with no active S-box the difference is multiplied by
+/// the internal matrix `M`. A difference `d` therefore avoids every S-box of
+/// `L` consecutive partial rounds exactly when `(M^j d)_i = 0` for every
+/// masked position `i` and every `j < L`: when `d` is in the null space of
+/// the stack of rows `e_i M^j`. The rows are scanned in order of `j`, then
+/// of `i`, and a row is kept when it raises the rank. Once one power adds
+/// nothing the row space stops growing, so full rank, if it comes at all,
+/// comes within `width` powers.
+///
+/// A design with no partial rounds has nothing to charge and nothing to
+/// bypass: `window` and `bypass` are then both `None`, and the claim
+/// `activity.partial` does not apply.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartialAnalysis<F> {
+    /// The masked positions, increasing.
+    pub positions: Vec<usize>,
+    pub partial_rounds: u32,
+    /// The smallest `L <= partial_rounds` for which the rows `e_i M^j`,
+    /// `j < L`, have full rank: every `L` consecutive partial rounds then
+    /// activate an S-box. `None` when no such `L` exists.
+    pub window: Option<u32>,
+    /// The rows kept by the scan, `width` of them when `window` is set.
+    pub rows: Vec<ObservabilityRow<F>>,
+    /// The determinant of the kept rows, when there are `width` of them.
+    pub determinant: Option<F>,
+    /// A bypass, when `window` is `None` and there are partial rounds.
+    pub bypass: Option<PartialBypass<F>>,
+}
+
+impl<F: Field> PartialAnalysis<F> {
+    /// The report witness for a bypass.
+    pub fn to_witness(&self) -> Option<Witness> {
+        self.bypass.as_ref().map(|b| Witness::PartialBypass {
+            difference: encode_vec(&b.difference),
+            positions: self.positions.clone(),
+            partial_rounds: self.partial_rounds,
+        })
+    }
+}
+
+/// `v` scaled so that its first nonzero coordinate is one.
+fn normalize<F: Field>(v: &[F]) -> Vec<F> {
+    match v.iter().find(|x| !x.is_zero()) {
+        Some(&lead) => {
+            let inv = lead.inverse().expect("nonzero");
+            v.iter().map(|&x| x * inv).collect()
+        }
+        None => v.to_vec(),
+    }
+}
+
+/// See [`PartialAnalysis`]. `mask` marks the S-box positions of a partial
+/// round.
+pub fn analyze_partial<F: Field>(
+    m: &Matrix<F>,
+    mask: &[bool],
+    partial_rounds: u32,
+) -> PartialAnalysis<F> {
+    let n = m.len();
+    let positions: Vec<usize> = (0..n).filter(|&i| mask.get(i) == Some(&true)).collect();
+    if partial_rounds == 0 {
+        // Every difference avoids the S-boxes of zero rounds; that is no
+        // bypass of anything.
+        return PartialAnalysis {
+            positions,
+            partial_rounds,
+            window: None,
+            rows: Vec::new(),
+            determinant: None,
+            bypass: None,
+        };
+    }
+    // `stack[j]` holds the rows e_i M^j for the masked i.
+    let mut stack: Vec<Vec<Vec<F>>> = Vec::new();
+    let mut current: Vec<Vec<F>> = positions.iter().map(|&i| basis(n, i)).collect();
+    for _ in 0..n {
+        stack.push(current.clone());
+        current = current.iter().map(|r| vec_mat(r, m)).collect();
+    }
+    let horizon = (partial_rounds as usize).min(n);
+    let mut rows: Vec<ObservabilityRow<F>> = Vec::new();
+    let mut window = None;
+    'scan: for (j, layer) in stack.iter().enumerate().take(horizon) {
+        for (row, &i) in layer.iter().zip(&positions) {
+            let mut kept: Matrix<F> = rows.iter().map(|r| r.row.clone()).collect();
+            kept.push(row.clone());
+            if rank(&kept) == kept.len() {
+                rows.push(ObservabilityRow {
+                    power: j as u32,
+                    position: i,
+                    row: row.clone(),
+                });
+                if rows.len() == n {
+                    window = Some(j as u32 + 1);
+                    break 'scan;
+                }
+            }
+        }
+    }
+    let determinant = (rows.len() == n)
+        .then(|| determinant(&rows.iter().map(|r| r.row.clone()).collect::<Vec<_>>()));
+    let bypass = window.is_none().then(|| {
+        let all: Matrix<F> = stack.iter().flatten().cloned().collect();
+        let mut invariant = nullspace_basis(&all, n);
+        if let Some(first) = invariant.first_mut() {
+            *first = normalize(first);
+            let coefficients = invariant
+                .iter()
+                .map(|b| {
+                    coordinates(&invariant, &mat_vec(m, b))
+                        .expect("the null space of the full stack is invariant")
+                })
+                .collect();
+            PartialBypass {
+                difference: invariant[0].clone(),
+                invariant_basis: invariant,
+                coefficients,
+            }
+        } else {
+            // Only the first `partial_rounds` powers constrain the difference.
+            let short: Matrix<F> = stack.iter().take(horizon).flatten().cloned().collect();
+            let difference = nullspace_basis(&short, n)
+                .into_iter()
+                .next()
+                .map(|v| normalize(&v))
+                .expect("the stack below full rank has a null vector");
+            PartialBypass {
+                difference,
+                invariant_basis: Vec::new(),
+                coefficients: Vec::new(),
+            }
+        }
+    });
+    PartialAnalysis {
+        positions,
+        partial_rounds,
+        window,
+        rows,
+        determinant,
+        bypass,
+    }
+}
+
+fn partial_note<F: Field>(p: &PartialAnalysis<F>) -> String {
+    let plural = |k: u32| if k == 1 { "" } else { "s" };
+    match (&p.window, &p.bypass) {
+        (Some(l), _) => {
+            let rows = p
+                .rows
+                .iter()
+                .map(|r| format!("e{} M^{}", r.position, r.power))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!(
+                "the rows {rows} of the powers of the internal matrix M at the masked positions \
+                 have determinant {}, so no nonzero difference avoids the S-boxes of {l} \
+                 consecutive partial round{}",
+                p.determinant.map(|d| d.encode()).unwrap_or_default(),
+                plural(*l)
+            )
+        }
+        (None, Some(b)) if b.invariant() => format!(
+            "every power of the internal matrix keeps a subspace of dimension {} at zero on the \
+             masked positions, so a nonzero difference in it passes all {} partial round{} with \
+             no active S-box",
+            b.invariant_basis.len(),
+            p.partial_rounds,
+            plural(p.partial_rounds)
+        ),
+        (None, None) => "not applicable: the design has no partial rounds, so there is no \
+                         partial-round S-box to activate or to bypass"
+            .into(),
+        _ => format!(
+            "no nonzero difference avoids the masked positions forever, but one stays at zero \
+             on them through the design's {} partial round{}, so it passes them with no active \
+             S-box",
+            p.partial_rounds,
+            plural(p.partial_rounds)
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Whole requests
 // ---------------------------------------------------------------------------
 
@@ -570,12 +820,81 @@ pub struct AesLikeDiagnostics {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct HadesDiagnostics {
-    pub external: MatrixAnalysis<Bn254>,
-    pub internal: MatrixAnalysis<Bn254>,
-    pub power: PowerAnalysis,
+pub struct HadesDiagnostics<F = Bn254> {
+    pub external: MatrixAnalysis<F>,
+    pub internal: MatrixAnalysis<F>,
+    pub power: PowerAnalysis<F>,
     pub activity: ActivityAnalysis,
-    pub program: Option<ProgramAnalysis<Bn254>>,
+    /// The partial rounds: a charged window or a bypass.
+    pub partial: PartialAnalysis<F>,
+    /// The bound over the whole permutation (claim `activity.total`).
+    pub total: ActivityAnalysis,
+    pub program: Option<ProgramAnalysis<F>>,
+}
+
+/// The modulus of a prime-field design and the Pratt certificate the
+/// engine computed for it (claim `field.prime`; Lean checks it).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrimeFieldAnalysis {
+    pub field: FieldKind,
+    pub modulus: Modulus,
+    /// The prime factorization of `p - 1`, as `[prime, exponent]` pairs.
+    pub factorization: Vec<(Modulus, u32)>,
+    /// One step per prime of the certificate, the modulus last.
+    pub pratt: Vec<PrattStep>,
+}
+
+impl PrimeFieldAnalysis {
+    /// The certificate for the prime `p` (validated designs only).
+    pub fn new(field: FieldKind, p: u64) -> Self {
+        let pratt = pratt_certificate(p).expect("a validated modulus is prime");
+        let factorization = pratt
+            .last()
+            .expect("a certificate proves its modulus last")
+            .factors
+            .iter()
+            .map(|&(q, k)| (Modulus(q.0), k))
+            .collect();
+        PrimeFieldAnalysis {
+            field,
+            modulus: Modulus(p),
+            factorization,
+            pratt,
+        }
+    }
+
+    fn note(&self) -> String {
+        let factors = self
+            .factorization
+            .iter()
+            .map(|(q, k)| {
+                if *k == 1 {
+                    q.to_string()
+                } else {
+                    format!("{q}^{k}")
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" * ");
+        let base = self.pratt.last().map_or(0, |s| s.a);
+        format!(
+            "{} is prime: p - 1 = {factors}, and {base} has order p - 1 modulo p (a Pratt \
+             certificate of {} step{})",
+            self.modulus,
+            self.pratt.len(),
+            if self.pratt.len() == 1 { "" } else { "s" }
+        )
+    }
+}
+
+/// A HADES design over a 64-bit prime field: its modulus and certificate,
+/// then the same analyses as over BN254.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct HadesPrimeDiagnostics {
+    pub prime: PrimeFieldAnalysis,
+    #[serde(flatten)]
+    pub hades: HadesDiagnostics<Fp>,
 }
 
 /// The per-model part of [`Diagnostics`].
@@ -588,6 +907,7 @@ pub struct HadesDiagnostics {
 pub enum ModelDiagnostics {
     AesLike(AesLikeDiagnostics),
     Hades(HadesDiagnostics),
+    HadesPrime(HadesPrimeDiagnostics),
 }
 
 /// Marker serialized as `"diagnostics"`.
@@ -609,6 +929,9 @@ pub struct Diagnostics {
     pub label: &'static str,
     pub model: &'static str,
     pub field: FieldKind,
+    /// The modulus of a prime-field design (absent for the other models).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub modulus: Option<Modulus>,
     pub width: usize,
     pub target: Target,
     pub input_digest: String,
@@ -629,7 +952,28 @@ impl Diagnostics {
 pub fn diagnose(req: &AnalysisRequest) -> Diagnostics {
     let (details, claims) = match &req.design {
         CandidateDesign::AesLike(d) => diagnose_aes_like(d, req.program.as_ref()),
-        CandidateDesign::Hades(d) => diagnose_hades(d, req.program.as_ref(), req.target),
+        CandidateDesign::Hades(d) => {
+            let program = match &req.program {
+                Some(AnyProgram::Bn254(p)) if p.width == d.width => Some(p),
+                _ => None,
+            };
+            let (h, claims) = diagnose_hades(d, program, req.target, analyze_power);
+            (ModelDiagnostics::Hades(h), claims)
+        }
+        CandidateDesign::HadesPrime(d) => {
+            let p = d.modulus_value();
+            let prime = PrimeFieldAnalysis::new(d.field, p);
+            let (hades, mut claims) =
+                with_modulus(p, || diagnose_hades(d, None, req.target, analyze_power_fp));
+            claims.insert(
+                0,
+                ClaimPrediction::decided(claim_ids::FIELD_PRIME, true, None, prime.note()),
+            );
+            (
+                ModelDiagnostics::HadesPrime(HadesPrimeDiagnostics { prime, hades }),
+                claims,
+            )
+        }
     };
     Diagnostics {
         kind: DiagnosticsKind::Diagnostics,
@@ -637,6 +981,7 @@ pub fn diagnose(req: &AnalysisRequest) -> Diagnostics {
         label: labels::UNCHECKED_DIAGNOSTIC,
         model: req.design.model(),
         field: req.design.field(),
+        modulus: req.design.modulus().map(Modulus),
         width: req.design.width(),
         target: req.target,
         input_digest: req.input_digest(),
@@ -796,20 +1141,24 @@ fn diagnose_aes_like(
     )
 }
 
-fn diagnose_hades(
-    d: &HadesDesign,
-    program: Option<&AnyProgram>,
+/// The HADES analyses, for any field; `power` analyzes the S-box exponent
+/// over that field, and `program` is a circuit for the `target` matrix.
+fn diagnose_hades<F: Field>(
+    d: &HadesDesign<F>,
+    program: Option<&Program<F>>,
     target: Target,
-) -> (ModelDiagnostics, Vec<ClaimPrediction>) {
+    power: impl Fn(u32) -> PowerAnalysis<F>,
+) -> (HadesDiagnostics<F>, Vec<ClaimPrediction>) {
     let external = analyze_matrix(&d.external);
     let internal = analyze_matrix(&d.internal);
-    let power = analyze_power(d.exponent().unwrap_or(1));
+    let power = power(d.exponent().unwrap_or(1));
     let applicable = external.mds && internal.invertible && power.bijective;
+    let w = d.width;
     let activity = ActivityAnalysis {
         claim: claim_ids::ACTIVITY_OUTER,
         applicable,
         rounds: d.full_rounds,
-        bound: Some(hades_outer_activity_bound(d.full_rounds)),
+        bound: Some(hades_outer_activity_bound_width(d.full_rounds, w)),
         reason: if applicable {
             "the external matrix is MDS, the internal matrix is invertible and the power map is \
              a bijection, so the full-round bound applies"
@@ -820,17 +1169,43 @@ fn diagnose_hades(
                 .into()
         },
     };
-    let program = match program {
-        Some(AnyProgram::Bn254(p)) if p.width == d.width => {
-            let m = if target == Target::Internal {
-                &d.internal
-            } else {
-                &d.external
-            };
-            Some(ProgramAnalysis::new(p, target, m))
-        }
-        _ => None,
+    let partial = analyze_partial(&d.internal, &d.partial_mask, d.partial_rounds);
+    let total_applicable = applicable && partial.window.is_some();
+    let total = ActivityAnalysis {
+        claim: claim_ids::ACTIVITY_TOTAL,
+        applicable: total_applicable,
+        rounds: d.total_rounds(),
+        bound: partial
+            .window
+            .map(|l| hades_total_activity_bound_width(d.full_rounds, d.partial_rounds, l, w)),
+        reason: match partial.window {
+            Some(l) if applicable => format!(
+                "the full-round bound {} plus one active S-box in each of the {} disjoint \
+                 windows of {l} partial rounds",
+                hades_outer_activity_bound_width(d.full_rounds, w),
+                d.partial_rounds / l
+            ),
+            Some(_) => "not established by this method: the bound needs an MDS external \
+                        matrix, an invertible internal matrix and a bijective power map"
+                .into(),
+            None if d.partial_rounds == 0 => "not established by this method: the design has \
+                no partial rounds, so every S-box is in the full rounds and activity.outer gives \
+                the bound; no certificate is emitted for this claim"
+                .into(),
+            None => "not established by this method: the bound needs every window of some \
+                     length inside the partial rounds to be charged, and a nonzero difference \
+                     passes them with no active S-box"
+                .into(),
+        },
     };
+    let program = program.map(|p| {
+        let m = if target == Target::Internal {
+            &d.internal
+        } else {
+            &d.external
+        };
+        ProgramAnalysis::new(p, target, m)
+    });
 
     let mut claims = vec![
         ClaimPrediction::decided(
@@ -888,18 +1263,49 @@ fn diagnose_hades(
             witness: None,
             note: activity.reason.clone(),
         },
+        if d.partial_rounds == 0 {
+            // `L <= RP` fails for every window length and every nonzero
+            // difference passes zero rounds: neither outcome says anything.
+            ClaimPrediction {
+                claim: claim_ids::ACTIVITY_PARTIAL,
+                predicted: Status::NotEstablished,
+                holds: None,
+                witness: None,
+                note: partial_note(&partial),
+            }
+        } else {
+            ClaimPrediction::decided(
+                claim_ids::ACTIVITY_PARTIAL,
+                partial.window.is_some(),
+                partial.to_witness(),
+                partial_note(&partial),
+            )
+        },
+        ClaimPrediction {
+            claim: claim_ids::ACTIVITY_TOTAL,
+            predicted: if total_applicable {
+                Status::Proved
+            } else {
+                Status::NotEstablished
+            },
+            holds: total_applicable.then_some(true),
+            witness: None,
+            note: total.reason.clone(),
+        },
     ];
     if let Some(p) = &program {
         claims.push(program_prediction(p));
     }
     (
-        ModelDiagnostics::Hades(HadesDiagnostics {
+        HadesDiagnostics {
             external,
             internal,
             power,
             activity,
+            partial,
+            total,
             program,
-        }),
+        },
         claims,
     )
 }

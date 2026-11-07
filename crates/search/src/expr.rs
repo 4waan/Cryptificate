@@ -80,11 +80,11 @@ pub fn primitive_gf256(m: &Matrix<Gf256>) -> Vec<Expr<Gf256>> {
 /// Upper bound on the operation count of the primitive construction of a
 /// `width x width` matrix: `7 width` xtime steps plus `width (8 width - 1)`
 /// additions over GF(2^8) (152 for width 4); `width^2` multiplications plus
-/// `width (width - 1)` additions over BN254.
+/// `width (width - 1)` additions over a prime field such as BN254.
 pub fn primitive_bound(field: cryptificate_core::FieldKind, width: usize) -> usize {
     match field {
         cryptificate_core::FieldKind::Gf256 => 7 * width + width * (8 * width - 1),
-        cryptificate_core::FieldKind::Bn254 => width * width + width * (width - 1),
+        _ => width * width + width * (width - 1),
     }
 }
 
