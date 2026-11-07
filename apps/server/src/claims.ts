@@ -446,7 +446,7 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
         notEstablished(
           info,
           'out-of-scope',
-          'Circuits, native correctness, timing and Rust refinement cover GF(2^8) and BN254 designs; over this prime field only the design claims are checked.',
+          'Circuits, native correctness and timing cover GF(2^8) and BN254 designs, Rust refinement GF(2^8) only; over this prime field only the design claims are checked.',
         ),
       );
       continue;
