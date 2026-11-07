@@ -31,6 +31,12 @@ describe('command filter', () => {
     expect(filterCommands('theme light', list)).toEqual([]);
   });
 
+  it('matches a single letter at word starts only', () => {
+    expect(filterCommands('e', list).map((c) => c.id)).toEqual(['exp', 'ws']);
+    expect(scoreCommand(list[4]!, ['e'])).toBe(0);
+    expect(scoreCommand(list[0]!, ['ir'])).toBe(5);
+  });
+
   it('matches letters in order as a last resort', () => {
     expect(filterCommands('wrkspc', list).map((c) => c.id)).toEqual(['ws']);
   });

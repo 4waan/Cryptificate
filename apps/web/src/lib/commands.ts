@@ -40,12 +40,14 @@ function match(c: Command, query: string[]): { score: number; fuzzy: boolean } {
   const label = c.label.toLowerCase();
   const labelWords = words(c.label);
   const extra = `${c.group} ${c.keywords ?? ''}`.toLowerCase();
+  const extraWords = words(extra);
   let score = 0;
   let fuzzy = false;
   for (const q of query) {
+    // A single letter matches word starts only; inside words it would match nearly every command.
     if (labelWords.some((w) => w.startsWith(q))) score += 8;
-    else if (label.includes(q)) score += 5;
-    else if (extra.includes(q)) score += 3;
+    else if (q.length > 1 && label.includes(q)) score += 5;
+    else if (extraWords.some((w) => w.startsWith(q)) || (q.length > 2 && extra.includes(q))) score += 3;
     else if (fuzzyWord(q, labelWords)) {
       score += 1;
       fuzzy = true;
@@ -57,8 +59,9 @@ function match(c: Command, query: string[]): { score: number; fuzzy: boolean } {
 /**
  * Scores a command against the query words: 0 means no match. Every query
  * word must match. A word that starts a label word scores highest, then a
- * substring of the label, then the group or keywords, then letters in order
- * within one label word.
+ * substring of the label (two letters or more), then the group or keywords
+ * (a word start, or a substring of three letters or more), then letters in
+ * order within one label word.
  */
 export function scoreCommand(c: Command, query: string[]): number {
   return match(c, query).score;
