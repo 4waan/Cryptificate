@@ -63,6 +63,38 @@ test('a refuted constants.grain carries the first differing position', () => {
   assert.equal(byId(claims, 'field.prime').status, 'not_established');
 });
 
+test('a constant-mismatch witness is kept only when the checked statement and the request bind it', () => {
+  const theorem = 'CryptificateJob.constants_not_grain';
+  const type =
+    'Cryptificate.Grain.constantAt CryptificateJob.candModulus 4 CryptificateJob.candFullRounds CryptificateJob.candPartialRounds 16 = some 245687908 ∧ CryptificateJob.candConstants[16]? ≠ some 245687908';
+  const good = { kind: 'constant-mismatch' as const, index: 16, round: 4, position: 0, expected: '245687908', actual: '245687909' };
+  const run = (witness: unknown, checkedType = type): Claim['witness'] => {
+    const verdicts: ClaimVerdict[] = [{ claim: 'constants.grain', theorem, status: 'refuted', accepted: true, detail: 'accepted', audit: { theorem, type: checkedType, axioms: AXIOMS } }];
+    const claims = buildAnalysisClaims({
+      request: { design: design('koalabear-t4-grain-edited') },
+      expect: [{ claim: 'constants.grain', theorem, status: 'refuted', expectedType: checkedType, witness: null }],
+      verdicts,
+      diagnostics: { claims: [{ claim: 'constants.grain', witness }] },
+    });
+    const c = byId(claims, 'constants.grain');
+    assert.equal(c.status, 'refuted');
+    return c.witness;
+  };
+  assert.deepEqual(run(good), good);
+  // The submitted value it names is not the request's.
+  assert.equal(run({ ...good, actual: '1' }), null);
+  // Index or generated value other than the ones in the accepted statement.
+  assert.equal(run({ ...good, index: 20, round: 5 }), null);
+  assert.equal(run({ ...good, expected: '245687907' }), null);
+  // Round and position that do not address the index.
+  assert.equal(run({ ...good, round: 3, position: 4 }), null);
+  assert.equal(run({ ...good, round: 0, position: 16 }), null);
+  // A statement for another width.
+  assert.equal(run(good, type.replace('candModulus 4', 'candModulus 3')), null);
+  // Another kind of witness.
+  assert.equal(run({ kind: 'sbox-collision', x1: '00', x2: '01', y: '00' }), null);
+});
+
 test('constants.grain is not established when the design gives no constants', () => {
   const claims = buildAnalysisClaims({
     request: { design: design('koalabear-t4') },
