@@ -192,7 +192,7 @@ Every report labels its origin: **Live** or **Cached exact result**. Editing any
 | HADES over BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime, width 3 or 4: primality and every design claim | 4.2–5.8 s |
 | Differential uniformity and linearity of a submitted byte table | 10.5–11.5 s |
 | Poseidon2 widths 8 to 24 (Plonky3 instances): primality, inverse witnesses of both matrices, `M₄`, the low-weight refutation and the partial rounds | 4.4–6.8 s |
-| HADES with explicit round constants: the Grain procedure run in the kernel (KoalaBear `t = 4`, 52 constants; BN254 `t = 3`, 192 constants of 254 bits) | 3.9–6.4 s |
+| HADES with explicit round constants: the Grain procedure run in the kernel (KoalaBear `t = 4`, 52 constants; BN254 `t = 3`, 80 constants of 254 bits, 192 layout entries) | 3.9–6.4 s |
 | Plonky3 KoalaBear width 16 with its imported round constants: the wide-width claims and the Grain procedure (148 constants) | 5.8 s (one run) |
 
 **Every push re-checks everything.** [CI](https://github.com/4waan/Cryptificate/actions/workflows/checks.yml) rebuilds the Lean library, runs every certificate example, re-checks the refinement proofs on Lean 4.35, runs the Rust, Node and Python test suites, and runs the GitHub Action on example designs, one of which must fail the gate.
