@@ -56,8 +56,23 @@
         "note": "the full-round bound 20 plus one active S-box in each of the 5 disjoint windows of 4 partial rounds",
         "predicted": "proved",
         "witness": null
+      },
+      {
+        "claim": "constants.grain",
+        "holds": null,
+        "note": "not established: the design gives no round constants",
+        "predicted": "not_established",
+        "witness": null
       }
     ],
+    "constants": {
+      "fieldSize": 31,
+      "layout": "poseidon2",
+      "matches": null,
+      "mismatch": null,
+      "note": "not established: the design gives no round constants",
+      "source": "unspecified"
+    },
     "external": {
       "branchWitness": null,
       "determinant": "2130706369",
