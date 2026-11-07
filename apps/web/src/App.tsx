@@ -1,9 +1,12 @@
 import { useEffect, useMemo } from 'react';
 import { Header, type DisplayOrigin } from './components/Header';
 import { isStale } from './lib/canonical';
-import { checkConnection, setStoryStep, setView } from './state/actions';
+import { parseHash } from './lib/route';
+import { historyShortcut, keepsNativeUndo } from './lib/shortcuts';
+import { checkConnection, openShareLink, redo, setStoryStep, setView, undo } from './state/actions';
 import {
   dataSource,
+  getState,
   isTimingStep,
   setState,
   useAppState,
@@ -40,13 +43,7 @@ function applyTheme(theme: Theme): void {
   }
 }
 
-/** Reads "#/story/2", "#/workspace" or "#/experiments". */
-export function parseHash(hash: string): { view: View; step?: number } {
-  const parts = hash.replace(/^#\/?/, '').split('/');
-  const view = parts[0] === 'workspace' || parts[0] === 'experiments' ? parts[0] : 'story';
-  const step = view === 'story' && parts[1] ? Number(parts[1]) : undefined;
-  return { view, step: step && step >= 1 && step <= 5 ? step : undefined };
-}
+export { parseHash };
 
 function displayedRun(s: AppState): Run | undefined {
   const key =
@@ -90,7 +87,12 @@ export function App() {
     setState({ theme: t });
     applyTheme(t);
     const sync = () => {
-      const { view: v, step } = parseHash(window.location.hash);
+      const { view: v, step, share } = parseHash(window.location.hash);
+      if (share) {
+        // Drop the token from the address so a reload does not load it over later edits.
+        window.history.replaceState(null, '', '#/workspace');
+        void openShareLink(share);
+      }
       setView(v);
       if (step) setStoryStep(step);
     };
@@ -98,6 +100,13 @@ export function App() {
     window.addEventListener('hashchange', sync);
     void checkConnection();
     const onKey = (e: KeyboardEvent) => {
+      const history = historyShortcut(e);
+      if (history && getState().view === 'workspace' && !keepsNativeUndo(document.activeElement as HTMLElement | null)) {
+        e.preventDefault();
+        if (history === 'undo') undo();
+        else redo();
+        return;
+      }
       if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
       const target = { KeyS: 'story', KeyW: 'workspace', KeyE: 'experiments' }[e.code] as View | undefined;
       if (target) {

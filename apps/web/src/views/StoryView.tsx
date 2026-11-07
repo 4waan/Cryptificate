@@ -44,6 +44,13 @@ const STEPS = [
   { n: 5, title: 'Take it with you' },
 ];
 
+/** Story steps load their own inputs; edits they replace are kept for the workspace to restore. */
+const storyLoad = (n: number) => ({ origin: 'story' as const, label: `Story step ${n}` });
+const STEP1 = storyLoad(1);
+const STEP2 = storyLoad(2);
+const STEP3 = storyLoad(3);
+const STEP4 = storyLoad(4);
+
 function useStoryRun(slot: string): Run | undefined {
   const key = useAppState((s) => s.story.runs[slot]);
   return useAppState((s) => (key ? s.runs[key] : undefined));
@@ -134,7 +141,7 @@ function Step1() {
   const circuit = onAes && program && program.field === 'gf256' ? program : aesSharedSum();
 
   const go = () => {
-    if (!onAes || !program || program.field !== 'gf256') loadInputs({ design: aesDesign(), program: aesSharedSum() });
+    if (!onAes || !program || program.field !== 'gf256') loadInputs({ design: aesDesign(), program: aesSharedSum() }, STEP1);
     setHighlight([]);
     run('step1', 'experiment');
   };
@@ -172,8 +179,8 @@ function Step1() {
         <CircuitEditor
           program={circuit}
           onChange={(p) => {
-            if (!onAes) loadInputs({ design: aesDesign(), program: p });
-            else setProgram(p);
+            if (!onAes) loadInputs({ design: aesDesign(), program: p }, STEP1);
+            else setProgram(p, 'story');
           }}
           designWidth={4}
           compact
@@ -236,7 +243,7 @@ function Step2() {
   const shown = witness ?? previewWitness;
 
   const load = () => {
-    loadInputs({ design: aesDesign(), program: aesSharedSum() });
+    loadInputs({ design: aesDesign(), program: aesSharedSum() }, STEP2);
     setHighlight([WIRE_STEP_INSTRUCTION, WIRE_STEP_XTIME]);
     updateStory({ rewired: false, prediction: null, revealed: false });
     setStoryRun('step2', null);
@@ -244,8 +251,8 @@ function Step2() {
 
   const rewire = () => {
     const base = loaded && program ? program : aesSharedSum();
-    if (!loaded) loadInputs({ design: aesDesign(), program: base });
-    setProgram(miswiredSharedSum(base));
+    if (!loaded) loadInputs({ design: aesDesign(), program: base }, STEP2);
+    setProgram(miswiredSharedSum(base), 'story');
     setHighlight([WIRE_STEP_INSTRUCTION, WIRE_STEP_XTIME]);
     updateStory({ rewired: true, prediction: null, revealed: false });
     run('step2', 'analysis');
@@ -273,8 +280,8 @@ function Step2() {
       <CircuitEditor
         program={current}
         onChange={(p) => {
-          if (!loaded) loadInputs({ design: aesDesign(), program: p });
-          else setProgram(p);
+          if (!loaded) loadInputs({ design: aesDesign(), program: p }, STEP2);
+          else setProgram(p, 'story');
         }}
         highlight={[WIRE_STEP_INSTRUCTION, WIRE_STEP_XTIME]}
         designWidth={4}
@@ -361,7 +368,7 @@ function Step3() {
   const source = useSource();
   const r = useStoryRun('step3');
   const go = () => {
-    loadInputs({ design: identityDesign(), program: identityProgram() });
+    loadInputs({ design: identityDesign(), program: identityProgram() }, STEP3);
     setHighlight([]);
     run('step3', 'analysis');
   };
@@ -494,18 +501,21 @@ function Step4() {
   const r5 = useStoryRun('step4a');
   const r3 = useStoryRun('step4b');
   const load5 = () => {
-    loadInputs({ design: hadesDesign(5), program: hadesSharedSum(), target: 'external' });
+    loadInputs({ design: hadesDesign(5), program: hadesSharedSum(), target: 'external' }, STEP4);
     setHighlight([]);
     run('step4a', 'analysis');
   };
   const load3 = () => {
     const s = getState();
     const base = s.design.model === 'hades/bn254/v1' ? s.design : hadesDesign(5);
-    loadInputs({
-      design: { ...base, sbox: { kind: 'power', exponent: 3 } },
-      program: s.program ?? hadesSharedSum(),
-      target: 'external',
-    });
+    loadInputs(
+      {
+        design: { ...base, sbox: { kind: 'power', exponent: 3 } },
+        program: s.program ?? hadesSharedSum(),
+        target: 'external',
+      },
+      STEP4,
+    );
     run('step4b', 'analysis');
   };
   return (
@@ -581,6 +591,18 @@ function Finish() {
   );
 }
 
+/** Says where workspace edits went when a step loaded its own inputs over them. */
+function KeptEdits() {
+  const replaced = useAppState((s) => s.replaced);
+  if (!replaced) return null;
+  return (
+    <p className="hint small" role="status" style={{ marginBottom: 16 }}>
+      {replaced.by} loaded its own inputs. Your earlier workspace edits were kept:{' '}
+      <a href="#/workspace">restore them in the Workspace</a>.
+    </p>
+  );
+}
+
 export function StoryView() {
   const step = useAppState((s) => s.storyStep);
   const go = (n: number) => {
@@ -622,6 +644,7 @@ export function StoryView() {
           </div>
         </nav>
         <div>
+          <KeptEdits />
           {step === 1 ? <Step1 /> : null}
           {step === 2 ? <Step2 /> : null}
           {step === 3 ? <Step3 /> : null}

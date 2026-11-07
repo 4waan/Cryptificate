@@ -174,6 +174,58 @@ export const STATUS_TEXT: Record<ClaimStatus, string> = {
   unsupported: 'Unsupported',
 };
 
+export const IconUndo = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5.5 3.5L2.5 6.5l3 3" />
+    <path d="M2.5 6.5h7a4 4 0 010 8H7" />
+  </Svg>
+);
+
+export const IconRedo = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M10.5 3.5l3 3-3 3" />
+    <path d="M13.5 6.5h-7a4 4 0 000 8H9" />
+  </Svg>
+);
+
+export const IconLink = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M6.8 9.2a3 3 0 004.2 0l2.1-2.1a3 3 0 00-4.2-4.2l-.9.9" />
+    <path d="M9.2 6.8a3 3 0 00-4.2 0L2.9 8.9a3 3 0 004.2 4.2l.9-.9" />
+  </Svg>
+);
+
+export const IconCopy = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5.5" y="5.5" width="8" height="8" rx="1" />
+    <path d="M10.5 3V2.5a1 1 0 00-1-1h-6a1 1 0 00-1 1v6a1 1 0 001 1H4" />
+  </Svg>
+);
+
+export const IconPaste = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5.5 2.5h5v2h-5z" />
+    <path d="M10.5 3.5h1.5a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-9a1 1 0 011-1h1.5" />
+    <path d="M5.5 8.5h5M5.5 11h3" />
+  </Svg>
+);
+
+export const IconSearch = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="7" cy="7" r="4.5" />
+    <path d="M10.4 10.4l3.6 3.6" />
+  </Svg>
+);
+
+export const IconCircuit = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="3.5" cy="4" r="1.5" />
+    <circle cx="3.5" cy="12" r="1.5" />
+    <circle cx="12.5" cy="8" r="1.5" />
+    <path d="M5 4h2.5l3.5 4M5 12h2.5L11 8" />
+  </Svg>
+);
+
 export function StatusIcon({ status, size }: { status: ClaimStatus; size?: number }) {
   switch (status) {
     case 'proved':
