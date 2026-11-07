@@ -40,7 +40,8 @@ Request bodies are [`AnalysisRequest`](../schemas/analysis-request.schema.json) 
 [`AnalysisReport`](../schemas/analysis-report.schema.json) or
 [`ExperimentReport`](../schemas/experiment-report.schema.json), and every error an
 [`ErrorResponse`](../schemas/error.schema.json). Field elements are strings: two hex digits for
-GF(2⁸) (`"1B"`), canonical decimals below the modulus for BN254. Requests are checked strictly
+GF(2⁸) (`"1B"`), canonical decimals below the modulus for BN254, and for `hades/prime/v1`
+canonical decimals below the design's modulus. Requests are checked strictly
 (unknown members are rejected); responses may gain new optional members, which clients should
 ignore.
 

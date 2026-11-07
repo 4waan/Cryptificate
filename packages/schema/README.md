@@ -12,7 +12,8 @@ if (!r.ok) console.log(r.errors); // [{ path: '/design/matrix/0/1', code, messag
 ```
 
 Field elements are strings: GF(2^8) elements are two hex digits (`"1B"`), BN254 scalars are
-canonical decimal strings below the modulus. The validators reject numbers in their place,
+canonical decimal strings below the modulus, and `hades/prime/v1` elements are canonical decimal
+strings below the design's modulus. The validators reject numbers in their place,
 unknown members, out-of-range offsets, rounds and exponents, forward register references and
 programs longer than 256 instructions. Semantic checks (MDS, equivalence) belong to the engine.
 
