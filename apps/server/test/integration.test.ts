@@ -148,6 +148,37 @@ test('prime fields: Poseidon2 widths 16 and 8 and the wide refutations', { skip 
   }
 });
 
+test('round constants: the Grain constants proved, one changed constant refuted at its position', { skip }, async () => {
+  const good = await analyze('koalabear-t4-grain');
+  const proved = status(good, 'constants.grain');
+  assert.equal(proved.status, 'proved');
+  assert.equal(proved.evidence.theorem, 'CryptificateJob.constants_grain');
+  assert.deepEqual(proved.evidence.axioms, ['propext']);
+  const edited = await analyze('koalabear-t4-grain-edited');
+  const refuted = status(edited, 'constants.grain');
+  assert.equal(refuted.status, 'refuted');
+  assert.equal(refuted.evidence.theorem, 'CryptificateJob.constants_not_grain');
+  assert.deepEqual(refuted.witness, { kind: 'constant-mismatch', index: 16, round: 4, position: 0, expected: '245687908', actual: '245687909' });
+  // Every other claim holds for all round constants and is unaffected.
+  assert.equal(status(edited, 'activity.total').status, 'proved');
+  // BN254: the reference constants by the library theorem, explicit ones by evaluation.
+  // The reference path reuses `Grain.bn254_reference`, whose axioms are the standard three;
+  // explicit constants are evaluated in the certificate and use `propext` only.
+  for (const [name, theorem, axioms] of [
+    ['poseidon2-bn254', 'CryptificateJob.constants_grain', ['Classical.choice', 'Quot.sound', 'propext']],
+    ['poseidon2-bn254-grain', 'CryptificateJob.constants_grain', ['propext']],
+  ] as const) {
+    const c = status(await analyze(name), 'constants.grain');
+    assert.equal(c.status, 'proved', name);
+    assert.equal(c.evidence.theorem, theorem);
+    assert.deepEqual([...(c.evidence.axioms ?? [])].sort(), [...axioms], name);
+  }
+  // No constants given: not established, and not a refutation.
+  const none = status(await analyze('koalabear-t4'), 'constants.grain');
+  assert.equal(none.status, 'not_established');
+  assert.equal(none.reason, 'out-of-scope');
+});
+
 test('verify: a KoalaBear bundle re-checks claim by claim', { skip }, async () => {
   const home = mkdtempSync(join(tmpdir(), 'cryptificate-it-'));
   try {

@@ -198,7 +198,8 @@ export type DesignClaimId =
   | 'activity.partial'
   | 'activity.total'
   | 'sbox.differential'
-  | 'sbox.linearity';
+  | 'sbox.linearity'
+  | 'constants.grain';
 
 export type ImplementationClaimId =
   | 'circuit.equivalence'
@@ -316,6 +317,22 @@ export interface KernelWitness {
   vector: BnDecimal[];
 }
 
+/**
+ * The first position at which submitted round constants differ from the ones
+ * the Grain procedure generates (Poseidon2 layout): `index = round * width +
+ * position` in the flat list, values in decimal.
+ */
+export interface ConstantMismatchWitness {
+  kind: 'constant-mismatch';
+  index: number;
+  round: number;
+  position: number;
+  /** The generated constant. */
+  expected: string;
+  /** The submitted constant. */
+  actual: string;
+}
+
 export type Witness =
   | BranchWitness
   | OffsetCollisionWitness
@@ -325,7 +342,8 @@ export type Witness =
   | PartialBypassWitness
   | SboxDifferentialWitness
   | SboxLinearityWitness
-  | KernelWitness;
+  | KernelWitness
+  | ConstantMismatchWitness;
 
 export type WitnessKind = Witness['kind'];
 

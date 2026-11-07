@@ -60,10 +60,13 @@ function referenceClaims(checked: number, diagnosed: number | null): Claim[] {
   });
 }
 
+/** The claims a bundle recorded before the partial-round claims were added predates. */
+const PARTIAL = ['activity.partial', 'activity.total'];
+
 test('reference parameters: charged windows and 34 active S-boxes over all rounds', () => {
   const claims = referenceClaims(3, 3);
   const ids = claims.filter((c) => c.chain === 'design').map((c) => c.id);
-  assert.deepEqual(ids, ['external.mds', 'internal.invertible', 'sbox.bijective', 'activity.outer', 'activity.partial', 'activity.total']);
+  assert.deepEqual(ids, ['external.mds', 'internal.invertible', 'sbox.bijective', 'activity.outer', 'activity.partial', 'activity.total', 'constants.grain']);
   assert.equal(byId(claims, 'activity.partial').status, 'proved');
   assert.equal(byId(claims, 'activity.partial').title, 'No difference passes the partial rounds without an active S-box');
   const total = byId(claims, 'activity.total');
@@ -138,7 +141,7 @@ test('verify: partial-round claims missing from an older bundle are not mismatch
   const recorded = [claim('external.mds', 'proved'), claim('activity.outer', 'proved')];
   const now = [...recorded, claim('activity.partial', 'proved'), claim('activity.total', 'proved')];
   // A bundle shown to predate the claims, lacking both of them.
-  const rows = compareClaims('design', recorded, now, false, { predatesRevision: true });
+  const rows = compareClaims('design', recorded, now, false, { predated: PARTIAL });
   assert.deepEqual(
     rows.map((r) => [r.claim, r.result]),
     [
@@ -149,10 +152,10 @@ test('verify: partial-round claims missing from an older bundle are not mismatch
     ],
   );
   // A recorded status is compared as usual.
-  const forged = compareClaims('design', [...recorded, claim('activity.partial', 'refuted')], now, false, { predatesRevision: true });
+  const forged = compareClaims('design', [...recorded, claim('activity.partial', 'refuted')], now, false, { predated: PARTIAL });
   assert.equal(forged.find((r) => r.claim === 'activity.partial')?.result, 'mismatch');
   // Older claims missing from a bundle still count as a mismatch.
-  const dropped = compareClaims('design', [claim('activity.outer', 'proved')], now, false, { predatesRevision: true });
+  const dropped = compareClaims('design', [claim('activity.outer', 'proved')], now, false, { predated: PARTIAL });
   assert.equal(dropped.find((r) => r.claim === 'external.mds')?.result, 'mismatch');
 });
 
@@ -161,13 +164,13 @@ test('verify: a bundle that cannot be shown to predate the claims may not drop t
   const full = [claim('external.mds', 'proved'), claim('activity.outer', 'proved'), claim('activity.partial', 'refuted'), claim('activity.total', 'not_established')];
   // Recorded by the current version, with the refuted bypass removed from report.json.
   const hidden = full.filter((c) => c.id !== 'activity.partial');
-  const rows = compareClaims('design', hidden, full, false, { predatesRevision: false });
+  const rows = compareClaims('design', hidden, full, false, { predated: [] });
   assert.equal(rows.find((r) => r.claim === 'activity.partial')?.result, 'mismatch');
   // Even an older checker may not drop one of the claims while recording the other.
-  const partly = compareClaims('design', hidden, full, false, { predatesRevision: true });
+  const partly = compareClaims('design', hidden, full, false, { predated: PARTIAL });
   assert.equal(partly.find((r) => r.claim === 'activity.partial')?.result, 'mismatch');
   // Without the predating proof, dropping both is a mismatch too.
-  const both = compareClaims('design', full.slice(0, 2), full, false, { predatesRevision: false });
+  const both = compareClaims('design', full.slice(0, 2), full, false, { predated: [] });
   assert.deepEqual(
     both.filter((r) => r.claim.startsWith('activity.p') || r.claim === 'activity.total').map((r) => r.result),
     ['mismatch', 'mismatch'],
@@ -182,16 +185,16 @@ test('verify: the recorded checker revision decides whether a bundle predates th
   assert.equal(recordedRevision('cryptificate 0.1.0 (--output=x)'), null);
   assert.equal(recordedRevision(undefined), null);
   // A revision unknown to the checkout, or none, proves nothing.
-  assert.equal(await predatesAddedClaims(root, 'cryptificate 0.1.0 (0000000)'), false);
-  assert.equal(await predatesAddedClaims(root, 'cryptificate 0.1.0'), false);
+  assert.deepEqual(await predatesAddedClaims(root, 'cryptificate 0.1.0 (0000000)'), []);
+  assert.deepEqual(await predatesAddedClaims(root, 'cryptificate 0.1.0'), []);
   const git = (args: string[]) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
   if (git(['rev-parse', '--verify', '--quiet', 'HEAD^{commit}']).status !== 0) return;
   // The current checkout names the claims.
   const head = git(['rev-parse', '--short', 'HEAD']).stdout.trim();
-  assert.equal(await predatesAddedClaims(root, `cryptificate 0.1.0 (${head})`), false);
+  assert.deepEqual(await predatesAddedClaims(root, `cryptificate 0.1.0 (${head})`), []);
   // The revision that recorded the example HADES bundles predates them,
   // when the checkout has its history.
   if (git(['cat-file', '-e', 'e74b8e6^{commit}']).status === 0) {
-    assert.equal(await predatesAddedClaims(root, 'cryptificate 0.1.0 (e74b8e6)'), true);
+    assert.deepEqual(await predatesAddedClaims(root, 'cryptificate 0.1.0 (e74b8e6)'), ['activity.partial', 'activity.total', 'constants.grain']);
   }
 });

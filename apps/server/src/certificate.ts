@@ -90,6 +90,10 @@ export function derivedEcho(req: AnalysisRequest): Record<string, unknown> {
     out['candFullRounds'] = d.fullRounds;
     out['candPartialRounds'] = d.partialRounds;
     out['candPartialMask'] = d.partialMask;
+    // Explicit round constants are echoed row by row, as the request lists
+    // them (claim constants.grain); the reference constants are a library
+    // definition and are not echoed.
+    if (d.constants?.kind === 'explicit') out['candConstants'] = d.constants.values;
   }
   if (req.program) {
     // the display name is not part of the certificate

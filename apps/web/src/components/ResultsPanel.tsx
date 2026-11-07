@@ -28,6 +28,7 @@ const DESIGN_CLAIMS: Record<ModelId, { id: ClaimId; title: string }[]> = {
     { id: 'activity.outer', title: 'Active S-box bound in full rounds' },
     { id: 'activity.partial', title: 'No difference passes the partial rounds without an active S-box' },
     { id: 'activity.total', title: 'Active S-box bound over the whole permutation' },
+    { id: 'constants.grain', title: 'Round constants are the Grain constants' },
   ],
   'hades/prime/v1': [
     { id: 'field.prime', title: 'Modulus is prime' },
@@ -40,6 +41,7 @@ const DESIGN_CLAIMS: Record<ModelId, { id: ClaimId; title: string }[]> = {
     { id: 'activity.outer', title: 'Active S-box bound in full rounds' },
     { id: 'activity.partial', title: 'No difference passes the partial rounds without an active S-box' },
     { id: 'activity.total', title: 'Active S-box bound over the whole permutation' },
+    { id: 'constants.grain', title: 'Round constants are the Grain constants' },
   ],
 };
 
@@ -80,6 +82,9 @@ function missingReason(id: ClaimId, inputs: WorkspaceInputs, experiment: Experim
   }
   if (id === 'sbox.differential' || id === 'sbox.linearity') {
     return 'This run did not report S-box quality; reports recorded before these claims existed do not include them.';
+  }
+  if (id === 'constants.grain') {
+    return 'This report was recorded before the round-constant claim was added; check the design again to derive it.';
   }
   return 'This run did not report this claim.';
 }

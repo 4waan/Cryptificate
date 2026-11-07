@@ -21,8 +21,9 @@ use num_traits::{One, ToPrimitive};
 use serde::{Serialize, Serializer};
 
 use crate::circuit::{CircuitStats, CoefficientMismatch, Distinguisher};
-use crate::design::{AesLikeDesign, CandidateDesign, HadesDesign, SboxSpec, Target};
+use crate::design::{AesLikeDesign, CandidateDesign, ConstantsSpec, HadesDesign, SboxSpec, Target};
 use crate::field::{bn254_modulus, Bn254, Field, FieldKind, Gf256};
+use crate::grain;
 use crate::limits;
 use crate::linalg::{
     basis, combinations, coordinates, determinant, encode_vec, inverse, kernel_vector, mat_vec,
@@ -902,7 +903,168 @@ pub struct HadesDiagnostics<F = Bn254> {
     pub partial: PartialAnalysis<F>,
     /// The bound over the whole permutation (claim `activity.total`).
     pub total: ActivityAnalysis,
+    /// The round constants against the Grain procedure (claim `constants.grain`).
+    pub constants: ConstantsAnalysis,
     pub program: Option<ProgramAnalysis<F>>,
+}
+
+/// Where a design's round constants come from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ConstantsSource {
+    /// Submitted as an explicit array.
+    Explicit,
+    /// The profile's reference constants (`hades/bn254/v1` only).
+    Reference,
+    /// Not given (`hades/prime/v1` only).
+    Unspecified,
+}
+
+/// The first position at which submitted constants differ from the ones the
+/// Grain procedure generates.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConstantMismatch {
+    /// Position in the flat list, `round * width + position`.
+    pub index: usize,
+    pub round: usize,
+    pub position: usize,
+    /// The generated constant, decimal.
+    pub expected: String,
+    /// The submitted constant, decimal.
+    pub actual: String,
+}
+
+impl ConstantMismatch {
+    pub fn to_witness(&self) -> Witness {
+        Witness::ConstantMismatch {
+            index: self.index,
+            round: self.round,
+            position: self.position,
+            expected: self.expected.clone(),
+            actual: self.actual.clone(),
+        }
+    }
+}
+
+/// Claim `constants.grain`: are the round constants exactly those of the
+/// Poseidon2 reference generation (Grain LFSR, Poseidon2 layout) for the
+/// design's modulus, width and round numbers?
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConstantsAnalysis {
+    pub source: ConstantsSource,
+    /// Always `"poseidon2"`: `R_F·t + R_P` constants, partial rounds `[c, 0, …, 0]`.
+    pub layout: &'static str,
+    /// The field size of the seed: the bit length of the modulus.
+    pub field_size: u64,
+    /// `Some` when decided: whether the constants are the generated ones.
+    pub matches: Option<bool>,
+    pub mismatch: Option<ConstantMismatch>,
+    pub note: String,
+}
+
+/// The constants of `d` against the Grain procedure for modulus `p`.
+fn analyze_constants<F: Field>(d: &HadesDesign<F>, p: &BigUint) -> ConstantsAnalysis {
+    let field_size = grain::field_size(p);
+    let undecided = |source, note: String| ConstantsAnalysis {
+        source,
+        layout: "poseidon2",
+        field_size,
+        matches: None,
+        mismatch: None,
+        note,
+    };
+    let values = match &d.constants {
+        ConstantsSpec::Unspecified => {
+            return undecided(
+                ConstantsSource::Unspecified,
+                "not established: the design gives no round constants".into(),
+            )
+        }
+        ConstantsSpec::Reference => {
+            // The profile's reference constants are WideTrail's pinned BN254
+            // table for 8 full and 56 partial rounds; the library proves them
+            // equal to the Grain constants (`Grain.bn254_reference`).
+            return if d.width == 3 && d.full_rounds == 8 && d.partial_rounds == 56 {
+                ConstantsAnalysis {
+                    matches: Some(true),
+                    note: "the reference constants are the Grain constants of the BN254 \
+                           instance with t = 3, R_F = 8, R_P = 56 (Grain.bn254_reference)"
+                        .into(),
+                    ..undecided(ConstantsSource::Reference, String::new())
+                }
+            } else {
+                undecided(
+                    ConstantsSource::Reference,
+                    format!(
+                        "not established: the reference constants are those of R_F = 8 and \
+                         R_P = 56, and this design has R_F = {} and R_P = {}; submit explicit \
+                         constants to compare them with the Grain procedure",
+                        d.full_rounds, d.partial_rounds
+                    ),
+                )
+            };
+        }
+        ConstantsSpec::Explicit { values } => values,
+    };
+    let expected = match grain::poseidon2_constants(p, d.width, d.full_rounds, d.partial_rounds) {
+        Ok(c) => c,
+        Err(e) => {
+            return undecided(
+                ConstantsSource::Explicit,
+                format!("not established: the Grain procedure is not defined here: {e}"),
+            )
+        }
+    };
+    let submitted: Vec<BigUint> = values
+        .iter()
+        .flatten()
+        .map(|x| {
+            x.to_string()
+                .parse()
+                .expect("canonical elements are decimal")
+        })
+        .collect();
+    let w = d.width;
+    match grain::first_difference(&expected, &submitted) {
+        None => ConstantsAnalysis {
+            matches: Some(true),
+            note: format!(
+                "all {} constants are the Grain constants for n = {field_size}, t = {w}, \
+                 R_F = {}, R_P = {} in the Poseidon2 layout",
+                expected.len(),
+                d.full_rounds,
+                d.partial_rounds
+            ),
+            ..undecided(ConstantsSource::Explicit, String::new())
+        },
+        Some(i) if i < expected.len() && i < submitted.len() => {
+            let m = ConstantMismatch {
+                index: i,
+                round: i / w,
+                position: i % w,
+                expected: expected[i].to_string(),
+                actual: submitted[i].to_string(),
+            };
+            ConstantsAnalysis {
+                matches: Some(false),
+                note: format!(
+                    "the constant of round {} at position {} is {}, and the Grain procedure \
+                     for n = {field_size}, t = {w}, R_F = {}, R_P = {} (Poseidon2 layout) \
+                     generates {} there",
+                    m.round, m.position, m.actual, d.full_rounds, d.partial_rounds, m.expected
+                ),
+                mismatch: Some(m),
+                ..undecided(ConstantsSource::Explicit, String::new())
+            }
+        }
+        // Validation fixes the number of constants, so the lengths agree.
+        Some(_) => undecided(
+            ConstantsSource::Explicit,
+            "not established: the number of constants differs from the generated list".into(),
+        ),
+    }
 }
 
 /// The modulus of a prime-field design and the Pratt certificate the
@@ -1144,14 +1306,16 @@ pub fn diagnose(req: &AnalysisRequest) -> Diagnostics {
                 Some(AnyProgram::Bn254(p)) if p.width == d.width => Some(p),
                 _ => None,
             };
-            let (h, claims) = diagnose_hades(d, program, req.target, analyze_power);
+            let (h, claims) =
+                diagnose_hades(d, program, req.target, bn254_modulus(), analyze_power);
             (ModelDiagnostics::Hades(h), claims)
         }
         CandidateDesign::HadesPrime(d) => {
             let p = d.modulus_value();
             let prime = PrimeFieldAnalysis::new(d.field, p);
             let (mut hades, mut claims, packed) = with_modulus(p, || {
-                let (hades, claims) = diagnose_hades(d, None, req.target, analyze_power_fp);
+                let (hades, claims) =
+                    diagnose_hades(d, None, req.target, &BigUint::from(p), analyze_power_fp);
                 let packed = limits::prime_width_is_packed(d.width)
                     .then(|| analyze_packed(d, p, &hades.partial));
                 (hades, claims, packed)
@@ -1485,6 +1649,7 @@ fn diagnose_hades<F: Field>(
     d: &HadesDesign<F>,
     program: Option<&Program<F>>,
     target: Target,
+    modulus: &BigUint,
     power: impl Fn(u32) -> PowerAnalysis<F>,
 ) -> (HadesDiagnostics<F>, Vec<ClaimPrediction>) {
     let external = analyze_matrix(&d.external);
@@ -1631,6 +1796,25 @@ fn diagnose_hades<F: Field>(
             note: total.reason.clone(),
         },
     ];
+    let constants = analyze_constants(d, modulus);
+    claims.push(match constants.matches {
+        Some(holds) => ClaimPrediction::decided(
+            claim_ids::CONSTANTS_GRAIN,
+            holds,
+            constants
+                .mismatch
+                .as_ref()
+                .map(ConstantMismatch::to_witness),
+            constants.note.clone(),
+        ),
+        None => ClaimPrediction {
+            claim: claim_ids::CONSTANTS_GRAIN,
+            predicted: Status::NotEstablished,
+            holds: None,
+            witness: None,
+            note: constants.note.clone(),
+        },
+    });
     if let Some(p) = &program {
         claims.push(program_prediction(p));
     }
@@ -1642,6 +1826,7 @@ fn diagnose_hades<F: Field>(
             activity,
             partial,
             total,
+            constants,
             program,
         },
         claims,

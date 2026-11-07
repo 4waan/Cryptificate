@@ -21,6 +21,7 @@
         "activity.total",
         "sbox.differential",
         "sbox.linearity",
+        "constants.grain",
         "circuit.equivalence",
         "native.correctness",
         "rust.refinement",

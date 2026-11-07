@@ -297,6 +297,9 @@ export function claimLocation(c: Claim, input: CheckInput): { file: string; poin
     case 'sbox.differential':
     case 'sbox.linearity':
       return d('/sbox');
+    case 'constants.grain':
+      // A design without constants has no such member; the pointer then falls back to the design.
+      return w?.kind === 'constant-mismatch' ? d(`/constants/values/${w.round}/${w.position}`) : d('/constants');
     case 'circuit.equivalence':
       return w?.kind === 'distinguishing-input' && w.differing.length > 0 ? p(`/outputs/${w.differing[0]}`) : p('');
     default:

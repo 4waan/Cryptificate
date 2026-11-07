@@ -159,7 +159,7 @@ Before this interface, `check` returned 1 for a run that failed or timed out; it
 
 ## SARIF
 
-The log follows SARIF 2.1.0: one run, tool driver `Cryptificate` with one rule per claim id (`matrix.mds`, `offsets.dispersion`, `sbox.bijective`, `activity.bound`, `sbox.differential`, `sbox.linearity`, `field.prime`, `external.mds`, `external.m4_mds`, `external.invertible`, `internal.invertible`, `activity.outer`, `activity.partial`, `activity.total`, `circuit.equivalence`, `native.correctness`, `rust.refinement`, `native.timing`), and one result per claim of each input.
+The log follows SARIF 2.1.0: one run, tool driver `Cryptificate` with one rule per claim id (`matrix.mds`, `offsets.dispersion`, `sbox.bijective`, `activity.bound`, `sbox.differential`, `sbox.linearity`, `field.prime`, `external.mds`, `external.m4_mds`, `external.invertible`, `internal.invertible`, `activity.outer`, `activity.partial`, `activity.total`, `constants.grain`, `circuit.equivalence`, `native.correctness`, `rust.refinement`, `native.timing`), and one result per claim of each input.
 
 | Claim | `kind` | `level` |
 | --- | --- | --- |
@@ -183,6 +183,7 @@ Locations point into the file you wrote, with a line and column:
 | `activity.total` | `partialRounds` |
 | `field.prime` | `modulus` (the design when the modulus is omitted for a named field) |
 | `sbox.differential`, `sbox.linearity` | `sbox` |
+| `constants.grain` | the differing constant when refuted, otherwise `constants` (the design when it gives no constants) |
 | `circuit.equivalence` | the first differing output of the circuit when refuted, otherwise the circuit |
 | other implementation claims | the circuit, or the top of the file when there is none |
 

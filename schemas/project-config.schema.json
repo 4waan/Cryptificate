@@ -42,6 +42,7 @@
           "activity.outer",
           "activity.partial",
           "activity.total",
+          "constants.grain",
           "circuit.equivalence",
           "native.correctness",
           "rust.refinement",

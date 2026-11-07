@@ -83,6 +83,7 @@ const RECHECKED: ReadonlySet<string> = new Set([
   'activity.outer',
   'activity.partial',
   'activity.total',
+  'constants.grain',
   'circuit.equivalence',
 ]);
 
@@ -90,8 +91,8 @@ const RECHECKED: ReadonlySet<string> = new Set([
  * How a bundle is shown to predate a group of claims:
  *
  * - `revision`: the checker revision the bundle records is a commit of the
- *   local checkout whose claim list does not name the group's claims (see
- *   `predatesAddedClaims`);
+ *   local checkout whose claim list names none of the group's claims (see
+ *   `predatesAddedClaims`), group by group;
  * - `certificate`: the bundle records a Lean source digest and it differs from
  *   the digest of the certificate regenerated now, so the bundle was produced
  *   by a different engine or template set.
@@ -114,7 +115,12 @@ export interface AddedClaimGroup {
 export const ADDED_LATER: readonly AddedClaimGroup[] = [
   { ids: ['activity.partial', 'activity.total'], evidence: 'revision' },
   { ids: ['sbox.differential', 'sbox.linearity'], evidence: 'certificate' },
+  { ids: ['constants.grain'], evidence: 'revision' },
 ];
+
+// The wide-width claims external.m4_mds and external.invertible are no group:
+// they exist only above width 4, which no checker before them accepted, so no
+// bundle recorded before them has a design that carries them.
 
 /** The schema file whose claim list gained the `revision` groups of `ADDED_LATER`. */
 const CLAIM_LIST_FILE = 'packages/schema/src/constants.ts';
@@ -138,24 +144,26 @@ export function recordedRevision(checker: unknown): string | null {
 }
 
 /**
- * Whether the checker that recorded a bundle provably predates the
- * `revision` groups of `ADDED_LATER`: its revision is a commit of the local
- * checkout whose claim list names none of their claims. Without git, without
+ * The claims of `ADDED_LATER` that the checker which recorded a bundle
+ * provably predates: its revision is a commit of the local checkout whose
+ * claim list names none of the claims of their group. Without git, without
  * that commit, or with a dirty or missing revision this cannot be shown, and
- * the answer is `false`.
+ * the answer is empty.
  */
-export async function predatesAddedClaims(root: string, checker: unknown): Promise<boolean> {
+export async function predatesAddedClaims(root: string, checker: unknown): Promise<string[]> {
   const rev = recordedRevision(checker);
-  if (!rev) return false;
+  if (!rev) return [];
   const r = await run('git', ['-C', root, 'show', `${rev}:${CLAIM_LIST_FILE}`], { timeoutMs: 10000 });
-  if (r.code !== 0) return false;
-  const ids = ADDED_LATER.filter((g) => g.evidence === 'revision').flatMap((g) => g.ids);
-  return ids.every((id) => !r.stdout.includes(`'${id}'`));
+  if (r.code !== 0) return [];
+  return ADDED_LATER.filter((g) => g.evidence === 'revision' && g.ids.every((id) => !r.stdout.includes(`'${id}'`))).flatMap((g) => g.ids);
 }
 
 export interface CompareOptions {
-  /** The recording checker predates the `revision` groups (`predatesAddedClaims`). */
-  predatesRevision?: boolean;
+  /**
+   * Claims of the `revision` groups that the recording checker predates
+   * (`predatesAddedClaims`).
+   */
+  predated?: readonly string[];
   /**
    * The bundle records a Lean source digest and it differs from the digest of
    * the certificate regenerated now (evidence for the `certificate` groups).
@@ -163,8 +171,10 @@ export interface CompareOptions {
   olderCertificate?: boolean;
 }
 
-function hasEvidence(opts: CompareOptions, evidence: PredatingEvidence): boolean {
-  return evidence === 'revision' ? (opts.predatesRevision ?? false) : (opts.olderCertificate ?? false);
+function hasEvidence(opts: CompareOptions, g: AddedClaimGroup): boolean {
+  if (g.evidence === 'certificate') return opts.olderCertificate ?? false;
+  const predated = opts.predated ?? [];
+  return g.ids.every((id) => predated.includes(id));
 }
 
 /** The group of `ADDED_LATER` a claim belongs to, if any. */
@@ -190,7 +200,7 @@ function valueText(c: Claim): string {
  */
 export function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean, opts: CompareOptions = {}): VerifyRow[] {
   // Groups the bundle may omit: it lacks all of their claims and predates them.
-  const omittable = ADDED_LATER.filter((g) => hasEvidence(opts, g.evidence) && g.ids.every((id) => !recorded.some((r) => r.id === id)));
+  const omittable = ADDED_LATER.filter((g) => hasEvidence(opts, g) && g.ids.every((id) => !recorded.some((r) => r.id === id)));
   const rows: VerifyRow[] = [];
   for (const rc of recorded) {
     const now = recomputed.find((c) => c.id === rc.id);
@@ -259,11 +269,11 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
         const recomputedDigest = now?.inputDigest ?? null;
         const recorded = (report as AnalysisReport).claims;
         const checker = (report as AnalysisReport).provenance?.checker;
-        const predatesRevision = await predatesAddedClaims(env.paths.root, checker);
+        const predated = await predatesAddedClaims(env.paths.root, checker);
         const recordedSource = report.provenance.leanSourceSha256;
         const recomputedSource = now?.provenance.leanSourceSha256;
         const olderCertificate = recordedSource !== undefined && recomputedSource !== undefined && recordedSource !== recomputedSource;
-        let rows = compareClaims('design', recorded, now?.claims ?? [], opts.native ?? false, { predatesRevision, olderCertificate });
+        let rows = compareClaims('design', recorded, now?.claims ?? [], opts.native ?? false, { predated, olderCertificate });
         rows = rows.map((r) => ({ ...r, subject: r.claim.startsWith('circuit') || r.claim.startsWith('native') || r.claim.startsWith('rust') ? 'implementation' : 'design' }));
         if (recomputedDigest && recomputedDigest !== report.inputDigest) notes.push('The recomputed input digest differs from the recorded one.');
         if (result.state !== 'completed') notes.push(`The re-run ended with state ${result.state}.`);

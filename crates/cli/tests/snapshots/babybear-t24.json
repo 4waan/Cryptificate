@@ -159,8 +159,23 @@
         "note": "not established by this method for width 24: the full-round bound needs an MDS external matrix, the minors of a 24 x 24 matrix are not enumerated (and the Poseidon2 matrix circ(2 M4, M4, ..., M4) of width above 4 is not MDS), and no theorem here bounds the activity of full rounds whose external matrix is not MDS",
         "predicted": "not_established",
         "witness": null
+      },
+      {
+        "claim": "constants.grain",
+        "holds": null,
+        "note": "not established: the design gives no round constants",
+        "predicted": "not_established",
+        "witness": null
       }
     ],
+    "constants": {
+      "fieldSize": 31,
+      "layout": "poseidon2",
+      "matches": null,
+      "mismatch": null,
+      "note": "not established: the design gives no round constants",
+      "source": "unspecified"
+    },
     "external": {
       "branchWitness": {
         "bound": 25,

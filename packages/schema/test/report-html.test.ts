@@ -229,7 +229,7 @@ test('the appendix JSON is compact and parses back to the recorded inputs', () =
   assert.equal(compactJson({ a: [1, 2], b: { op: 'add', a: 0, b: 1 }, c: [] }), '{\n  "a": [1, 2],\n  "b": {"op": "add", "a": 0, "b": 1},\n  "c": []\n}');
 });
 
-test('the partial-round, S-box quality and kernel witnesses read as text', () => {
+test('the partial-round, S-box quality, kernel and round-constant witnesses read as text', () => {
   assert.equal(
     witnessSummary({ kind: 'partial-bypass', difference: ['0', '1', '21888242871839275222246405745257275088548364400416034343698204186575808495616'], positions: [0], partialRounds: 56 }),
     'the difference [0, 1, 21888242871839275222246405745257275088548364400416034343698204186575808495616] stays zero at the partial-round S-box positions 0 under every power of the internal matrix below 56, so it passes the 56 partial rounds with no active S-box',
@@ -245,5 +245,9 @@ test('the partial-round, S-box quality and kernel witnesses read as text', () =>
   assert.equal(
     witnessSummary({ kind: 'kernel', vector: ['1', '2013265920', '0', '0'] }),
     'the nonzero vector [1, 2013265920, 0, 0] is sent to zero by the matrix, so the matrix is singular',
+  );
+  assert.equal(
+    witnessSummary({ kind: 'constant-mismatch', index: 16, round: 4, position: 0, expected: '245687908', actual: '245687909' }),
+    'the round constant of round 4 at position 0 (index 16) is 245687909, and the Grain procedure generates 245687908 there',
   );
 });

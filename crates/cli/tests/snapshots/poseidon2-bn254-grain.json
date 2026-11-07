@@ -1,0 +1,142 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": true,
+      "bound": 16,
+      "claim": "activity.outer",
+      "reason": "the external matrix is MDS, the internal matrix is invertible and the power map is a bijection, so the full-round bound applies",
+      "rounds": 8
+    },
+    "claims": [
+      {
+        "claim": "external.mds",
+        "holds": true,
+        "note": "all 19 square minors of the external matrix are nonzero, so its branch number is 4",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "internal.invertible",
+        "holds": true,
+        "note": "the internal matrix has determinant 7",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "gcd(5, p-1) = 1, so x^5 is inverted by x^d with d = 17510594297471420177797124596205820070838691520332827474958563349260646796493",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.outer",
+        "holds": true,
+        "note": "the external matrix is MDS, the internal matrix is invertible and the power map is a bijection, so the full-round bound applies",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.partial",
+        "holds": true,
+        "note": "the rows e0 M^0, e0 M^1, e0 M^2 of the powers of the internal matrix M at the masked positions have determinant 1, so no nonzero difference avoids the S-boxes of 3 consecutive partial rounds",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.total",
+        "holds": true,
+        "note": "the full-round bound 16 plus one active S-box in each of the 18 disjoint windows of 3 partial rounds",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "constants.grain",
+        "holds": true,
+        "note": "all 192 constants are the Grain constants for n = 254, t = 3, R_F = 8, R_P = 56 in the Poseidon2 layout",
+        "predicted": "proved",
+        "witness": null
+      }
+    ],
+    "constants": {
+      "fieldSize": 254,
+      "layout": "poseidon2",
+      "matches": true,
+      "mismatch": null,
+      "note": "all 192 constants are the Grain constants for n = 254, t = 3, R_F = 8, R_P = 56 in the Poseidon2 layout",
+      "source": "explicit"
+    },
+    "external": {
+      "branchWitness": null,
+      "determinant": "4",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 19,
+      "zeroMinors": 0
+    },
+    "internal": {
+      "branchWitness": null,
+      "determinant": "7",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 19,
+      "zeroMinors": 0
+    },
+    "model": "hades/bn254/v1",
+    "partial": {
+      "bypass": null,
+      "determinant": "1",
+      "partialRounds": 56,
+      "positions": [
+        0
+      ],
+      "rows": [
+        {
+          "position": 0,
+          "power": 0,
+          "row": [
+            "1",
+            "0",
+            "0"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 1,
+          "row": [
+            "2",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 2,
+          "row": [
+            "6",
+            "5",
+            "6"
+          ]
+        }
+      ],
+      "window": 3
+    },
+    "power": {
+      "bijective": true,
+      "collision": null,
+      "exponent": 5,
+      "gcd": 1,
+      "inverseExponent": "17510594297471420177797124596205820070838691520332827474958563349260646796493",
+      "k": 4
+    },
+    "target": "external",
+    "total": {
+      "applicable": true,
+      "bound": 34,
+      "claim": "activity.total",
+      "reason": "the full-round bound 16 plus one active S-box in each of the 18 disjoint windows of 3 partial rounds",
+      "rounds": 64
+    }
+  },
+  "inputDigest": "sha256:9bfb3471acc2adab505a9fbbe269de77115acc31d33ebfd7d7d27eeab5aed50b"
+}

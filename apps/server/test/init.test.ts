@@ -61,7 +61,7 @@ test('the presets are the example designs and circuits, and pass the request val
     }
   }
   assert.deepEqual(defaultClaims('aes-like', false), ['matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'sbox.differential', 'sbox.linearity']);
-  assert.deepEqual(defaultClaims('hades', true), ['external.mds', 'internal.invertible', 'sbox.bijective', 'activity.outer', 'activity.partial', 'activity.total', 'circuit.equivalence', 'native.correctness']);
+  assert.deepEqual(defaultClaims('hades', true), ['external.mds', 'internal.invertible', 'sbox.bijective', 'activity.outer', 'activity.partial', 'activity.total', 'constants.grain', 'circuit.equivalence', 'native.correctness']);
   // short scalar arrays stay on one line, as in the examples
   assert.equal(prettyJson({ a: [1, 2], b: { kind: 'aes' }, c: [['01', '02']] }), '{\n  "a": [1, 2],\n  "b": { "kind": "aes" },\n  "c": [\n    ["01", "02"]\n  ]\n}');
 });

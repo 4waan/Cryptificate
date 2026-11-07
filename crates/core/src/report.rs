@@ -30,6 +30,8 @@ pub mod claim_ids {
     pub const ACTIVITY_OUTER: &str = "activity.outer";
     pub const ACTIVITY_PARTIAL: &str = "activity.partial";
     pub const ACTIVITY_TOTAL: &str = "activity.total";
+    // Design chain, HADES: the round constants are the Grain constants.
+    pub const CONSTANTS_GRAIN: &str = "constants.grain";
     // Implementation chain.
     pub const CIRCUIT_EQUIVALENCE: &str = "circuit.equivalence";
     pub const NATIVE_CORRECTNESS: &str = "native.correctness";
@@ -193,6 +195,16 @@ pub enum Witness {
     /// A nonzero vector `x` with `M x = 0` for the matrix `M` of the claim,
     /// so `M` is singular.
     Kernel { vector: Vec<String> },
+    /// The first position at which submitted round constants differ from
+    /// the ones the Grain procedure generates: `index = round * width +
+    /// position` in the Poseidon2 layout, decimal values.
+    ConstantMismatch {
+        index: usize,
+        round: usize,
+        position: usize,
+        expected: String,
+        actual: String,
+    },
     /// Two distinct field elements with the same power.
     PowerCollision {
         exponent: u32,

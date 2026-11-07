@@ -3,18 +3,29 @@ import Cryptificate
 /-!
 # Example: the reference Poseidon2 parameters over BN254
 
-The width-three Poseidon2 parameters that WideTrail pins: external matrix `[[2,1,1],[1,2,1],[1,1,2]]`,
-internal matrix `[[2,1,1],[1,2,1],[1,1,3]]`, S-box `x ↦ x ^ 5`, `8` full and `56` partial rounds.
-The external matrix is MDS by its `19` canonical minors, the internal matrix has determinant `7`,
-and `5` is a permutation exponent with inverse `d` satisfying `5 * d = 4 * (p - 1) + 1`. With
-`h = 4` full rounds on each side, the activity bound is `(2 + 2) * 4 = 16`, the figure of
-WideTrail's `Poseidon2.BN254.activity`, here counted over the full rounds only and for every mask
-and every choice of round constants. `Hades.reference_permutation` checks that the execution
-model behind `outerActivity` is WideTrail's pinned permutation.
+The certificate the engine emits for `examples/designs/poseidon2-bn254.json`: the width-three
+Poseidon2 parameters that WideTrail pins, external matrix `[[2,1,1],[1,2,1],[1,1,2]]`, internal
+matrix `[[2,1,1],[1,2,1],[1,1,3]]`, S-box `x ↦ x ^ 5`, `8` full and `56` partial rounds, the S-box
+of a partial round at position `0`, and the profile's reference round constants. The external
+matrix is MDS by its `19` canonical minors, the internal matrix has determinant `7`, and `5` is a
+permutation exponent with inverse `d` satisfying `5 * d = 4 * (p - 1) + 1`. With `h = 4` full
+rounds on each side, the activity bound is `(2 + 2) * 4 = 16`, the figure of WideTrail's
+`Poseidon2.BN254.activity`, here counted over the full rounds only and for every mask and every
+choice of round constants. `Hades.reference_permutation` checks that the execution model behind
+`outerActivity` is WideTrail's pinned permutation. Every window of three partial rounds has an
+active S-box, which adds `56 / 3 = 18` to the bound over all rounds.
 
-Instantiated by `scripts/instantiate.py` from the fragments `header`, `const_external_bn254`,
-`const_internal_bn254`, `const_exponent`, `const_rounds_hades`, `external_mds`,
-`internal_invertible`, `power_bijective`, `hades_activity` and `footer`.
+`constants_grain` reuses the library theorem `Grain.bn254_reference`: WideTrail's pinned constants
+are the ones the Poseidon2 reference procedure generates for `t = 3`, `R_F = 8`, `R_P = 56`. Its
+statement names `candFullRounds` and `candPartialRounds`, so it checks only because these are `8`
+and `56`. Unlike the certificates for explicit constants (`GrainBN254`), it depends on
+`Classical.choice` and `Quot.sound` as well as `propext`. This is a statement about provenance,
+not about security.
+
+Instantiated from the fragments `header`, `const_external_bn254`, `const_internal_bn254`,
+`const_exponent`, `const_rounds_hades`, `const_mask_hades`, `external_mds`,
+`internal_invertible`, `power_bijective`, `hades_activity`, `partial_active`,
+`hades_total_activity`, `constants_grain_reference_bn254` and `footer`.
 -/
 
 set_option autoImplicit false
@@ -54,6 +65,17 @@ def candFullRounds : ℕ := 8
 def candPartialRounds : ℕ := 56
 
 #eval Audit.echoInput "candPartialRounds" candPartialRounds
+
+/-- The candidate's partial-round mask: `true` at the positions where a partial round applies
+the S-box, as submitted. -/
+def candPartialMask : Fin 3 → Bool :=
+  maskBits3 1 0 0
+
+#eval Audit.echoInput "candPartialMask" candPartialMask
+
+/-- The positions where `candPartialMask` is `true`: the S-box positions of a partial round. -/
+def candMask : Finset (Fin 3) :=
+  Finset.univ.filter fun i => candPartialMask i = true
 
 /-- Claim `external.mds`: every square submatrix of `candExternal` is nonsingular, so its branch
 number is `4`. The kernel evaluates the `19` canonical minors by explicit formulas
@@ -102,8 +124,72 @@ theorem hades_activity :
         fullRounds := candFullRounds, partialRounds := candPartialRounds }
       external_mds internal_invertible power_bijective mask constants hxy
 
+/-- Claim `activity.partial`: the candidate's partial rounds cannot be passed by a nonzero
+difference without an active S-box. Each partial round adds its round constants, applies
+`x ↦ x ^ candExponent` at the positions of `candMask` and multiplies by `candInternal`. The
+statement says that there are at least as many partial rounds as the window length, and that every
+window of that many consecutive partial rounds is charged: for every choice of round constants,
+every window inside the partial rounds and every two distinct states entering it, some S-box of
+the window receives different inputs in the two runs. A bypass is therefore impossible
+(`Hades.Design.not_bypass_of_windowActive`). The certificate is observability: the rows of
+`candInternal ^ j` at masked positions, for `j` below the window length, include three rows with a
+nonzero determinant (`Hades.observable_of_rows3`); the powers and positions of those rows are
+listed below in that order. -/
+theorem partial_active :
+    3 ≤ candPartialRounds ∧
+      Hades.Design.WindowActive
+        { external := candExternal, internal := candInternal, exponent := candExponent,
+          fullRounds := candFullRounds, partialRounds := candPartialRounds }
+        candMask 3 :=
+  ⟨by decide,
+    Hades.Design.windowActive_of_observable
+      { external := candExternal, internal := candInternal, exponent := candExponent,
+        fullRounds := candFullRounds, partialRounds := candPartialRounds }
+      (Hades.observable_of_rows3 candInternal candMask 3
+        ![0, 1, 2] ![0, 0, 0] (by decide) (by decide) (by decide))⟩
+
+/-- Claim `activity.total`: run the candidate permutation on two distinct inputs, with the
+partial-round S-boxes at the positions of `candMask`. For every choice of round constants, the
+full rounds and the partial rounds together contain at least the full-round bound of
+`hades_activity` plus one S-box for each of the disjoint windows of consecutive partial rounds
+that `partial_active` charges, here written `candPartialRounds / L` with `L` the window length.
+Full rounds count every S-box, partial rounds the masked ones, so the two counts together are
+every active S-box of the permutation. Uses `external_mds`, `internal_invertible`,
+`power_bijective` and `partial_active` from this file. -/
+theorem hades_total_activity :
+    ∀ (constants : ℕ → Fin 3 → Poseidon2.BN254.F) (x y : Fin 3 → Poseidon2.BN254.F), x ≠ y →
+        (candFullRounds / 2 / 2 + candFullRounds / 2 / 2) * 4
+            + candFullRounds / 2 % 2 + candFullRounds / 2 % 2 + candPartialRounds / 3
+          ≤ Hades.Design.outerActivity
+              { external := candExternal, internal := candInternal, exponent := candExponent,
+                fullRounds := candFullRounds, partialRounds := candPartialRounds }
+              candMask constants x y
+            + Hades.Design.partialActivity
+              { external := candExternal, internal := candInternal, exponent := candExponent,
+                fullRounds := candFullRounds, partialRounds := candPartialRounds }
+              candMask constants x y :=
+  -- The design is passed explicitly, as in `hades_activity`.
+  fun constants _ _ hxy =>
+    Hades.Design.total_activity
+      { external := candExternal, internal := candInternal, exponent := candExponent,
+        fullRounds := candFullRounds, partialRounds := candPartialRounds }
+      external_mds internal_invertible power_bijective partial_active.2 constants hxy
+
+/-- Claim `constants.grain` for the profile's reference constants: WideTrail's pinned BN254
+constants (`Poseidon2.BN254.roundConstants`, read row by row as `Grain.bn254ReferenceFlat`) are
+exactly the ones the Poseidon2 reference procedure generates for width `3`, `candFullRounds = 8`
+full and `candPartialRounds = 56` partial rounds. The library proves this once by kernel
+evaluation (`Grain.bn254_reference`); the certificate reuses it. -/
+theorem constants_grain :
+    Grain.poseidon2Constants Poseidon2.BN254.modulus 3 candFullRounds candPartialRounds =
+      some Grain.bn254ReferenceFlat :=
+  Grain.bn254_reference
+
 end CryptificateJob
 #cryptificate_audit CryptificateJob.external_mds
 #cryptificate_audit CryptificateJob.internal_invertible
 #cryptificate_audit CryptificateJob.power_bijective
 #cryptificate_audit CryptificateJob.hades_activity
+#cryptificate_audit CryptificateJob.partial_active
+#cryptificate_audit CryptificateJob.hades_total_activity
+#cryptificate_audit CryptificateJob.constants_grain

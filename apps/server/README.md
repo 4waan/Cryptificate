@@ -15,6 +15,7 @@ npx cryptificate verify bundle.tar.gz
 npx cryptificate check 'designs/*.json' --fail-on refuted --format sarif --output cryptificate.sarif
 npx cryptificate report result.json --format junit
 npx cryptificate report bundle.tar.gz --format html --output report.html
+npx cryptificate import RC.rs --base examples/designs/poseidon2-bn254.json -o design.json
 npm test -w apps/server
 ```
 
@@ -94,19 +95,21 @@ generated variant crates, the kernels they link against (checked against the dig
 engine), the harness source and the raw correctness and timing records, described in `native/SOURCES.md`.
 `cryptificate verify` extracts it to a fresh temporary directory, reads only `inputs.json` and
 `report.json`, regenerates and checks the certificate with the installed engine and Lean, and prints
-a per-claim table (`match`, `mismatch`, `not re-checked`, `historical`, `not recorded`). Two groups
+a per-claim table (`match`, `mismatch`, `not re-checked`, `historical`, `not recorded`). Three groups
 of claims were added after the first bundles were recorded (`ADDED_LATER` in `src/verify.ts`), and
 a bundle that records no claim of a group and is shown to predate it has no status to compare for
 them; they are derived, shown as `not recorded` and not counted as a mismatch. For
-`activity.partial` and `activity.total` the evidence is the checker revision
-(`report.provenance.checker`): a commit of the local checkout whose claim list does not yet name
-them. For `sbox.differential` and `sbox.linearity` it is the recorded Lean certificate digest
-differing from the regenerated one. Any other bundle that lacks a claim of these groups (a newer,
-dirty or unknown revision, no git history to look it up in, the current certificate, or only one
-claim of the group) counts the omission as a mismatch, as for every other re-checked claim. The
-S-box quality claims match only when their value and pair of bytes match too. It never runs
-Lean, Rust or shell files from the bundle. Exit status 0 means every re-checked claim matched (and,
-with `--fail-on`, that no re-checked claim has a status the policy rejects).
+`activity.partial` and `activity.total`, and separately for `constants.grain`, the evidence is the
+checker revision (`report.provenance.checker`): a commit of the local checkout whose claim list
+names no claim of that group. For `sbox.differential` and `sbox.linearity` it is the recorded Lean
+certificate digest differing from the regenerated one. Any other bundle that lacks a claim of these
+groups (a newer, dirty or unknown revision, no git history to look it up in, the current
+certificate, or only one claim of the group) counts the omission as a mismatch, as for every other
+re-checked claim. `external.m4_mds` and `external.invertible` form no group: they exist only above
+width 4, which no earlier checker accepted. The S-box quality claims match only when their value
+and pair of bytes match too. It never runs Lean, Rust or shell files from the bundle. Exit status 0
+means every re-checked claim matched (and, with `--fail-on`, that no re-checked claim has a status
+the policy rejects).
 
 ## Environment
 

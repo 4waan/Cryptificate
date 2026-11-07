@@ -76,6 +76,16 @@ A circuit lists instructions over registers. Registers `0..3` are the inputs; in
 
 `mul` multiplies by a public constant; `mul` by `02` is the AES `xtime`. Circuits have at most 256 instructions and may only reference registers that already exist. More examples live in [`examples/`](../examples).
 
+A HADES design may list its round constants (`"constants": {"kind": "explicit", "values": [...]}`, one row of `width` decimal strings per round, partial rounds as `[c, "0", …]`). Claim `constants.grain` then checks whether they are exactly the constants of the Poseidon2 reference procedure for the design's field, width and round numbers. To take them from an implementation instead of typing them:
+
+```sh
+npx cryptificate import poseidon2_instance_bn256.rs --base examples/designs/poseidon2-bn254.json -o mine.json
+npx cryptificate import koala-bear/src/poseidon2.rs --name KOALABEAR_POSEIDON2_RC_16 --base wide.json -o mine.json
+npx cryptificate import constants.csv --base examples/designs/koalabear-t4.json -o mine.json
+```
+
+The importer reads Plonky3's `…_EXTERNAL_INITIAL`, `…_INTERNAL` and `…_EXTERNAL_FINAL` arrays, HorizenLabs poseidon2 instance files (`RC3`, `RC16`, …) and the list `print_round_constants` prints, JSON (rows, a flat list or the split form `externalInitial`, `internal`, `externalFinal`) and CSV. It copies everything else from `--base`, sets the round numbers the layout gives (and says so), and rejects values that are not below the modulus. It does not judge the constants; `check` does, at every width the profiles accept (Plonky3's wide instances included).
+
 ## 4. Check it
 
 From the terminal:

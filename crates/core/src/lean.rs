@@ -28,10 +28,11 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
-use crate::design::{CandidateDesign, HadesDesign, SboxSpec, Target};
+use crate::design::{CandidateDesign, ConstantsSpec, HadesDesign, SboxSpec, Target};
 use crate::diagnostics::{
-    AesLikeDiagnostics, ClaimPrediction, Diagnostics, HadesDiagnostics, HadesPrimeDiagnostics,
-    ModelDiagnostics, PartialBypass, ProgramAnalysis, SboxSource,
+    AesLikeDiagnostics, ClaimPrediction, ConstantsAnalysis, ConstantsSource, Diagnostics,
+    HadesDiagnostics, HadesPrimeDiagnostics, ModelDiagnostics, PartialBypass, ProgramAnalysis,
+    SboxSource,
 };
 use crate::field::{Bn254, Field, FieldKind};
 use crate::limits;
@@ -347,6 +348,31 @@ impl Values<'_> {
         }
     }
 
+    /// The analysis of the round constants, for the HADES models.
+    fn constants(&self) -> Option<&ConstantsAnalysis> {
+        match &self.diag.details {
+            ModelDiagnostics::Hades(h) => Some(&h.constants),
+            ModelDiagnostics::HadesPrime(hp) => Some(&hp.hades.constants),
+            ModelDiagnostics::AesLike(_) => None,
+        }
+    }
+
+    /// The placeholders of claim `constants.grain`: the submitted constants as
+    /// one flat list of numerals (`CONSTANTS`) and the first difference from
+    /// the generated list (`INDEX`, `EXPECTED`).
+    fn constants_value(&self, name: &str) -> Option<String> {
+        match name {
+            "CONSTANTS" => match &self.req.design {
+                CandidateDesign::Hades(d) => explicit_constants(&d.constants),
+                CandidateDesign::HadesPrime(d) => explicit_constants(&d.constants),
+                CandidateDesign::AesLike(_) => None,
+            },
+            "INDEX" => Some(self.constants()?.mismatch.as_ref()?.index.to_string()),
+            "EXPECTED" => Some(self.constants()?.mismatch.as_ref()?.expected.clone()),
+            _ => None,
+        }
+    }
+
     /// The value of placeholder `name` in the fragment described by `meta`.
     fn lookup(&self, name: &str, meta: &FragmentMeta) -> Result<String, String> {
         let v = self
@@ -364,6 +390,9 @@ impl Values<'_> {
     fn value(&self, name: &str, meta: &FragmentMeta) -> Option<String> {
         if name == "WIDTH" {
             return Some(self.req.design.width().to_string());
+        }
+        if let Some(v) = self.constants_value(name) {
+            return Some(v);
         }
         match (&self.req.design, &self.diag.details, &self.req.program) {
             (CandidateDesign::AesLike(d), ModelDiagnostics::AesLike(a), program) => {
@@ -540,6 +569,14 @@ fn hades_value(
     })
 }
 
+/// Explicit round constants as one flat list of numerals, row by row.
+fn explicit_constants<F: Field>(c: &ConstantsSpec<F>) -> Option<String> {
+    match c {
+        ConstantsSpec::Explicit { values } => Some(list(values.iter().flatten())),
+        _ => None,
+    }
+}
+
 fn list<T: fmt::Display>(xs: impl Iterator<Item = T>) -> String {
     xs.map(|x| x.to_string()).collect::<Vec<_>>().join(", ")
 }
@@ -657,6 +694,7 @@ fn echo_value(req: &AnalysisRequest, diag: &Diagnostics, key: &str) -> Option<Va
             "candFullRounds" => json!(d.full_rounds),
             "candPartialRounds" => json!(d.partial_rounds),
             "candPartialMask" => json!(d.partial_mask),
+            "candConstants" => explicit_echo(&d.constants)?,
             "witnessVector" => to(&h.external.branch_witness.as_ref()?.input),
             "witnessKernel" => to(h.internal.kernel_vector.as_ref()?),
             "witnessRoot" => to(&h.power.collision?.omega),
@@ -681,6 +719,7 @@ fn echo_value(req: &AnalysisRequest, diag: &Diagnostics, key: &str) -> Option<Va
                 "candFullRounds" => json!(d.full_rounds),
                 "candPartialRounds" => json!(d.partial_rounds),
                 "candPartialMask" => json!(d.partial_mask),
+                "candConstants" => explicit_echo(&d.constants)?,
                 "witnessVector" => to(&h.external.branch_witness.as_ref()?.input),
                 "witnessKernel" => to(h.internal.kernel_vector.as_ref()?),
                 "witnessRoot" => to(&h.power.collision?.omega),
@@ -699,6 +738,14 @@ fn echo_value(req: &AnalysisRequest, diag: &Diagnostics, key: &str) -> Option<Va
                 _ => return None,
             })
         }
+        _ => None,
+    }
+}
+
+/// Explicit round constants as the request lists them, one row per round.
+fn explicit_echo<F: Field + Serialize>(c: &ConstantsSpec<F>) -> Option<Value> {
+    match c {
+        ConstantsSpec::Explicit { values } => Some(to(values)),
         _ => None,
     }
 }
@@ -756,6 +803,8 @@ fn prime_fragment_candidates(
             (None, _) => Vec::new(),
         },
         (claim_ids::ACTIVITY_TOTAL, _) => per_width("hades_total_activity"),
+        (claim_ids::CONSTANTS_GRAIN, true) => fixed("constants_grain_prime"),
+        (claim_ids::CONSTANTS_GRAIN, false) => fixed("constants_not_grain_prime"),
         _ => Vec::new(),
     }
 }
@@ -796,6 +845,20 @@ fn fragment_candidates(
             };
         }
         (claim_ids::ACTIVITY_TOTAL, _) => &["hades_total_activity"],
+        (claim_ids::CONSTANTS_GRAIN, holds) => {
+            // The reference constants are certified by the library theorem;
+            // explicit constants by evaluating the generator.
+            return match (&diag.details, holds) {
+                (ModelDiagnostics::Hades(h), true)
+                    if h.constants.source == ConstantsSource::Reference =>
+                {
+                    vec!["constants_grain_reference_bn254".into()]
+                }
+                (ModelDiagnostics::Hades(_), true) => vec!["constants_grain_bn254".into()],
+                (ModelDiagnostics::Hades(_), false) => vec!["constants_not_grain_bn254".into()],
+                _ => Vec::new(),
+            };
+        }
         (claim_ids::SBOX_BIJECTIVE, holds) => {
             return match (&diag.details, holds) {
                 (ModelDiagnostics::AesLike(a), true) if a.sbox.source == SboxSource::Aes => {
@@ -857,7 +920,7 @@ fn always_constants(req: &AnalysisRequest) -> Vec<&'static str> {
             }
             v
         }
-        CandidateDesign::Hades(_) => {
+        CandidateDesign::Hades(d) => {
             let mut v = vec![
                 "const_external_bn254",
                 "const_internal_bn254",
@@ -865,19 +928,28 @@ fn always_constants(req: &AnalysisRequest) -> Vec<&'static str> {
                 "const_rounds_hades",
                 "const_mask_hades",
             ];
+            if matches!(d.constants, ConstantsSpec::Explicit { .. }) {
+                v.push("const_constants");
+            }
             if req.program.is_some() {
                 v.push("const_program_bn254");
             }
             v
         }
-        CandidateDesign::HadesPrime(_) => vec![
-            "const_modulus_prime",
-            "const_external_prime",
-            "const_internal_prime",
-            "const_exponent",
-            "const_rounds_hades",
-            "const_mask_prime",
-        ],
+        CandidateDesign::HadesPrime(d) => {
+            let mut v = vec![
+                "const_modulus_prime",
+                "const_external_prime",
+                "const_internal_prime",
+                "const_exponent",
+                "const_rounds_hades",
+                "const_mask_prime",
+            ];
+            if matches!(d.constants, ConstantsSpec::Explicit { .. }) {
+                v.push("const_constants");
+            }
+            v
+        }
     }
 }
 

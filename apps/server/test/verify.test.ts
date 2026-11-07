@@ -102,6 +102,7 @@ test('each group of later claims needs its own evidence that the bundle predates
     claim('sbox.linearity', 'proved', LIN),
     claim('activity.partial', 'proved'),
     claim('activity.total', 'proved'),
+    claim('constants.grain', 'not_established'),
   ];
   const results = (opts: Parameters<typeof compareClaims>[4]) => compareClaims('design', recorded, now, false, opts).map((r) => [r.claim, r.result]);
   // An older certificate excuses the S-box quality claims only.
@@ -111,18 +112,23 @@ test('each group of later claims needs its own evidence that the bundle predates
     ['sbox.linearity', 'not recorded'],
     ['activity.partial', 'mismatch'],
     ['activity.total', 'mismatch'],
+    ['constants.grain', 'mismatch'],
   ]);
-  // A checker revision that predates the partial-round claims excuses those only.
-  assert.deepEqual(results({ predatesRevision: true }), [
+  // A checker revision that predates the partial-round claims but not the
+  // Grain claim excuses the partial-round claims only.
+  assert.deepEqual(results({ predated: ['activity.partial', 'activity.total'] }), [
     ['matrix.mds', 'match'],
     ['sbox.differential', 'mismatch'],
     ['sbox.linearity', 'mismatch'],
     ['activity.partial', 'not recorded'],
     ['activity.total', 'not recorded'],
+    ['constants.grain', 'mismatch'],
   ]);
-  // Both kinds of evidence together excuse both groups.
+  // One that predates only the Grain claim excuses that one only.
+  assert.deepEqual(results({ predated: ['constants.grain'] }).map(([, r]) => r), ['match', 'mismatch', 'mismatch', 'mismatch', 'mismatch', 'not recorded']);
+  // Both kinds of evidence together excuse every group.
   assert.deepEqual(
-    results({ predatesRevision: true, olderCertificate: true }).map(([, r]) => r),
-    ['match', 'not recorded', 'not recorded', 'not recorded', 'not recorded'],
+    results({ predated: ['activity.partial', 'activity.total', 'constants.grain'], olderCertificate: true }).map(([, r]) => r),
+    ['match', 'not recorded', 'not recorded', 'not recorded', 'not recorded', 'not recorded'],
   );
 });

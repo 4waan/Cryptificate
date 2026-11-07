@@ -155,6 +155,38 @@ function leanClaim(info: ClaimInfo, verdict: ClaimVerdict, expect: ExpectedTheor
   };
 }
 
+function sameNumber(a: unknown, b: string): boolean {
+  if (typeof a !== 'string' || !/^(0|[1-9][0-9]*)$/.test(a) || !/^(0|[1-9][0-9]*)$/.test(b)) return false;
+  return BigInt(a) === BigInt(b);
+}
+
+/**
+ * The witness of an accepted constants.grain refutation, kept only when it
+ * agrees with what Lean checked and with the request: `index` and `expected`
+ * are those of the accepted statement (`constantAt … INDEX = some EXPECTED ∧
+ * candConstants[INDEX]? ≠ some EXPECTED`, and Lean echoed `candConstants` equal
+ * to the submitted rows), `round * width + position = index`, and `actual` is
+ * the submitted constant there. That this is the first difference is the
+ * engine's observation and is not checked. Anything else is dropped.
+ */
+export function checkedConstantMismatch(req: AnalysisRequest, verdict: ClaimVerdict, witness: Witness | null | undefined): Witness | null {
+  if (!witness || witness.kind !== 'constant-mismatch' || !verdict.accepted || verdict.status !== 'refuted' || !verdict.audit) return null;
+  const d = req.design;
+  if ((d.model !== 'hades/bn254/v1' && d.model !== 'hades/prime/v1') || d.constants?.kind !== 'explicit') return null;
+  const m =
+    /^Cryptificate\.Grain\.constantAt \S+ (\d+) CryptificateJob\.candFullRounds CryptificateJob\.candPartialRounds (\d+) = some (\d+) ∧ CryptificateJob\.candConstants\[(\d+)\]\? ≠ some (\d+)$/.exec(
+      verdict.audit.type.replace(/\s+/g, ' ').trim(),
+    );
+  if (!m || m[2] !== m[4] || m[3] !== m[5] || Number(m[1]) !== d.width) return null;
+  const { index, round, position, expected, actual } = witness;
+  if (![index, round, position].every((x) => Number.isSafeInteger(x) && x >= 0)) return null;
+  if (String(index) !== m[2] || !sameNumber(expected, m[3]!)) return null;
+  if (position >= d.width || round * d.width + position !== index) return null;
+  const submitted = d.constants.values[round]?.[position];
+  if (submitted === undefined || !sameNumber(actual, String(submitted)) || sameNumber(actual, m[3]!)) return null;
+  return witness;
+}
+
 /** Find a witness of the given claim in the (unchecked) diagnostics. */
 export function diagnosticWitness(diagnostics: unknown, claim: ClaimId): Witness | null {
   if (!diagnostics || typeof diagnostics !== 'object') return null;
@@ -343,7 +375,10 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
         verdict.status === 'refuted'
           ? `Lean checked a counterexample (${verdict.theorem}).`
           : `Lean checked ${verdict.theorem} using only the standard axioms.`;
-      return leanClaim(named, verdict, e, witness, note);
+      const c = leanClaim(named, verdict, e, witness, note);
+      // The constant-mismatch witness is shown as Lean-checked: keep only what the accepted statement binds.
+      if (info.id === 'constants.grain' && c.status === 'refuted') c.witness = checkedConstantMismatch(request, verdict, c.witness);
+      return c;
     }
     if (verdict) {
       const hint = diagnosticHint(diagnostics, info.id);

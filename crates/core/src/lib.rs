@@ -2,6 +2,7 @@
 //!
 //! * [`field`]: GF(2^8), BN254 scalar field and 64-bit prime field elements behind one [`Field`] trait.
 //! * [`prime`]: 64-bit prime fields, primality and Pratt certificates.
+//! * [`grain`]: round constants from the Grain LFSR (Poseidon2 reference procedure).
 //! * [`design`], [`program`], [`request`]: the public input types (normalized forms).
 //! * [`validate`]: untrusted JSON to normalized inputs, with coded errors ([`error`]).
 //! * [`canonical`]: canonical JSON and `sha256:` digests.
@@ -18,6 +19,7 @@ pub mod design;
 pub mod diagnostics;
 pub mod error;
 pub mod field;
+pub mod grain;
 pub mod lean;
 pub mod limits;
 pub mod linalg;

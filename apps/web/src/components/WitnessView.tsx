@@ -198,5 +198,22 @@ function WitnessBody({ witness: w, field }: { witness: Witness; field: DisplayFi
           <span className="mono">0</span>
         </div>
       );
+    case 'constant-mismatch':
+      return (
+        <div className="witness-rows">
+          <span className="witness-label">Position</span>
+          <span className="mono">
+            round {w.round}, position {w.position} (index {w.index})
+          </span>
+          <span className="witness-label">Submitted</span>
+          <span className="mono" style={{ wordBreak: 'break-all' }}>
+            {w.actual}
+          </span>
+          <span className="witness-label">Generated</span>
+          <span className="mono" style={{ wordBreak: 'break-all' }}>
+            {w.expected}
+          </span>
+        </div>
+      );
   }
 }

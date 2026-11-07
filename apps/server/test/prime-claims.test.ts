@@ -63,7 +63,7 @@ function koalaClaims(pairs: Array<[ClaimId, string]>): Claim[] {
 test('KoalaBear width four: the modulus claim first, bounds for branch number five', () => {
   const claims = koalaClaims(PROVED);
   const ids = claims.filter((c) => c.chain === 'design').map((c) => c.id);
-  assert.deepEqual(ids, ['field.prime', 'external.mds', 'internal.invertible', 'sbox.bijective', 'activity.outer', 'activity.partial', 'activity.total']);
+  assert.deepEqual(ids, ['field.prime', 'external.mds', 'internal.invertible', 'sbox.bijective', 'activity.outer', 'activity.partial', 'activity.total', 'constants.grain']);
   assert.equal(byId(claims, 'field.prime').title, 'Modulus is prime');
   assert.equal(byId(claims, 'field.prime').status, 'proved');
   assert.equal(byId(claims, 'external.mds').title, 'External matrix is MDS (branch number 5)');
@@ -134,6 +134,7 @@ test('BabyBear width 16: the wide external claims, a refuted external.mds and no
     skipped: [
       { claim: 'activity.outer', reason: outer },
       { claim: 'activity.total', reason: outer },
+      { claim: 'constants.grain', reason: 'not established: the design gives no round constants' },
     ],
   });
   const ids = claims.filter((c) => c.chain === 'design').map((c) => c.id);
@@ -147,7 +148,10 @@ test('BabyBear width 16: the wide external claims, a refuted external.mds and no
     'activity.outer',
     'activity.partial',
     'activity.total',
+    'constants.grain',
   ]);
+  // The Plonky3 example gives no round constants.
+  assert.equal(byId(claims, 'constants.grain').status, 'not_established');
   assert.equal(byId(claims, 'external.mds').title, 'External matrix is MDS (branch number 17)');
   assert.equal(byId(claims, 'external.mds').status, 'refuted');
   assert.equal(byId(claims, 'external.m4_mds').title, 'External matrix is circ(2 M4, M4, …, M4) with M4 MDS');
