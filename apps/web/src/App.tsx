@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import { Announcer } from './components/Announcer';
 import { Header, type DisplayOrigin } from './components/Header';
 import { CommandPalette, ShortcutsDialog } from './components/Overlays';
 import { isStale } from './lib/canonical';
@@ -171,6 +172,7 @@ export function App() {
         {view === 'workspace' ? <WorkspaceView /> : null}
         {view === 'experiments' ? <ExperimentsView /> : null}
       </main>
+      <Announcer />
       <footer className="footer">
         Cryptificate checks circuits and diffusion claims with Lean on top of the WideTrail library, and measures
         generated Rust on your machine. Results describe the inputs shown; timings describe the machine that ran them.

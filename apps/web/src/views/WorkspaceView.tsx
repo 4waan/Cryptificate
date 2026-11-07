@@ -82,27 +82,6 @@ function WorkspaceNotices() {
   );
 }
 
-/**
- * One polite live region that stays mounted. A new announcement first
- * clears the text, then sets it on the next frame, so screen readers
- * speak repeated and back-to-back messages.
- */
-function Announcer() {
-  const announcement = useAppState((s) => s.announcement);
-  const [text, setText] = useState('');
-  useEffect(() => {
-    if (!announcement.text) return;
-    setText('');
-    const frame = requestAnimationFrame(() => setText(announcement.text));
-    return () => cancelAnimationFrame(frame);
-  }, [announcement]);
-  return (
-    <p className="visually-hidden" role="status" aria-live="polite">
-      {text}
-    </p>
-  );
-}
-
 /** In replay mode, whether a recorded quick experiment exists for these inputs (null while looking). */
 function useRecordedSearch(inputs: WorkspaceInputs, enabled: boolean): boolean | null {
   const [found, setFound] = useState<{ inputs: WorkspaceInputs; ok: boolean } | null>(null);
@@ -219,7 +198,6 @@ export function WorkspaceView() {
 
       <WorkspaceToolbar field={design.field} problems={problems.length} />
       <WorkspaceNotices />
-      <Announcer />
 
       <div className="grid-inputs">
         <DesignEditor design={design} target={target} />
