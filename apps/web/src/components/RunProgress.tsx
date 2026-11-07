@@ -62,6 +62,8 @@ export function runTiming(
   timings: Timings,
 ): { elapsed: string; estimate: Estimate | null; text: string } | null {
   if (run.startedAt === undefined || run.source !== 'live') return null;
+  // A run the service never accepted did no work: no duration to report.
+  if (!isActive(run) && run.jobId === undefined) return null;
   const end = run.finishedAt ?? now;
   const elapsedMs = end - run.startedAt;
   if (!isActive(run)) return { elapsed: formatDuration(elapsedMs), estimate: null, text: `took ${formatDuration(elapsedMs)}` };

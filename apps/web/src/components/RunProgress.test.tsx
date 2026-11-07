@@ -40,9 +40,13 @@ describe('RunProgress', () => {
   });
 
   it('says how long a finished run took and offers no stop', () => {
-    const html = renderToStaticMarkup(<RunProgress now={99_000} run={run({ state: 'completed', finishedAt: 13_200 })} />);
+    const html = renderToStaticMarkup(<RunProgress now={99_000} run={run({ state: 'completed', jobId: 'j1', finishedAt: 13_200 })} />);
     expect(html).toContain('took 3.2 s');
     expect(html).not.toContain('Stop');
+    // A run the service never accepted (refused, unreachable) reports no duration.
+    const refused = renderToStaticMarkup(<RunProgress now={99_000} run={run({ state: 'failed', finishedAt: 10_040 })} />);
+    expect(refused).toContain('Failed');
+    expect(refused).not.toContain('took');
   });
 
   it('counts down to the next attempt while the service is busy', () => {
