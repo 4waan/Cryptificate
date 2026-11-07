@@ -88,12 +88,15 @@ export function LiveChecks({
   state?: RunState;
   problems: number;
 }) {
-  const completed = state === 'completed';
+  // A report that records its own execution outcome (a recorded or cached run) is believed over the
+  // run state: a completed fetch of a timed-out run's report is still a timed-out run.
+  const reported = state === 'completed' && report?.execution?.state ? (report.execution.state as RunState) : state;
+  const completed = reported === 'completed';
   const rows = checkRows(items, report, completed);
   const allLean = completed && rows.length > 0 && rows.every((r) => r.claim);
   const someLean = rows.some((r) => r.claim);
   const running = ['submitting', 'retrying', 'queued', 'running'].includes(state);
-  const ended = report && !completed && !running ? (ENDED_TEXT[state] ?? 'Lean check did not finish') : null;
+  const ended = report && !completed && !running ? (ENDED_TEXT[reported] ?? 'Lean check did not finish') : null;
   if (problems > 0 || !rows.length) {
     return (
       <div className="checks" aria-label="Instant checks">

@@ -66,6 +66,13 @@ describe('instant checks', () => {
       expect((html.match(/data-source="lean"/g) ?? []).length).toBe(1);
       expect((html.match(/data-source="preview"/g) ?? []).length).toBe(4);
     }
+    // A recorded or cached report of a timed-out run, fetched by a run that itself completed.
+    const recordedTimeout: AnalysisReport = { ...partial, execution: { ...partial.execution, state: 'timeout' } };
+    const html = renderToStaticMarkup(
+      <LiveChecks items={previewItems(inputs)} report={recordedTimeout} state="completed" problems={0} />,
+    );
+    expect(html).not.toContain('Checked by Lean');
+    expect(html).toContain('Lean check timed out');
     const rows = checkRows(previewItems(inputs), partial, false);
     expect(rows.find((r) => r.id === 'matrix.mds')!.claim?.status).toBe('proved');
     expect(rows.filter((r) => r.preview)).toHaveLength(4);
