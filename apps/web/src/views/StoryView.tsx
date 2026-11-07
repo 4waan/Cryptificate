@@ -92,8 +92,10 @@ function RunArea({
 }) {
   if (!runState) return null;
   const report = runState.report as AnalysisReport | ExperimentReport | null;
+  // Not a live region: the run's RunProgress (here or above) is its one status line, and the step times
+  // in RunDetails tick every half second.
   return (
-    <div className="stack" aria-live="polite">
+    <div className="stack">
       {statusAbove && isActive(runState) ? (
         <RunDetails run={runState} />
       ) : isActive(runState) || runState.state !== 'completed' ? (

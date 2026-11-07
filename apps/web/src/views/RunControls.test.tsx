@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { aesDesign } from '../lib/presets';
 import { initialState, setState, type Run } from '../state/store';
 import { ExperimentsView } from './ExperimentsView';
+import { StoryView } from './StoryView';
 import { WorkspaceView } from './WorkspaceView';
 
 function active(kind: Run['kind']): Run {
@@ -54,6 +55,20 @@ describe('one Stop button and one status region per running job', () => {
     expect(count(html, stopButtons)).toBe(1);
     expect(count(html, /<strong>Analysis:<\/strong>/g)).toBe(1);
     expect(html).toContain('Stop in the run bar at the top of the workspace');
+  });
+});
+
+describe('the story', () => {
+  beforeEach(() => setState({ ...initialState(), design: aesDesign(), program: null }));
+
+  it('step 1 shows a running search once, with no polite region around its ticking step times', () => {
+    const r = active('experiment');
+    setState({ runs: { [r.key]: r }, view: 'story', storyStep: 1, story: { ...initialState().story, runs: { step1: r.key } } });
+    const html = renderToStaticMarkup(<StoryView />);
+    expect(count(html, stopButtons)).toBe(1);
+    expect(html).toContain('aria-label="Steps"');
+    // The compact RunProgress's role="status" is the one live region for the run.
+    expect(count(html, /aria-live="polite"/g)).toBe(count(html, /role="status"[^>]*aria-live="polite"/g));
   });
 });
 
