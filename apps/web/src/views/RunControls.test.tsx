@@ -78,6 +78,27 @@ describe('the workspace run bar after a job ends', () => {
     expect(html).toContain('Invalid request');
   });
 
+  it('drops an older failed experiment once a later check has reported', () => {
+    const failed: Run = { ...active('experiment'), state: 'failed', startedAt: 1_000, finishedAt: 2_000, error: 'The local service could not be reached.' };
+    const done: Run = {
+      ...active('analysis'),
+      state: 'completed',
+      startedAt: 3_000,
+      finishedAt: 4_000,
+      report: { kind: 'analysis', claims: [], provenance: { checker: 'lean' } } as unknown as Run['report'],
+    };
+    setState({ runs: { [failed.key]: failed, [done.key]: done }, current: { experiment: failed.key, analysis: done.key } });
+    const html = renderToStaticMarkup(<WorkspaceView />);
+    expect(html).not.toContain('<strong>Experiment (quick):</strong>');
+    expect(html).not.toContain('See why on Experiments');
+  });
+
+  it('drops a job that ended without a report once the inputs have changed', () => {
+    const r: Run = { ...active('experiment'), state: 'failed', finishedAt: Date.now(), error: 'The local service could not be reached.' };
+    setState({ design: aesDesign(6), runs: { [r.key]: r }, current: { experiment: r.key } });
+    expect(renderToStaticMarkup(<WorkspaceView />)).not.toContain('<strong>Experiment (quick):</strong>');
+  });
+
   it('shows no run status once a job has completed', () => {
     const r: Run = { ...active('experiment'), state: 'completed', finishedAt: Date.now() };
     setState({ runs: { [r.key]: r }, current: { experiment: r.key } });

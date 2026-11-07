@@ -123,11 +123,13 @@ export function WorkspaceView() {
   const problems = useMemo(() => inputProblems(inputs), [inputs]);
   const analysis = current.analysis ? runs[current.analysis] : undefined;
   const experiment = current.experiment ? runs[current.experiment] : undefined;
-  // The run bar's status: the running job, else the latest one that ended without a report (its
-  // error is in the result area or on Experiments). Same element throughout, so the end is read out.
-  const ended = [analysis, experiment]
-    .filter((r): r is Run => endedWithoutReport(r))
-    .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))[0];
+  // The run bar's status: the running job, else the most recent job if it ended without a report for the
+  // inputs still in the editor (its error is in the result area or on Experiments). A later job that did
+  // report, or an edit since, clears it. Same element throughout, so the end is read out.
+  const latest = [analysis, experiment]
+    .filter((r): r is Run => r !== undefined)
+    .sort((a, b) => (b.finishedAt ?? b.startedAt ?? 0) - (a.finishedAt ?? a.startedAt ?? 0))[0];
+  const ended = latest && endedWithoutReport(latest) && !isStale(inputs, latest.inputs) ? latest : undefined;
   const status = isActive(analysis) ? analysis : isActive(experiment) ? experiment : ended;
   const canGenerate = useMemo(() => circuitFromDesign(design, target) !== null, [design, target]);
   const recorded = useRecordedSearch(inputs, source === 'replay' && program !== null && problems.length === 0);
