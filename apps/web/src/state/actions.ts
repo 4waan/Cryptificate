@@ -351,7 +351,8 @@ async function submitLive(key: string): Promise<void> {
       return;
     }
     settle(key, {
-      state: 'failed',
+      // The service validated the request and refused it: the inputs, not the service, are at fault.
+      state: e?.status === 400 && e.code === 'invalid-request' ? 'invalid' : 'failed',
       error: e ? e.message : 'The local service could not be reached.',
       errorPath: e?.path,
     });

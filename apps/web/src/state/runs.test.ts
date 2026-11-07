@@ -64,6 +64,18 @@ describe('live runs against a busy service', () => {
     expect(run.finishedAt).toBeDefined();
   });
 
+  it('reports a request the service refused as invalid input, with its path, and an unreachable service as a failure', async () => {
+    api.createJob.mockRejectedValueOnce(new ApiError('/program/0/op: unknown op', 400, 'invalid-request', '/program/0/op'));
+    const key = startRun('analysis')!;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getState().runs[key]).toMatchObject({ state: 'invalid', error: '/program/0/op: unknown op', errorPath: '/program/0/op' });
+    api.getCapabilities.mockRejectedValue(new TypeError('fetch failed'));
+    api.createJob.mockRejectedValueOnce(new TypeError('fetch failed'));
+    const second = startRun('analysis')!;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getState().runs[second]).toMatchObject({ state: 'failed', error: 'The local service could not be reached.' });
+  });
+
   it('Stop while waiting cancels the resubmission; Retry now skips the wait', async () => {
     api.createJob.mockRejectedValueOnce(busy(30));
     const key = startRun('analysis')!;
