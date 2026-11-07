@@ -175,7 +175,7 @@ Every report labels its origin: **Live**, **Cached exact result**, or **Recorded
 
 1. its name and printed type match the expected statement about your exact constants;
 2. Lean's own evaluation of those constants equals your normalized request, so the proof is about the numbers you submitted;
-3. the audit command re-checks the theorem and its local dependencies in the kernel, and its axioms are exactly the standard three: `propext`, `Classical.choice`, `Quot.sound`.
+3. the audit command re-checks the theorem and its local dependencies in the kernel, and its axioms are among the standard three: `propext`, `Classical.choice`, `Quot.sound`.
 
 **The hard mathematics is proved once.** Each certificate only evaluates bytes in the kernel with `decide`: the coefficient theorem, the minor-coverage theorem and the execution bridge are general results. Certificates use the kernel alone, without `native_decide` or `bv_decide`, which would extend trust to the whole compiler ([Lean reference: axioms](https://lean-lang.org/doc/reference/latest/Axioms/)).
 
