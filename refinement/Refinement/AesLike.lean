@@ -10,11 +10,13 @@ import Cryptificate.Bridge
 
 `crates/kernels/src/aes_like.rs` implements one AES-like round, and `rounds` of them, with the
 design as runtime data: the mixing matrix, the row offsets, the S-box table and the round
-keys are arguments. Aeneas translates it (`Extracted.CryptificateKernels`, namespace
-`cryptificate_kernels.aes_like`); this file proves that the translation computes the execution
-model of the main Lean package, `Cryptificate.aesLikeRound` and `Cryptificate.aesLikeExec`
-(`lean/Cryptificate/Bridge.lean`, compiled here from the same source file), over WideTrail's
-field `GF256`.
+keys are arguments. It also implements the AES final round (no column mixing, then a final
+key) and encryption whose last round is that one. Aeneas translates it
+(`Extracted.CryptificateKernels`, namespace `cryptificate_kernels.aes_like`); this file proves
+that the translation computes the execution model of the main Lean package,
+`Cryptificate.aesLikeRound`, `Cryptificate.aesLikeExec`, `Cryptificate.aesLikeFinalRound` and
+`Cryptificate.aesLikeCipher` (`lean/Cryptificate/Bridge.lean`, compiled here from the same
+source file), over WideTrail's field `GF256`.
 
 Because the design is an argument, the theorems hold for every matrix, every offset vector,
 every S-box table and every key schedule at once: one proof covers every submitted design.
@@ -34,7 +36,17 @@ every S-box table and every key schedule at once: one proof covers every submitt
 * `aes_like_round_refines`: `aes_like.round` never panics and returns a state whose reading is
   `aesLikeRound (matrixOf m) (offsetsOf o) (sboxOf t) (stateOf k) (stateOf s)`;
 * `aes_like_encrypt_refines`: with at least `rounds` round keys, `aes_like.encrypt` never panics
-  and returns `aesLikeExec … (keysOf ks) (stateOf s) rounds`.
+  and returns `aesLikeExec … (keysOf ks) (stateOf s) rounds`;
+* `aes_like_final_round_refines`: `aes_like.final_round` (add the round key, substitute bytes,
+  shift rows, add the final key; no column mixing) never panics and returns
+  `aesLikeFinalRound`;
+* `aes_like_encrypt_with_last_round_refines`: with at least `rounds + 1` round keys,
+  `aes_like.encrypt_with_last_round` never panics and returns
+  `aesLikeCipher … (keysOf ks) (stateOf s) rounds` (`rounds - 1` rounds, then the final round);
+* `aes_like_encrypt_activity_bound` and `aes_like_encrypt_with_last_round_activity_bound`: the
+  active-S-box bound for the executions of `encrypt` and of `encrypt_with_last_round`, under
+  the design hypotheses (MDS matrix, diffusion-optimal offsets, S-box table without repeated
+  entry).
 
 Both are stated with Aeneas's total-correctness predicate `m ⦃ v => P v ⦄` (`WP.spec`): `m`
 terminates normally, without a panic, with a value `v` satisfying `P`. `spec_iff_ok` turns it into
@@ -343,6 +355,59 @@ theorem aes_like_encrypt_refines (s m : Std.Array U8 16#usize) (o : Std.Array U8
       rw [hu, this]
   · exact ⟨by simp, rfl⟩
 
+/-! ### The final round, and encryption with it -/
+
+/-- `aes_like.final_round` never panics and computes `aesLikeFinalRound` of the main Lean
+package: add the round key, substitute bytes, shift rows, add the final key (no column
+mixing). -/
+theorem aes_like_final_round_refines (s : Std.Array U8 16#usize) (o : Std.Array U8 4#usize)
+    (t : Std.Array U8 256#usize) (k k' : Std.Array U8 16#usize) :
+    aes_like.final_round s o t k k' ⦃ out =>
+      stateOf out =
+        aesLikeFinalRound (offsetsOf o) (sboxOf t) (stateOf k) (stateOf k') (stateOf s) ⦄ := by
+  unfold aes_like.final_round
+  step with add_round_key_spec as ⟨ s1, h1 ⟩
+  step with sub_bytes_spec as ⟨ s2, h2 ⟩
+  step with shift_rows_spec as ⟨ s3, h3 ⟩
+  step with add_round_key_spec as ⟨ s4, h4 ⟩
+  funext p
+  simp only [stateOf, aesLikeFinalRound, addRoundKey]
+  rw [h4 p.val p.isLt, toField_xor]
+  congr 1
+  have hq : shiftSource o p.val
+      = (bytePos (byteRow p) (byteCol p + offsetsOf o (byteRow p))).val := by
+    simp only [shiftSource, bytePos, byteRow, byteCol, offsetsOf, Fin.val_add]
+    omega
+  rw [h3 _ p.isLt, h2 _ (shiftSource_lt o _), h1 _ (shiftSource_lt o _), hq]
+  simp only [shiftRows, subBytes, addRoundKey, sboxOf, stateOf]
+  rfl
+
+/-- With at least `rounds + 1` round keys, `aes_like.encrypt_with_last_round` never panics and
+computes `aesLikeCipher` of the main Lean package: `rounds - 1` rounds, then the final round
+with keys `ks[rounds - 1]` and `ks[rounds]` (for `rounds = 0`, the input). -/
+theorem aes_like_encrypt_with_last_round_refines (s m : Std.Array U8 16#usize)
+    (o : Std.Array U8 4#usize) (t : Std.Array U8 256#usize) (ks : Slice (Std.Array U8 16#usize))
+    (rounds : Usize) (hks : rounds.val < ks.length) :
+    aes_like.encrypt_with_last_round s m o t ks rounds ⦃ out =>
+      stateOf out =
+        aesLikeCipher (matrixOf m) (offsetsOf o) (sboxOf t) (keysOf ks) (stateOf s)
+          rounds.val ⦄ := by
+  unfold aes_like.encrypt_with_last_round
+  split
+  · step as ⟨ i, hi ⟩
+    step with aes_like_encrypt_refines as ⟨ s1, h1 ⟩
+    step as ⟨ a, ha ⟩
+    step as ⟨ a1, ha1 ⟩
+    step with aes_like_final_round_refines as ⟨ out, hout ⟩
+    obtain ⟨n, hn⟩ : ∃ n, rounds.val = n + 1 := ⟨rounds.val - 1, by omega⟩
+    have hin : i.val = n := by omega
+    have hlt : rounds.val < ks.val.length := by simpa only [Slice.length] using hks
+    rw [hout, h1, ha, ha1, slice_val_getElem ks i.val (by omega), slice_val_getElem ks _ hlt,
+      hn, hin, aesLikeCipher_succ]
+    rfl
+  · have h0 : rounds.val = 0 := by scalar_tac
+    simp only [spec_ok, h0, aesLikeCipher_zero]
+
 /-! ### The same results as equations -/
 
 /-- Aeneas's total-correctness predicate is "returns `ok v` for some `v` satisfying `p`". -/
@@ -370,6 +435,24 @@ theorem aes_like_encrypt_eq (s m : Std.Array U8 16#usize) (o : Std.Array U8 4#us
       stateOf out =
         aesLikeExec (matrixOf m) (offsetsOf o) (sboxOf t) (keysOf ks) (stateOf s) rounds.val :=
   (spec_iff_exists_ok _ _).mp (aes_like_encrypt_refines s m o t ks rounds hks)
+
+/-- `aes_like.final_round` returns `ok`, and the result reads as `aesLikeFinalRound`. -/
+theorem aes_like_final_round_eq (s : Std.Array U8 16#usize) (o : Std.Array U8 4#usize)
+    (t : Std.Array U8 256#usize) (k k' : Std.Array U8 16#usize) :
+    ∃ out, aes_like.final_round s o t k k' = ok out ∧
+      stateOf out =
+        aesLikeFinalRound (offsetsOf o) (sboxOf t) (stateOf k) (stateOf k') (stateOf s) :=
+  (spec_iff_exists_ok _ _).mp (aes_like_final_round_refines s o t k k')
+
+/-- With at least `rounds + 1` keys, `aes_like.encrypt_with_last_round` returns `ok`, and the
+result reads as `aesLikeCipher`. -/
+theorem aes_like_encrypt_with_last_round_eq (s m : Std.Array U8 16#usize)
+    (o : Std.Array U8 4#usize) (t : Std.Array U8 256#usize) (ks : Slice (Std.Array U8 16#usize))
+    (rounds : Usize) (hks : rounds.val < ks.length) :
+    ∃ out, aes_like.encrypt_with_last_round s m o t ks rounds = ok out ∧
+      stateOf out =
+        aesLikeCipher (matrixOf m) (offsetsOf o) (sboxOf t) (keysOf ks) (stateOf s) rounds.val :=
+  (spec_iff_exists_ok _ _).mp (aes_like_encrypt_with_last_round_refines s m o t ks rounds hks)
 
 /-! ### Connection to the active-S-box bound
 
@@ -427,5 +510,32 @@ theorem aes_like_encrypt_activity_bound (m : Std.Array U8 16#usize) (o : Std.Arr
   have hn' : n < r := Finset.mem_range.mp hn
   simp only [activeSboxesAt, addRoundKey, reading x outX hX n hn', reading y outY hY n hn']
   congr 1
+
+/-- **The activity bound for the Rust kernel with the final round.** If the matrix is MDS, the
+offsets are diffusion-optimal, the S-box table has no repeated entry and the inputs differ,
+then with at least `r + 1` round keys `aes_like.encrypt_with_last_round` returns normally from
+`x` and from `y`, its outputs read as `aesLikeCipher` (`r - 1` rounds, then the final round
+without column mixing), and over the `r` rounds of that cipher, its final round included, at
+least `activityBound r` S-boxes see different inputs in the two executions. -/
+theorem aes_like_encrypt_with_last_round_activity_bound (m : Std.Array U8 16#usize)
+    (o : Std.Array U8 4#usize) (t : Std.Array U8 256#usize) (ks : Slice (Std.Array U8 16#usize))
+    (hM : IsMDS (matrixOf m))
+    (hoff : DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 (offsetsOf o)))
+    (ht : ∀ a < 256, ∀ b < 256, t[a]! = t[b]! → a = b)
+    (x y : Std.Array U8 16#usize) (hxy : stateOf x ≠ stateOf y)
+    (r : Usize) (hr : r.val < ks.length) :
+    ∃ outX outY : Std.Array U8 16#usize,
+      aes_like.encrypt_with_last_round x m o t ks r = ok outX ∧
+      aes_like.encrypt_with_last_round y m o t ks r = ok outY ∧
+      stateOf outX =
+        aesLikeCipher (matrixOf m) (offsetsOf o) (sboxOf t) (keysOf ks) (stateOf x) r.val ∧
+      stateOf outY =
+        aesLikeCipher (matrixOf m) (offsetsOf o) (sboxOf t) (keysOf ks) (stateOf y) r.val ∧
+      activityBound r.val ≤ aesLikeCipherActiveSboxes (matrixOf m) (offsetsOf o) (sboxOf t)
+        (keysOf ks) r.val (stateOf x) (stateOf y) := by
+  obtain ⟨outX, hX, hX'⟩ := aes_like_encrypt_with_last_round_eq x m o t ks r hr
+  obtain ⟨outY, hY, hY'⟩ := aes_like_encrypt_with_last_round_eq y m o t ks r hr
+  exact ⟨outX, outY, hX, hY, hX', hY',
+    aesLikeCipherActiveSboxes_bound hM hoff (sboxOf_injective t ht) (keysOf ks) hxy r.val⟩
 
 end Cryptificate.Refinement

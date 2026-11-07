@@ -27,7 +27,7 @@ def gf256.add (a : Std.U8) (b : Std.U8) : Result Std.U8 := do
   ok (a ^^^ b)
 
 /-- [cryptificate_kernels::aes_like::add_round_key]: loop body 0:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 30:4-33:5
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 36:4-39:5
     Visibility: public -/
 @[rust_loop_body]
 def aes_like.add_round_key_loop.body
@@ -47,7 +47,7 @@ def aes_like.add_round_key_loop.body
   else ok (done state)
 
 /-- [cryptificate_kernels::aes_like::add_round_key]: loop 0:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 30:4-33:5
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 36:4-39:5
     Visibility: public -/
 @[rust_loop]
 def aes_like.add_round_key_loop
@@ -60,7 +60,7 @@ def aes_like.add_round_key_loop
     (state, i)
 
 /-- [cryptificate_kernels::aes_like::add_round_key]:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 28:0-34:1
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 34:0-40:1
     Visibility: public -/
 @[reducible]
 def aes_like.add_round_key
@@ -70,7 +70,7 @@ def aes_like.add_round_key
   aes_like.add_round_key_loop state round_key 0#usize
 
 /-- [cryptificate_kernels::aes_like::sub_bytes]: loop body 0:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 39:4-42:5
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 45:4-48:5
     Visibility: public -/
 @[rust_loop_body]
 def aes_like.sub_bytes_loop.body
@@ -90,7 +90,7 @@ def aes_like.sub_bytes_loop.body
   else ok (done state)
 
 /-- [cryptificate_kernels::aes_like::sub_bytes]: loop 0:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 39:4-42:5
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 45:4-48:5
     Visibility: public -/
 @[rust_loop]
 def aes_like.sub_bytes_loop
@@ -103,7 +103,7 @@ def aes_like.sub_bytes_loop
     (state, i)
 
 /-- [cryptificate_kernels::aes_like::sub_bytes]:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 37:0-43:1
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 43:0-49:1
     Visibility: public -/
 @[reducible]
 def aes_like.sub_bytes
@@ -113,7 +113,7 @@ def aes_like.sub_bytes
   aes_like.sub_bytes_loop state sbox 0#usize
 
 /-- [cryptificate_kernels::aes_like::shift_rows]: loop body 0:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 51:4-56:5
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 57:4-62:5
     Visibility: public -/
 @[rust_loop_body]
 def aes_like.shift_rows_loop.body
@@ -139,7 +139,7 @@ def aes_like.shift_rows_loop.body
   else ok (done state)
 
 /-- [cryptificate_kernels::aes_like::shift_rows]: loop 0:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 51:4-56:5
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 57:4-62:5
     Visibility: public -/
 @[rust_loop]
 def aes_like.shift_rows_loop
@@ -152,7 +152,7 @@ def aes_like.shift_rows_loop
     (state, i)
 
 /-- [cryptificate_kernels::aes_like::shift_rows]:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 48:0-57:1
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 54:0-63:1
     Visibility: public -/
 @[reducible]
 def aes_like.shift_rows
@@ -209,7 +209,7 @@ def gf256.mul (a : Std.U8) (b : Std.U8) : Result Std.U8 := do
   gf256.mul_loop 0#u8 a b 0#i32
 
 /-- [cryptificate_kernels::aes_like::mix_byte]:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 60:0-66:1 -/
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 66:0-72:1 -/
 def aes_like.mix_byte
   (matrix : Array Std.U8 16#usize) (input : Array Std.U8 16#usize)
   (r : Std.Usize) (c : Std.Usize) :
@@ -240,7 +240,7 @@ def aes_like.mix_byte
   gf256.add i17 t3
 
 /-- [cryptificate_kernels::aes_like::mix_columns]: loop body 0:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 72:4-75:5
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 78:4-81:5
     Visibility: public -/
 @[rust_loop_body]
 def aes_like.mix_columns_loop.body
@@ -260,7 +260,7 @@ def aes_like.mix_columns_loop.body
   else ok (done state)
 
 /-- [cryptificate_kernels::aes_like::mix_columns]: loop 0:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 72:4-75:5
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 78:4-81:5
     Visibility: public -/
 @[rust_loop]
 def aes_like.mix_columns_loop
@@ -273,7 +273,7 @@ def aes_like.mix_columns_loop
     (state, i)
 
 /-- [cryptificate_kernels::aes_like::mix_columns]:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 69:0-76:1
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 75:0-82:1
     Visibility: public -/
 @[reducible]
 def aes_like.mix_columns
@@ -283,7 +283,7 @@ def aes_like.mix_columns
   aes_like.mix_columns_loop state matrix state 0#usize
 
 /-- [cryptificate_kernels::aes_like::round]:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 79:0-90:1
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 85:0-96:1
     Visibility: public -/
 def aes_like.round
   (state : Array Std.U8 16#usize) (matrix : Array Std.U8 16#usize)
@@ -297,7 +297,7 @@ def aes_like.round
   aes_like.mix_columns state3 matrix
 
 /-- [cryptificate_kernels::aes_like::encrypt]: loop body 0:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 104:4-107:5
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 110:4-113:5
     Visibility: public -/
 @[rust_loop_body]
 def aes_like.encrypt_loop.body
@@ -316,7 +316,7 @@ def aes_like.encrypt_loop.body
   else ok (done state)
 
 /-- [cryptificate_kernels::aes_like::encrypt]: loop 0:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 104:4-107:5
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 110:4-113:5
     Visibility: public -/
 @[rust_loop]
 def aes_like.encrypt_loop
@@ -332,7 +332,7 @@ def aes_like.encrypt_loop
     (state, n)
 
 /-- [cryptificate_kernels::aes_like::encrypt]:
-    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 95:0-108:1
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 101:0-114:1
     Visibility: public -/
 @[reducible]
 def aes_like.encrypt
@@ -342,6 +342,38 @@ def aes_like.encrypt
   Result (Array Std.U8 16#usize)
   := do
   aes_like.encrypt_loop state matrix offsets sbox round_keys rounds 0#usize
+
+/-- [cryptificate_kernels::aes_like::final_round]:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 118:0-129:1
+    Visibility: public -/
+def aes_like.final_round
+  (state : Array Std.U8 16#usize) (offsets : Array Std.U8 4#usize)
+  (sbox : Array Std.U8 256#usize) (round_key : Array Std.U8 16#usize)
+  (final_key : Array Std.U8 16#usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  let state1 ← aes_like.add_round_key state round_key
+  let state2 ← aes_like.sub_bytes state1 sbox
+  let state3 ← aes_like.shift_rows state2 offsets
+  aes_like.add_round_key state3 final_key
+
+/-- [cryptificate_kernels::aes_like::encrypt_with_last_round]:
+    Source: 'refinement/rust/../../crates/kernels/src/aes_like.rs', lines 138:0-156:1
+    Visibility: public -/
+def aes_like.encrypt_with_last_round
+  (state : Array Std.U8 16#usize) (matrix : Array Std.U8 16#usize)
+  (offsets : Array Std.U8 4#usize) (sbox : Array Std.U8 256#usize)
+  (round_keys : Slice (Array Std.U8 16#usize)) (rounds : Std.Usize) :
+  Result (Array Std.U8 16#usize)
+  := do
+  if rounds > 0#usize
+  then
+    let i ← rounds - 1#usize
+    let state1 ← aes_like.encrypt state matrix offsets sbox round_keys i
+    let a ← Slice.index_usize round_keys i
+    let a1 ← Slice.index_usize round_keys rounds
+    aes_like.final_round state1 offsets sbox a a1
+  else ok state
 
 /-- [cryptificate_kernels::gf256::POLY]
     Source: 'refinement/rust/../../crates/kernels/src/gf256.rs', lines 10:0-10:28
