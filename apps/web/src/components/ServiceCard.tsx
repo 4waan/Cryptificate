@@ -31,7 +31,7 @@ export function ServiceCard({ connection, now: fixedNow }: { connection: AppStat
     <section className="service-card" aria-labelledby="service-card-title">
       <div className="service-card-head">
         <IconTerminal size={18} />
-        <h2 id="service-card-title">The local service is not running</h2>
+        <h2 id="service-card-title">The local service is not answering</h2>
       </div>
       <p className="small">
         Lean checks, experiments and native timing run on this machine through the Cryptificate service. Start it from

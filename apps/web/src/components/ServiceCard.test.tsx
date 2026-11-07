@@ -8,6 +8,8 @@ describe('ServiceCard', () => {
       <ServiceCard now={1_000} connection={{ status: 'unreachable', message: 'x', nextAttemptAt: 6_000 }} />,
     );
     expect(START_COMMAND).toBe('npm start');
+    // The page can only see that the service does not answer, not why.
+    expect(html).toContain('The local service is not answering');
     expect(html).toContain('npm start');
     expect(html).toContain('Copy');
     expect(html).toContain('npx cryptificate serve');
