@@ -77,6 +77,12 @@ export function describeWitness(w: Witness, field: DisplayField): string {
         `is zero there for every j < ${w.partialRounds}, so no partial-round S-box is active.`
       );
     }
+    case 'constant-mismatch':
+      return (
+        `The round constant of round ${w.round} at position ${w.position} (index ${w.index} of the flat list) is ` +
+        `${abbreviateDecimal(w.actual)}, and the Grain procedure for this field, width and round numbers generates ` +
+        `${abbreviateDecimal(w.expected)} there (Poseidon2 layout). Every earlier constant agrees.`
+      );
   }
 }
 
@@ -95,5 +101,7 @@ export function witnessHeading(w: Witness): string {
       return 'Power map collision';
     case 'partial-bypass':
       return 'Partial-round bypass';
+    case 'constant-mismatch':
+      return 'Round-constant mismatch';
   }
 }

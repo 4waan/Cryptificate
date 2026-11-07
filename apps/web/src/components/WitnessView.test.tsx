@@ -178,4 +178,23 @@ describe('claim cards', () => {
     expect(text).toContain('M^j v is zero there for every j < 2');
     expect(text).not.toContain('every power');
   });
+  it('shows a round-constant mismatch with both values', () => {
+    const w = {
+      kind: 'constant-mismatch' as const,
+      index: 16,
+      round: 4,
+      position: 0,
+      expected: '245687908',
+      actual: '245687909',
+    };
+    const html = renderToStaticMarkup(<WitnessView witness={w} field="prime:2130706433" />);
+    expect(html).toContain('Round-constant mismatch');
+    expect(html).toContain('round 4, position 0 (index 16)');
+    expect(html).toContain('245687909');
+    expect(describeWitness(w, 'prime:2130706433')).toBe(
+      'The round constant of round 4 at position 0 (index 16 of the flat list) is 245687909, and the Grain ' +
+        'procedure for this field, width and round numbers generates 245687908 there (Poseidon2 layout). Every ' +
+        'earlier constant agrees.',
+    );
+  });
 });
