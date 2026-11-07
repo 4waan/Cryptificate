@@ -143,6 +143,7 @@ export const HADES_PRIME_DESIGN_CLAIMS: readonly ClaimInfo[] = [
   { id: 'activity.outer', chain: 'design', title: 'Active S-box bound for the full rounds' },
   { id: 'activity.partial', chain: 'design', title: 'No difference passes the partial rounds without an active S-box' },
   { id: 'activity.total', chain: 'design', title: 'Active S-box bound over the whole permutation' },
+  { id: 'constants.grain', chain: 'design', title: 'Round constants are the Grain constants (Poseidon2 layout)' },
 ];
 
 export const HADES_DESIGN_CLAIMS: readonly ClaimInfo[] = [
@@ -152,6 +153,7 @@ export const HADES_DESIGN_CLAIMS: readonly ClaimInfo[] = [
   { id: 'activity.outer', chain: 'design', title: 'Active S-box bound for the full rounds' },
   { id: 'activity.partial', chain: 'design', title: 'No difference passes the partial rounds without an active S-box' },
   { id: 'activity.total', chain: 'design', title: 'Active S-box bound over the whole permutation' },
+  { id: 'constants.grain', chain: 'design', title: 'Round constants are the Grain constants (Poseidon2 layout)' },
 ];
 
 export const IMPLEMENTATION_CLAIMS: readonly ClaimInfo[] = [

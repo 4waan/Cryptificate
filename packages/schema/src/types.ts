@@ -193,7 +193,8 @@ export type DesignClaimId =
   | 'internal.invertible'
   | 'activity.outer'
   | 'activity.partial'
-  | 'activity.total';
+  | 'activity.total'
+  | 'constants.grain';
 
 export type ImplementationClaimId =
   | 'circuit.equivalence'
@@ -276,13 +277,30 @@ export interface PartialBypassWitness {
   partialRounds: number;
 }
 
+/**
+ * The first position at which submitted round constants differ from the ones
+ * the Grain procedure generates (Poseidon2 layout): `index = round * width +
+ * position` in the flat list, values in decimal.
+ */
+export interface ConstantMismatchWitness {
+  kind: 'constant-mismatch';
+  index: number;
+  round: number;
+  position: number;
+  /** The generated constant. */
+  expected: string;
+  /** The submitted constant. */
+  actual: string;
+}
+
 export type Witness =
   | BranchWitness
   | OffsetCollisionWitness
   | DistinguishingInputWitness
   | SboxCollisionWitness
   | PowerCollisionWitness
-  | PartialBypassWitness;
+  | PartialBypassWitness
+  | ConstantMismatchWitness;
 
 export type WitnessKind = Witness['kind'];
 

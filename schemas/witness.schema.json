@@ -72,6 +72,20 @@
         "positions": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
         "partialRounds": { "type": "integer", "minimum": 0 }
       }
+    },
+    {
+      "title": "Round-constant mismatch",
+      "description": "The first position (index = round * width + position, Poseidon2 layout) at which the submitted round constants differ from the ones the Grain procedure generates, with both values in decimal.",
+      "type": "object",
+      "required": ["kind", "index", "round", "position", "expected", "actual"],
+      "properties": {
+        "kind": { "const": "constant-mismatch" },
+        "index": { "type": "integer", "minimum": 0 },
+        "round": { "type": "integer", "minimum": 0 },
+        "position": { "type": "integer", "minimum": 0 },
+        "expected": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+        "actual": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" }
+      }
     }
   ]
 }
