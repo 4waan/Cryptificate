@@ -88,6 +88,11 @@ const CASES: &[(&str, &str, Option<&str>)] = &[
     ("koalabear-t4", "koalabear-t4", None),
     ("babybear-t4", "babybear-t4", None),
     ("babybear-t4-bad", "babybear-t4-bad", None),
+    ("koalabear-t16", "koalabear-t16", None),
+    ("babybear-t24", "babybear-t24", None),
+    ("goldilocks-t8", "goldilocks-t8", None),
+    ("babybear-t8-bad", "babybear-t8-bad", None),
+    ("mersenne31-t2", "mersenne31-t2", None),
 ];
 
 fn analysis_request(design: &str, program: Option<&str>) -> String {
@@ -127,6 +132,16 @@ fn essential_diagnostics(d: &Value) -> Value {
         if d.get(key).is_some() {
             out[key] = d[key].clone();
         }
+    }
+    // The packed witnesses: their size, and what the certificate selects.
+    if let Some(p) = d.get("packed") {
+        out["packed"] = json!({
+            "packBits": p["packBits"],
+            "internalInverse": !p["internalInverse"].is_null(),
+            "externalInverse": !p["externalInverse"].is_null(),
+            "m4": if p["m4"].is_null() { Value::Null } else { matrix(&p["m4"]["m4"]) },
+            "observabilityRows": p["observability"]["rows"],
+        });
     }
     if let Some(s) = d.get("sbox") {
         out["sbox"] = json!({"source": s["source"], "bijective": s["bijective"], "collision": s["collision"]});

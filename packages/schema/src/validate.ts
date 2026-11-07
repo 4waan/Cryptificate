@@ -241,7 +241,8 @@ function checkDesign(c: Checker, value: unknown, path: string): value is Candida
       } else modulus = BigInt(given);
     } else ok = false;
     ok = c.literal(value['width'], `${path}/width`, PRIME_WIDTHS) && ok;
-    const n = value['width'] === 3 || value['width'] === 4 ? value['width'] : 4;
+    const width = value['width'];
+    const n = typeof width === 'number' && PRIME_WIDTHS.includes(width) ? width : 4;
     const element = (e: unknown, p: string): boolean => (modulus === null ? true : c.residue(modulus, e, p));
     return checkHadesBody(c, value, path, n, element, ['unspecified', 'explicit']) && ok;
   }

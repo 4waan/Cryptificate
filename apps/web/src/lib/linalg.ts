@@ -64,10 +64,14 @@ export interface SingularMinor {
   cols: number[];
 }
 
-/** The first singular square submatrix in order of size, or null if every minor is nonzero. */
-export function firstSingularMinor(f: FieldOps, m: Mat): SingularMinor | null {
+/**
+ * The first singular square submatrix in order of size, up to order
+ * `maxOrder`, or null if every such minor is nonzero (with `maxOrder` below
+ * the width, that does not make the matrix MDS).
+ */
+export function firstSingularMinor(f: FieldOps, m: Mat, maxOrder = m.length): SingularMinor | null {
   const n = m.length;
-  for (let k = 1; k <= n; k++) {
+  for (let k = 1; k <= Math.min(n, maxOrder); k++) {
     for (const cols of combinations(n, k)) {
       for (const rows of combinations(n, k)) {
         const sub = rows.map((r) => cols.map((c) => m[r]![c]!));
@@ -82,8 +86,8 @@ export function firstSingularMinor(f: FieldOps, m: Mat): SingularMinor | null {
  * A nonzero x with weight(x) + weight(Mx) <= width, built from a singular
  * minor M[R, C]: x is supported on C and Mx vanishes on R.
  */
-export function branchWitness(f: FieldOps, m: Mat): { input: string[]; output: string[] } | null {
-  const minor = firstSingularMinor(f, m);
+export function branchWitness(f: FieldOps, m: Mat, maxOrder = m.length): { input: string[]; output: string[] } | null {
+  const minor = firstSingularMinor(f, m, maxOrder);
   if (!minor) return null;
   const sub = minor.rows.map((r) => minor.cols.map((c) => m[r]![c]!));
   const { kernel } = rankAndKernel(f, sub);

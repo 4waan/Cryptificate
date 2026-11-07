@@ -8,7 +8,7 @@ A report always shows two separate chains, because they answer separate question
 
 | Chain | Question | Claims |
 |---|---|---|
-| **Design guarantees** | Does the *specification* have good diffusion? | `matrix.mds`, `offsets.dispersion`, `sbox.bijective`, `activity.bound`, `sbox.differential`, `sbox.linearity` (HADES: `external.mds`, `internal.invertible`, `sbox.bijective`, `activity.outer`, `activity.partial`, `activity.total`; over a 64-bit prime field `field.prime` first) |
+| **Design guarantees** | Does the *specification* have good diffusion? | `matrix.mds`, `offsets.dispersion`, `sbox.bijective`, `activity.bound`, `sbox.differential`, `sbox.linearity` (HADES: `external.mds`, `internal.invertible`, `sbox.bijective`, `activity.outer`, `activity.partial`, `activity.total`; over a 64-bit prime field `field.prime` first, and above width 4 `external.m4_mds` and `external.invertible` after `external.mds`) |
 | **Implementation correspondence** | Does the *code* compute the specification? | `circuit.equivalence`, `rust.refinement`, `native.correctness`, `native.timing` |
 
 A circuit can match its matrix perfectly while the matrix has weak diffusion (the identity example), and a matrix can be MDS while its circuit has a crossed wire (the wrong-wire example). Passing one chain says nothing about the other.
@@ -27,6 +27,8 @@ Execution outcomes are reported separately: `completed`, `failed`, `timeout`, `c
 A failed MDS check or a repeated row offset makes the activity bound **not established by this method**. It does not refute the bound: some other argument might still establish it.
 
 Over a 64-bit prime field the activity bounds also need `field.prime`; without it they are not established.
+
+Above width 4 (the Poseidon2 widths 8, 12, 16 and 24) the external matrix's minors are not enumerated. `external.mds` is refuted when a square submatrix of order at most 2 is singular, as it is for every Poseidon2 external matrix `circ(2 M₄, M₄, …, M₄)` of these widths, and is otherwise not established. Two claims say what is checked instead: `external.m4_mds` (the external matrix equals `circ(2 M₄, M₄, …, M₄)` for its `4 × 4` block `M₄`, and `M₄` is MDS; this is not the MDS property of the whole matrix) and `external.invertible` (an inverse matrix, checked by multiplication). `activity.outer` and `activity.total` need `external.mds` and are therefore not established at these widths; no theorem here bounds the full rounds through a matrix that is only invertible.
 
 `activity.partial` is the one activity claim that can be refuted. Proved, it says that every window of `L` consecutive partial rounds of a HADES design activates an S-box for any two distinct states entering it, with `L` at most the number of partial rounds. Refuted, it comes with a nonzero difference that passes every partial round with no active S-box, whatever the round constants, and the refutation also states that the design has at least one partial round. A design with no partial rounds gets neither: `activity.partial` is then not established (out of scope), since a bypass of zero rounds would be vacuous. `activity.total` adds one active S-box per disjoint window to the full-round bound; it needs `external.mds`, `internal.invertible`, `sbox.bijective` and a proved `activity.partial`, and is otherwise not established.
 

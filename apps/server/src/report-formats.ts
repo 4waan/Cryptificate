@@ -11,7 +11,7 @@
 import { createHash } from 'node:crypto';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { IMPLEMENTATION_CLAIMS, MODELS, designClaimsFor, htmlDocument, htmlElement as h, htmlFragment, reportArticle, reportTitle } from '@cryptificate/schema';
+import { IMPLEMENTATION_CLAIMS, MODELS, everyDesignClaimFor, htmlDocument, htmlElement as h, htmlFragment, reportArticle, reportTitle } from '@cryptificate/schema';
 import type { AnalysisReport, Claim, ExecutionState, ExperimentReport, HtmlChild, HtmlToolchain } from '@cryptificate/schema';
 import { formatAnalysis, table, witnessText } from './format.js';
 import type { Style } from './format.js';
@@ -237,7 +237,7 @@ function outcomeText(run: GateRun): string {
 /** Generic title of a claim id (activity titles vary with the design). */
 const RULE_TITLES: ReadonlyMap<string, { title: string; chain: string }> = (() => {
   const m = new Map<string, { title: string; chain: string }>();
-  for (const info of [...MODELS.flatMap((model) => designClaimsFor(model)), ...IMPLEMENTATION_CLAIMS]) {
+  for (const info of [...MODELS.flatMap((model) => everyDesignClaimFor(model)), ...IMPLEMENTATION_CLAIMS]) {
     if (!m.has(info.id)) m.set(info.id, { title: info.title, chain: info.chain });
   }
   return m;
@@ -271,6 +271,8 @@ export function claimLocation(c: Claim, input: CheckInput): { file: string; poin
     case 'matrix.mds':
       return d('/matrix');
     case 'external.mds':
+    case 'external.m4_mds':
+    case 'external.invertible':
       return d('/external');
     case 'internal.invertible':
       return d('/internal');

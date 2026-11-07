@@ -13,7 +13,7 @@
  *      2 takes precedence over 1.
  */
 import type { Claim, ClaimStatus, NotEstablishedReason } from '@cryptificate/schema';
-import { CLAIM_STATUSES, IMPLEMENTATION_CLAIMS, MODELS, designClaimsFor } from '@cryptificate/schema';
+import { CLAIM_STATUSES, IMPLEMENTATION_CLAIMS, MODELS, everyDesignClaimFor } from '@cryptificate/schema';
 
 export type FailOn = 'none' | 'refuted' | 'not-established' | 'any';
 
@@ -31,8 +31,8 @@ export function parseFailOn(value: string | undefined): FailOn {
   throw new UsageError(`--fail-on must be one of ${FAIL_ON.join(', ')} (got "${value}")`);
 }
 
-/** Every claim id a report can carry, over all design models. */
-export const KNOWN_CLAIM_IDS: ReadonlySet<string> = new Set([...MODELS.flatMap((m) => designClaimsFor(m).map((c) => c.id)), ...IMPLEMENTATION_CLAIMS.map((c) => c.id)]);
+/** Every claim id a report can carry, over all design models and widths. */
+export const KNOWN_CLAIM_IDS: ReadonlySet<string> = new Set([...MODELS.flatMap((m) => everyDesignClaimFor(m).map((c) => c.id)), ...IMPLEMENTATION_CLAIMS.map((c) => c.id)]);
 
 /**
  * Claim ids given with --claims, or null for the default scope. An id that

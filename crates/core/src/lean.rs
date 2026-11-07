@@ -427,8 +427,40 @@ fn prime_value(d: &HadesDesign<Fp>, hp: &HadesPrimeDiagnostics, name: &str) -> O
         "BYPASS_DIM" => invariant()?.invariant_basis.len().to_string(),
         "BYPASS_BASIS_ENTRIES" => entries(&invariant()?.invariant_basis),
         "BYPASS_COEFF_ENTRIES" => entries(&invariant()?.coefficients),
+        // The witnesses of the packed checks (widths other than 3 and 4).
+        "PACK_BITS" => hp.packed.as_ref()?.pack_bits.to_string(),
+        "INTERNAL_INVERSE_ENTRIES" => lean_rev_cols(hp.packed.as_ref()?.internal_inverse.as_ref()?),
+        "EXTERNAL_INVERSE_ENTRIES" => lean_rev_cols(hp.packed.as_ref()?.external_inverse.as_ref()?),
+        "EXTERNAL_KERNEL_ENTRIES" => lean_list(h.external.kernel_vector.as_ref()?),
+        "OBS_SELECT" => list(hp.packed.as_ref()?.observability.as_ref()?.rows.iter()),
+        "OBS_INVERSE_ENTRIES" => {
+            lean_rev_cols(&hp.packed.as_ref()?.observability.as_ref()?.inverse)
+        }
+        "M4_ENTRIES" => entries(&hp.packed.as_ref()?.m4.as_ref()?.m4.matrix),
+        "M4_VECTOR_ENTRIES" => lean_list(
+            &hp.packed
+                .as_ref()?
+                .m4
+                .as_ref()?
+                .m4
+                .branch_witness
+                .as_ref()?
+                .input,
+        ),
         _ => return None,
     })
+}
+
+/// A square matrix column by column, each column from its last entry to its
+/// first: entry `j n + (n - 1 - k)` is `m[k][j]`. This is how Lean's
+/// `Packed.revCols` reads an inverse witness, so that one product of packed
+/// numbers gives one entry of a matrix product.
+fn lean_rev_cols<F: Field>(m: &[Vec<F>]) -> String {
+    let n = m.len();
+    let cols: Vec<F> = (0..n)
+        .flat_map(|j| (0..n).rev().map(move |k| m[k][j]))
+        .collect();
+    lean_list(&cols)
 }
 
 fn aes_value(rounds: u32, offsets: &[usize], a: &AesLikeDiagnostics, name: &str) -> Option<String> {
@@ -653,6 +685,17 @@ fn echo_value(req: &AnalysisRequest, diag: &Diagnostics, key: &str) -> Option<Va
                 "witnessKernel" => to(h.internal.kernel_vector.as_ref()?),
                 "witnessRoot" => to(&h.power.collision?.omega),
                 "witnessBypass" => to(&h.partial.bypass.as_ref()?.difference),
+                "witnessExternalKernel" => to(h.external.kernel_vector.as_ref()?),
+                "externalM4" => to(&hp.packed.as_ref()?.m4.as_ref()?.m4.matrix),
+                "witnessM4Vector" => to(&hp
+                    .packed
+                    .as_ref()?
+                    .m4
+                    .as_ref()?
+                    .m4
+                    .branch_witness
+                    .as_ref()?
+                    .input),
                 _ => return None,
             })
         }
@@ -678,20 +721,39 @@ fn prime_fragment_candidates(
 ) -> Vec<String> {
     let per_width = |base: &str| vec![format!("{base}_prime{width}")];
     let fixed = |name: &str| vec![name.to_string()];
+    // Widths other than 3 and 4 check matrices with inverse witnesses and
+    // packed arithmetic, or on lists, instead of determinant formulas.
+    let packed = limits::prime_width_is_packed(width);
     match (claim, holds) {
         (claim_ids::FIELD_PRIME, true) => fixed("field_prime"),
         (claim_ids::EXTERNAL_MDS, true) => per_width("external_mds"),
+        // A wide matrix's image is computed on numerals: `decide` on the
+        // product over `ZMod p` exhausts the kernel's memory at width 24.
+        (claim_ids::EXTERNAL_MDS, false) if limits::prime_width_is_wide(width) => {
+            fixed("external_not_mds_prime_list")
+        }
         (claim_ids::EXTERNAL_MDS, false) => fixed("external_not_mds_prime"),
+        (claim_ids::EXTERNAL_M4_MDS, true) => fixed("external_m4_mds_prime"),
+        (claim_ids::EXTERNAL_M4_MDS, false) => fixed("external_m4_not_mds_prime"),
+        (claim_ids::EXTERNAL_INVERTIBLE, true) => fixed("external_invertible_prime"),
+        (claim_ids::EXTERNAL_INVERTIBLE, false) => fixed("external_singular_prime"),
+        (claim_ids::INTERNAL_INVERTIBLE, true) if packed => {
+            fixed("internal_invertible_prime_packed")
+        }
         (claim_ids::INTERNAL_INVERTIBLE, true) => per_width("internal_invertible"),
+        (claim_ids::INTERNAL_INVERTIBLE, false) if packed => fixed("internal_singular_prime_list"),
         (claim_ids::INTERNAL_INVERTIBLE, false) => fixed("internal_singular_prime"),
         (claim_ids::SBOX_BIJECTIVE, true) => fixed("power_bijective_prime"),
         (claim_ids::SBOX_BIJECTIVE, false) => fixed("power_not_injective_prime"),
         (claim_ids::ACTIVITY_OUTER, _) => per_width("hades_activity"),
+        (claim_ids::ACTIVITY_PARTIAL, true) if packed => fixed("partial_active_prime_packed"),
         (claim_ids::ACTIVITY_PARTIAL, true) => per_width("partial_active"),
-        (claim_ids::ACTIVITY_PARTIAL, false) => match &h.hades.partial.bypass {
-            Some(b) if b.invariant() => fixed("partial_bypass_prime"),
-            Some(_) => fixed("partial_bypass_short_prime"),
-            None => Vec::new(),
+        (claim_ids::ACTIVITY_PARTIAL, false) => match (&h.hades.partial.bypass, packed) {
+            (Some(b), false) if b.invariant() => fixed("partial_bypass_prime"),
+            (Some(b), true) if b.invariant() => fixed("partial_bypass_prime_list"),
+            (Some(_), false) => fixed("partial_bypass_short_prime"),
+            (Some(_), true) => fixed("partial_bypass_short_prime_packed"),
+            (None, _) => Vec::new(),
         },
         (claim_ids::ACTIVITY_TOTAL, _) => per_width("hades_total_activity"),
         _ => Vec::new(),

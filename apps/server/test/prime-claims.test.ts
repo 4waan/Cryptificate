@@ -114,3 +114,58 @@ test('the modulus of a prime-field design is derived even when the design does n
   const custom = { ...raw, field: 'prime' } as AnalysisRequest['design'];
   assert.throws(() => derivedEcho({ design: custom }), /has no modulus/);
 });
+
+test('BabyBear width 16: the wide external claims, a refuted external.mds and no full-round bound', () => {
+  const lean: Array<[ClaimId, string, 'proved' | 'refuted']> = [
+    ['field.prime', 'field_prime', 'proved'],
+    ['external.mds', 'external_not_mds', 'refuted'],
+    ['external.m4_mds', 'external_m4_mds', 'proved'],
+    ['external.invertible', 'external_invertible', 'proved'],
+    ['internal.invertible', 'internal_invertible', 'proved'],
+    ['sbox.bijective', 'power_bijective', 'proved'],
+    ['activity.partial', 'partial_bypass_short', 'refuted'],
+  ];
+  const outer = 'not established by this method for width 16: the full-round bound needs an MDS external matrix';
+  const claims = buildAnalysisClaims({
+    request: { design: design('babybear-t16') },
+    expect: lean.map(([c, t, s]) => expectation(c, t, s)),
+    verdicts: lean.map(([c, t, s]) => verdict(c, t, s)),
+    diagnostics: { partial: { window: null } },
+    skipped: [
+      { claim: 'activity.outer', reason: outer },
+      { claim: 'activity.total', reason: outer },
+    ],
+  });
+  const ids = claims.filter((c) => c.chain === 'design').map((c) => c.id);
+  assert.deepEqual(ids, [
+    'field.prime',
+    'external.mds',
+    'external.m4_mds',
+    'external.invertible',
+    'internal.invertible',
+    'sbox.bijective',
+    'activity.outer',
+    'activity.partial',
+    'activity.total',
+  ]);
+  assert.equal(byId(claims, 'external.mds').title, 'External matrix is MDS (branch number 17)');
+  assert.equal(byId(claims, 'external.mds').status, 'refuted');
+  assert.equal(byId(claims, 'external.m4_mds').title, 'External matrix is circ(2 M4, M4, …, M4) with M4 MDS');
+  assert.equal(byId(claims, 'external.m4_mds').status, 'proved');
+  assert.equal(byId(claims, 'external.invertible').status, 'proved');
+  // The full-round bound needs external.mds, which is refuted here.
+  for (const id of ['activity.outer', 'activity.total']) {
+    const c = byId(claims, id);
+    assert.equal(c.status, 'not_established', id);
+    assert.equal(c.reason, 'precondition-failed', id);
+    assert.match(c.note, /MDS property of the external matrix/, id);
+  }
+  assert.equal(byId(claims, 'activity.partial').status, 'refuted');
+});
+
+test('width four and below have no wide external claims', () => {
+  for (const name of ['koalabear-t4', 'mersenne31-t2']) {
+    const claims = buildAnalysisClaims({ request: { design: design(name) }, expect: [], verdicts: [], diagnostics: {} });
+    assert.ok(!claims.some((c) => c.id === 'external.m4_mds' || c.id === 'external.invertible'), name);
+  }
+});

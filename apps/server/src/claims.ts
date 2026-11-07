@@ -358,7 +358,7 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
 
   const isProved = (id: ClaimId): boolean => claims.some((c) => c.id === id && c.status === 'proved');
 
-  for (const info of designClaimsFor(request.design.model)) {
+  for (const info of designClaimsFor(request.design.model, request.design.width)) {
     const pre = activityPreconditions(request.design.model, info.id);
     const d = request.design;
     if (info.id === 'activity.total' && (d.model === 'hades/bn254/v1' || d.model === 'hades/prime/v1') && d.partialRounds === 0) {

@@ -1,0 +1,18 @@
+{
+  "name": "external_m4_mds_prime",
+  "kind": "claim",
+  "claim": "external.m4_mds",
+  "status": "proved",
+  "theorem": "CryptificateJob.external_m4_mds",
+  "expectedType": "CryptificateJob.candExternal = Cryptificate.Hades.poseidon2External {{WIDTH}} CryptificateJob.externalM4 ∧ IsMDS CryptificateJob.externalM4",
+  "placeholders": [
+    "WIDTH",
+    "PACK_BITS"
+  ],
+  "requires": [
+    "const_external_prime",
+    "const_external_m4_prime",
+    "field_prime"
+  ],
+  "field": "prime"
+}

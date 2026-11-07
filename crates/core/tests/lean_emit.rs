@@ -1095,3 +1095,150 @@ fn repo_prime_width_three_and_short_bypass() {
         Status::Refuted,
     );
 }
+
+#[test]
+fn repo_prime_wide_widths() {
+    let Some(set) = repo_templates() else { return };
+    // KoalaBear width 16 (Plonky3): observable from coordinate 0 in 16
+    // partial rounds of the 20.
+    let req = request("koalabear-t16", None);
+    let e = emit_with(&req, &set).unwrap();
+    let claims = check_emission(&set, &e);
+    assert_eq!(
+        claims,
+        vec![
+            (claim_ids::FIELD_PRIME.to_string(), Status::Proved),
+            (claim_ids::EXTERNAL_MDS.to_string(), Status::Refuted),
+            (claim_ids::EXTERNAL_M4_MDS.to_string(), Status::Proved),
+            (claim_ids::EXTERNAL_INVERTIBLE.to_string(), Status::Proved),
+            (claim_ids::INTERNAL_INVERTIBLE.to_string(), Status::Proved),
+            (claim_ids::SBOX_BIJECTIVE.to_string(), Status::Proved),
+            (claim_ids::ACTIVITY_PARTIAL.to_string(), Status::Proved),
+        ]
+    );
+    for fragment in [
+        "external_not_mds_prime_list",
+        "external_m4_mds_prime",
+        "external_invertible_prime",
+        "internal_invertible_prime_packed",
+        "partial_active_prime_packed",
+    ] {
+        assert!(e.fragments.iter().any(|f| f == fragment), "{fragment}");
+    }
+    let skipped: Vec<&str> = e.skipped.iter().map(|s| s.claim.as_str()).collect();
+    assert_eq!(
+        skipped,
+        vec![claim_ids::ACTIVITY_OUTER, claim_ids::ACTIVITY_TOTAL]
+    );
+    assert!(e.skipped[0].reason.contains("not MDS"));
+    // 16^2 p^2 < 2^70 for p < 2^31.
+    assert!(e
+        .source
+        .contains("Packed.det_ne_zero_of_checkInverse (S := 70)"));
+    assert!(e.expect.iter().any(|x| x
+        .expected_type
+        .starts_with("16 ≤ CryptificateJob.candPartialRounds ∧")));
+    assert!(e.source.contains(&format!(
+        "def witnessObsRows : List ℕ :=\n  [{}]",
+        (0..16)
+            .map(|i| i.to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    )));
+    assert_eq!(
+        e.inputs_echo["externalM4"],
+        json!([
+            ["2", "3", "1", "1"],
+            ["1", "2", "3", "1"],
+            ["1", "1", "2", "3"],
+            ["3", "1", "1", "2"]
+        ])
+    );
+    // The low-weight witness of external.mds is echoed.
+    assert!(e.inputs_echo.contains_key("witnessVector"));
+
+    // BabyBear width 24: 21 partial rounds, three short of observability.
+    let e = emit_with(&request("babybear-t24", None), &set).unwrap();
+    check_emission(&set, &e);
+    expect_claim(
+        &set,
+        &e,
+        "partial_bypass_short_prime_packed",
+        claim_ids::ACTIVITY_PARTIAL,
+        Status::Refuted,
+    );
+    assert!(e.inputs_echo.contains_key("witnessBypass"));
+
+    // A deliberately bad width-8 design: every refutation of the wide path.
+    let e = emit_with(&request("babybear-t8-bad", None), &set).unwrap();
+    check_emission(&set, &e);
+    for (fragment, claim) in [
+        ("external_not_mds_prime_list", claim_ids::EXTERNAL_MDS),
+        ("external_m4_not_mds_prime", claim_ids::EXTERNAL_M4_MDS),
+        ("external_singular_prime", claim_ids::EXTERNAL_INVERTIBLE),
+        (
+            "internal_singular_prime_list",
+            claim_ids::INTERNAL_INVERTIBLE,
+        ),
+        ("partial_bypass_prime_list", claim_ids::ACTIVITY_PARTIAL),
+    ] {
+        expect_claim(&set, &e, fragment, claim, Status::Refuted);
+    }
+    for key in [
+        "witnessExternalKernel",
+        "witnessKernel",
+        "witnessM4Vector",
+        "witnessBypass",
+    ] {
+        assert!(e.inputs_echo.contains_key(key), "{key}");
+    }
+    // The kernel vector a singularity certificate echoes is the report's
+    // witness of the refuted invertibility claim.
+    for (claim, key) in [
+        (claim_ids::EXTERNAL_INVERTIBLE, "witnessExternalKernel"),
+        (claim_ids::INTERNAL_INVERTIBLE, "witnessKernel"),
+    ] {
+        let x = e.expect.iter().find(|x| x.claim == claim).unwrap();
+        match &x.witness {
+            Some(Witness::Kernel { vector }) => assert_eq!(json!(vector), e.inputs_echo[key]),
+            other => panic!("{claim}: {other:?}"),
+        }
+    }
+
+    // Width two: MDS by minors, inverse witnesses, both activity bounds.
+    let e = emit_with(&request("mersenne31-t2", None), &set).unwrap();
+    let claims = check_emission(&set, &e);
+    assert_eq!(claims.len(), 7);
+    assert!(claims.iter().all(|(_, s)| *s == Status::Proved));
+    for fragment in [
+        "external_mds_prime2",
+        "internal_invertible_prime_packed",
+        "hades_activity_prime2",
+        "partial_active_prime_packed",
+        "hades_total_activity_prime2",
+    ] {
+        assert!(e.fragments.iter().any(|f| f == fragment), "{fragment}");
+    }
+}
+
+/// An inverse witness is written column by column, each column from its last
+/// entry to its first (Lean's `Packed.revCols`).
+#[test]
+fn inverse_witness_layout() {
+    let Some(set) = repo_templates() else { return };
+    let e = emit_with(&request("mersenne31-t2", None), &set).unwrap();
+    // [[2, 1], [1, 3]] has inverse [[3, -1], [-1, 2]] / 5 over Mersenne31.
+    let p: u64 = 2147483647;
+    // p = 2 mod 5, so (2p + 1) / 5 is the inverse of 5.
+    let fifth = |k: u64| (k * ((2 * p + 1) / 5)) % p;
+    let w = [[fifth(3), p - fifth(1)], [p - fifth(1), fifth(2)]];
+    let cols = [w[1][0], w[0][0], w[1][1], w[0][1]];
+    let expected = format!(
+        "def witnessInternalInverse : List ℕ :=\n  [{}]",
+        cols.iter()
+            .map(u64::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    assert!(e.source.contains(&expected), "{expected}\n{}", e.source);
+}

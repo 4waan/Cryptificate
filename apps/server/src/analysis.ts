@@ -49,7 +49,7 @@ export function wiringWitnesses(witnesses: ReadonlyArray<Witness | null | undefi
 }
 
 export function allClaimsNotEstablished(req: AnalysisRequest, reason: NotEstablishedReason, note: string): Claim[] {
-  return [...designClaimsFor(req.design.model), ...IMPLEMENTATION_CLAIMS].map((info) => ({
+  return [...designClaimsFor(req.design.model, req.design.width), ...IMPLEMENTATION_CLAIMS].map((info) => ({
     id: info.id,
     chain: info.chain,
     title: info.title,

@@ -81,6 +81,7 @@ test('witness schema has one alternative per witness kind', () => {
     'sbox-differential': true,
     'sbox-linearity': true,
     'partial-bypass': true,
+    kernel: true,
   };
   assert.deepEqual(witness.oneOf.map((w) => w.properties.kind.const).sort(), Object.keys(kinds).sort());
 });

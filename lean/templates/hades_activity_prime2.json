@@ -1,0 +1,19 @@
+{
+  "name": "hades_activity_prime2",
+  "kind": "claim",
+  "claim": "activity.outer",
+  "status": "proved",
+  "theorem": "CryptificateJob.hades_activity",
+  "expectedType": "∀ (mask : Finset (Fin 2)) (constants : ℕ → Fin 2 → ZMod CryptificateJob.candModulus) (x y : Fin 2 → ZMod CryptificateJob.candModulus), x ≠ y → (CryptificateJob.candFullRounds / 2 / 2 + CryptificateJob.candFullRounds / 2 / 2) * 3 + CryptificateJob.candFullRounds / 2 % 2 + CryptificateJob.candFullRounds / 2 % 2 ≤ { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.outerActivity mask constants x y",
+  "placeholders": [],
+  "requires": [
+    "const_external_prime",
+    "const_internal_prime",
+    "const_exponent",
+    "const_rounds_hades",
+    "external_mds_prime2",
+    "internal_invertible_prime_packed",
+    "power_bijective_prime"
+  ],
+  "field": "prime"
+}

@@ -11,8 +11,8 @@ import Cryptificate.Hades.Axioms
 
 The definitions and theorems below are generic in the field and the width; the BN254 templates
 (`hades/bn254/v1`) use them at width three, and the prime-field templates (`hades/prime/v1`, see
-`Cryptificate.PrimeField`) at widths three and four over `ZMod p`, with `Hades.Wide` for the
-width-four certificates.
+`Cryptificate.PrimeField`) at widths 2, 3, 4, 8, 12, 16 and 24 over `ZMod p`, with `Hades.Wide`
+for the width-four certificates and `PrimeField.Packed` for the others.
 
 A HADES request (`hades/bn254/v1`) names an external and an internal `3 × 3` matrix, a power
 S-box `x ↦ x ^ e`, and the numbers of full and partial rounds. Each claim the service reports

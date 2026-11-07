@@ -94,6 +94,16 @@
         "positions": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
         "partialRounds": { "type": "integer", "minimum": 0 }
       }
+    },
+    {
+      "title": "Kernel vector",
+      "description": "A nonzero vector x with M x = 0 for the matrix M of the claim (the internal matrix for internal.invertible, the external matrix for external.invertible), so M is singular.",
+      "type": "object",
+      "required": ["kind", "vector"],
+      "properties": {
+        "kind": { "const": "kernel" },
+        "vector": { "type": "array", "minItems": 1, "items": { "$ref": "field-element.schema.json#/$defs/bn254" } }
+      }
     }
   ]
 }

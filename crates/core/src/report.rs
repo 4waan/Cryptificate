@@ -21,6 +21,11 @@ pub mod claim_ids {
     pub const FIELD_PRIME: &str = "field.prime";
     // Design chain, HADES (`sbox.bijective` is shared).
     pub const EXTERNAL_MDS: &str = "external.mds";
+    // HADES over a prime field, widths above 4: the external matrix is the
+    // Poseidon2 matrix circ(2 M4, M4, ..., M4) with M4 MDS, and it is
+    // invertible.
+    pub const EXTERNAL_M4_MDS: &str = "external.m4_mds";
+    pub const EXTERNAL_INVERTIBLE: &str = "external.invertible";
     pub const INTERNAL_INVERTIBLE: &str = "internal.invertible";
     pub const ACTIVITY_OUTER: &str = "activity.outer";
     pub const ACTIVITY_PARTIAL: &str = "activity.partial";
@@ -185,6 +190,9 @@ pub enum Witness {
         input_mask: String,
         output_mask: String,
     },
+    /// A nonzero vector `x` with `M x = 0` for the matrix `M` of the claim,
+    /// so `M` is singular.
+    Kernel { vector: Vec<String> },
     /// Two distinct field elements with the same power.
     PowerCollision {
         exponent: u32,

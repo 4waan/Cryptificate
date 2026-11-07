@@ -77,6 +77,8 @@ export function witnessText(c: Claim): string {
       return `uniformity ${w.uniformity}, at input difference ${w.inputDifference} and output difference ${w.outputDifference}`;
     case 'sbox-linearity':
       return `linearity ${w.linearity}, at input mask ${w.inputMask} and output mask ${w.outputMask}`;
+    case 'kernel':
+      return `nonzero [${w.vector.join(',')}] is sent to zero by the matrix`;
     default:
       return '';
   }

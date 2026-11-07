@@ -1,0 +1,315 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": true,
+      "bound": 12,
+      "claim": "activity.outer",
+      "reason": "the external matrix is MDS, the internal matrix is invertible and the power map is a bijection, so the full-round bound applies",
+      "rounds": 8
+    },
+    "claims": [
+      {
+        "claim": "field.prime",
+        "holds": true,
+        "note": "2147483647 is prime: p - 1 = 2 * 3^2 * 7 * 11 * 31 * 151 * 331, and 7 has order p - 1 modulo p (a Pratt certificate of 9 steps)",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "external.mds",
+        "holds": true,
+        "note": "all 5 square minors of the external matrix are nonzero, so its branch number is 3",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "internal.invertible",
+        "holds": true,
+        "note": "the internal matrix has determinant 5",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "gcd(5, p-1) = 1, so x^5 is inverted by x^d with d = 1717986917",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.outer",
+        "holds": true,
+        "note": "the external matrix is MDS, the internal matrix is invertible and the power map is a bijection, so the full-round bound applies",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.partial",
+        "holds": true,
+        "note": "the rows e0 M^0, e0 M^1 of the powers of the internal matrix M at the masked positions have determinant 1, so no nonzero difference avoids the S-boxes of 2 consecutive partial rounds",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.total",
+        "holds": true,
+        "note": "the full-round bound 12 plus one active S-box in each of the 7 disjoint windows of 2 partial rounds",
+        "predicted": "proved",
+        "witness": null
+      }
+    ],
+    "external": {
+      "branchWitness": null,
+      "determinant": "3",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 5,
+      "zeroMinors": 0
+    },
+    "internal": {
+      "branchWitness": null,
+      "determinant": "5",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 5,
+      "zeroMinors": 0
+    },
+    "model": "hades/prime/v1",
+    "modulus": "2147483647",
+    "packed": {
+      "externalInverse": false,
+      "internalInverse": true,
+      "m4": null,
+      "observabilityRows": [
+        0,
+        1
+      ],
+      "packBits": 64
+    },
+    "partial": {
+      "bypass": null,
+      "determinant": "1",
+      "partialRounds": 14,
+      "positions": [
+        0
+      ],
+      "rows": [
+        {
+          "position": 0,
+          "power": 0,
+          "row": [
+            "1",
+            "0"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 1,
+          "row": [
+            "2",
+            "1"
+          ]
+        }
+      ],
+      "window": 2
+    },
+    "power": {
+      "bijective": true,
+      "collision": null,
+      "exponent": 5,
+      "gcd": 1,
+      "inverseExponent": "1717986917",
+      "k": 4
+    },
+    "prime": {
+      "factorization": [
+        [
+          "2",
+          1
+        ],
+        [
+          "3",
+          2
+        ],
+        [
+          "7",
+          1
+        ],
+        [
+          "11",
+          1
+        ],
+        [
+          "31",
+          1
+        ],
+        [
+          "151",
+          1
+        ],
+        [
+          "331",
+          1
+        ]
+      ],
+      "field": "mersenne31",
+      "modulus": "2147483647",
+      "pratt": [
+        {
+          "a": 1,
+          "factors": [],
+          "n": "2"
+        },
+        {
+          "a": 2,
+          "factors": [
+            [
+              "2",
+              1
+            ]
+          ],
+          "n": "3"
+        },
+        {
+          "a": 3,
+          "factors": [
+            [
+              "2",
+              1
+            ],
+            [
+              "3",
+              1
+            ]
+          ],
+          "n": "7"
+        },
+        {
+          "a": 2,
+          "factors": [
+            [
+              "2",
+              2
+            ]
+          ],
+          "n": "5"
+        },
+        {
+          "a": 2,
+          "factors": [
+            [
+              "2",
+              1
+            ],
+            [
+              "5",
+              1
+            ]
+          ],
+          "n": "11"
+        },
+        {
+          "a": 3,
+          "factors": [
+            [
+              "2",
+              1
+            ],
+            [
+              "3",
+              1
+            ],
+            [
+              "5",
+              1
+            ]
+          ],
+          "n": "31"
+        },
+        {
+          "a": 6,
+          "factors": [
+            [
+              "2",
+              1
+            ],
+            [
+              "3",
+              1
+            ],
+            [
+              "5",
+              2
+            ]
+          ],
+          "n": "151"
+        },
+        {
+          "a": 3,
+          "factors": [
+            [
+              "2",
+              1
+            ],
+            [
+              "3",
+              1
+            ],
+            [
+              "5",
+              1
+            ],
+            [
+              "11",
+              1
+            ]
+          ],
+          "n": "331"
+        },
+        {
+          "a": 7,
+          "factors": [
+            [
+              "2",
+              1
+            ],
+            [
+              "3",
+              2
+            ],
+            [
+              "7",
+              1
+            ],
+            [
+              "11",
+              1
+            ],
+            [
+              "31",
+              1
+            ],
+            [
+              "151",
+              1
+            ],
+            [
+              "331",
+              1
+            ]
+          ],
+          "n": "2147483647"
+        }
+      ]
+    },
+    "target": "external",
+    "total": {
+      "applicable": true,
+      "bound": 19,
+      "claim": "activity.total",
+      "reason": "the full-round bound 12 plus one active S-box in each of the 7 disjoint windows of 2 partial rounds",
+      "rounds": 22
+    }
+  },
+  "inputDigest": "sha256:ad016aa193c0dbfefb6786cd810595c6f3cfbbc8551825dce417820b7f4bfbd9"
+}

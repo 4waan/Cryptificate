@@ -77,6 +77,8 @@ const RECHECKED: ReadonlySet<string> = new Set([
   'sbox.linearity',
   'activity.bound',
   'external.mds',
+  'external.m4_mds',
+  'external.invertible',
   'internal.invertible',
   'activity.outer',
   'activity.partial',

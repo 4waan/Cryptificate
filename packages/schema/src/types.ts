@@ -111,7 +111,8 @@ export interface HadesPrimeDesign {
    * omitted and is filled in by normalization (and must match if given).
    */
   modulus?: string;
-  width: 3 | 4;
+  /** One of `PRIME_WIDTHS`, the Poseidon2 widths. */
+  width: 2 | 3 | 4 | 8 | 12 | 16 | 24;
   external: PrimeDecimal[][];
   internal: PrimeDecimal[][];
   /** Even; half before and half after the partial rounds. */
@@ -190,6 +191,8 @@ export type DesignClaimId =
   | 'sbox.bijective'
   | 'activity.bound'
   | 'external.mds'
+  | 'external.m4_mds'
+  | 'external.invertible'
   | 'internal.invertible'
   | 'activity.outer'
   | 'activity.partial'
@@ -303,6 +306,16 @@ export interface PartialBypassWitness {
   partialRounds: number;
 }
 
+/**
+ * A nonzero vector `x` with `M x = 0` for the matrix `M` of the claim (the
+ * internal matrix for `internal.invertible`, the external matrix for
+ * `external.invertible`), so `M` is singular.
+ */
+export interface KernelWitness {
+  kind: 'kernel';
+  vector: BnDecimal[];
+}
+
 export type Witness =
   | BranchWitness
   | OffsetCollisionWitness
@@ -311,7 +324,8 @@ export type Witness =
   | PowerCollisionWitness
   | PartialBypassWitness
   | SboxDifferentialWitness
-  | SboxLinearityWitness;
+  | SboxLinearityWitness
+  | KernelWitness;
 
 export type WitnessKind = Witness['kind'];
 
