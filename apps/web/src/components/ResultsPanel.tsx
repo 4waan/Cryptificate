@@ -354,7 +354,7 @@ export function ResultsPanel({
         </div>
       ) : null}
       {/* The workspace action bar shows this run's status and its one Stop button; here are its steps. */}
-      <RunDetails run={run} className="panel" />
+      <RunDetails run={run} className="panel" stopWhere="Stop in the run bar at the top of the workspace" />
       {active && !stale ? (
         <LivePreview
           items={items}

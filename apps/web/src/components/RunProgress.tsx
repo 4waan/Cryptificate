@@ -193,7 +193,18 @@ export function RunProgress({ run, compact = false, now: fixedNow }: { run: Run;
  * RunProgress shows elsewhere on the page (the action bar). No live region and no buttons, so the page has one
  * of each per run. Renders nothing once the run has ended or while there is nothing to show.
  */
-export function RunDetails({ run, className, now: fixedNow }: { run: Run; className?: string; now?: number }) {
+export function RunDetails({
+  run,
+  className,
+  stopWhere = 'the Stop button above',
+  now: fixedNow,
+}: {
+  run: Run;
+  className?: string;
+  /** Where the run's Stop button is, for the caption. */
+  stopWhere?: string;
+  now?: number;
+}) {
   const capabilities = useAppState((s) => s.connection.capabilities);
   const timings = useAppState((s) => s.timings);
   const now = useRunClock(run, fixedNow);
@@ -204,7 +215,7 @@ export function RunDetails({ run, className, now: fixedNow }: { run: Run; classN
   return (
     <div className={['stack', 'run-progress', className].filter(Boolean).join(' ')} style={{ gap: 8 }}>
       <p className="small muted" style={{ margin: 0 }}>
-        <strong>{runName(run)}</strong> progress. Stop it with Esc or the Stop button above.
+        <strong>{runName(run)}</strong> progress. Stop it with Esc or {stopWhere}.
       </p>
       {parts}
     </div>
