@@ -171,6 +171,9 @@ pub enum Witness {
         positions: Vec<usize>,
         partial_rounds: u32,
     },
+    /// A nonzero vector `x` with `M x = 0` for the matrix `M` of the claim,
+    /// so `M` is singular.
+    Kernel { vector: Vec<String> },
     /// Two distinct field elements with the same power.
     PowerCollision {
         exponent: u32,

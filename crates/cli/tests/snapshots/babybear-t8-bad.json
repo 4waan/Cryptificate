@@ -76,14 +76,38 @@
         "holds": false,
         "note": "the external matrix has determinant 0 and a nonzero kernel vector",
         "predicted": "refuted",
-        "witness": null
+        "witness": {
+          "kind": "kernel",
+          "vector": [
+            "2013265920",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        }
       },
       {
         "claim": "internal.invertible",
         "holds": false,
         "note": "the internal matrix has determinant 0 and a nonzero kernel vector",
         "predicted": "refuted",
-        "witness": null
+        "witness": {
+          "kind": "kernel",
+          "vector": [
+            "0",
+            "2013265920",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        }
       },
       {
         "claim": "sbox.bijective",

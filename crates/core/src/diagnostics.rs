@@ -208,6 +208,13 @@ pub struct MatrixAnalysis<F> {
     pub kernel_vector: Option<Vec<F>>,
 }
 
+/// The report witness of a singular matrix: its kernel vector.
+pub fn kernel_witness<F: Field>(vector: &[F]) -> Witness {
+    Witness::Kernel {
+        vector: encode_vec(vector),
+    }
+}
+
 /// Minors, MDS decision, determinant, and the witnesses for a failure.
 ///
 /// A matrix wider than [`limits::MAX_MINOR_WIDTH`] has too many minors to
@@ -1215,7 +1222,7 @@ fn wide_claims<F: Field>(
     let invertible = ClaimPrediction::decided(
         claim_ids::EXTERNAL_INVERTIBLE,
         hades.external.invertible,
-        None,
+        hades.external.kernel_vector.as_deref().map(kernel_witness),
         if hades.external.invertible {
             format!(
                 "the external matrix has determinant {}; an inverse matrix is the certificate",
@@ -1503,7 +1510,7 @@ fn diagnose_hades<F: Field>(
         ClaimPrediction::decided(
             claim_ids::INTERNAL_INVERTIBLE,
             internal.invertible,
-            None,
+            internal.kernel_vector.as_deref().map(kernel_witness),
             if internal.invertible {
                 format!(
                     "the internal matrix has determinant {}",

@@ -341,15 +341,7 @@ fn check_emission(set: &TemplateSet, e: &Emission) -> Vec<(String, Status)> {
             "{} does not instantiate {template}",
             x.expected_type
         );
-        // A singular matrix's kernel vector is echoed by the certificate
-        // but has no witness kind in the report.
-        let invertibility = [
-            claim_ids::INTERNAL_INVERTIBLE,
-            claim_ids::EXTERNAL_INVERTIBLE,
-        ];
-        if !invertibility.contains(&x.claim.as_str()) {
-            assert_eq!(x.status == Status::Refuted, x.witness.is_some(), "{x:?}");
-        }
+        assert_eq!(x.status == Status::Refuted, x.witness.is_some(), "{x:?}");
     }
     // Every fragment's requirements come earlier.
     for (i, name) in e.fragments.iter().enumerate() {
@@ -1101,6 +1093,18 @@ fn repo_prime_wide_widths() {
         "witnessBypass",
     ] {
         assert!(e.inputs_echo.contains_key(key), "{key}");
+    }
+    // The kernel vector a singularity certificate echoes is the report's
+    // witness of the refuted invertibility claim.
+    for (claim, key) in [
+        (claim_ids::EXTERNAL_INVERTIBLE, "witnessExternalKernel"),
+        (claim_ids::INTERNAL_INVERTIBLE, "witnessKernel"),
+    ] {
+        let x = e.expect.iter().find(|x| x.claim == claim).unwrap();
+        match &x.witness {
+            Some(Witness::Kernel { vector }) => assert_eq!(json!(vector), e.inputs_echo[key]),
+            other => panic!("{claim}: {other:?}"),
+        }
     }
 
     // Width two: MDS by minors, inverse witnesses, both activity bounds.
