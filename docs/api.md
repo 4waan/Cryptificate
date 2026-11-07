@@ -168,6 +168,8 @@ matrix.mds proved Lean-checked proof
 offsets.dispersion proved Lean-checked proof
 sbox.bijective proved Lean-checked proof
 activity.bound proved Lean-checked proof
+sbox.differential proved Lean-checked proof
+sbox.linearity proved Lean-checked proof
 circuit.equivalence refuted Lean-checked counterexample
 ...
 ```

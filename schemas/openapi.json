@@ -72,7 +72,8 @@
                       "checker": "cryptificate 0.1.0 (c27d45c)",
                       "models": [
                         "aes-like/gf256/v1",
-                        "hades/bn254/v1"
+                        "hades/bn254/v1",
+                        "hades/prime/v1"
                       ],
                       "profiles": [
                         {
@@ -636,7 +637,7 @@
                           "name": "emit-lean",
                           "state": "completed",
                           "ms": 9,
-                          "detail": "5 theorem(s)"
+                          "detail": "7 theorem(s)"
                         },
                         {
                           "name": "lean",
@@ -855,12 +856,12 @@
                           "name": "emit-lean",
                           "state": "completed",
                           "ms": 9,
-                          "detail": "5 theorem(s)"
+                          "detail": "7 theorem(s)"
                         },
                         {
                           "name": "lean",
                           "state": "completed",
-                          "detail": "5/5 theorem(s) accepted",
+                          "detail": "7/7 theorem(s) accepted",
                           "ms": 5242
                         },
                         {
@@ -1108,6 +1109,54 @@
                             "note": "Lean checked CryptificateJob.activity_bound using only the standard axioms."
                           },
                           {
+                            "id": "sbox.differential",
+                            "chain": "design",
+                            "title": "Differential uniformity of the S-box table is 4",
+                            "status": "proved",
+                            "evidence": {
+                              "kind": "lean",
+                              "label": "Lean-checked proof",
+                              "theorem": "CryptificateJob.sbox_differential",
+                              "type": "Cryptificate.differentialUniformity CryptificateJob.candSboxTable = 4 ∧ Cryptificate.gf 1 ≠ 0 ∧ diffCount CryptificateJob.candSboxTable (Cryptificate.gf 1) (Cryptificate.gf 31) = 4",
+                              "axioms": [
+                                "propext",
+                                "Classical.choice",
+                                "Quot.sound"
+                              ]
+                            },
+                            "witness": {
+                              "kind": "sbox-differential",
+                              "uniformity": 4,
+                              "inputDifference": "01",
+                              "outputDifference": "1F"
+                            },
+                            "note": "Lean checked CryptificateJob.sbox_differential using only the standard axioms. For no nonzero input difference a and output difference b (b may be 00) do more than 4 of the 256 inputs x satisfy S(x ⊕ a) ⊕ S(x) = b; input difference 01 gives output difference 1F for exactly 4. This is a property of the table alone, not a bound on any trail or differential of the cipher."
+                          },
+                          {
+                            "id": "sbox.linearity",
+                            "chain": "design",
+                            "title": "Linearity of the S-box table is 32",
+                            "status": "proved",
+                            "evidence": {
+                              "kind": "lean",
+                              "label": "Lean-checked proof",
+                              "theorem": "CryptificateJob.sbox_linearity",
+                              "type": "Cryptificate.linearity CryptificateJob.candSboxTable = 32 ∧ Cryptificate.gf 72 ≠ 0 ∧ (Cryptificate.walsh CryptificateJob.candSboxTable (Cryptificate.gf 1) (Cryptificate.gf 72)).natAbs = 32",
+                              "axioms": [
+                                "propext",
+                                "Classical.choice",
+                                "Quot.sound"
+                              ]
+                            },
+                            "witness": {
+                              "kind": "sbox-linearity",
+                              "linearity": 32,
+                              "inputMask": "01",
+                              "outputMask": "48"
+                            },
+                            "note": "Lean checked CryptificateJob.sbox_linearity using only the standard axioms. No Walsh coefficient at a nonzero output mask exceeds 32 in absolute value (nonlinearity 112); the one at input mask 01 and output mask 48 reaches it. This is a property of the table alone, not a bound on any linear trail or hull of the cipher."
+                          },
+                          {
                             "id": "circuit.equivalence",
                             "chain": "implementation",
                             "title": "Circuit computes the design matrix",
@@ -1229,12 +1278,12 @@
                               "name": "emit-lean",
                               "state": "completed",
                               "ms": 9,
-                              "detail": "5 theorem(s)"
+                              "detail": "7 theorem(s)"
                             },
                             {
                               "name": "lean",
                               "state": "completed",
-                              "detail": "5/5 theorem(s) accepted",
+                              "detail": "7/7 theorem(s) accepted",
                               "ms": 5242
                             },
                             {
