@@ -128,6 +128,24 @@ test('prime fields: KoalaBear and BabyBear at width four, and a deliberately bad
   assert.equal(status(bad, 'activity.outer').reason, 'precondition-failed');
 });
 
+test('prime fields: Poseidon2 widths 16 and 8 and the wide refutations', { skip }, async () => {
+  const kb = await analyze('koalabear-t16');
+  for (const id of ['field.prime', 'external.m4_mds', 'external.invertible', 'internal.invertible', 'sbox.bijective', 'activity.partial']) {
+    assert.equal(status(kb, id).status, 'proved', `koalabear-t16 ${id}`);
+  }
+  const mds = status(kb, 'external.mds');
+  assert.equal(mds.status, 'refuted');
+  assert.equal(mds.title, 'External matrix is MDS (branch number 17)');
+  assert.equal(mds.witness?.kind === 'branch' ? mds.witness.inputWeight : null, 2);
+  for (const id of ['activity.outer', 'activity.total']) assert.equal(status(kb, id).status, 'not_established', id);
+  const bb = await analyze('babybear-t16');
+  assert.equal(status(bb, 'activity.partial').status, 'refuted');
+  const bad = await analyze('babybear-t8-bad');
+  for (const id of ['external.mds', 'external.m4_mds', 'external.invertible', 'internal.invertible', 'activity.partial']) {
+    assert.equal(status(bad, id).status, 'refuted', `babybear-t8-bad ${id}`);
+  }
+});
+
 test('verify: a KoalaBear bundle re-checks claim by claim', { skip }, async () => {
   const home = mkdtempSync(join(tmpdir(), 'cryptificate-it-'));
   try {
