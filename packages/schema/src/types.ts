@@ -279,13 +279,24 @@ export interface PartialBypassWitness {
   partialRounds: number;
 }
 
+/**
+ * A nonzero vector `x` with `M x = 0` for the matrix `M` of the claim (the
+ * internal matrix for `internal.invertible`, the external matrix for
+ * `external.invertible`), so `M` is singular.
+ */
+export interface KernelWitness {
+  kind: 'kernel';
+  vector: BnDecimal[];
+}
+
 export type Witness =
   | BranchWitness
   | OffsetCollisionWitness
   | DistinguishingInputWitness
   | SboxCollisionWitness
   | PowerCollisionWitness
-  | PartialBypassWitness;
+  | PartialBypassWitness
+  | KernelWitness;
 
 export type WitnessKind = Witness['kind'];
 

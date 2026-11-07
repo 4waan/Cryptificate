@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { EVIDENCE_LABELS, CLAIM_STATUSES } from '../src/index.js';
+import type { WitnessKind } from '../src/index.js';
 
 const dir = fileURLToPath(new URL('../../../../schemas/', import.meta.url));
 
@@ -53,6 +54,22 @@ test('claim schema uses the exact evidence labels and statuses', () => {
   assert.deepEqual(claim.properties.status.enum, [...CLAIM_STATUSES]);
   const labels = resolvePointer(claim, '/$defs/evidence/properties/label/anyOf/0/enum') as string[];
   assert.deepEqual([...labels].sort(), Object.values(EVIDENCE_LABELS).sort());
+});
+
+test('the witness schema has one branch per witness kind of the report types', () => {
+  // Every member of the Witness union; a kind added to one side only fails here.
+  const kinds: Record<WitnessKind, true> = {
+    branch: true,
+    'offset-collision': true,
+    'distinguishing-input': true,
+    'sbox-collision': true,
+    'power-collision': true,
+    'partial-bypass': true,
+    kernel: true,
+  };
+  const witness = load('witness.schema.json') as { oneOf: { properties: { kind: { const: string } } }[] };
+  const inSchema = witness.oneOf.map((b) => b.properties.kind.const).sort();
+  assert.deepEqual(inSchema, Object.keys(kinds).sort());
 });
 
 test('the example designs and programs pass the request validators', async () => {
