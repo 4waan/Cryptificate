@@ -84,7 +84,7 @@ export function WireDiagram({
         aria-labelledby={`${titleId} ${descId}`}
         style={{ maxHeight: 420 }}
       >
-        <title id={titleId}>Wire diagram of circuit {p.name ?? ''}</title>
+        <title id={titleId}>{`Wire diagram of circuit ${p.name ?? ''}`}</title>
         <desc id={descId}>
           {`${p.width} inputs, ${p.instructions.length} instructions (${stats.adds} additions, ${stats.xtimes} xtime, ${stats.otherMuls} other multiplications), depth ${stats.depth}. A text version follows the diagram.`}
         </desc>
