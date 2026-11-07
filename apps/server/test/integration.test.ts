@@ -142,13 +142,16 @@ test('round constants: the Grain constants proved, one changed constant refuted 
   // Every other claim holds for all round constants and is unaffected.
   assert.equal(status(edited, 'activity.total').status, 'proved');
   // BN254: the reference constants by the library theorem, explicit ones by evaluation.
-  for (const [name, theorem] of [
-    ['poseidon2-bn254', 'CryptificateJob.constants_grain'],
-    ['poseidon2-bn254-grain', 'CryptificateJob.constants_grain'],
+  // The reference path reuses `Grain.bn254_reference`, whose axioms are the standard three;
+  // explicit constants are evaluated in the certificate and use `propext` only.
+  for (const [name, theorem, axioms] of [
+    ['poseidon2-bn254', 'CryptificateJob.constants_grain', ['Classical.choice', 'Quot.sound', 'propext']],
+    ['poseidon2-bn254-grain', 'CryptificateJob.constants_grain', ['propext']],
   ] as const) {
     const c = status(await analyze(name), 'constants.grain');
     assert.equal(c.status, 'proved', name);
     assert.equal(c.evidence.theorem, theorem);
+    assert.deepEqual([...(c.evidence.axioms ?? [])].sort(), [...axioms], name);
   }
   // No constants given: not established, and not a refutation.
   const none = status(await analyze('koalabear-t4'), 'constants.grain');
