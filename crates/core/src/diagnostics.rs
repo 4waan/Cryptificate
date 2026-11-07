@@ -952,7 +952,8 @@ pub struct HadesPrimeDiagnostics {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct M4Analysis<F> {
-    /// `M4`, the top-right block of the external matrix.
+    /// `M4`, read from the block on rows 0-3 and columns 4-7 of the external
+    /// matrix (its first off-diagonal block).
     pub m4: MatrixAnalysis<F>,
 }
 

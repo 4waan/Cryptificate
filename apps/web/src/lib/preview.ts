@@ -169,8 +169,8 @@ const MINOR_COUNTS: Record<number, number> = { 2: 5, 3: 19, 4: 69 };
 
 /**
  * The two claims about a wide external matrix: whether it is
- * circ(2 M4, M4, …, M4) with M4 MDS (M4 read from its top-right block), and
- * whether it is invertible.
+ * circ(2 M4, M4, …, M4) with M4 MDS (M4 read from the block on rows 0–3 and
+ * columns 4–7, the first off-diagonal block), and whether it is invertible.
  */
 function wideExternalPreview(f: FieldOps, m: string[][]): PreviewItem[] {
   const t = m.length;
@@ -194,7 +194,7 @@ function wideExternalPreview(f: FieldOps, m: string[][]): PreviewItem[] {
       outcome: !structured ? 'unknown' : m4Witness ? 'fails' : 'holds',
       witness: null,
       note: !structured
-        ? 'The external matrix is not circ(2 M4, M4, …, M4) for its top-right 4 × 4 block.'
+        ? 'The external matrix is not circ(2 M4, M4, …, M4) for the 4 × 4 block on its rows 0–3 and columns 4–7.'
         : m4Witness
           ? 'The block M4 has a singular square submatrix.'
           : 'All 69 square submatrices of the block M4 are nonsingular. This is not the MDS property of the whole matrix.',
