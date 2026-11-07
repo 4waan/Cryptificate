@@ -33,11 +33,17 @@ async function readError(res: Response): Promise<ApiError> {
   let message = res.statusText || `Request failed with status ${res.status}`;
   let path: string | undefined;
   try {
-    const body = (await res.json()) as { error?: { code?: string; message?: string; path?: string } };
+    const body = (await res.json()) as {
+      error?: { code?: string; message?: string; path?: string };
+      errors?: { path?: string }[];
+    };
     if (body.error) {
       code = body.error.code ?? code;
       message = body.error.message ?? message;
-      path = body.error.path;
+      // A validation error (400) names the first issue's JSON Pointer; older services sent it only in errors[].
+      path = body.error.path ?? body.errors?.[0]?.path;
+      // The service prefixes the message with that pointer; it is shown beside the message instead.
+      if (path && message.startsWith(`${path}: `)) message = message.slice(path.length + 2);
     }
   } catch {
     // Body was not JSON; keep the status text.

@@ -65,10 +65,11 @@ describe('live runs against a busy service', () => {
   });
 
   it('reports a request the service refused as invalid input, with its path, and an unreachable service as a failure', async () => {
-    api.createJob.mockRejectedValueOnce(new ApiError('/program/0/op: unknown op', 400, 'invalid-request', '/program/0/op'));
+    // As readError builds it from the service's 400 body (see api.test.ts).
+    api.createJob.mockRejectedValueOnce(new ApiError('expected an integer in 1..32', 400, 'invalid-request', '/design/rounds'));
     const key = startRun('analysis')!;
     await vi.advanceTimersByTimeAsync(0);
-    expect(getState().runs[key]).toMatchObject({ state: 'invalid', error: '/program/0/op: unknown op', errorPath: '/program/0/op' });
+    expect(getState().runs[key]).toMatchObject({ state: 'invalid', error: 'expected an integer in 1..32', errorPath: '/design/rounds' });
     api.getCapabilities.mockRejectedValue(new TypeError('fetch failed'));
     api.createJob.mockRejectedValueOnce(new TypeError('fetch failed'));
     const second = startRun('analysis')!;
