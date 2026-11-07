@@ -1,4 +1,5 @@
 import Cryptificate.Grain.Generator
+import Cryptificate.Grain.Bitwise
 import Cryptificate.Grain.BN254
 
 /-!
@@ -27,3 +28,15 @@ info: 'Cryptificate.Grain.bn254_reference' depends on axioms: [propext, Classica
 -/
 #guard_msgs in
 #print axioms Cryptificate.Grain.bn254_reference
+
+/--
+info: 'Cryptificate.Grain.mask80_eq' does not depend on any axioms
+-/
+#guard_msgs in
+#print axioms Cryptificate.Grain.mask80_eq
+
+/--
+info: 'Cryptificate.Grain.Bitwise.start_eq' depends on axioms: [propext]
+-/
+#guard_msgs in
+#print axioms Cryptificate.Grain.Bitwise.start_eq
