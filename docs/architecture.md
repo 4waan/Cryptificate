@@ -31,6 +31,7 @@ Cryptificate is a local application. A loopback Node service orchestrates three 
 | `apps/server` | HTTP API ([api.md](api.md), described by `schemas/openapi.json`), job queue, Lean runner, proof acceptance, bundles, CLI. | Acceptance logic only |
 | `apps/web` | Workbench and static replay viewer. | No |
 | `python/` | Thin client for research scripts. | No |
+| `Dockerfile` | One image with the pinned Lean toolchain, the built `lean/` and Mathlib's compiled library, the engine, the Rust toolchain for native variants, the service and the workbench ([docs/docker.md](docker.md)). The service still binds loopback unless `--host` or `CRYPTIFICATE_HOST` says otherwise. | No: it packages the components above |
 
 ## A job, step by step
 

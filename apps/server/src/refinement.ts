@@ -3,7 +3,9 @@
  *
  * The proofs are checked once by `scripts/setup.sh --with-refinement`, which
  * records <state>/refinement.json. They are reported as proved only while
- * the kernel source still has the digest the extraction was made from.
+ * the kernel source still has the digest the extraction was made from, and
+ * never inside the container image (CRYPTIFICATE_CONTAINER=1), which does
+ * not check them.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -39,7 +41,11 @@ function readRecord(p: string): CheckRecord | null {
   }
 }
 
-export function refinementStatus(paths: Paths, field: FieldName | PrimeFieldName): RefinementStatus {
+export function refinementStatus(
+  paths: Paths,
+  field: FieldName | PrimeFieldName,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): RefinementStatus {
   if (field === 'bn254') {
     return {
       status: 'unsupported',
@@ -61,6 +67,15 @@ export function refinementStatus(paths: Paths, field: FieldName | PrimeFieldName
   const current = sha256Hex(kernel);
   if (extractedFrom !== current) {
     return { status: 'not_established', note: `${KERNEL} changed since the refinement was extracted; the proofs do not cover the current kernels.` };
+  }
+  // The image cannot check these proofs, so a refinement.json in its state
+  // directory (a mounted host directory or a reused volume) records a check
+  // made elsewhere, not on this machine; it is not read here.
+  if (env['CRYPTIFICATE_CONTAINER'] === '1') {
+    return {
+      status: 'not_established',
+      note: 'The container image does not check the refinement proofs: they need a second Lean toolchain and Mathlib build. Check them from a source checkout (scripts/setup.sh --with-refinement).',
+    };
   }
   const checked = readRecord(join(paths.home, 'refinement.json'));
   if (!checked || checked.checked !== true || checked.kernelsSha256 !== current) {

@@ -53,7 +53,7 @@ import {
   verifyToText,
 } from './report-formats.js';
 import type { CheckEntry, CheckInput, CheckRun, EvidenceInput, GateRun, HtmlOptions, VerifyEntry, VerifyRun } from './report-formats.js';
-import { createApp } from './server.js';
+import { bindNotes, createApp, serveHost } from './server.js';
 import { readTarGz } from './tar.js';
 import { readToolchain } from './toolchain.js';
 import { verifyBundle } from './verify.js';
@@ -78,7 +78,8 @@ Commands:
         library builds, the engine, rustc, the state directory, disk space and the local
         service, and print a fix for each problem. Exit 0 when nothing failed, 1 otherwise.
   serve [--port 4173] [--host 127.0.0.1] [--allow-origin URL]
-        Run the local service and web UI.
+        Run the local service and web UI. It binds 127.0.0.1 unless --host or
+        CRYPTIFICATE_HOST names another address; it has no authentication.
   experiment <design.json> [--program p.json] [--profile quick|research] [--seed HEX] [--json out.json]
         [--bundle out.tar.gz]
         Search, check and measure circuits for the design's matrix.
@@ -114,7 +115,8 @@ does not re-check. experiment: 0 completed, 1 failed, timed out or stopped, 2 in
 init: 0 written, 1 declined at the prompt, 2 usage error, a file exists, or a question left
 without a valid answer (end of input, or five invalid answers); nothing is written unless 0.
 Environment: CRYPTIFICATE_HOME (state directory), CRYPTIFICATE_ENGINE, CRYPTIFICATE_LAKE,
-CRYPTIFICATE_ROOT, GITHUB_STEP_SUMMARY.
+CRYPTIFICATE_ROOT, GITHUB_STEP_SUMMARY, PORT and CRYPTIFICATE_HOST (serve defaults),
+CRYPTIFICATE_ALLOWED_ORIGINS (comma-separated).
 `;
 
 export interface Output {
@@ -841,18 +843,14 @@ async function cmdServe(argv: string[]): Promise<number> {
     args: argv,
     options: {
       port: { type: 'string', default: process.env['PORT'] ?? '4173' },
-      host: { type: 'string', default: '127.0.0.1' },
+      host: { type: 'string' },
       'allow-origin': { type: 'string', multiple: true },
     },
   });
   const port = Number(values.port);
   if (!Number.isInteger(port) || port < 0 || port > 65535) fail(`invalid port ${values.port}`);
-  const host = values.host ?? '127.0.0.1';
-  if (!['127.0.0.1', 'localhost', '::1'].includes(host)) {
-    process.stderr.write(
-      `warning: binding to ${host}. The service has no authentication; anyone who can reach this address can run jobs.\n`,
-    );
-  }
+  const host = serveHost(values.host, process.env);
+  for (const line of bindNotes(host, port, process.env)) process.stderr.write(`${line}\n`);
   const env = makeEnv();
   const jobs = new JobManager({ env });
   const loaded = jobs.loadExisting();

@@ -306,13 +306,35 @@ test('refinement is reported only when checked for the current kernel source', a
     writeFileSync(join(root, 'crates', 'kernels', 'src', 'gf256.rs'), kernel);
     const digest = createHash('sha256').update(kernel).digest('hex');
     writeFileSync(join(root, 'refinement', 'extract.sha256'), `${digest}  crates/kernels/src/gf256.rs\n`);
-    assert.equal(refinementStatus(env.paths, 'gf256').status, 'not_established');
+    assert.equal(refinementStatus(env.paths, 'gf256', {}).status, 'not_established');
+    assert.match(refinementStatus(env.paths, 'gf256', {}).note, /not been checked on this machine/);
+    // the container image says why it never records the check
+    const inImage = refinementStatus(env.paths, 'gf256', { CRYPTIFICATE_CONTAINER: '1' });
+    assert.equal(inImage.status, 'not_established');
+    assert.match(inImage.note, /container image does not check the refinement proofs/);
     mkdirSync(env.paths.home, { recursive: true });
     writeFileSync(join(env.paths.home, 'refinement.json'), JSON.stringify({ checked: true, kernelsSha256: digest }));
     assert.equal(refinementStatus(env.paths, 'gf256').status, 'proved');
+    // the image never reports a check it could not have made, even when its
+    // state directory holds a refinement.json written elsewhere
+    const recordedElsewhere = refinementStatus(env.paths, 'gf256', { CRYPTIFICATE_CONTAINER: '1' });
+    assert.equal(recordedElsewhere.status, 'not_established');
+    assert.match(recordedElsewhere.note, /container image does not check the refinement proofs/);
     const { report } = await analyze(env, { design: IDENTITY_DESIGN, program: IDENTITY_PROGRAM });
     assert.equal(claim(report, 'rust.refinement').status, 'proved');
     assert.equal(claim(report, 'rust.refinement').evidence.label, 'Rust-source refinement (Aeneas)');
+    // a proof-cache hit recomputes the refinement claim instead of copying it
+    rmSync(join(env.paths.home, 'refinement.json'));
+    const { report: cached } = await analyze(env, { design: IDENTITY_DESIGN, program: IDENTITY_PROGRAM });
+    assert.equal(cached.provenance.origin, 'cached');
+    assert.equal(cached.provenance.cachedFrom, report.id);
+    assert.equal(claim(cached, 'rust.refinement').status, 'not_established');
+    assert.match(claim(cached, 'rust.refinement').note, /not been checked on this machine/);
+    assert.deepEqual(
+      cached.claims.filter((c) => c.id !== 'rust.refinement').map((c) => [c.id, c.status, c.note]),
+      report.claims.filter((c) => c.id !== 'rust.refinement').map((c) => [c.id, c.status, c.note]),
+    );
+    assert.deepEqual(cached.claims.map((c) => c.id), report.claims.map((c) => c.id));
     // a changed kernel no longer counts
     writeFileSync(join(root, 'crates', 'kernels', 'src', 'gf256.rs'), `${kernel}// edited\n`);
     assert.equal(refinementStatus(env.paths, 'gf256').status, 'not_established');

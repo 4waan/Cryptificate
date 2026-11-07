@@ -33,8 +33,9 @@ input arguments `check` reads the nearest `cryptificate.json` (`src/project.ts`,
 
 ## HTTP API
 
-The service binds `127.0.0.1` unless `--host` says otherwise (it then warns: there is no
-authentication). Every request must carry a loopback `Host` header; `POST` requests with an
+The service binds `127.0.0.1` unless `--host` or `CRYPTIFICATE_HOST` names another address (it
+then warns: there is no authentication). The container image keeps this default; see
+[docs/docker.md](../../docs/docker.md). Every request must carry a loopback `Host` header; `POST` requests with an
 `Origin` header must come from the service's own origin (or one given with `--allow-origin` /
 `CRYPTIFICATE_ALLOWED_ORIGINS`), and `Sec-Fetch-Site: cross-site` is refused. JSON bodies must be
 `application/json` and at most 256 KiB; they are shape-checked against the public schema before the
@@ -72,7 +73,9 @@ axioms are within `propext`, `Classical.choice`, `Quot.sound`, and every `CRYPTI
 equals the value derived from the normalized request. Activity bounds are only proved together
 with MDS and distinct offsets. Completed, clean results are cached under a key of the input digest,
 toolchain pins, checker version and the digests of the templates, the Lean library and the generated
-source; a hit is reported with origin `cached` and the id of the run it came from.
+source; a hit is reported with origin `cached` and the id of the run it came from. The
+`rust.refinement` claim of a hit is not copied: it is recomputed from the current refinement
+status, which belongs to this machine rather than to the cached certificate.
 
 ## Experiment
 
@@ -113,5 +116,9 @@ with `--fail-on`, that no re-checked claim has a status the policy rejects).
 | `CRYPTIFICATE_ENGINE` | engine binary (default `target/release/cryptificate-engine`, then `debug`, then `PATH`) |
 | `CRYPTIFICATE_LAKE` | `lake` launcher (default `PATH`, then `~/.elan/bin/lake`) |
 | `CRYPTIFICATE_ALLOWED_ORIGINS` | extra comma-separated origins allowed to `POST` |
+| `CRYPTIFICATE_HOST` | `serve` bind address when `--host` is not given (default `127.0.0.1`) |
+| `PORT` | `serve` port when `--port` is not given (default `4173`); in the container image, also the port its health check polls |
+| `CRYPTIFICATE_ROOT` | the checkout whose `lean/`, templates and web UI are used (default: found from the service's own location) |
+| `CRYPTIFICATE_CONTAINER` | set to `1` by the container image: `serve` explains how to publish the port, and `rust.refinement` is never `proved`: it says the image does not check the refinement proofs, and `<state>/refinement.json` is not read |
 | `NO_COLOR` | plain terminal output (also automatic when stdout is not a TTY) |
 | `GITHUB_STEP_SUMMARY` | file the Markdown report of `check`, `verify` and `report` is appended to |
