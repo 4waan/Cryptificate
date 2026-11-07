@@ -1,10 +1,23 @@
 import { useId, useState } from 'react';
 import { activityBound, activityFormula, EXPONENT_MAX, ROUNDS_MAX, ROUNDS_MIN, validateDesign } from '../lib/design';
 import { aesSbox, formatGfHex, isGfHex } from '../lib/gf256';
-import { AES_MIXCOLUMNS, aesDesign, aesSharedSum, hadesDesign, hadesSharedSum, primeDesign, primeDesign3 } from '../lib/presets';
+import {
+  AES_MIXCOLUMNS,
+  aesDesign,
+  aesSharedSum,
+  hadesDesign,
+  hadesSharedSum,
+  PLONKY3_COMMIT,
+  PLONKY3_PRESETS,
+  plonky3Design,
+  primeDesign,
+  primeDesign3,
+  primeDesignWide,
+} from '../lib/presets';
 import { identityMatrix } from '../lib/design';
 import { displayFieldOf } from '../lib/field';
 import { modulusOf, PRIME_FIELD_PRESETS, primeFieldLabel } from '../lib/primefield';
+import { PRIME_MINOR_WIDTH, PRIME_WIDTHS } from '../lib/types';
 import type { AesLikeDesign, CandidateDesign, HadesDesign, HadesPrimeDesign, PrimeFieldName, ProgramTarget } from '../lib/types';
 import { loadInputs, setDesign, setTarget } from '../state/actions';
 import { MatrixEditor } from './MatrixEditor';
@@ -67,9 +80,10 @@ function ProfileSwitch({ design }: { design: CandidateDesign }) {
 
 /**
  * The field and width of a prime-field design: a named field or a custom
- * prime below 2^64, and width 3 or 4. Changing the field keeps the matrices
- * (entries must stay below the new modulus); changing the width loads the
- * matrices of that width.
+ * prime below 2^64, and one of the Poseidon2 widths 2, 3, 4, 8, 12, 16 and
+ * 24. Changing the field keeps the matrices (entries must stay below the new
+ * modulus); changing the width loads the matrices of that width. The
+ * Plonky3 instances of the current field load with their rounds and S-box.
  */
 function PrimeFieldPicker({ design }: { design: HadesPrimeDesign }) {
   const id = useId();
@@ -77,6 +91,7 @@ function PrimeFieldPicker({ design }: { design: HadesPrimeDesign }) {
   const modulusIssue = issues.find((i) => i.path === '/modulus')?.message;
   const p = modulusOf(design);
   const preset = PRIME_FIELD_PRESETS.find((f) => f.id === design.field);
+  const plonky3 = PLONKY3_PRESETS.filter((x) => x.field === design.field);
   const pick = (field: PrimeFieldName) => {
     if (field === design.field) return;
     const { modulus: _old, ...rest } = design;
@@ -135,7 +150,7 @@ function PrimeFieldPicker({ design }: { design: HadesPrimeDesign }) {
           Width
         </span>
         <div className="segmented" role="radiogroup" aria-labelledby={`${id}-width`}>
-          {([3, 4] as const).map((w) => (
+          {(PRIME_WIDTHS as readonly HadesPrimeDesign['width'][]).map((w) => (
             <button
               key={w}
               type="button"
@@ -143,7 +158,12 @@ function PrimeFieldPicker({ design }: { design: HadesPrimeDesign }) {
               aria-checked={design.width === w}
               onClick={() => {
                 if (w === design.width) return;
-                const base = w === 3 ? primeDesign3(design.field, design.modulus) : primeDesign(design.field, design.modulus);
+                const base =
+                  w === 3
+                    ? primeDesign3(design.field, design.modulus)
+                    : w === 4
+                      ? primeDesign(design.field, design.modulus)
+                      : primeDesignWide(design.field, w, design.modulus);
                 setDesign({ ...base, sbox: design.sbox, fullRounds: design.fullRounds, partialRounds: design.partialRounds });
               }}
             >
@@ -152,10 +172,30 @@ function PrimeFieldPicker({ design }: { design: HadesPrimeDesign }) {
           ))}
         </div>
         <span className="field-hint">
+          {design.width > PRIME_MINOR_WIDTH
+            ? `Above width ${PRIME_MINOR_WIDTH} the external matrix's minors are not enumerated: the report checks whether it is circ(2 M4, M4, …, M4) with M4 MDS and whether it is invertible, refutes the MDS property with a singular 2 × 2 submatrix when there is one, and does not state the full-round activity bounds. `
+            : ''}
           Circuits, the circuit search and native timing are not offered for {primeFieldLabel(design.field)}: only the
           design claims are checked.
         </span>
       </div>
+      {plonky3.length > 0 && p !== null ? (
+        <div className="field">
+          <span className="field-label">Plonky3 instances</span>
+          <div className="row">
+            {plonky3.map((x) => (
+              <button key={x.width} type="button" className="btn btn-sm" onClick={() => setDesign(plonky3Design(x, p))}>
+                {preset?.label} t = {x.width}
+              </button>
+            ))}
+          </div>
+          <span className="field-hint">
+            The internal diagonal, round numbers and S-box of Plonky3&apos;s Poseidon2 ({plonky3[0]!.source} at commit{' '}
+            <span className="mono">{PLONKY3_COMMIT.slice(0, 12)}</span>) with its external matrix circ(2 M4, M4, …,
+            M4). Round constants are not part of a design.
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

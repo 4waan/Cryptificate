@@ -3,7 +3,8 @@ import { isStale, normalizeAnalysisRequest, type WorkspaceInputs } from '../lib/
 import { downloadJson } from '../lib/download';
 import { previewDesign, previewEquivalence, type PreviewItem } from '../lib/preview';
 import { displayFieldOf } from '../lib/field';
-import type { AnalysisReport, Claim, ClaimId, ExperimentReport, ModelId } from '../lib/types';
+import { PRIME_MINOR_WIDTH, WIDE_EXTERNAL_CLAIMS } from '../lib/types';
+import type { AnalysisReport, CandidateDesign, Claim, ClaimId, ExperimentReport, ModelId } from '../lib/types';
 import { startRun } from '../state/actions';
 import type { Run } from '../state/store';
 import { ClaimCard, MissingClaimCard, PreviewCard } from './ClaimCard';
@@ -28,6 +29,9 @@ const DESIGN_CLAIMS: Record<ModelId, { id: ClaimId; title: string }[]> = {
   'hades/prime/v1': [
     { id: 'field.prime', title: 'Modulus is prime' },
     { id: 'external.mds', title: 'External matrix is MDS' },
+    // Only above PRIME_MINOR_WIDTH; see designClaimSpecs.
+    { id: 'external.m4_mds', title: 'External matrix is circ(2 M4, M4, …, M4) with M4 MDS' },
+    { id: 'external.invertible', title: 'External matrix is invertible' },
     { id: 'internal.invertible', title: 'Internal matrix is invertible' },
     { id: 'sbox.bijective', title: 'Power map is a permutation' },
     { id: 'activity.outer', title: 'Active S-box bound in full rounds' },
@@ -35,6 +39,12 @@ const DESIGN_CLAIMS: Record<ModelId, { id: ClaimId; title: string }[]> = {
     { id: 'activity.total', title: 'Active S-box bound over the whole permutation' },
   ],
 };
+
+/** The design claims of a design: the wide external claims only above width four. */
+function designClaimSpecs(design: CandidateDesign): { id: ClaimId; title: string }[] {
+  const wide = design.model === 'hades/prime/v1' && design.width > PRIME_MINOR_WIDTH;
+  return DESIGN_CLAIMS[design.model].filter((c) => wide || !WIDE_EXTERNAL_CLAIMS.includes(c.id));
+}
 
 const IMPLEMENTATION_CLAIMS: { id: ClaimId; title: string }[] = [
   { id: 'circuit.equivalence', title: 'Circuit computes the design matrix' },
@@ -159,7 +169,7 @@ export function ClaimChains({
 }) {
   const reportDesign = report.inputs?.design ?? inputs.design;
   const field = displayFieldOf(reportDesign);
-  const designClaims = DESIGN_CLAIMS[reportDesign.model];
+  const designClaims = designClaimSpecs(reportDesign);
   const rounds =
     report.inputs?.design && report.inputs.design.model === 'aes-like/gf256/v1'
       ? report.inputs.design.rounds

@@ -1,11 +1,11 @@
 import { BN254_P, gcd, invMod, powMod } from './bn254';
 import { coefficientMatrix, validateProgram } from './circuit';
 import { activityBound, activityFormula, isAesLike, targetMatrix, validateDesign } from './design';
-import { displayFieldOf, fieldOps } from './field';
+import { displayFieldOf, fieldOps, type FieldOps } from './field';
 import { isPrime64, modulusOf, primeFieldLabel } from './primefield';
 import { aesSbox, formatGfHex, parseGfHex } from './gf256';
 import { branchWitness, rankAndKernel, weight } from './linalg';
-import { externalMdsTitle } from './types';
+import { PRIME_MINOR_WIDTH, externalMdsTitle } from './types';
 import type { CandidateDesign, ClaimChain, ClaimId, Program, ProgramTarget, Witness } from './types';
 
 /**
@@ -108,12 +108,15 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
   const f = fieldOps(displayFieldOf(d));
   const w = d.width;
   const modulus = modulusOf(d) ?? BN254_P;
-  const bw = branchWitness(f, d.external);
+  // Above PRIME_MINOR_WIDTH the minors are too many to enumerate: only those
+  // of order at most 2 are searched, as the engine does.
+  const wide = d.model === 'hades/prime/v1' && w > PRIME_MINOR_WIDTH;
+  const bw = branchWitness(f, d.external, wide ? 2 : w);
   const external: PreviewItem = {
     id: 'external.mds',
     chain: 'design',
     title: externalMdsTitle(w),
-    outcome: bw ? 'fails' : 'holds',
+    outcome: bw ? 'fails' : wide ? 'unknown' : 'holds',
     witness: bw
       ? {
           kind: 'branch',
@@ -124,7 +127,11 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
           bound: w + 1,
         }
       : null,
-    note: bw ? 'A square submatrix is singular.' : `All ${w === 3 ? 19 : 69} square submatrices are nonsingular.`,
+    note: bw
+      ? 'A square submatrix is singular.'
+      : wide
+        ? `No square submatrix of order 1 or 2 is singular; the larger ones of a ${w} × ${w} matrix are not enumerated.`
+        : `All ${MINOR_COUNTS[w] ?? '?'} square submatrices are nonsingular.`,
   };
   const internalRank = rankAndKernel(f, d.internal).rank;
   const internal: PreviewItem = {
@@ -135,7 +142,12 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
     witness: null,
     note: internalRank === w ? 'The determinant is nonzero.' : 'The determinant is zero.',
   };
-  const items = [external, internal, powerPreview(d.sbox.exponent, modulus)];
+  const items = [
+    external,
+    ...(wide ? wideExternalPreview(f, d.external) : []),
+    internal,
+    powerPreview(d.sbox.exponent, modulus),
+  ];
   if (d.model === 'hades/prime/v1') {
     const prime = isPrime64(modulus);
     items.unshift({
@@ -150,6 +162,52 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
     });
   }
   return items;
+}
+
+/** The number of square submatrices of a matrix of width 2, 3 or 4. */
+const MINOR_COUNTS: Record<number, number> = { 2: 5, 3: 19, 4: 69 };
+
+/**
+ * The two claims about a wide external matrix: whether it is
+ * circ(2 M4, M4, …, M4) with M4 MDS (M4 read from its top-right block), and
+ * whether it is invertible.
+ */
+function wideExternalPreview(f: FieldOps, m: string[][]): PreviewItem[] {
+  const t = m.length;
+  const m4 = m.slice(0, 4).map((row) => row.slice(4, 8));
+  const twice = (x: string) => f.add(x, x);
+  const eq = (x: string, y: string) => f.isZero(f.add(x, f.neg(y)));
+  const structured =
+    t % 4 === 0 &&
+    m.every((row, i) =>
+      row.every((x, j) =>
+        eq(x, Math.floor(i / 4) === Math.floor(j / 4) ? twice(m4[i % 4]![j % 4]!) : m4[i % 4]![j % 4]!),
+      ),
+    );
+  const m4Witness = structured ? branchWitness(f, m4) : null;
+  const rank = rankAndKernel(f, m).rank;
+  return [
+    {
+      id: 'external.m4_mds',
+      chain: 'design',
+      title: 'External matrix is circ(2 M4, M4, …, M4) with M4 MDS',
+      outcome: !structured ? 'unknown' : m4Witness ? 'fails' : 'holds',
+      witness: null,
+      note: !structured
+        ? 'The external matrix is not circ(2 M4, M4, …, M4) for its top-right 4 × 4 block.'
+        : m4Witness
+          ? 'The block M4 has a singular square submatrix.'
+          : 'All 69 square submatrices of the block M4 are nonsingular. This is not the MDS property of the whole matrix.',
+    },
+    {
+      id: 'external.invertible',
+      chain: 'design',
+      title: 'External matrix is invertible',
+      outcome: rank === t ? 'holds' : 'fails',
+      witness: null,
+      note: rank === t ? 'The determinant is nonzero.' : 'The determinant is zero.',
+    },
+  ];
 }
 
 /** The power map over F_p, the BN254 scalar field unless `p` is given. */

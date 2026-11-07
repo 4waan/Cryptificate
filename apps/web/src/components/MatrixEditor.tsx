@@ -65,37 +65,42 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
         <div id={`${id}-label`} className="field-label" style={{ marginBottom: 6 }}>
           {label}
         </div>
-        <div
-          className={`matrix${field !== 'gf256' ? ' decimal' : ''}`}
-          style={{ gridTemplateColumns: `repeat(${n}, auto)` }}
-        >
-          {values.map((row, r) =>
-            row.map((v, c) => {
-              const invalid = !f.isValid(v);
-              return (
-                <input
-                  key={`${r}-${c}`}
-                  ref={(el) => {
-                    refs.current[r * n + c] = el;
-                  }}
-                  value={v}
-                  inputMode={field === 'gf256' ? 'text' : 'numeric'}
-                  spellCheck={false}
-                  autoComplete="off"
-                  maxLength={field === 'gf256' ? 2 : 78}
-                  aria-label={`${label}, row ${r + 1}, column ${c + 1}`}
-                  aria-invalid={invalid}
-                  aria-describedby={invalid ? `${id}-errors` : undefined}
-                  title={field !== 'gf256' ? v : undefined}
-                  style={emphasis.includes(`${r},${c}`) ? { borderColor: 'var(--accent)', borderWidth: 2 } : undefined}
-                  onChange={(e) => setCell(r, c, e.target.value)}
-                  onBlur={() => canonicalize(r, c)}
-                  onKeyDown={(e) => onKey(e, r, c)}
-                  onFocus={(e) => e.currentTarget.select()}
-                />
-              );
-            }),
-          )}
+        {/* A wide matrix (Poseidon2 widths up to 24) scrolls inside its own box. */}
+        <div style={n > 4 ? { overflowX: 'auto', maxWidth: '100%' } : undefined}>
+          <div
+            className={`matrix${field !== 'gf256' ? ' decimal' : ''}`}
+            style={{ gridTemplateColumns: `repeat(${n}, auto)` }}
+          >
+            {values.map((row, r) =>
+              row.map((v, c) => {
+                const invalid = !f.isValid(v);
+                return (
+                  <input
+                    key={`${r}-${c}`}
+                    ref={(el) => {
+                      refs.current[r * n + c] = el;
+                    }}
+                    value={v}
+                    inputMode={field === 'gf256' ? 'text' : 'numeric'}
+                    spellCheck={false}
+                    autoComplete="off"
+                    maxLength={field === 'gf256' ? 2 : 78}
+                    aria-label={`${label}, row ${r + 1}, column ${c + 1}`}
+                    aria-invalid={invalid}
+                    aria-describedby={invalid ? `${id}-errors` : undefined}
+                    title={field !== 'gf256' ? v : undefined}
+                    style={
+                      emphasis.includes(`${r},${c}`) ? { borderColor: 'var(--accent)', borderWidth: 2 } : undefined
+                    }
+                    onChange={(e) => setCell(r, c, e.target.value)}
+                    onBlur={() => canonicalize(r, c)}
+                    onKeyDown={(e) => onKey(e, r, c)}
+                    onFocus={(e) => e.currentTarget.select()}
+                  />
+                );
+              }),
+            )}
+          </div>
         </div>
         <p id={`${id}-help`} className="field-hint" style={{ marginTop: 6 }}>
           {field === 'gf256' ? 'Two hex digits per cell (00 to FF).' : 'Decimal field elements.'} Arrow keys move
