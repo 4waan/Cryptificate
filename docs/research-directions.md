@@ -22,6 +22,7 @@ Which claims exist differs by profile, and the table is exact:
 | `matrix.mds`, `offsets.dispersion`, `activity.bound` | yes | – | – |
 | `external.mds`, `internal.invertible`, `activity.outer`, `activity.partial`, `activity.total` | – | yes | yes |
 | `sbox.bijective` | table or AES S-box | power map | power map |
+| `sbox.differential`, `sbox.linearity` (exact value of a byte S-box table) | yes | – | – |
 | `circuit.equivalence`, native correctness and timing, circuit search | yes | yes | not offered |
 | `rust.refinement` | yes | not established | not established |
 

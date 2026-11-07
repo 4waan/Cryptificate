@@ -155,7 +155,7 @@ Which of these claims a design gets depends on its profile:
 
 | Profile | Fields | Widths | Claims |
 |---|---|---|---|
-| AES-like | GF(2⁸), `0x11B` | 4 (2 and 3 experimental, not certified) | MDS, offsets, S-box, activity bound; circuits, search, native timing; Rust refinement |
+| AES-like | GF(2⁸), `0x11B` | 4 (2 and 3 experimental, not certified) | MDS, offsets, S-box, activity bound, S-box differential uniformity and linearity; circuits, search, native timing; Rust refinement |
 | HADES, `hades/bn254/v1` | BN254 scalar field | 3 | external MDS, internal invertibility, power map, full-round, partial-round and total activity; circuits, search, native timing |
 | HADES, `hades/prime/v1` | BabyBear, KoalaBear, Mersenne31, Goldilocks, or a custom prime below 2⁶⁴ | 3 and 4 | primality of the modulus, then the same design claims as over BN254. No circuits, search, native timing or Rust refinement over these fields |
 
