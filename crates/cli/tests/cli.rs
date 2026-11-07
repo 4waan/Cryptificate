@@ -356,7 +356,7 @@ fn emit_lean_over_story_cases() {
         check_emission(name, &d.json, &e.json);
         assert_eq!(e.json["inputDigest"], d.json["inputDigest"]);
     }
-    // The AES story certifies all five claims when its fragments exist.
+    // The AES story certifies all seven claims when its fragments exist.
     let e = run(
         &["emit-lean"],
         &analysis_request("aes", Some("aes-known-shared-sum")),
@@ -373,12 +373,14 @@ fn emit_lean_over_story_cases() {
         "offsets_optimal",
         "sbox_bijective_aes",
         "activity_bound",
+        "sbox_differential_aes",
+        "sbox_linearity_aes",
         "circuit_equivalence_gf256",
     ]
     .iter()
     .all(|f| repo().join(format!("lean/templates/{f}.json")).is_file())
     {
-        assert_eq!(e["expect"].as_array().unwrap().len(), 5, "{names:?}");
+        assert_eq!(e["expect"].as_array().unwrap().len(), 7, "{names:?}");
     }
 }
 

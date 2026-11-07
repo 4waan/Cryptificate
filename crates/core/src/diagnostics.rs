@@ -35,6 +35,7 @@ use crate::report::{
     hades_total_activity_bound_width, labels, Status, Witness,
 };
 use crate::request::AnalysisRequest;
+use crate::sbox_quality::{differential_uniformity, linearity, DifferentialMax, LinearMax};
 use crate::AnyProgram;
 
 // ---------------------------------------------------------------------------
@@ -299,6 +300,10 @@ pub struct SboxAnalysis {
     pub inverse: Option<Vec<Gf256>>,
     /// The first collision, present exactly when it is not.
     pub collision: Option<SboxCollision>,
+    /// The differential uniformity, with the first entry attaining it.
+    pub differential: DifferentialMax,
+    /// The linearity, with the first Walsh coefficient attaining it.
+    pub linear: LinearMax,
 }
 
 /// Inverse table of a 256-entry byte table, or its first collision: the
@@ -339,6 +344,8 @@ pub fn analyze_sbox(source: SboxSource, table: &[Gf256]) -> SboxAnalysis {
         bijective: collision.is_none(),
         inverse,
         collision,
+        differential: differential_uniformity(table),
+        linear: linearity(table),
     }
 }
 
@@ -795,6 +802,18 @@ pub struct ClaimPrediction {
 }
 
 impl ClaimPrediction {
+    /// A claim that states an exact value, always provable; the witness
+    /// carries the value and where it is attained.
+    fn exact(claim: &'static str, witness: Witness, note: String) -> Self {
+        ClaimPrediction {
+            claim,
+            predicted: Status::Proved,
+            holds: Some(true),
+            witness: Some(witness),
+            note,
+        }
+    }
+
     fn decided(claim: &'static str, holds: bool, witness: Option<Witness>, note: String) -> Self {
         ClaimPrediction {
             claim,
@@ -1126,6 +1145,7 @@ fn diagnose_aes_like(
             note: activity.reason.clone(),
         },
     ];
+    claims.extend(sbox_quality_predictions(&sbox));
     if let Some(p) = &program {
         claims.push(program_prediction(p));
     }
@@ -1139,6 +1159,34 @@ fn diagnose_aes_like(
         }),
         claims,
     )
+}
+
+fn sbox_quality_predictions(sbox: &SboxAnalysis) -> [ClaimPrediction; 2] {
+    let d = &sbox.differential;
+    let l = &sbox.linear;
+    [
+        ClaimPrediction::exact(
+            claim_ids::SBOX_DIFFERENTIAL,
+            d.to_witness(),
+            format!(
+                "the largest entry of the difference table outside row 0 is {}, first at input \
+                 difference {} and output difference {}",
+                d.uniformity, d.input_difference, d.output_difference
+            ),
+        ),
+        ClaimPrediction::exact(
+            claim_ids::SBOX_LINEARITY,
+            l.to_witness(),
+            format!(
+                "the largest absolute Walsh coefficient at a nonzero output mask is {} \
+                 (nonlinearity {}), first at input mask {} and output mask {}",
+                l.linearity,
+                128 - l.linearity / 2,
+                l.input_mask,
+                l.output_mask
+            ),
+        ),
+    ]
 }
 
 /// The HADES analyses, for any field; `power` analyzes the S-box exponent

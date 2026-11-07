@@ -16,6 +16,8 @@ const DESIGN_CLAIMS: Record<ModelId, { id: ClaimId; title: string }[]> = {
     { id: 'offsets.dispersion', title: 'Row offsets spread every column' },
     { id: 'sbox.bijective', title: 'S-box is a permutation' },
     { id: 'activity.bound', title: 'Active S-box lower bound' },
+    { id: 'sbox.differential', title: 'Differential uniformity of the S-box table' },
+    { id: 'sbox.linearity', title: 'Linearity of the S-box table' },
   ],
   'hades/bn254/v1': [
     { id: 'external.mds', title: 'External matrix is MDS' },
@@ -64,6 +66,9 @@ function missingReason(id: ClaimId, inputs: WorkspaceInputs, experiment: Experim
   if (id === 'rust.refinement') return 'This run did not include a Rust-source refinement result.';
   if (id === 'activity.partial' || id === 'activity.total') {
     return 'This report was recorded before the partial-round claims were added; check the design again to derive them.';
+  }
+  if (id === 'sbox.differential' || id === 'sbox.linearity') {
+    return 'This run did not report S-box quality; reports recorded before these claims existed do not include them.';
   }
   return 'This run did not report this claim.';
 }

@@ -50,6 +50,28 @@
       }
     },
     {
+      "title": "S-box differential uniformity",
+      "type": "object",
+      "required": ["kind", "uniformity", "inputDifference", "outputDifference"],
+      "properties": {
+        "kind": { "const": "sbox-differential" },
+        "uniformity": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "inputDifference": { "$ref": "field-element.schema.json#/$defs/gf256" },
+        "outputDifference": { "$ref": "field-element.schema.json#/$defs/gf256" }
+      }
+    },
+    {
+      "title": "S-box linearity",
+      "type": "object",
+      "required": ["kind", "linearity", "inputMask", "outputMask"],
+      "properties": {
+        "kind": { "const": "sbox-linearity" },
+        "linearity": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "inputMask": { "$ref": "field-element.schema.json#/$defs/gf256" },
+        "outputMask": { "$ref": "field-element.schema.json#/$defs/gf256" }
+      }
+    },
+    {
       "title": "Power map collision",
       "type": "object",
       "required": ["kind", "exponent", "x1", "x2", "note"],
