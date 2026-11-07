@@ -1,0 +1,15 @@
+{
+  "name": "external_singular_prime",
+  "kind": "claim",
+  "claim": "external.invertible",
+  "status": "refuted",
+  "theorem": "CryptificateJob.external_singular",
+  "expectedType": "CryptificateJob.candExternal.det = 0",
+  "placeholders": [],
+  "requires": [
+    "const_external_prime",
+    "const_witness_external_kernel_prime",
+    "field_prime"
+  ],
+  "field": "prime"
+}

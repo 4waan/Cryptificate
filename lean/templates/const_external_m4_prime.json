@@ -1,0 +1,15 @@
+{
+  "name": "const_external_m4_prime",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "M4_ENTRIES"
+  ],
+  "requires": [
+    "const_modulus_prime"
+  ],
+  "field": "prime"
+}
