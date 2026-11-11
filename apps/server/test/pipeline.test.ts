@@ -4,10 +4,10 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AnalysisReport, AnalysisRequest, Claim } from '@cryptificate/schema';
 import { ANALYSIS_STEPS, runAnalysis } from '../src/analysis.js';
-import { buildBundle } from '../src/bundle.js';
+import { buildBundle, bundleEntries } from '../src/bundle.js';
 import { JobContext } from '../src/context.js';
 import type { PipelineEnv } from '../src/context.js';
-import { readTarGz } from '../src/tar.js';
+import { createTarGz, readTarGz } from '../src/tar.js';
 import { verifyBundle } from '../src/verify.js';
 import { AES_DESIGN, AES_DIFF_WITNESS, IDENTITY_DESIGN, IDENTITY_PROGRAM, makeFixture } from './helpers.js';
 
@@ -257,6 +257,35 @@ test('verify compares the values of the S-box quality claims and flags stripped 
       ],
     );
     assert.ok(older.notes.some((n) => n.includes('does not record sbox.differential, sbox.linearity') && n.includes('cannot rule out')));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('verify passes on bundles with report.html and never reads it', async () => {
+  const { root, env } = makeFixture();
+  try {
+    const { report } = await analyze(env, { design: IDENTITY_DESIGN, program: IDENTITY_PROGRAM });
+    const tc = await env.toolchain();
+    const dir = join(env.paths.jobsDir, report.id);
+    const entries = bundleEntries({ jobDir: dir, report, toolchain: tc, paths: env.paths });
+    assert.ok(entries.some((e) => e.path === 'report.html'));
+    const bundlePath = join(root, 'bundle.tar.gz');
+    writeFileSync(bundlePath, createTarGz(entries));
+    const ok = await verifyBundle(env, bundlePath);
+    assert.equal(ok.ok, true, JSON.stringify(ok.rows));
+
+    // a report.html that claims everything was proved changes nothing: verify reads report.json
+    const doctored = entries.map((e) => (e.path === 'report.html' ? { path: e.path, data: '<p>matrix.mds proved</p>' } : e));
+    const doctoredPath = join(root, 'doctored.tar.gz');
+    writeFileSync(doctoredPath, createTarGz(doctored));
+    const again = await verifyBundle(env, doctoredPath);
+    assert.deepEqual(again.rows, ok.rows);
+    assert.equal(again.ok, true);
+    // and a bundle without report.html (recorded before it existed) verifies the same
+    const olderPath = join(root, 'older.tar.gz');
+    writeFileSync(olderPath, createTarGz(entries.filter((e) => e.path !== 'report.html')));
+    assert.deepEqual((await verifyBundle(env, olderPath)).rows, ok.rows);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

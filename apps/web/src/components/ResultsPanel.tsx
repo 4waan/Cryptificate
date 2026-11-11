@@ -3,6 +3,7 @@ import { isStale, normalizeAnalysisRequest, type WorkspaceInputs } from '../lib/
 import { downloadJson } from '../lib/download';
 import { previewDesign, previewEquivalence, type PreviewItem } from '../lib/preview';
 import { displayFieldOf } from '../lib/field';
+import { exportReport, serverReportUrl } from '../lib/report';
 import type { AnalysisReport, Claim, ClaimId, ExperimentReport, ModelId } from '../lib/types';
 import { startRun } from '../state/actions';
 import type { Run } from '../state/store';
@@ -208,6 +209,34 @@ export function ClaimChains({
   );
 }
 
+/**
+ * Downloads the self-contained HTML evidence report of a finished run. For a
+ * live run it is the bundle's report.html, served by the local service; for a
+ * recorded run it is rendered in the browser by the same renderer from the
+ * recorded report, without the bundle's toolchain.json section.
+ */
+export function ExportReportButton({ report, run }: { report: AnalysisReport | ExperimentReport; run: Run }) {
+  if (isActive(run) || run.state === 'unavailable') return null;
+  const href = serverReportUrl(run);
+  if (href) {
+    return (
+      <a className="btn btn-sm" href={href} download title="Download this run's evidence bundle report.html, printable to PDF">
+        <IconDownload size={12} /> Export report
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="btn btn-sm"
+      onClick={() => exportReport(report, run)}
+      title="Download a self-contained HTML report of this run, printable to PDF"
+    >
+      <IconDownload size={12} /> Export report
+    </button>
+  );
+}
+
 /** Who checked the result and with which pinned toolchain, plus the evidence bundle. */
 export function ProvenanceLine({ report, run }: { report: AnalysisReport | ExperimentReport; run: Run }) {
   const p = report.provenance;
@@ -232,6 +261,7 @@ export function ProvenanceLine({ report, run }: { report: AnalysisReport | Exper
           <IconDownload size={12} /> Evidence bundle
         </a>
       ) : null}
+      <ExportReportButton report={report} run={run} />
     </p>
   );
 }

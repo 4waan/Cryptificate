@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Cryptificate",
+          "informationUri": "https://github.com/4waan/Cryptificate",
+          "rules": [
+            {
+              "id": "matrix.mds",
+              "name": "MatrixMds",
+              "shortDescription": {
+                "text": "Matrix is MDS (branch number 5)"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "design"
+                ]
+              }
+            },
+            {
+              "id": "offsets.dispersion",
+              "name": "OffsetsDispersion",
+              "shortDescription": {
+                "text": "Row offsets are pairwise distinct"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "design"
+                ]
+              }
+            },
+            {
+              "id": "activity.bound",
+              "name": "ActivityBound",
+              "shortDescription": {
+                "text": "Active S-box lower bound"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "design"
+                ]
+              }
+            },
+            {
+              "id": "native.correctness",
+              "name": "NativeCorrectness",
+              "shortDescription": {
+                "text": "Generated Rust matches the reference"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "implementation"
+                ]
+              }
+            },
+            {
+              "id": "native.timing",
+              "name": "NativeTiming",
+              "shortDescription": {
+                "text": "Native speed on this machine"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "implementation"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": false,
+          "exitCode": 2,
+          "toolExecutionNotifications": [
+            {
+              "level": "error",
+              "message": {
+                "text": "missing.tar.gz: cannot verify missing.tar.gz: ENOENT"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "missing.tar.gz"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "matrix.mds",
+          "ruleIndex": 0,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "Matrix is MDS (branch number 5) (design): recorded refuted, recomputed refuted: match."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/identity/identity.tar.gz"
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "6bce501365765840741228bb916376a8"
+          },
+          "properties": {
+            "claimId": "matrix.mds",
+            "subject": "design",
+            "recorded": "refuted",
+            "recomputed": "refuted",
+            "result": "match",
+            "policyViolation": true,
+            "reportId": "9421acab267bd47776b29d832356e9f9"
+          }
+        },
+        {
+          "ruleId": "offsets.dispersion",
+          "ruleIndex": 1,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "Row offsets are pairwise distinct (design): recorded proved, recomputed proved: match."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/identity/identity.tar.gz"
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "84e387d3c14296cdb756a0f5384681b2"
+          },
+          "properties": {
+            "claimId": "offsets.dispersion",
+            "subject": "design",
+            "recorded": "proved",
+            "recomputed": "proved",
+            "result": "match",
+            "policyViolation": false,
+            "reportId": "9421acab267bd47776b29d832356e9f9"
+          }
+        },
+        {
+          "ruleId": "activity.bound",
+          "ruleIndex": 2,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "Active S-box lower bound (design): recorded proved, recomputed not_established: mismatch."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/identity/identity.tar.gz"
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "2a6877c37fe85c1bd19af35bbd8526fb"
+          },
+          "properties": {
+            "claimId": "activity.bound",
+            "subject": "design",
+            "recorded": "proved",
+            "recomputed": "not_established",
+            "result": "mismatch",
+            "policyViolation": false,
+            "reportId": "9421acab267bd47776b29d832356e9f9"
+          }
+        },
+        {
+          "ruleId": "native.correctness",
+          "ruleIndex": 3,
+          "kind": "open",
+          "level": "none",
+          "message": {
+            "text": "Generated Rust matches the reference (implementation): recorded proved, recomputed -: not re-checked."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/identity/identity.tar.gz"
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "294994629f0a5700e4fa8f8b059102d0"
+          },
+          "properties": {
+            "claimId": "native.correctness",
+            "subject": "implementation",
+            "recorded": "proved",
+            "recomputed": "-",
+            "result": "not re-checked",
+            "policyViolation": false,
+            "reportId": "9421acab267bd47776b29d832356e9f9"
+          }
+        },
+        {
+          "ruleId": "native.timing",
+          "ruleIndex": 4,
+          "kind": "informational",
+          "level": "none",
+          "message": {
+            "text": "Native speed on this machine (implementation): recorded not_established, recomputed -: historical."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/identity/identity.tar.gz"
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "77baa5e620fcfc14016639d28631377c"
+          },
+          "properties": {
+            "claimId": "native.timing",
+            "subject": "implementation",
+            "recorded": "not_established",
+            "recomputed": "-",
+            "result": "historical",
+            "policyViolation": false,
+            "reportId": "9421acab267bd47776b29d832356e9f9"
+          }
+        }
+      ],
+      "properties": {
+        "command": "verify",
+        "failOn": "refuted",
+        "claims": null,
+        "outcome": "error"
+      }
+    }
+  ]
+}
