@@ -21,13 +21,13 @@ Cryptificate is a local application. A loopback Node service orchestrates three 
 
 | Path | Role | Trusted for soundness? |
 |---|---|---|
-| `lean/Cryptificate` | Generic theorems proved once: circuit interpretation, canonical-minor MDS certificates, counterexample lemmas, offsets, activity instantiation, S-box and exponent certificates, HADES bounds, audit commands. | Yes (checked by the Lean kernel) |
+| `lean/Cryptificate` | Generic theorems proved once: circuit interpretation, canonical-minor MDS certificates, counterexample lemmas, offsets, activity instantiation, S-box and exponent certificates, Pratt primality certificates and `ZMod p` encoders for the prime-field profile, HADES full-round and partial-round bounds at widths three and four, audit commands. | Yes (checked by the Lean kernel) |
 | `lean/templates` | Certificate fragments with placeholders. A certificate is a concatenation of fragments with the request's values substituted. | No: acceptance checks bind every theorem to the request. |
 | `crates/core`, `crates/cli` | Validation, canonical encodings, unchecked diagnostics (minors, Gaussian-elimination witnesses, collisions), certificate emission. | No |
 | `crates/search` | Bounded optimizer. Every candidate is an untrusted proposal. | No |
 | `crates/native` | Rust code generation, native correctness corpus, measurement protocol and statistics. | Tests only |
-| `crates/kernels` | Arithmetic and parametric round kernels used by every native variant; the GF(2⁸) arithmetic and the AES-like round are the subject of the refinement proofs, the BN254 arithmetic (arkworks) is not. | GF(2⁸) and AES-like parts, via `refinement/` |
-| `refinement/` | Charon/Aeneas extraction and Lean proofs that the GF(2⁸) and AES-like Rust source equals the model. | Yes, with Charon, Aeneas and rustc trusted |
+| `crates/kernels` | Arithmetic and parametric round kernels used by every native variant; the GF(2⁸) arithmetic, the AES-like round and the BN254 Montgomery kernel (`bn254_mont`) are the subject of the refinement proofs. The native BN254 variants use arkworks' `Fr`, which is not. | GF(2⁸), AES-like and `bn254_mont` parts, via `refinement/` |
+| `refinement/` | Charon/Aeneas extraction and Lean proofs that the GF(2⁸), AES-like and BN254 Montgomery (`bn254_mont`) Rust source of `crates/kernels`, and the gf256 crate's `mul`, equal the model, under the hypotheses listed in `refinement/STATUS.md`. | Yes, with Charon, Aeneas and rustc trusted |
 | `apps/server` | HTTP API, job queue, Lean runner, proof acceptance, bundles, CLI. | Acceptance logic only |
 | `apps/web` | Workbench and static replay viewer. | No |
 | `python/` | Thin client for research scripts. | No |

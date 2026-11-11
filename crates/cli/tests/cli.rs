@@ -39,10 +39,15 @@ fn run_in(dir: &Path, args: &[&str], input: &str, env: &[(&str, &str)]) -> Outpu
         cmd.env(k, v);
     }
     let mut child = cmd.spawn().expect("engine starts");
-    // An engine that rejects its arguments exits without reading the input,
-    // so the write may find the pipe already closed.
-    if let Err(e) = child.stdin.take().unwrap().write_all(input.as_bytes()) {
-        assert_eq!(e.kind(), std::io::ErrorKind::BrokenPipe, "{e}");
+    {
+        // The engine may exit (for example on a usage error) before it reads its input,
+        // which closes the pipe; that is not a test failure.
+        let mut stdin = child.stdin.take().unwrap();
+        match stdin.write_all(input.as_bytes()) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+            Err(e) => panic!("writing the engine's input failed: {e}"),
+        }
     }
     let out = child.wait_with_output().unwrap();
     let stdout = String::from_utf8(out.stdout).unwrap();
@@ -79,6 +84,10 @@ const CASES: &[(&str, &str, Option<&str>)] = &[
         "poseidon2-exponent3",
         Some("poseidon2-external-shared-sum"),
     ),
+    ("poseidon2-bypass", "poseidon2-bypass", None),
+    ("koalabear-t4", "koalabear-t4", None),
+    ("babybear-t4", "babybear-t4", None),
+    ("babybear-t4-bad", "babybear-t4-bad", None),
 ];
 
 fn analysis_request(design: &str, program: Option<&str>) -> String {
@@ -112,7 +121,9 @@ fn essential_diagnostics(d: &Value) -> Value {
             out[key] = matrix(&d[key]);
         }
     }
-    for key in ["offsets", "activity"] {
+    for key in [
+        "offsets", "activity", "partial", "total", "modulus", "prime",
+    ] {
         if d.get(key).is_some() {
             out[key] = d[key].clone();
         }
@@ -423,6 +434,19 @@ fn refutation_cases() -> Vec<(String, String)> {
     let mut weak = example("designs/poseidon2-bn254.json");
     weak["external"] = json!([["1", "1", "0"], ["0", "1", "1"], ["1", "0", "1"]]);
     weak["internal"] = json!([["1", "1", "0"], ["1", "1", "0"], ["0", "0", "1"]]);
+    // Two partial rounds: [0, 1, -1] avoids coordinate 0 in both, and no
+    // subspace avoids it forever.
+    let mut short_partial = example("designs/poseidon2-bn254.json");
+    short_partial["partialRounds"] = json!(2);
+    // A first row (2, 0, 0) keeps the plane x0 = 0 invariant.
+    let mut plane_partial = example("designs/poseidon2-bn254.json");
+    plane_partial["internal"] = json!([["2", "0", "0"], ["1", "2", "1"], ["1", "1", "3"]]);
+    // S-boxes on coordinates 0 and 1 in the partial rounds: windows of two.
+    let mut two_sboxes = example("designs/poseidon2-bn254.json");
+    two_sboxes["partialMask"] = json!([true, true, false]);
+    // No partial rounds: activity.partial does not apply and is not emitted.
+    let mut no_partial = example("designs/poseidon2-bn254.json");
+    no_partial["partialRounds"] = json!(0);
     vec![
         (
             "table-sbox".into(),
@@ -450,6 +474,22 @@ fn refutation_cases() -> Vec<(String, String)> {
         (
             "hades-external-mismatch".into(),
             json!({"design": example("designs/poseidon2-bn254.json"), "program": internal_circuit}).to_string(),
+        ),
+        (
+            "hades-partial-short".into(),
+            json!({ "design": short_partial }).to_string(),
+        ),
+        (
+            "hades-partial-plane".into(),
+            json!({ "design": plane_partial }).to_string(),
+        ),
+        (
+            "hades-partial-two-sboxes".into(),
+            json!({ "design": two_sboxes }).to_string(),
+        ),
+        (
+            "hades-no-partial".into(),
+            json!({ "design": no_partial }).to_string(),
         ),
     ]
 }

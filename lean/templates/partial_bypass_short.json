@@ -1,0 +1,18 @@
+{
+  "name": "partial_bypass_short",
+  "kind": "claim",
+  "claim": "activity.partial",
+  "status": "refuted",
+  "theorem": "CryptificateJob.partial_bypass_short",
+  "expectedType": "0 < CryptificateJob.candPartialRounds ∧ ∃ v, v ≠ 0 ∧ { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.Bypass CryptificateJob.candMask v",
+  "placeholders": [],
+  "requires": [
+    "const_external_bn254",
+    "const_internal_bn254",
+    "const_exponent",
+    "const_rounds_hades",
+    "const_mask_hades",
+    "const_witness_bypass_bn254"
+  ],
+  "field": "bn254"
+}

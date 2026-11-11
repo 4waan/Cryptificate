@@ -37,6 +37,20 @@
         "witness": null
       },
       {
+        "claim": "activity.partial",
+        "holds": true,
+        "note": "the rows e0 M^0, e0 M^1, e0 M^2 of the powers of the internal matrix M at the masked positions have determinant 1, so no nonzero difference avoids the S-boxes of 3 consecutive partial rounds",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.total",
+        "holds": true,
+        "note": "the full-round bound 16 plus one active S-box in each of the 18 disjoint windows of 3 partial rounds",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
         "claim": "circuit.equivalence",
         "holds": true,
         "note": "the program's coefficient matrix equals the external matrix",
@@ -61,6 +75,44 @@
       "zeroMinors": 0
     },
     "model": "hades/bn254/v1",
+    "partial": {
+      "bypass": null,
+      "determinant": "1",
+      "partialRounds": 56,
+      "positions": [
+        0
+      ],
+      "rows": [
+        {
+          "position": 0,
+          "power": 0,
+          "row": [
+            "1",
+            "0",
+            "0"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 1,
+          "row": [
+            "2",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 2,
+          "row": [
+            "6",
+            "5",
+            "6"
+          ]
+        }
+      ],
+      "window": 3
+    },
     "power": {
       "bijective": true,
       "collision": null,
@@ -101,7 +153,14 @@
         "temps": 3
       }
     },
-    "target": "external"
+    "target": "external",
+    "total": {
+      "applicable": true,
+      "bound": 34,
+      "claim": "activity.total",
+      "reason": "the full-round bound 16 plus one active S-box in each of the 18 disjoint windows of 3 partial rounds",
+      "rounds": 64
+    }
   },
   "inputDigest": "sha256:c8e531007afef9c8148d6ff531f919f55b9b57fe9b722b0cca0bda3abdb58a13"
 }

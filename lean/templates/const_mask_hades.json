@@ -1,0 +1,15 @@
+{
+  "name": "const_mask_hades",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "PARTIAL_MASK"
+  ],
+  "requires": [
+    "header"
+  ],
+  "field": "bn254"
+}

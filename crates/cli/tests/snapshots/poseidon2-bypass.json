@@ -1,0 +1,147 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": true,
+      "bound": 16,
+      "claim": "activity.outer",
+      "reason": "the external matrix is MDS, the internal matrix is invertible and the power map is a bijection, so the full-round bound applies",
+      "rounds": 8
+    },
+    "claims": [
+      {
+        "claim": "external.mds",
+        "holds": true,
+        "note": "all 19 square minors of the external matrix are nonzero, so its branch number is 4",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "internal.invertible",
+        "holds": true,
+        "note": "the internal matrix has determinant 4",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "gcd(5, p-1) = 1, so x^5 is inverted by x^d with d = 17510594297471420177797124596205820070838691520332827474958563349260646796493",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.outer",
+        "holds": true,
+        "note": "the external matrix is MDS, the internal matrix is invertible and the power map is a bijection, so the full-round bound applies",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.partial",
+        "holds": false,
+        "note": "every power of the internal matrix keeps a subspace of dimension 1 at zero on the masked positions, so a nonzero difference in it passes all 56 partial rounds with no active S-box",
+        "predicted": "refuted",
+        "witness": {
+          "difference": [
+            "0",
+            "1",
+            "21888242871839275222246405745257275088548364400416034343698204186575808495616"
+          ],
+          "kind": "partial-bypass",
+          "partialRounds": 56,
+          "positions": [
+            0
+          ]
+        }
+      },
+      {
+        "claim": "activity.total",
+        "holds": null,
+        "note": "not established by this method: the bound needs every window of some length inside the partial rounds to be charged, and a nonzero difference passes them with no active S-box",
+        "predicted": "not_established",
+        "witness": null
+      }
+    ],
+    "external": {
+      "branchWitness": null,
+      "determinant": "4",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 19,
+      "zeroMinors": 0
+    },
+    "internal": {
+      "branchWitness": null,
+      "determinant": "4",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 19,
+      "zeroMinors": 0
+    },
+    "model": "hades/bn254/v1",
+    "partial": {
+      "bypass": {
+        "coefficients": [
+          [
+            "1"
+          ]
+        ],
+        "difference": [
+          "0",
+          "1",
+          "21888242871839275222246405745257275088548364400416034343698204186575808495616"
+        ],
+        "invariantBasis": [
+          [
+            "0",
+            "1",
+            "21888242871839275222246405745257275088548364400416034343698204186575808495616"
+          ]
+        ]
+      },
+      "determinant": null,
+      "partialRounds": 56,
+      "positions": [
+        0
+      ],
+      "rows": [
+        {
+          "position": 0,
+          "power": 0,
+          "row": [
+            "1",
+            "0",
+            "0"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 1,
+          "row": [
+            "2",
+            "1",
+            "1"
+          ]
+        }
+      ],
+      "window": null
+    },
+    "power": {
+      "bijective": true,
+      "collision": null,
+      "exponent": 5,
+      "gcd": 1,
+      "inverseExponent": "17510594297471420177797124596205820070838691520332827474958563349260646796493",
+      "k": 4
+    },
+    "target": "external",
+    "total": {
+      "applicable": false,
+      "bound": null,
+      "claim": "activity.total",
+      "reason": "not established by this method: the bound needs every window of some length inside the partial rounds to be charged, and a nonzero difference passes them with no active S-box",
+      "rounds": 64
+    }
+  },
+  "inputDigest": "sha256:c8738680b8a3670d15c64569e973490aa2a47c43545b569a2479234f840ba863"
+}

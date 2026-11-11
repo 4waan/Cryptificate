@@ -1,0 +1,267 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": false,
+      "bound": 20,
+      "claim": "activity.outer",
+      "reason": "not established by this method: the full-round bound needs an MDS external matrix, an invertible internal matrix and a bijective power map",
+      "rounds": 8
+    },
+    "claims": [
+      {
+        "claim": "field.prime",
+        "holds": true,
+        "note": "2013265921 is prime: p - 1 = 2^27 * 3 * 5, and 31 has order p - 1 modulo p (a Pratt certificate of 4 steps)",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "external.mds",
+        "holds": true,
+        "note": "all 69 square minors of the external matrix are nonzero, so its branch number is 5",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "internal.invertible",
+        "holds": true,
+        "note": "the internal matrix has determinant 5",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": false,
+        "note": "gcd(3, p-1) = 3, so x^3 identifies 1 with a nontrivial root of unity",
+        "predicted": "refuted",
+        "witness": {
+          "exponent": 3,
+          "kind": "power-collision",
+          "note": "omega^3 = 1 = 1^3, where omega = 2^((p-1)/3) is not 1",
+          "x1": "1",
+          "x2": "1314723123"
+        }
+      },
+      {
+        "claim": "activity.outer",
+        "holds": null,
+        "note": "not established by this method: the full-round bound needs an MDS external matrix, an invertible internal matrix and a bijective power map",
+        "predicted": "not_established",
+        "witness": null
+      },
+      {
+        "claim": "activity.partial",
+        "holds": false,
+        "note": "every power of the internal matrix keeps a subspace of dimension 2 at zero on the masked positions, so a nonzero difference in it passes all 13 partial rounds with no active S-box",
+        "predicted": "refuted",
+        "witness": {
+          "difference": [
+            "0",
+            "1",
+            "2013265920",
+            "0"
+          ],
+          "kind": "partial-bypass",
+          "partialRounds": 13,
+          "positions": [
+            0
+          ]
+        }
+      },
+      {
+        "claim": "activity.total",
+        "holds": null,
+        "note": "not established by this method: the bound needs every window of some length inside the partial rounds to be charged, and a nonzero difference passes them with no active S-box",
+        "predicted": "not_established",
+        "witness": null
+      }
+    ],
+    "external": {
+      "branchWitness": null,
+      "determinant": "2013265857",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 69,
+      "zeroMinors": 0
+    },
+    "internal": {
+      "branchWitness": {
+        "bound": 5,
+        "input": [
+          "2013265920",
+          "1",
+          "0",
+          "0"
+        ],
+        "inputWeight": 2,
+        "output": [
+          "2013265920",
+          "1",
+          "0",
+          "0"
+        ],
+        "outputWeight": 2,
+        "support": [
+          0,
+          1
+        ],
+        "zeroOutputs": [
+          2,
+          3
+        ]
+      },
+      "determinant": "5",
+      "kernelVector": null,
+      "mds": false,
+      "minorCount": 69,
+      "zeroMinors": 6
+    },
+    "model": "hades/prime/v1",
+    "modulus": "2013265921",
+    "partial": {
+      "bypass": {
+        "coefficients": [
+          [
+            "1",
+            "0"
+          ],
+          [
+            "0",
+            "1"
+          ]
+        ],
+        "difference": [
+          "0",
+          "1",
+          "2013265920",
+          "0"
+        ],
+        "invariantBasis": [
+          [
+            "0",
+            "1",
+            "2013265920",
+            "0"
+          ],
+          [
+            "0",
+            "2013265920",
+            "0",
+            "1"
+          ]
+        ]
+      },
+      "determinant": null,
+      "partialRounds": 13,
+      "positions": [
+        0
+      ],
+      "rows": [
+        {
+          "position": 0,
+          "power": 0,
+          "row": [
+            "1",
+            "0",
+            "0",
+            "0"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 1,
+          "row": [
+            "2",
+            "1",
+            "1",
+            "1"
+          ]
+        }
+      ],
+      "window": null
+    },
+    "power": {
+      "bijective": false,
+      "collision": {
+        "base": 2,
+        "omega": "1314723123"
+      },
+      "exponent": 3,
+      "gcd": 3,
+      "inverseExponent": null,
+      "k": null
+    },
+    "prime": {
+      "factorization": [
+        [
+          "2",
+          27
+        ],
+        [
+          "3",
+          1
+        ],
+        [
+          "5",
+          1
+        ]
+      ],
+      "field": "babybear",
+      "modulus": "2013265921",
+      "pratt": [
+        {
+          "a": 1,
+          "factors": [],
+          "n": "2"
+        },
+        {
+          "a": 2,
+          "factors": [
+            [
+              "2",
+              1
+            ]
+          ],
+          "n": "3"
+        },
+        {
+          "a": 2,
+          "factors": [
+            [
+              "2",
+              2
+            ]
+          ],
+          "n": "5"
+        },
+        {
+          "a": 31,
+          "factors": [
+            [
+              "2",
+              27
+            ],
+            [
+              "3",
+              1
+            ],
+            [
+              "5",
+              1
+            ]
+          ],
+          "n": "2013265921"
+        }
+      ]
+    },
+    "target": "external",
+    "total": {
+      "applicable": false,
+      "bound": null,
+      "claim": "activity.total",
+      "reason": "not established by this method: the bound needs every window of some length inside the partial rounds to be charged, and a nonzero difference passes them with no active S-box",
+      "rounds": 21
+    }
+  },
+  "inputDigest": "sha256:91f22612dcbe56334ee2febca11a7cd913211bdb2e31fa8f1d446e7fdb8878f2"
+}

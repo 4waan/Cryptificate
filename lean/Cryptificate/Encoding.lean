@@ -42,6 +42,10 @@ def bnMat3 (a00 a01 a02 a10 a11 a12 a20 a21 a22 : Nat) :
 /-- A BN254 state of width three. -/
 def bnVec3 (a0 a1 a2 : Nat) : Fin 3 → Poseidon2.BN254.F := ![bn a0, bn a1, bn a2]
 
+/-- A width-three partial-round mask from three numerals: `true` where the numeral is nonzero
+(the engine writes `1` for a masked position and `0` otherwise). -/
+def maskBits3 (a0 a1 a2 : Nat) : Fin 3 → Bool := ![a0 != 0, a1 != 0, a2 != 0]
+
 /-- Four row offsets, each read modulo four. -/
 def offsets4 (o0 o1 o2 o3 : Nat) : Fin 4 → Fin 4 :=
   ![Fin.ofNat 4 o0, Fin.ofNat 4 o1, Fin.ofNat 4 o2, Fin.ofNat 4 o3]

@@ -1,8 +1,9 @@
-import { describeWitness, formatElement, witnessHeading } from '../lib/witness';
-import type { FieldName, Witness } from '../lib/types';
+import { describeWitness, formatElement, signedDecimal, witnessHeading } from '../lib/witness';
+import type { DisplayField } from '../lib/field';
+import type { Witness } from '../lib/types';
 
 interface CellsProps {
-  field: FieldName;
+  field: DisplayField;
   values: readonly string[];
   highlight?: readonly number[];
   highlightLabel?: string;
@@ -21,7 +22,7 @@ export function Cells({ field, values, highlight = [], highlightLabel = 'differs
           <span
             key={i}
             role="listitem"
-            className={`byte${field === 'bn254' ? ' decimal' : ''}${hl ? (tone === 'bad' ? ' byte-hl' : ' byte-nz') : ''}`}
+            className={`byte${field !== 'gf256' ? ' decimal' : ''}${hl ? (tone === 'bad' ? ' byte-hl' : ' byte-nz') : ''}`}
             data-highlight={hl ? 'true' : undefined}
           >
             <span className="byte-index" aria-hidden="true">
@@ -49,7 +50,7 @@ export function WitnessView({
   unchecked = false,
 }: {
   witness: Witness;
-  field: FieldName;
+  field: DisplayField;
   preview?: boolean;
   /** Found by an unchecked engine diagnostic, not by a checked certificate. */
   unchecked?: boolean;
@@ -65,7 +66,7 @@ export function WitnessView({
   );
 }
 
-function WitnessBody({ witness: w, field }: { witness: Witness; field: FieldName }) {
+function WitnessBody({ witness: w, field }: { witness: Witness; field: DisplayField }) {
   switch (w.kind) {
     case 'distinguishing-input':
       return (
@@ -163,6 +164,19 @@ function WitnessBody({ witness: w, field }: { witness: Witness; field: FieldName
           <span className="witness-label">Map</span>
           <span className="mono">
             x ↦ x^{w.exponent}, {w.note.replace(/omega/g, 'ω')}
+          </span>
+        </div>
+      );
+    case 'partial-bypass':
+      return (
+        <div className="witness-rows">
+          <span className="witness-label">Difference v</span>
+          <Cells field={field} values={w.difference} highlight={w.positions} highlightLabel="S-box position, zero" tone="accent" prefix="v" />
+          <span className="witness-label">Signed</span>
+          <span className="mono">[{w.difference.map((x) => signedDecimal(x, field)).join(', ')}]</span>
+          <span className="witness-label">Partial rounds</span>
+          <span className="mono">
+            {w.partialRounds}, S-box at {w.positions.map((i) => `x${i}`).join(', ')}
           </span>
         </div>
       );

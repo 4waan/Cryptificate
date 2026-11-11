@@ -93,3 +93,36 @@ test('other re-checked claims missing from a bundle are still mismatches', () =>
     ],
   );
 });
+
+test('each group of later claims needs its own evidence that the bundle predates it', () => {
+  const recorded = [claim('matrix.mds', 'proved')];
+  const now = [
+    claim('matrix.mds', 'proved'),
+    claim('sbox.differential', 'proved', DIFF),
+    claim('sbox.linearity', 'proved', LIN),
+    claim('activity.partial', 'proved'),
+    claim('activity.total', 'proved'),
+  ];
+  const results = (opts: Parameters<typeof compareClaims>[4]) => compareClaims('design', recorded, now, false, opts).map((r) => [r.claim, r.result]);
+  // An older certificate excuses the S-box quality claims only.
+  assert.deepEqual(results({ olderCertificate: true }), [
+    ['matrix.mds', 'match'],
+    ['sbox.differential', 'not recorded'],
+    ['sbox.linearity', 'not recorded'],
+    ['activity.partial', 'mismatch'],
+    ['activity.total', 'mismatch'],
+  ]);
+  // A checker revision that predates the partial-round claims excuses those only.
+  assert.deepEqual(results({ predatesRevision: true }), [
+    ['matrix.mds', 'match'],
+    ['sbox.differential', 'mismatch'],
+    ['sbox.linearity', 'mismatch'],
+    ['activity.partial', 'not recorded'],
+    ['activity.total', 'not recorded'],
+  ]);
+  // Both kinds of evidence together excuse both groups.
+  assert.deepEqual(
+    results({ predatesRevision: true, olderCertificate: true }).map(([, r]) => r),
+    ['match', 'not recorded', 'not recorded', 'not recorded', 'not recorded'],
+  );
+});

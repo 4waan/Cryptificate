@@ -152,6 +152,8 @@ export function directProgram(field: 'gf256' | 'bn254', matrix: string[][]): Pro
 }
 
 function baselines(design: CandidateDesign, target: ProgramTarget): Array<{ id: string; origin: CandidateOrigin; program: Program }> {
+  // Request validation rejects experiments on the prime-field profile.
+  if (design.model === 'hades/prime/v1') throw new Error('experiments cover gf256 and bn254 designs only');
   const matrix = targetMatrix(design, target);
   const out: Array<{ id: string; origin: CandidateOrigin; program: Program }> = [
     { id: 'baseline-direct', origin: 'baseline-direct', program: directProgram(design.field, matrix) },

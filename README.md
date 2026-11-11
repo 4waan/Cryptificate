@@ -44,7 +44,7 @@ git clone https://github.com/4waan/Cryptificate && cd Cryptificate && npm start
 
 ## How you use it
 
-1. **Describe the change.** Edit the matrix, offsets, rounds, S-box and circuit in the workbench, or write them as JSON. Bytes are two hex digits; BN254 field elements are decimal strings.
+1. **Describe the change.** Edit the matrix, offsets, rounds, S-box and circuit in the workbench, or write them as JSON. Bytes are two hex digits; elements of a prime field (BN254, BabyBear, KoalaBear, Mersenne31, Goldilocks or your own prime below 2⁶⁴) are decimal strings.
 2. **Check it.** Cryptificate generates a Lean certificate for your exact values and checks it. A fresh 4×4 MDS certificate takes about three seconds.
 3. **Read the evidence.** The report shows two chains side by side: *design guarantees* (MDS, offsets, S-box, activity bound, S-box differential uniformity and linearity) and *implementation correspondence* (circuit equivalence, Rust-source refinement, native correctness, timing). Every refutation comes with concrete bytes you can check by hand.
 4. **Search and measure.** A bounded search proposes cheaper circuits. Each candidate is proved equivalent in Lean and run against 9,214 test inputs before it is timed against the textbook circuit and the direct implementation.
@@ -83,6 +83,8 @@ From the terminal:
 ```sh
 npx cryptificate check examples/designs/aes-row-scaled.json
 npx cryptificate check examples/designs/aes.json --program examples/programs/aes-wrong-wire.json
+npx cryptificate check examples/designs/poseidon2-bypass.json
+npx cryptificate check examples/designs/koalabear-t4.json
 npx cryptificate experiment examples/designs/aes.json --program examples/programs/aes-known-shared-sum.json --profile quick
 npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 ```
@@ -110,12 +112,24 @@ The [adopter guide](docs/adopter-guide.md) walks through a first design end to e
 | `M` is MDS, branch number 5 | All 69 square minors written as explicit determinant formulas, against a coverage theorem proved once for every 4×4 matrix | the row-scaled AES matrix `[04,06,02,02]…`, certified fresh |
 | The row offsets disperse every column | Offsets checked distinct, through WideTrail's characterization of diffusion-optimal rotations | `[0,1,1,3]` caught: rows 1 and 2 share offset 1 |
 | Active S-boxes over `r` rounds | For any injective S-box and any round keys, two different inputs differ at no fewer than `⌊r/4⌋·25 + (5 if r mod 4 ≥ 2)` S-box inputs | 25 for 4 rounds, 55 for 10, 200 for 32 |
-| The S-box is a permutation | An inverse table for byte S-boxes, an inverse exponent for BN254 power maps | `x³` over BN254 caught by a collision |
+| The S-box is a permutation | An inverse table for byte S-boxes, an inverse exponent for power maps over BN254 or `ZMod p` | `x³` over BN254 caught by a collision |
 | Exact differential uniformity and linearity of a byte S-box | The kernel tests every row of the difference table and every Walsh coefficient of the submitted table, packed into one number, against the value, and recounts a witness that attains it; a property of the table, not a trail bound | AES: 4 and 32 (nonlinearity 112); AES with two entries swapped: 6 and 32 |
-| HADES outer rounds | WideTrail's outer-round bound for your external and internal matrices | 16 active S-boxes over 8 full rounds |
+| The modulus is prime (prime-field profile) | A Pratt certificate for your modulus, computed by the engine and checked by kernel evaluation (`Pratt.prime_of_checkFlat`); every other claim uses the field it gives | Goldilocks `2⁶⁴ - 2³² + 1`, where trial division is out of reach |
+| HADES outer rounds | WideTrail's outer-round bound for your external and internal matrices, branch number width + 1 | 16 active S-boxes over 8 full rounds at width 3, 20 at width 4 |
+| HADES partial rounds | As many rows `eᵢ Mʲ` of the internal matrix's powers at the partial-round S-box positions as the width, with a nonzero determinant: every `L` consecutive partial rounds activate an S-box, for any round constants. Otherwise a nonzero difference `v` with `Mʲ v` zero there for every `j` below the number of partial rounds passes all of them with no active S-box: checked through an invariant subspace, or directly on the first powers when there are fewer partial rounds than the width needs. A design with no partial rounds gets neither (out of scope) | the pinned internal matrix: `L = 3` (determinant 1), so at least 16 + ⌊56/3⌋ = 34 active S-boxes over all 64 rounds; the external matrix reused as internal matrix: `[0, 1, -1]` bypasses all 56 partial rounds |
 | The Rust source computes the model | Charon and Aeneas translate the Rust kernels to Lean, where they are proved equal to the model | GF(2⁸) arithmetic and the full AES-like round, for every design |
 | The generated Rust is correct | 9,214 test inputs per GF(2⁸) variant (8,278 for BN254) before any timing | a fast but wrong circuit is kept off the leaderboard |
 | It is faster on your machine | 15 paired rounds per workload, 95% bootstrap intervals, two fresh confirmation sessions | ratios with intervals for every candidate and baseline |
+
+Which of these claims a design gets depends on its profile:
+
+| Profile | Fields | Widths | Claims |
+|---|---|---|---|
+| AES-like | GF(2⁸), `0x11B` | 4 (2 and 3 experimental, not certified) | MDS, offsets, S-box, activity bound; circuits, search, native timing; Rust refinement |
+| HADES, `hades/bn254/v1` | BN254 scalar field | 3 | external MDS, internal invertibility, power map, full-round, partial-round and total activity; circuits, search, native timing |
+| HADES, `hades/prime/v1` | BabyBear, KoalaBear, Mersenne31, Goldilocks, or a custom prime below 2⁶⁴ | 3 and 4 | primality of the modulus, then the same design claims as over BN254. No circuits, search, native timing or Rust refinement over these fields |
+
+The modulus is part of every claim's meaning: a matrix can be MDS modulo one prime and not another, and `x³` permutes KoalaBear but not BabyBear. The example designs [`koalabear-t4.json`](examples/designs/koalabear-t4.json) (`x³`) and [`babybear-t4.json`](examples/designs/babybear-t4.json) (`x⁷`) use Poseidon2's `M4` as external matrix with an illustrative internal matrix and round counts; they are not deployed instances. [`babybear-t4-bad.json`](examples/designs/babybear-t4-bad.json) is deliberately wrong: `x³` collides over BabyBear, and its internal matrix lets `[0, 1, −1, 0]` pass all 13 partial rounds.
 
 Every report labels its origin: **Live** or **Cached exact result**. Editing any input marks earlier results as belonging to an earlier version until you check again. The full vocabulary of statuses and evidence labels is in [docs/evidence-model.md](docs/evidence-model.md).
 
@@ -137,7 +151,9 @@ Every report labels its origin: **Live** or **Cached exact result**. Editing any
 | Wrong-wire circuit, checked witness | 3.1 s |
 | 256-instruction circuit with heavy sharing | 4.4–8.5 s |
 | MDS, offsets and activity bound for a fresh matrix | 3.3–8.5 s |
-| HADES: external MDS, internal invertibility, exponent, activity | 3.9–4.4 s |
+| HADES: external MDS, internal invertibility, exponent, full-round activity | 3.9–4.4 s |
+| HADES with the partial rounds: window certificate and whole-permutation bound, or a bypass | 3.9–4.8 s |
+| HADES over BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime, width 3 or 4: primality and every design claim | 4.2–5.8 s |
 | Differential uniformity and linearity of a submitted byte table | 10.5–11.5 s |
 
 **Every push re-checks everything.** [CI](https://github.com/4waan/Cryptificate/actions/workflows/checks.yml) rebuilds the Lean library, runs every certificate example, re-checks the refinement proofs on Lean 4.35 and runs the Rust, Node and Python test suites.
@@ -151,9 +167,13 @@ The native code Cryptificate measures is built on [`crates/kernels`](crates/kern
 | `gf256::mul` | `gf256.mul a b = ok ⟨GF256.rawMul a.bv b.bv⟩` | WideTrail's field `GF256` |
 | `gf256::xtime`, `gf256::add` | equal to `GF256.xtime` and to XOR | WideTrail's field `GF256` |
 | `aes_like::round`, `aes_like::encrypt` | equal to `aesLikeRound` and `aesLikeExec` of [`Bridge.lean`](lean/Cryptificate/Bridge.lean) for every matrix, offsets, S-box table and key schedule (`encrypt` given at least `rounds` keys) | the active-S-box bound, assuming an MDS matrix, distinct offsets and an injective S-box table |
+| `aes_like::encrypt` with the AES matrix, offsets `[0, 1, 2, 3]` and the FIPS 197 S-box as byte arrays | for any two different inputs and any round keys (at least `r`), the executions return normally and have at least `activityBound r` active S-boxes: `≥ 55` over 10 rounds, `≥ 25` over 4; no design hypothesis, the design checks are evaluated by the Lean kernel | the active-S-box bound, for AES rounds without the special last round |
+| `aes_like::final_round`, `aes_like::encrypt_with_last_round` | equal to `aesLikeFinalRound` (no column mixing, then a final key) and `aesLikeCipher` (`r - 1` rounds, then that final round) of [`Bridge.lean`](lean/Cryptificate/Bridge.lean), for every design and key schedule (given at least `rounds + 1` keys) | the same bound over the `r` rounds, the final round's S-boxes included, under the same three assumptions |
+| `aes_like::encrypt_with_last_round` with the AES byte arrays | for any two different inputs and any round keys (at least `r + 1`), the executions return normally, the outputs are the model's AES-like cipher with WideTrail's AES S-box, and its `r` rounds have at least `activityBound r` active S-boxes: `≥ 55` for the ten rounds of AES-128; no design hypothesis | the active-S-box bound for the AES data path with its final round, for every key sequence; the AES key expansion is not modelled (the Rust tests check the FIPS 197 ciphertexts) |
 | gf256 crate 0.3.1 (`0x11B`, table-free), expanded source | its `mul` equals WideTrail's multiplier, assuming `size_of::<u8>() = 1` | WideTrail's field `GF256` |
+| `bn254_mont::{mul, add, sub, to_mont, from_mont}` (BN254 Montgomery form on `[u64; 4]`) | on canonical inputs, no panic and the canonical result of `a·b·R⁻¹`, `a + b`, `a − b` mod p (and `x·R`, `x·R⁻¹` for any input) | WideTrail's `Poseidon2.BN254.F = ZMod p`, through `toField x = x·R⁻¹` |
 
-Because the round kernel takes the design as runtime data, one proof covers every AES-like design you submit. The extraction script reproduces the Lean translation byte for byte from the pinned source; pins and hashes are in [refinement/](refinement/STATUS.md).
+Because the round kernel takes the design as runtime data, one proof covers every AES-like design you submit. For a concrete design, `aes_like_encrypt_activity_bound_of_checks` (and its final-round form) replaces the three design hypotheses by Boolean checks on its bytes; the AES rows are those theorems with the checks evaluated, and the service does not yet run them for submitted designs. The BN254 kernel is proved, but the native BN254 variants still call arkworks' `Fr`, which Aeneas cannot translate, so the timed BN254 arithmetic is not covered ([STATUS.md, section 4](refinement/STATUS.md)). The extraction script reproduces the Lean translation byte for byte from the pinned source; pins and hashes are in [refinement/](refinement/STATUS.md).
 
 ## Search and measurement
 
@@ -189,7 +209,7 @@ npx cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 
 | Path | What it holds |
 |---|---|
-| [`lean/`](lean) | Circuit semantics, canonical-minor MDS certificates, counterexample lemmas, offsets, the execution bridge, S-box and exponent certificates, HADES bounds, the audit command and the certificate templates |
+| [`lean/`](lean) | Circuit semantics, canonical-minor MDS certificates, counterexample lemmas, offsets, the execution bridge, S-box and exponent certificates, Pratt primality certificates, HADES full-round and partial-round bounds at widths 3 and 4, the audit command and the certificate templates |
 | [`refinement/`](refinement) | Charon/Aeneas translations of `crates/kernels` and the gf256 crate, with their Lean proofs |
 | [`crates/`](crates) | `core` (validation, diagnostics, certificate emission), `cli` (`cryptificate-engine`), `search`, `native` (code generation and timing harness), `kernels` |
 | [`apps/server`](apps/server) | HTTP API, job queue, proof acceptance, bundles and the `cryptificate` CLI |
@@ -217,6 +237,8 @@ Cryptificate turns those theorems into a tool for arbitrary inputs: certificates
 | **Row offsets** | How far each state row rotates (AES: 0, 1, 2, 3). Distinct offsets spread each column across all four columns. |
 | **Active S-box** | An S-box whose input differs between two executions. |
 | **BN254, HADES, Poseidon2** | A 254-bit prime field used in zero-knowledge proofs, and the full/partial round structure of the Poseidon2 permutation over it. |
+| **BabyBear, KoalaBear, Mersenne31, Goldilocks** | The 31-bit and 64-bit prime fields of zkVMs such as Plonky3, SP1, RISC Zero and OpenVM: `15·2²⁷+1`, `127·2²⁴+1`, `2³¹−1` and `2⁶⁴−2³²+1`. |
+| **Pratt certificate** | A proof that `p` is prime: the factorization of `p − 1` and a number of order `p − 1` modulo `p`, with the same for each large factor. |
 | **Lean, Aeneas** | A proof assistant whose small kernel checks every proof step, and a tool that translates Rust into Lean. |
 
 </details>

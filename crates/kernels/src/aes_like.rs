@@ -12,15 +12,21 @@
 //!   mixing computes `y = M x` for every column `x`;
 //! * row shifting is `out[r][c] = in[r][(c + offsets[r]) mod 4]`;
 //! * one round is: add the round key, apply the S-box to every byte, shift
-//!   rows, mix columns. Every round has this shape (there is no special last
-//!   round).
+//!   rows, mix columns. `encrypt` applies only rounds of this shape;
+//! * the final round (`final_round`) is: add the round key, apply the S-box,
+//!   shift rows, add a final key, with no column mixing, as the last round of
+//!   AES. `encrypt_with_last_round` applies `rounds - 1` full rounds and then
+//!   the final round, using `rounds + 1` keys. With the AES matrix, offsets,
+//!   S-box and the AES-128 key expansion (computed by the caller; the key
+//!   schedule is not part of this module) and `rounds = 10` it is AES-128
+//!   encryption.
 //!
 //! These functions are the input of the Rust-source refinement in
-//! `refinement/`: Charon and Aeneas translate this file to Lean, where `round`
-//! and `encrypt` are proved equal to the execution model of the main Lean
-//! package over WideTrail's GF(2^8). Keep them in the subset those tools handle
-//! (`while` loops, no iterators or closures) and run
-//! `refinement/extract.sh --write` after changing them.
+//! `refinement/`: Charon and Aeneas translate this file to Lean, where `round`,
+//! `encrypt`, `final_round` and `encrypt_with_last_round` are proved equal to
+//! the execution model of the main Lean package over WideTrail's GF(2^8). Keep
+//! them in the subset those tools handle (`while` loops, no iterators or
+//! closures) and run `refinement/extract.sh --write` after changing them.
 
 use crate::gf256;
 
@@ -104,6 +110,48 @@ pub fn encrypt(
     while n < rounds {
         round(state, matrix, offsets, sbox, &round_keys[n]);
         n += 1;
+    }
+}
+
+/// The final round: add `round_key`, substitute bytes, shift rows, add
+/// `final_key`. There is no column mixing, as in the last round of AES.
+pub fn final_round(
+    state: &mut [u8; 16],
+    offsets: &[u8; 4],
+    sbox: &[u8; 256],
+    round_key: &[u8; 16],
+    final_key: &[u8; 16],
+) {
+    add_round_key(state, round_key);
+    sub_bytes(state, sbox);
+    shift_rows(state, offsets);
+    add_round_key(state, final_key);
+}
+
+/// Apply `rounds` rounds of which the last one is a final round: rounds
+/// `0, ..., rounds - 2` are full rounds with `round_keys[n]`, then the final
+/// round with `round_keys[rounds - 1]` and `round_keys[rounds]`. With
+/// `rounds = 0` the state is left unchanged.
+///
+/// Panics if `rounds > 0` and `rounds >= round_keys.len()` (`rounds + 1` keys
+/// are needed).
+pub fn encrypt_with_last_round(
+    state: &mut [u8; 16],
+    matrix: &[u8; 16],
+    offsets: &[u8; 4],
+    sbox: &[u8; 256],
+    round_keys: &[[u8; 16]],
+    rounds: usize,
+) {
+    if rounds > 0 {
+        encrypt(state, matrix, offsets, sbox, round_keys, rounds - 1);
+        final_round(
+            state,
+            offsets,
+            sbox,
+            &round_keys[rounds - 1],
+            &round_keys[rounds],
+        );
     }
 }
 
@@ -249,6 +297,163 @@ mod tests {
             round(&mut actual, &matrix, &offsets, &sbox, &key);
             assert_eq!(actual, expected);
         }
+    }
+
+    /// The AES-128 key expansion of FIPS-197 section 5.2, as eleven round
+    /// keys in state order. Test-only: the kernel takes round keys as data.
+    fn aes128_round_keys(key: &[u8; 16]) -> [[u8; 16]; 11] {
+        let sbox = aes_sbox();
+        let mut w = [[0u8; 4]; 44];
+        for i in 0..4 {
+            w[i].copy_from_slice(&key[4 * i..4 * i + 4]);
+        }
+        let mut rcon = 0x01u8;
+        for i in 4..44 {
+            let mut t = w[i - 1];
+            if i % 4 == 0 {
+                t = [
+                    sbox[t[1] as usize] ^ rcon,
+                    sbox[t[2] as usize],
+                    sbox[t[3] as usize],
+                    sbox[t[0] as usize],
+                ];
+                rcon = gf256::xtime(rcon);
+            }
+            for j in 0..4 {
+                w[i][j] = w[i - 4][j] ^ t[j];
+            }
+        }
+        let mut keys = [[0u8; 16]; 11];
+        for (n, k) in keys.iter_mut().enumerate() {
+            for c in 0..4 {
+                k[4 * c..4 * c + 4].copy_from_slice(&w[4 * n + c]);
+            }
+        }
+        keys
+    }
+
+    fn aes128_encrypt(key: &str, plaintext: &str) -> [u8; 16] {
+        let keys = aes128_round_keys(&hex16(key));
+        let mut state = hex16(plaintext);
+        let sbox = aes_sbox();
+        encrypt_with_last_round(&mut state, &AES_MATRIX, &AES_OFFSETS, &sbox, &keys, 10);
+        state
+    }
+
+    /// FIPS-197 Appendix A.1: the first and the last round key of the
+    /// expansion of `2b7e1516 28aed2a6 abf71588 09cf4f3c`.
+    #[test]
+    fn aes128_key_expansion_matches_fips197() {
+        let keys = aes128_round_keys(&hex16("2b7e151628aed2a6abf7158809cf4f3c"));
+        assert_eq!(keys[1], hex16("a0fafe1788542cb123a339392a6c7605"));
+        assert_eq!(keys[10], hex16("d014f9a8c9ee2589e13f0cc8b6630ca6"));
+    }
+
+    /// FIPS-197 Appendix B: the cipher example.
+    #[test]
+    fn fips197_appendix_b_ciphertext() {
+        assert_eq!(
+            aes128_encrypt(
+                "2b7e151628aed2a6abf7158809cf4f3c",
+                "3243f6a8885a308d313198a2e0370734"
+            ),
+            hex16("3925841d02dc09fbdc118597196a0b32")
+        );
+    }
+
+    /// FIPS-197 Appendix C.1: the AES-128 known-answer vector.
+    #[test]
+    fn fips197_appendix_c1_aes128() {
+        assert_eq!(
+            aes128_encrypt(
+                "000102030405060708090a0b0c0d0e0f",
+                "00112233445566778899aabbccddeeff"
+            ),
+            hex16("69c4e0d86a7b0430d8cdb78070b4c55a")
+        );
+    }
+
+    /// FIPS-197 Appendix B, round 10: from the state at the start of the last
+    /// round (after its key addition), SubBytes, ShiftRows and the last key
+    /// addition give the ciphertext. FIPS-197 prints states row by row; the
+    /// bytes below are in state (column-major) order.
+    #[test]
+    fn fips197_final_round() {
+        let keys = aes128_round_keys(&hex16("2b7e151628aed2a6abf7158809cf4f3c"));
+        let start10 = hex16("eb40f21e592e38848ba113e71bc342d2");
+        // `final_round` adds `keys[9]` first; remove it from the listed state.
+        let mut state = start10;
+        add_round_key(&mut state, &keys[9]);
+        final_round(&mut state, &AES_OFFSETS, &aes_sbox(), &keys[9], &keys[10]);
+        assert_eq!(state, hex16("3925841d02dc09fbdc118597196a0b32"));
+    }
+
+    #[test]
+    fn encrypt_with_last_round_is_encrypt_then_final_round() {
+        let sbox = aes_sbox();
+        let mut seed = 0x2545_F491_4F6C_DD1Du64;
+        let mut next = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for rounds in 1..6 {
+            let mut keys = [[0u8; 16]; 6];
+            let mut matrix = [0u8; 16];
+            let mut start = [0u8; 16];
+            for i in 0..16 {
+                matrix[i] = next() as u8;
+                start[i] = next() as u8;
+                for k in keys.iter_mut() {
+                    k[i] = next() as u8;
+                }
+            }
+            let offsets = [next() as u8, next() as u8, next() as u8, next() as u8];
+            let mut expected = start;
+            for k in &keys[..rounds - 1] {
+                expected = reference_round(expected, &matrix, &offsets, &sbox, k);
+            }
+            // The final round is the reference round with the identity matrix,
+            // followed by the last key.
+            let identity: [u8; 16] = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+            expected = reference_round(expected, &identity, &offsets, &sbox, &keys[rounds - 1]);
+            for i in 0..16 {
+                expected[i] ^= keys[rounds][i];
+            }
+            let mut actual = start;
+            let used = &keys[..rounds + 1];
+            encrypt_with_last_round(&mut actual, &matrix, &offsets, &sbox, used, rounds);
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn encrypt_with_last_round_zero_rounds_is_identity() {
+        let start = hex16("00112233445566778899aabbccddeeff");
+        let mut state = start;
+        encrypt_with_last_round(&mut state, &AES_MATRIX, &AES_OFFSETS, &aes_sbox(), &[], 0);
+        assert_eq!(state, start);
+    }
+
+    #[test]
+    fn encrypt_with_last_round_accepts_rounds_plus_one_keys() {
+        let keys = [[0u8; 16]; 11];
+        let mut state = [0u8; 16];
+        let sbox = aes_sbox();
+        encrypt_with_last_round(&mut state, &AES_MATRIX, &AES_OFFSETS, &sbox, &keys, 10);
+    }
+
+    #[test]
+    // The same call as above with one key fewer. The expected message names the
+    // missing key `round_keys[rounds]`, index 10 of a 10-key slice; any other
+    // panic fails the test.
+    #[should_panic(expected = "index out of bounds: the len is 10 but the index is 10")]
+    fn encrypt_with_last_round_needs_rounds_plus_one_keys() {
+        let keys = [[0u8; 16]; 10];
+        let mut state = [0u8; 16];
+        let sbox = aes_sbox();
+        encrypt_with_last_round(&mut state, &AES_MATRIX, &AES_OFFSETS, &sbox, &keys, 10);
     }
 
     #[test]

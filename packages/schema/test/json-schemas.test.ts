@@ -8,6 +8,7 @@ import {
   CLAIM_STATUSES,
   EVIDENCE_LABELS,
   HADES_DESIGN_CLAIMS,
+  HADES_PRIME_DESIGN_CLAIMS,
   IMPLEMENTATION_CLAIMS,
 } from '../src/index.js';
 import type { WitnessKind } from '../src/index.js';
@@ -64,7 +65,7 @@ test('claim schema uses the exact evidence labels and statuses', () => {
 
 test('claim schema lists exactly the catalogued claim ids', () => {
   const claim = load('claim.schema.json') as { properties: { id: { enum: string[] } } };
-  const ids = new Set([...AES_LIKE_DESIGN_CLAIMS, ...HADES_DESIGN_CLAIMS, ...IMPLEMENTATION_CLAIMS].map((c) => c.id));
+  const ids = new Set([...AES_LIKE_DESIGN_CLAIMS, ...HADES_DESIGN_CLAIMS, ...HADES_PRIME_DESIGN_CLAIMS, ...IMPLEMENTATION_CLAIMS].map((c) => c.id));
   assert.deepEqual([...claim.properties.id.enum].sort(), [...ids].sort());
 });
 
@@ -79,6 +80,7 @@ test('witness schema has one alternative per witness kind', () => {
     'power-collision': true,
     'sbox-differential': true,
     'sbox-linearity': true,
+    'partial-bypass': true,
   };
   assert.deepEqual(witness.oneOf.map((w) => w.properties.kind.const).sort(), Object.keys(kinds).sort());
 });
