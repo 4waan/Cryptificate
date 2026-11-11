@@ -11,7 +11,7 @@
 import { createHash } from 'node:crypto';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { IMPLEMENTATION_CLAIMS, designClaimsFor, htmlDocument, htmlElement as h, htmlFragment, reportArticle, reportTitle } from '@cryptificate/schema';
+import { IMPLEMENTATION_CLAIMS, MODELS, designClaimsFor, htmlDocument, htmlElement as h, htmlFragment, reportArticle, reportTitle } from '@cryptificate/schema';
 import type { AnalysisReport, Claim, ExecutionState, ExperimentReport, HtmlChild, HtmlToolchain } from '@cryptificate/schema';
 import { formatAnalysis, table, witnessText } from './format.js';
 import type { Style } from './format.js';
@@ -119,9 +119,14 @@ export function makeCheckRun(entries: CheckEntry[], failOn: FailOn, only: Readon
   return { format: 'cryptificate-check/v1', command: 'check', failOn, claims: only ? [...only] : null, outcome, exitCode: exitCodeOf(outcome), results: entries };
 }
 
-/** Whether verify re-derived this row with the installed tools. */
+/**
+ * Whether verify re-derived this row with the installed tools. A `not recorded`
+ * row (a claim added after the bundle was recorded, see `ADDED_LATER` in
+ * verify.ts) was re-derived too: it has a recomputed status, only nothing
+ * recorded to compare it with, so a policy gates on it like any other.
+ */
 function rechecked(r: VerifyRow): boolean {
-  return r.result === 'match' || r.result === 'mismatch';
+  return r.result === 'match' || r.result === 'mismatch' || r.result === 'not recorded';
 }
 
 /** Whether a missing tool, not the re-check itself, decided the recomputed status. */
@@ -217,7 +222,7 @@ function outcomeText(run: GateRun): string {
 /** Generic title of a claim id (activity titles vary with the design). */
 const RULE_TITLES: ReadonlyMap<string, { title: string; chain: string }> = (() => {
   const m = new Map<string, { title: string; chain: string }>();
-  for (const info of [...designClaimsFor('aes-like/gf256/v1'), ...designClaimsFor('hades/bn254/v1'), ...IMPLEMENTATION_CLAIMS]) {
+  for (const info of [...MODELS.flatMap((model) => designClaimsFor(model)), ...IMPLEMENTATION_CLAIMS]) {
     if (!m.has(info.id)) m.set(info.id, { title: info.title, chain: info.chain });
   }
   return m;
@@ -261,6 +266,17 @@ export function claimLocation(c: Claim, input: CheckInput): { file: string; poin
       return d('/rounds');
     case 'activity.outer':
       return d('/fullRounds');
+    case 'activity.partial':
+      // A bypass is a property of the internal matrix over the partial rounds.
+      return w?.kind === 'partial-bypass' ? d('/internal') : d('/partialRounds');
+    case 'activity.total':
+      return d('/partialRounds');
+    case 'field.prime':
+      // A design that names a preset field may omit the modulus; the pointer then falls back to the design.
+      return d('/modulus');
+    case 'sbox.differential':
+    case 'sbox.linearity':
+      return d('/sbox');
     case 'circuit.equivalence':
       return w?.kind === 'distinguishing-input' && w.differing.length > 0 ? p(`/outputs/${w.differing[0]}`) : p('');
     default:

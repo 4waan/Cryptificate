@@ -1,0 +1,17 @@
+{
+  "name": "power_bijective_prime",
+  "kind": "claim",
+  "claim": "sbox.bijective",
+  "status": "proved",
+  "theorem": "CryptificateJob.power_bijective",
+  "expectedType": "Function.Bijective (Cryptificate.PrimePower.ZModP.powMap CryptificateJob.candModulus CryptificateJob.candExponent)",
+  "placeholders": [
+    "INV_EXPONENT",
+    "K"
+  ],
+  "requires": [
+    "const_exponent",
+    "field_prime"
+  ],
+  "field": "prime"
+}

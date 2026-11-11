@@ -1,0 +1,15 @@
+{
+  "name": "const_modulus_prime",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "MODULUS"
+  ],
+  "requires": [
+    "header"
+  ],
+  "field": "prime"
+}

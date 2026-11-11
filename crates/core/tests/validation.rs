@@ -649,3 +649,249 @@ fn error_envelope() {
     let bad_json = cryptificate_core::parse_json("{").unwrap_err();
     assert_eq!(bad_json.code, ErrorCode::InvalidJson);
 }
+
+// ---------------------------------------------------------------------------
+// HADES over a 64-bit prime field
+// ---------------------------------------------------------------------------
+
+fn prime_design() -> Value {
+    json!({
+        "model": "hades/prime/v1", "field": "koalabear", "width": 4,
+        "external": [["5","7","1","3"],["4","6","1","1"],["1","3","5","7"],["1","1","4","6"]],
+        "internal": [["2","1","1","1"],["1","3","1","1"],["1","1","5","1"],["1","1","1","9"]],
+        "fullRounds": 8, "partialRounds": 20,
+        "sbox": {"kind": "power", "exponent": 3},
+        "partialMask": [true, false, false, false]
+    })
+}
+
+#[test]
+fn prime_presets_state_their_modulus() {
+    for (field, p) in [
+        ("babybear", "2013265921"),
+        ("koalabear", "2130706433"),
+        ("mersenne31", "2147483647"),
+        ("goldilocks", "18446744069414584321"),
+    ] {
+        let mut v = prime_design();
+        v["field"] = json!(field);
+        let d = validate_design(&v).unwrap();
+        assert_eq!(d.model(), "hades/prime/v1");
+        assert_eq!(d.modulus(), Some(p.parse().unwrap()));
+        let out = serde_json::to_value(&d).unwrap();
+        // The normalized design names the modulus and the default constants.
+        assert_eq!(out["modulus"], json!(p), "{field}");
+        assert_eq!(out["constants"], json!({"kind": "unspecified"}));
+        assert_eq!(out["field"], json!(field));
+        // Giving the modulus explicitly is the same request.
+        let mut w = v.clone();
+        w["modulus"] = json!(p);
+        assert_eq!(validate_design(&w).unwrap(), d);
+    }
+}
+
+#[test]
+fn prime_custom_modulus() {
+    let mut v = prime_design();
+    v["field"] = json!("prime");
+    v["modulus"] = json!("18446744073709551557");
+    let d = validate_design(&v).unwrap();
+    assert_eq!(d.modulus(), Some(18446744073709551557));
+    // Elements are residues of the stated modulus: p - 1 is accepted, p is not.
+    let mut w = v.clone();
+    w["external"][0][0] = json!("18446744073709551556");
+    validate_design(&w).unwrap();
+    rejects(
+        validate_design,
+        &v,
+        |v| v["external"][0][0] = json!("18446744073709551557"),
+        ErrorCode::ValueNotCanonical,
+        "/external/0/0",
+    );
+    // A small prime works too, and bounds the elements accordingly.
+    let mut small = v.clone();
+    small["modulus"] = json!("7");
+    rejects(
+        validate_design,
+        &small,
+        |_| {},
+        ErrorCode::ValueNotCanonical,
+        "/external/0/1",
+    );
+}
+
+#[test]
+fn prime_modulus_rejections() {
+    let base = prime_design();
+    let custom = |p: Value| {
+        move |v: &mut Value| {
+            v["field"] = json!("prime");
+            v["modulus"] = p;
+        }
+    };
+    rejects(
+        validate_design,
+        &base,
+        custom(json!("2013265923")),
+        ErrorCode::BadModulus,
+        "/modulus",
+    );
+    rejects(
+        validate_design,
+        &base,
+        custom(json!("1")),
+        ErrorCode::BadModulus,
+        "/modulus",
+    );
+    rejects(
+        validate_design,
+        &base,
+        custom(json!("18446744073709551616")),
+        ErrorCode::BadModulus,
+        "/modulus",
+    );
+    rejects(
+        validate_design,
+        &base,
+        custom(json!("0x7f000001")),
+        ErrorCode::BadModulus,
+        "/modulus",
+    );
+    rejects(
+        validate_design,
+        &base,
+        custom(json!(2130706433)),
+        ErrorCode::BadType,
+        "/modulus",
+    );
+    rejects(
+        validate_design,
+        &base,
+        |v| {
+            v["field"] = json!("prime");
+        },
+        ErrorCode::MissingField,
+        "/modulus",
+    );
+    rejects(
+        validate_design,
+        &base,
+        |v| v["modulus"] = json!("2013265921"),
+        ErrorCode::BadModulus,
+        "/modulus",
+    );
+}
+
+#[test]
+fn prime_model_fields_widths_and_constants() {
+    let base = prime_design();
+    for field in ["bn254", "gf256", "babybear31"] {
+        rejects(
+            validate_design,
+            &base,
+            |v| v["field"] = json!(field),
+            ErrorCode::FieldMismatch,
+            "/field",
+        );
+    }
+    // BN254 keeps its own model, which has no modulus member.
+    rejects(
+        validate_design,
+        &hades_design(),
+        |v| v["modulus"] = json!("7"),
+        ErrorCode::UnknownField,
+        "/modulus",
+    );
+    rejects(
+        validate_design,
+        &hades_design(),
+        |v| v["field"] = json!("koalabear"),
+        ErrorCode::FieldMismatch,
+        "/field",
+    );
+    for width in [2usize, 5, 16] {
+        rejects(
+            validate_design,
+            &base,
+            |v| {
+                v["width"] = json!(width);
+                let m: Vec<Vec<&str>> = (0..width).map(|_| vec!["1"; width]).collect();
+                v["external"] = json!(m);
+                v["internal"] = json!(m);
+                v["partialMask"] = json!((0..width).map(|i| i == 0).collect::<Vec<_>>());
+            },
+            ErrorCode::UnsupportedWidth,
+            "/width",
+        );
+    }
+    // Width three is supported as well.
+    validate_design(&json!({
+        "model": "hades/prime/v1", "field": "goldilocks", "width": 3,
+        "external": [["2","1","1"],["1","2","1"],["1","1","2"]],
+        "internal": [["2","1","1"],["1","2","1"],["1","1","3"]],
+        "fullRounds": 8, "partialRounds": 22,
+        "sbox": {"kind": "power", "exponent": 7}
+    }))
+    .unwrap();
+    rejects(
+        validate_design,
+        &base,
+        |v| v["constants"] = json!({"kind": "reference"}),
+        ErrorCode::BadConstantsKind,
+        "/constants/kind",
+    );
+    rejects(
+        validate_design,
+        &hades_design(),
+        |v| v["constants"] = json!({"kind": "unspecified"}),
+        ErrorCode::BadConstantsKind,
+        "/constants/kind",
+    );
+    // Explicit constants are residues too, one vector per round.
+    let mut v = base.clone();
+    v["constants"] = json!({"kind": "explicit", "values": vec![vec!["2130706432"; 4]; 28]});
+    validate_design(&v).unwrap();
+    rejects(
+        validate_design,
+        &v,
+        |v| v["constants"]["values"][3][1] = json!("2130706433"),
+        ErrorCode::ValueNotCanonical,
+        "/constants/values/3/1",
+    );
+}
+
+#[test]
+fn prime_designs_take_no_programs() {
+    let req = json!({
+        "design": prime_design(),
+        "program": {"field": "koalabear", "width": 4, "instructions": [], "outputs": [0, 1, 2, 3]}
+    });
+    let e = validate_analysis_request(&req).unwrap_err();
+    assert_eq!(
+        (e.code, e.path.as_str()),
+        (ErrorCode::FieldMismatch, "/program/field")
+    );
+    let e = validate_program(&req["program"]).unwrap_err();
+    assert_eq!(e.code, ErrorCode::FieldMismatch);
+    let req = json!({"design": prime_design(), "target": "internal"});
+    validate_analysis_request(&req).unwrap();
+    let e = validate_experiment_request(&json!({"design": prime_design(), "profile": "quick"}))
+        .unwrap_err();
+    assert_eq!(
+        (e.code, e.path.as_str()),
+        (ErrorCode::FieldMismatch, "/design/field")
+    );
+}
+
+#[test]
+fn prime_request_round_trip() {
+    let req = validate_analysis_request(&json!({"design": prime_design()})).unwrap();
+    let out = serde_json::to_value(&req).unwrap();
+    // Deserializing residues needs the modulus in scope.
+    let back = cryptificate_core::with_modulus(2130706433, || {
+        serde_json::from_value::<AnalysisRequest>(out.clone()).unwrap()
+    });
+    assert_eq!(back, req);
+    assert_eq!(validate_analysis_request(&out).unwrap(), req);
+    assert!(to_canonical_json(&out).contains("\"modulus\":\"2130706433\""));
+}

@@ -1,6 +1,7 @@
 import { activityFormula } from '../lib/design';
 import type { PreviewItem } from '../lib/preview';
-import { ALLOWED_AXIOMS, type Claim, type FieldName } from '../lib/types';
+import type { DisplayField } from '../lib/field';
+import { ALLOWED_AXIOMS, type Claim } from '../lib/types';
 import { IconInfo, IconPreview, StatusPill } from './icons';
 import { WitnessView } from './WitnessView';
 
@@ -19,7 +20,7 @@ export function evidenceText(claim: Claim): string {
   return ev.label;
 }
 
-export function ClaimCard({ claim, field, rounds }: { claim: Claim; field: FieldName; rounds?: number }) {
+export function ClaimCard({ claim, field, rounds }: { claim: Claim; field: DisplayField; rounds?: number }) {
   const ev = claim.evidence;
   const hasProofDetails = Boolean(ev.theorem || ev.type || (ev.axioms && ev.axioms.length));
   const unchecked = ev.kind === 'diagnostic';
@@ -107,7 +108,7 @@ const OUTCOME_TEXT = {
 } as const;
 
 /** An unchecked browser computation. Never shown with a proof status. */
-export function PreviewCard({ item, field }: { item: PreviewItem; field: FieldName }) {
+export function PreviewCard({ item, field }: { item: PreviewItem; field: DisplayField }) {
   return (
     <article className="claim" aria-labelledby={`preview-${item.id}`} data-preview={item.id}>
       <div className="claim-head">

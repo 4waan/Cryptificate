@@ -9,3 +9,4 @@
 pub mod gf256;
 pub mod aes_like;
 pub mod bn254;
+pub mod bn254_mont;

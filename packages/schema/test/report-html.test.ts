@@ -19,6 +19,7 @@ import {
   programListing,
   renderReportHtml,
   reportHtmlFileName,
+  witnessSummary,
 } from '../src/index.js';
 import type { AnalysisReport, ExperimentReport, Report } from '../src/index.js';
 
@@ -226,4 +227,19 @@ test('the appendix JSON is compact and parses back to the recorded inputs', () =
     assert.deepEqual(JSON.parse(text), r.inputs, name);
   }
   assert.equal(compactJson({ a: [1, 2], b: { op: 'add', a: 0, b: 1 }, c: [] }), '{\n  "a": [1, 2],\n  "b": {"op": "add", "a": 0, "b": 1},\n  "c": []\n}');
+});
+
+test('the partial-round and S-box quality witnesses read as text', () => {
+  assert.equal(
+    witnessSummary({ kind: 'partial-bypass', difference: ['0', '1', '21888242871839275222246405745257275088548364400416034343698204186575808495616'], positions: [0], partialRounds: 56 }),
+    'the difference [0, 1, 21888242871839275222246405745257275088548364400416034343698204186575808495616] stays zero at the partial-round S-box positions 0 under every power of the internal matrix below 56, so it passes the 56 partial rounds with no active S-box',
+  );
+  assert.equal(
+    witnessSummary({ kind: 'sbox-differential', uniformity: 4, inputDifference: '01', outputDifference: '1F' }),
+    'differential uniformity 4, attained at input difference 01 and output difference 1F',
+  );
+  assert.equal(
+    witnessSummary({ kind: 'sbox-linearity', linearity: 32, inputMask: '01', outputMask: '48' }),
+    'linearity 32 (nonlinearity 112), attained at input mask 01 and output mask 48',
+  );
 });

@@ -1,0 +1,19 @@
+{
+  "name": "const_witness_bypass_span_bn254",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "BYPASS_SPAN",
+    "BYPASS_A11",
+    "BYPASS_A12",
+    "BYPASS_A21",
+    "BYPASS_A22"
+  ],
+  "requires": [
+    "header"
+  ],
+  "field": "bn254"
+}

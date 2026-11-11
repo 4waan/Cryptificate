@@ -12,13 +12,15 @@ import { validateAnalysisRequest, validateExperimentRequest } from '@cryptificat
 import type { AnalysisReport, AnalysisRequest, Claim, ExecutionState, ExperimentReport, Report } from '@cryptificate/schema';
 import { runAnalysis, ANALYSIS_STEPS } from './analysis.js';
 import { checkCertificate } from './certificate.js';
+import { sameEcho } from './acceptance.js';
 import type { CertificateCheck } from './certificate.js';
-import { buildAnalysisClaims } from './claims.js';
+import { buildAnalysisClaims, VALUE_CLAIMS } from './claims.js';
 import { JobContext } from './context.js';
 import type { PipelineEnv } from './context.js';
+import { run } from './proc.js';
 import { readTarGz } from './tar.js';
 
-export type MatchKind = 'match' | 'mismatch' | 'historical' | 'not re-checked';
+export type MatchKind = 'match' | 'mismatch' | 'historical' | 'not re-checked' | 'not recorded';
 
 export interface VerifyRow {
   subject: string;
@@ -66,9 +68,127 @@ export function extractBundle(bundlePath: string): { dir: string; files: string[
   return { dir, files: [...files.keys()].sort() };
 }
 
-const RECHECKED = new Set(['matrix.mds', 'offsets.dispersion', 'sbox.bijective', 'activity.bound', 'external.mds', 'internal.invertible', 'activity.outer', 'circuit.equivalence']);
+const RECHECKED: ReadonlySet<string> = new Set([
+  'field.prime',
+  'matrix.mds',
+  'offsets.dispersion',
+  'sbox.bijective',
+  'sbox.differential',
+  'sbox.linearity',
+  'activity.bound',
+  'external.mds',
+  'internal.invertible',
+  'activity.outer',
+  'activity.partial',
+  'activity.total',
+  'circuit.equivalence',
+]);
 
-function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean): VerifyRow[] {
+/**
+ * How a bundle is shown to predate a group of claims:
+ *
+ * - `revision`: the checker revision the bundle records is a commit of the
+ *   local checkout whose claim list does not name the group's claims (see
+ *   `predatesAddedClaims`);
+ * - `certificate`: the bundle records a Lean source digest and it differs from
+ *   the digest of the certificate regenerated now, so the bundle was produced
+ *   by a different engine or template set.
+ */
+export type PredatingEvidence = 'revision' | 'certificate';
+
+export interface AddedClaimGroup {
+  readonly ids: readonly string[];
+  readonly evidence: PredatingEvidence;
+}
+
+/**
+ * Claims that reports did not carry before a later release, one group per
+ * release step. A bundle that lacks every claim of a group, and is shown by
+ * the group's evidence to predate it, has no status for them to compare with:
+ * they are re-derived and shown as `not recorded`. A bundle that lacks only
+ * some claims of a group, or cannot be shown to predate it, gets `mismatch`
+ * for each missing one, as for every other re-checked claim.
+ */
+export const ADDED_LATER: readonly AddedClaimGroup[] = [
+  { ids: ['activity.partial', 'activity.total'], evidence: 'revision' },
+  { ids: ['sbox.differential', 'sbox.linearity'], evidence: 'certificate' },
+];
+
+/** The schema file whose claim list gained the `revision` groups of `ADDED_LATER`. */
+const CLAIM_LIST_FILE = 'packages/schema/src/constants.ts';
+
+/**
+ * The commit named by a checker string `cryptificate <version> (<revision>)`,
+ * as `git describe --always --dirty --tags` printed it. `null` for a missing
+ * or malformed revision, and for a dirty tree, whose uncommitted changes may
+ * already have had the newer claims.
+ */
+export function recordedRevision(checker: unknown): string | null {
+  if (typeof checker !== 'string') return null;
+  const m = /^cryptificate \S+ \(([^()\s]+)\)$/.exec(checker);
+  if (!m) return null;
+  const rev = m[1]!;
+  if (rev.endsWith('-dirty')) return null;
+  const described = /-g([0-9a-f]{7,40})$/.exec(rev);
+  const name = described ? described[1]! : rev;
+  // A hash or a tag name; never anything git could read as an option.
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(name) ? name : null;
+}
+
+/**
+ * Whether the checker that recorded a bundle provably predates the
+ * `revision` groups of `ADDED_LATER`: its revision is a commit of the local
+ * checkout whose claim list names none of their claims. Without git, without
+ * that commit, or with a dirty or missing revision this cannot be shown, and
+ * the answer is `false`.
+ */
+export async function predatesAddedClaims(root: string, checker: unknown): Promise<boolean> {
+  const rev = recordedRevision(checker);
+  if (!rev) return false;
+  const r = await run('git', ['-C', root, 'show', `${rev}:${CLAIM_LIST_FILE}`], { timeoutMs: 10000 });
+  if (r.code !== 0) return false;
+  const ids = ADDED_LATER.filter((g) => g.evidence === 'revision').flatMap((g) => g.ids);
+  return ids.every((id) => !r.stdout.includes(`'${id}'`));
+}
+
+export interface CompareOptions {
+  /** The recording checker predates the `revision` groups (`predatesAddedClaims`). */
+  predatesRevision?: boolean;
+  /**
+   * The bundle records a Lean source digest and it differs from the digest of
+   * the certificate regenerated now (evidence for the `certificate` groups).
+   */
+  olderCertificate?: boolean;
+}
+
+function hasEvidence(opts: CompareOptions, evidence: PredatingEvidence): boolean {
+  return evidence === 'revision' ? (opts.predatesRevision ?? false) : (opts.olderCertificate ?? false);
+}
+
+/** The group of `ADDED_LATER` a claim belongs to, if any. */
+export function addedLaterGroup(id: string): AddedClaimGroup | undefined {
+  return ADDED_LATER.find((g) => g.ids.includes(id));
+}
+
+/** Value of a proved value claim as shown in a row: its status and witness. */
+function valueText(c: Claim): string {
+  const w = c.witness;
+  if (w?.kind === 'sbox-differential') return `${c.status} (uniformity ${w.uniformity} at ${w.inputDifference}/${w.outputDifference})`;
+  if (w?.kind === 'sbox-linearity') return `${c.status} (linearity ${w.linearity} at ${w.inputMask}/${w.outputMask})`;
+  return c.witness ? `${c.status} (witness)` : c.status;
+}
+
+/**
+ * Compare recorded claims with the recomputed ones. A re-checked claim
+ * matches when its status is the same; a value claim (VALUE_CLAIMS) also
+ * needs the same witness, since its status alone does not carry the value.
+ * Re-checked claims missing from the bundle are mismatches, except a group of
+ * `ADDED_LATER` that the bundle lacks entirely and provably predates, which is
+ * `not recorded`.
+ */
+export function compareClaims(subject: string, recorded: readonly Claim[], recomputed: readonly Claim[], native: boolean, opts: CompareOptions = {}): VerifyRow[] {
+  // Groups the bundle may omit: it lacks all of their claims and predates them.
+  const omittable = ADDED_LATER.filter((g) => hasEvidence(opts, g.evidence) && g.ids.every((id) => !recorded.some((r) => r.id === id)));
   const rows: VerifyRow[] = [];
   for (const rc of recorded) {
     const now = recomputed.find((c) => c.id === rc.id);
@@ -84,19 +204,32 @@ function compareClaims(subject: string, recorded: readonly Claim[], recomputed: 
       rows.push({ subject, claim: rc.id, recorded: rc.status, recomputed: 'missing', result: 'mismatch' });
       continue;
     }
+    const reasons = { ...(rc.reason ? { reason: rc.reason } : {}), ...(now.reason ? { recomputedReason: now.reason } : {}) };
+    if (VALUE_CLAIMS.has(rc.id)) {
+      const same = now.status === rc.status && sameEcho(rc.witness ?? null, now.witness ?? null);
+      rows.push({ subject, claim: rc.id, recorded: valueText(rc), recomputed: valueText(now), result: same ? 'match' : 'mismatch', ...reasons });
+      continue;
+    }
     rows.push({
       subject,
       claim: rc.id,
       recorded: rc.status,
       recomputed: now.status,
       result: now.status === rc.status ? 'match' : 'mismatch',
-      ...(rc.reason ? { reason: rc.reason } : {}),
-      ...(now.reason ? { recomputedReason: now.reason } : {}),
+      ...reasons,
     });
   }
   for (const c of recomputed) {
     if (!recorded.some((r) => r.id === c.id) && RECHECKED.has(c.id)) {
-      rows.push({ subject, claim: c.id, recorded: 'missing', recomputed: c.status, result: 'mismatch', ...(c.reason ? { recomputedReason: c.reason } : {}) });
+      const result = omittable.some((g) => g.ids.includes(c.id)) ? 'not recorded' : 'mismatch';
+      rows.push({
+        subject,
+        claim: c.id,
+        recorded: 'missing',
+        recomputed: VALUE_CLAIMS.has(c.id) ? valueText(c) : c.status,
+        result,
+        ...(c.reason ? { recomputedReason: c.reason } : {}),
+      });
     }
   }
   return rows;
@@ -122,10 +255,30 @@ export async function verifyBundle(env: PipelineEnv, bundlePath: string, opts: V
         const result = await runAnalysis(verifyEnv, ctx, v.value);
         const now = result.report as AnalysisReport | null;
         const recomputedDigest = now?.inputDigest ?? null;
-        let rows = compareClaims('design', (report as AnalysisReport).claims, now?.claims ?? [], opts.native ?? false);
+        const recorded = (report as AnalysisReport).claims;
+        const checker = (report as AnalysisReport).provenance?.checker;
+        const predatesRevision = await predatesAddedClaims(env.paths.root, checker);
+        const recordedSource = report.provenance.leanSourceSha256;
+        const recomputedSource = now?.provenance.leanSourceSha256;
+        const olderCertificate = recordedSource !== undefined && recomputedSource !== undefined && recordedSource !== recomputedSource;
+        let rows = compareClaims('design', recorded, now?.claims ?? [], opts.native ?? false, { predatesRevision, olderCertificate });
         rows = rows.map((r) => ({ ...r, subject: r.claim.startsWith('circuit') || r.claim.startsWith('native') || r.claim.startsWith('rust') ? 'implementation' : 'design' }));
         if (recomputedDigest && recomputedDigest !== report.inputDigest) notes.push('The recomputed input digest differs from the recorded one.');
         if (result.state !== 'completed') notes.push(`The re-run ended with state ${result.state}.`);
+        const missingAdded = (evidence: PredatingEvidence, kind: MatchKind) =>
+          rows.filter((r) => r.recorded === 'missing' && r.result === kind && addedLaterGroup(r.claim)?.evidence === evidence).map((r) => r.claim);
+        const unrecordedByRevision = missingAdded('revision', 'not recorded');
+        if (unrecordedByRevision.length > 0) notes.push(`The bundle has no recorded status for ${unrecordedByRevision.join(' and ')}: it was recorded by ${String(checker)}, whose claim list does not name them. They were derived now and are not compared.`);
+        const lackingByRevision = missingAdded('revision', 'mismatch');
+        if (lackingByRevision.length > 0) notes.push(`The bundle has no recorded status for ${lackingByRevision.join(' and ')}, and its checker (${String(checker ?? 'not recorded')}) could not be shown to predate them in this checkout, so the omission counts as a mismatch.`);
+        const unrecordedByCertificate = missingAdded('certificate', 'not recorded');
+        if (unrecordedByCertificate.length > 0) {
+          notes.push(
+            `The bundle does not record ${unrecordedByCertificate.join(', ')}, which the installed engine produces. Its Lean certificate differs from the ` +
+              'regenerated one, as for a bundle recorded before these claims existed; the bundle is not signed, so verify cannot rule out ' +
+              'that they were removed from it.',
+          );
+        }
         notes.push('Timings in the bundle are historical and were not re-measured.');
         return finalize(report, result.state, recomputedDigest, rows, notes);
       }

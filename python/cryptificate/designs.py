@@ -1,7 +1,8 @@
 """Helpers to build candidate designs and linear programs in the request format.
 
 Field elements are strings: GF(2^8) elements as two uppercase hex digits
-("02", "1B"), BN254 scalars as canonical decimal strings.
+("02", "1B"), elements of a prime field (BN254, BabyBear, KoalaBear,
+Mersenne31, Goldilocks or a custom prime) as canonical decimal strings.
 """
 
 from __future__ import annotations
@@ -9,6 +10,14 @@ from __future__ import annotations
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 
 BN254_MODULUS = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+
+#: The named fields of the prime-field profile (`hades/prime/v1`) and their moduli.
+PRIME_FIELDS = {
+    "babybear": 2013265921,
+    "koalabear": 2130706433,
+    "mersenne31": 2147483647,
+    "goldilocks": 18446744069414584321,
+}
 
 Element = Union[int, str]
 
@@ -97,6 +106,61 @@ def hades_design(
         "partialMask": [bool(m) for m in partial_mask],
         "constants": {"kind": "reference"} if constants is None else {"kind": "explicit", "values": _matrix(constants, bn)},
     }
+
+
+def prime_design(
+    field: str,
+    external: Sequence[Sequence[Element]],
+    internal: Sequence[Sequence[Element]],
+    full_rounds: int,
+    partial_rounds: int,
+    exponent: int,
+    partial_mask: Optional[Sequence[bool]] = None,
+    modulus: Optional[int] = None,
+    constants: Optional[Sequence[Sequence[Element]]] = None,
+) -> Dict[str, Any]:
+    """A HADES design over a prime field below 2^64 (`hades/prime/v1`), width 3 or 4.
+
+    `field` is one of PRIME_FIELDS, or "prime" with an explicit `modulus`. Elements
+    are reduced modulo p. `partial_mask=None` puts the partial-round S-box on
+    position 0; `constants=None` leaves the round constants unspecified (every
+    claim holds for all round constants). Whether a custom modulus is prime is
+    decided by the service, and proved in Lean in every report.
+    """
+    if field == "prime":
+        if modulus is None:
+            raise ValueError("field 'prime' needs a modulus")
+        p = int(modulus)
+    elif field in PRIME_FIELDS:
+        p = PRIME_FIELDS[field]
+        if modulus is not None and int(modulus) != p:
+            raise ValueError(f"field {field!r} has modulus {p}")
+    else:
+        raise ValueError(f"field must be one of {', '.join(PRIME_FIELDS)} or 'prime'")
+    if not 2 <= p < 2**64:
+        raise ValueError("the modulus must be below 2^64")
+
+    def fp(value: Element) -> str:
+        if isinstance(value, bool):
+            raise TypeError("expected an integer, not a bool")
+        return str((int(value) if isinstance(value, str) else value) % p)
+
+    width = len(external)
+    design: Dict[str, Any] = {
+        "model": "hades/prime/v1",
+        "field": field,
+        "modulus": str(p),
+        "width": width,
+        "external": _matrix(external, fp),
+        "internal": _matrix(internal, fp),
+        "fullRounds": int(full_rounds),
+        "partialRounds": int(partial_rounds),
+        "sbox": {"kind": "power", "exponent": int(exponent)},
+        "partialMask": [bool(m) for m in partial_mask] if partial_mask is not None else [i == 0 for i in range(width)],
+    }
+    if constants is not None:
+        design["constants"] = {"kind": "explicit", "values": _matrix(constants, fp)}
+    return design
 
 
 class ProgramBuilder:

@@ -1,0 +1,14 @@
+{
+  "name": "internal_invertible_prime3",
+  "kind": "claim",
+  "claim": "internal.invertible",
+  "status": "proved",
+  "theorem": "CryptificateJob.internal_invertible",
+  "expectedType": "CryptificateJob.candInternal.det ≠ 0",
+  "placeholders": [],
+  "requires": [
+    "const_internal_prime",
+    "field_prime"
+  ],
+  "field": "prime"
+}

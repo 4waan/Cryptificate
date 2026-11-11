@@ -346,13 +346,14 @@ function sboxBlock(sbox: unknown): Child {
 function designBlock(design: unknown): SafeHtml {
   const d = obj(design);
   const model = str(d['model']);
-  if (model === 'hades/bn254/v1') {
+  if (model === 'hades/bn254/v1' || model === 'hades/prime/v1') {
     const c = obj(d['constants']);
     const mask = arr(d['partialMask']).map((b) => (b === true ? 'active' : 'inactive'));
     return fragment(
       dl([
         ['Model', code(model)],
         ['Field', code(d['field'])],
+        ['Modulus', d['modulus'] !== undefined ? code(d['modulus']) : null],
         ['Width', str(d['width'])],
         ['Full rounds', str(d['fullRounds'])],
         ['Partial rounds', str(d['partialRounds'])],
@@ -470,6 +471,15 @@ export function witnessSummary(w: Witness | null | undefined): string | null {
       return `S(${str(x['x1'])}) = S(${str(x['x2'])}) = ${str(x['y'])}`;
     case 'power-collision':
       return `${str(x['x1'])}^${str(x['exponent'])} = ${str(x['x2'])}^${str(x['exponent'])}`;
+    case 'partial-bypass':
+      return `the difference ${vector(x['difference'])} stays zero at the partial-round S-box positions ${arr(x['positions']).map((p) => str(p)).join(', ')} under every power of the internal matrix below ${str(x['partialRounds'])}, so it passes the ${str(x['partialRounds'])} partial rounds with no active S-box`;
+    case 'sbox-differential':
+      return `differential uniformity ${str(x['uniformity'])}, attained at input difference ${str(x['inputDifference'])} and output difference ${str(x['outputDifference'])}`;
+    case 'sbox-linearity': {
+      const l = num(x['linearity']);
+      const nl = l === null ? '' : ` (nonlinearity ${128 - l / 2})`;
+      return `linearity ${str(x['linearity'])}${nl}, attained at input mask ${str(x['inputMask'])} and output mask ${str(x['outputMask'])}`;
+    }
     default:
       return w ? JSON.stringify(w) : null;
   }
@@ -525,6 +535,9 @@ function witnessBlock(w: Witness | null | undefined, status: string): Child {
     case 'offset-collision':
     case 'sbox-collision':
     case 'power-collision':
+    case 'partial-bypass':
+    case 'sbox-differential':
+    case 'sbox-linearity':
       body = h('p', null, h('code', null, witnessSummary(w) ?? ''), x['kind'] === 'power-collision' && str(x['note']) ? ` (${str(x['note'])})` : '', '.');
       break;
     default:

@@ -1,0 +1,17 @@
+{
+  "name": "sbox_differential",
+  "kind": "claim",
+  "claim": "sbox.differential",
+  "status": "proved",
+  "theorem": "CryptificateJob.sbox_differential",
+  "expectedType": "Cryptificate.differentialUniformity CryptificateJob.candSboxTable = {{DU}} ∧ Cryptificate.gf {{DU_A}} ≠ 0 ∧ diffCount CryptificateJob.candSboxTable (Cryptificate.gf {{DU_A}}) (Cryptificate.gf {{DU_B}}) = {{DU}}",
+  "placeholders": [
+    "DU",
+    "DU_A",
+    "DU_B"
+  ],
+  "requires": [
+    "const_sbox_table"
+  ],
+  "field": "gf256"
+}

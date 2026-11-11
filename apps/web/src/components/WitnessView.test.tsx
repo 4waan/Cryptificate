@@ -147,4 +147,35 @@ describe('claim cards', () => {
     expect(html).toContain('Unchecked diagnostic');
     expect(html).not.toContain('Proved');
   });
+  it('shows a partial-round bypass with its signed difference', () => {
+    const w = {
+      kind: 'partial-bypass' as const,
+      difference: ['0', '1', '21888242871839275222246405745257275088548364400416034343698204186575808495616'],
+      positions: [0],
+      partialRounds: 56,
+    };
+    const html = renderToStaticMarkup(<WitnessView witness={w} field="bn254" />);
+    expect(html).toContain('Partial-round bypass');
+    expect(html).toContain('[0, 1, -1]');
+    expect(html).toContain('(S-box position, zero)');
+    expect(describeWitness(w, 'bn254')).toBe(
+      'Two states that differ by [0, 1, -1] when they enter the partial rounds give equal inputs to the S-box at x0 ' +
+        'in all 56 partial rounds, whatever the round constants: with M the internal matrix, M^j v is zero there ' +
+        'for every j < 56, so no partial-round S-box is active.',
+    );
+  });
+  it('words a short bypass by the powers that were checked', () => {
+    // Two partial rounds of the reference internal matrix: M^0 v and M^1 v
+    // vanish at x0, but M^2 v = [-1, 0, -5] does not.
+    const w = {
+      kind: 'partial-bypass' as const,
+      difference: ['0', '1', '21888242871839275222246405745257275088548364400416034343698204186575808495616'],
+      positions: [0],
+      partialRounds: 2,
+    };
+    const text = describeWitness(w, 'bn254');
+    expect(text).toContain('in all 2 partial rounds');
+    expect(text).toContain('M^j v is zero there for every j < 2');
+    expect(text).not.toContain('every power');
+  });
 });

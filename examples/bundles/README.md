@@ -47,7 +47,8 @@ npx cryptificate verify examples/bundles/<name>/<name>.tar.gz
 
 `verify` reads only `inputs.json` and `report.json` (never `report.html`). It regenerates the Lean certificate with
 the installed engine and templates, runs the installed Lean checker, recomputes each claim and
-prints a table comparing it with the recorded status. Bundled Lean, Rust and shell files are
+prints a table comparing it with the recorded status (for the S-box differential uniformity
+and linearity claims, also with the recorded value and pair of bytes). Bundled Lean, Rust and shell files are
 never executed. Native timings are historical: they describe the machine that recorded the
 bundle and are reported as such, not re-measured.
 

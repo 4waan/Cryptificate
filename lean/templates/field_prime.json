@@ -1,0 +1,15 @@
+{
+  "name": "field_prime",
+  "kind": "claim",
+  "claim": "field.prime",
+  "status": "proved",
+  "theorem": "CryptificateJob.field_prime",
+  "expectedType": "Nat.Prime CryptificateJob.candModulus",
+  "placeholders": [
+    "PRATT"
+  ],
+  "requires": [
+    "const_modulus_prime"
+  ],
+  "field": "prime"
+}
