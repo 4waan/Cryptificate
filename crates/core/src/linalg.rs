@@ -182,6 +182,75 @@ pub fn kernel_vector<F: Field>(m: &[Vec<F>]) -> Option<Vec<F>> {
     Some(x)
 }
 
+/// `x M` for a row vector `x`. Panics if `x` and the rows of `m` differ in
+/// number.
+pub fn vec_mat<F: Field>(x: &[F], m: &[Vec<F>]) -> Vec<F> {
+    assert_eq!(x.len(), m.len(), "vector and matrix rows differ in number");
+    let cols = m.first().map_or(0, Vec::len);
+    (0..cols)
+        .map(|c| {
+            x.iter()
+                .zip(m)
+                .fold(F::zero(), |acc, (&a, row)| acc + a * row[c])
+        })
+        .collect()
+}
+
+/// The rank of `m`.
+pub fn rank<F: Field>(m: &[Vec<F>]) -> usize {
+    let mut a: Matrix<F> = m.to_vec();
+    row_reduce(&mut a).len()
+}
+
+/// A basis of the null space `{x : m x = 0}` of a matrix with `cols`
+/// columns (`cols` is needed when `m` has no rows).
+///
+/// One vector per free column of the reduced row echelon form, in
+/// increasing column order: that coordinate is one, the other free
+/// coordinates are zero, and the pivot coordinates are solved for. The
+/// first vector is [`kernel_vector`]'s.
+pub fn nullspace_basis<F: Field>(m: &[Vec<F>], cols: usize) -> Vec<Vec<F>> {
+    let mut a: Matrix<F> = m.to_vec();
+    let pivots = row_reduce(&mut a);
+    (0..cols)
+        .filter(|c| !pivots.contains(c))
+        .map(|free| {
+            let mut x = vec![F::zero(); cols];
+            x[free] = F::one();
+            for (row, &p) in pivots.iter().enumerate() {
+                x[p] = -a[row][free];
+            }
+            x
+        })
+        .collect()
+}
+
+/// Coefficients `c` with `sum_k c[k] * basis[k] = u`, or `None` when `u` is
+/// not in the span of `basis`. The basis vectors must be linearly
+/// independent.
+pub fn coordinates<F: Field>(basis: &[Vec<F>], u: &[F]) -> Option<Vec<F>> {
+    let n = u.len();
+    // Columns: the basis vectors, then u. A kernel vector with last
+    // coordinate one gives sum_k x[k] basis[k] + u = 0.
+    let m: Matrix<F> = (0..n)
+        .map(|i| {
+            basis
+                .iter()
+                .map(|b| b[i])
+                .chain(std::iter::once(u[i]))
+                .collect()
+        })
+        .collect();
+    let k = basis.len();
+    nullspace_basis(&m, k + 1)
+        .into_iter()
+        .find(|x| !x[k].is_zero())
+        .map(|x| {
+            let inv = x[k].inverse().expect("nonzero");
+            x[..k].iter().map(|&c| -(c * inv)).collect()
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -313,6 +382,39 @@ mod tests {
         assert_eq!(
             kernel_vector(&z).unwrap(),
             vec![Bn254::one(), Bn254::zero(), Bn254::zero()]
+        );
+    }
+
+    #[test]
+    fn rank_nullspace_and_coordinates() {
+        let m = bn(&[&[1, 0, 0], &[2, 1, 1], &[6, 5, 5]]);
+        assert_eq!(rank(&m), 2);
+        let basis = nullspace_basis(&m, 3);
+        assert_eq!(basis.len(), 1);
+        assert_eq!(basis[0], vec![Bn254::zero(), -Bn254::one(), Bn254::one()]);
+        assert_eq!(Some(basis[0].clone()), kernel_vector(&m));
+        assert_eq!(nullspace_basis::<Bn254>(&[], 2).len(), 2);
+        assert_eq!(rank(&bn(&[&[2, 1, 1], &[1, 2, 1], &[1, 1, 3]])), 3);
+        // [1, 2] M for M = [[1, 2], [3, 4]] is [7, 10].
+        assert_eq!(
+            vec_mat(
+                &[Bn254::from_u64(1), Bn254::from_u64(2)],
+                &bn(&[&[1, 2], &[3, 4]])
+            ),
+            vec![Bn254::from_u64(7), Bn254::from_u64(10)]
+        );
+        let b = vec![
+            vec![Bn254::zero(), Bn254::one(), Bn254::zero()],
+            vec![Bn254::zero(), Bn254::zero(), Bn254::one()],
+        ];
+        let u = vec![Bn254::zero(), Bn254::from_u64(2), Bn254::from_u64(3)];
+        assert_eq!(
+            coordinates(&b, &u),
+            Some(vec![Bn254::from_u64(2), Bn254::from_u64(3)])
+        );
+        assert_eq!(
+            coordinates(&b, &[Bn254::one(), Bn254::zero(), Bn254::zero()]),
+            None
         );
     }
 }

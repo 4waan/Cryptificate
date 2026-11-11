@@ -1,0 +1,235 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": true,
+      "bound": 20,
+      "claim": "activity.outer",
+      "reason": "the external matrix is MDS, the internal matrix is invertible and the power map is a bijection, so the full-round bound applies",
+      "rounds": 8
+    },
+    "claims": [
+      {
+        "claim": "field.prime",
+        "holds": true,
+        "note": "2013265921 is prime: p - 1 = 2^27 * 3 * 5, and 31 has order p - 1 modulo p (a Pratt certificate of 4 steps)",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "external.mds",
+        "holds": true,
+        "note": "all 69 square minors of the external matrix are nonzero, so its branch number is 5",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "internal.invertible",
+        "holds": true,
+        "note": "the internal matrix has determinant 184",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "gcd(7, p-1) = 1, so x^7 is inverted by x^d with d = 1725656503",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.outer",
+        "holds": true,
+        "note": "the external matrix is MDS, the internal matrix is invertible and the power map is a bijection, so the full-round bound applies",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.partial",
+        "holds": true,
+        "note": "the rows e0 M^0, e0 M^1, e0 M^2, e0 M^3 of the powers of the internal matrix M at the masked positions have determinant 48, so no nonzero difference avoids the S-boxes of 4 consecutive partial rounds",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.total",
+        "holds": true,
+        "note": "the full-round bound 20 plus one active S-box in each of the 3 disjoint windows of 4 partial rounds",
+        "predicted": "proved",
+        "witness": null
+      }
+    ],
+    "external": {
+      "branchWitness": null,
+      "determinant": "2013265857",
+      "kernelVector": null,
+      "mds": true,
+      "minorCount": 69,
+      "zeroMinors": 0
+    },
+    "internal": {
+      "branchWitness": {
+        "bound": 5,
+        "input": [
+          "2013265920",
+          "1",
+          "0",
+          "0"
+        ],
+        "inputWeight": 2,
+        "output": [
+          "2013265920",
+          "2",
+          "0",
+          "0"
+        ],
+        "outputWeight": 2,
+        "support": [
+          0,
+          1
+        ],
+        "zeroOutputs": [
+          2,
+          3
+        ]
+      },
+      "determinant": "184",
+      "kernelVector": null,
+      "mds": false,
+      "minorCount": 69,
+      "zeroMinors": 6
+    },
+    "model": "hades/prime/v1",
+    "modulus": "2013265921",
+    "partial": {
+      "bypass": null,
+      "determinant": "48",
+      "partialRounds": 13,
+      "positions": [
+        0
+      ],
+      "rows": [
+        {
+          "position": 0,
+          "power": 0,
+          "row": [
+            "1",
+            "0",
+            "0",
+            "0"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 1,
+          "row": [
+            "2",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 2,
+          "row": [
+            "7",
+            "7",
+            "9",
+            "13"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 3,
+          "row": [
+            "43",
+            "50",
+            "72",
+            "140"
+          ]
+        }
+      ],
+      "window": 4
+    },
+    "power": {
+      "bijective": true,
+      "collision": null,
+      "exponent": 7,
+      "gcd": 1,
+      "inverseExponent": "1725656503",
+      "k": 6
+    },
+    "prime": {
+      "factorization": [
+        [
+          "2",
+          27
+        ],
+        [
+          "3",
+          1
+        ],
+        [
+          "5",
+          1
+        ]
+      ],
+      "field": "babybear",
+      "modulus": "2013265921",
+      "pratt": [
+        {
+          "a": 1,
+          "factors": [],
+          "n": "2"
+        },
+        {
+          "a": 2,
+          "factors": [
+            [
+              "2",
+              1
+            ]
+          ],
+          "n": "3"
+        },
+        {
+          "a": 2,
+          "factors": [
+            [
+              "2",
+              2
+            ]
+          ],
+          "n": "5"
+        },
+        {
+          "a": 31,
+          "factors": [
+            [
+              "2",
+              27
+            ],
+            [
+              "3",
+              1
+            ],
+            [
+              "5",
+              1
+            ]
+          ],
+          "n": "2013265921"
+        }
+      ]
+    },
+    "target": "external",
+    "total": {
+      "applicable": true,
+      "bound": 23,
+      "claim": "activity.total",
+      "reason": "the full-round bound 20 plus one active S-box in each of the 3 disjoint windows of 4 partial rounds",
+      "rounds": 21
+    }
+  },
+  "inputDigest": "sha256:b1761b396a9738f1f3dc4fc354e75807dbbd3aae539b232c96373ad63a64b713"
+}

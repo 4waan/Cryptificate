@@ -8,14 +8,16 @@ import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { extname, join, normalize, sep } from 'node:path';
-import { LIMITS, MODELS, validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
+import { LIMITS, MODELS, TERMINAL_JOB_STATES, validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
 import type { Capabilities, ErrorResponse, ExperimentProfile, ValidationIssue } from '@cryptificate/schema';
 import { ANALYSIS_BUDGET_MS } from './analysis.js';
-import { buildBundle } from './bundle.js';
+import { REPORT_HTML_CSP, reportHtmlFileName } from '@cryptificate/schema';
+import { buildBundle, bundleReportHtml } from './bundle.js';
 import type { PipelineEnv } from './context.js';
 import { PROFILE_BUDGETS } from './experiment.js';
 import { JobManager, QueueFullError } from './jobs.js';
 import { LEAN_TIMEOUT_MS } from './leanrun.js';
+import { openApiDocument } from './openapi.js';
 
 export interface ServerOptions {
   env: PipelineEnv;
@@ -96,6 +98,48 @@ const MIME: Record<string, string> = {
   '.webm': 'video/webm',
   '.mp4': 'video/mp4',
 };
+
+/**
+ * Every API route the service answers. The handler dispatches through this
+ * table, and schemas/openapi.json describes exactly these operations (a test
+ * checks both directions). A request under /api/ that matches no route (an
+ * unknown path, or a listed path with another method) answers 404 for GET and
+ * POST and 405 for any other method, HEAD included; no Allow header is sent.
+ */
+export const API_ROUTES = [
+  { method: 'GET', path: '/api/capabilities', operationId: 'getCapabilities' },
+  { method: 'GET', path: '/api/openapi.json', operationId: 'getOpenApi' },
+  { method: 'POST', path: '/api/analyses', operationId: 'submitAnalysis' },
+  { method: 'POST', path: '/api/experiments', operationId: 'submitExperiment' },
+  { method: 'GET', path: '/api/jobs/{id}', operationId: 'getJob' },
+  { method: 'POST', path: '/api/jobs/{id}/stop', operationId: 'stopJob' },
+  { method: 'GET', path: '/api/jobs/{id}/bundle', operationId: 'getJobBundle' },
+  { method: 'GET', path: '/api/jobs/{id}/report.html', operationId: 'getJobReportHtml' },
+] as const;
+
+export type ApiRoute = (typeof API_ROUTES)[number];
+
+/** Match a request against API_ROUTES; `{name}` matches one non-empty path segment. */
+export function matchApiRoute(method: string, path: string): (ApiRoute & { params: Record<string, string> }) | null {
+  const segments = path.split('/');
+  for (const route of API_ROUTES) {
+    if (route.method !== method) continue;
+    const pattern = route.path.split('/');
+    if (pattern.length !== segments.length) continue;
+    const params: Record<string, string> = {};
+    let ok = true;
+    for (let i = 0; i < pattern.length && ok; i++) {
+      const p = pattern[i] ?? '';
+      const seg = segments[i] ?? '';
+      if (p.startsWith('{') && p.endsWith('}')) {
+        if (seg === '') ok = false;
+        else params[p.slice(1, -1)] = seg;
+      } else ok = p === seg;
+    }
+    if (ok) return { ...route, params };
+  }
+  return null;
+}
 
 export class HttpError extends Error {
   constructor(
@@ -331,48 +375,68 @@ export function createApp(opts: ServerOptions): Server {
     const path = url.pathname;
 
     if (path.startsWith('/api/')) {
-      const parts = path.split('/').filter(Boolean); // ['api', ...]
-      if (path === '/api/capabilities' && method === 'GET') {
-        send(res, 200, await capabilities(env));
+      const route = matchApiRoute(method, path);
+      if (!route) {
+        const known = method === 'GET' || method === 'POST';
+        sendError(res, known ? 404 : 405, known ? 'not-found' : 'method-not-allowed', 'no such endpoint');
+        req.resume();
         return;
       }
-      if ((path === '/api/analyses' || path === '/api/experiments') && method === 'POST') {
-        const body = await parseJsonBody(req);
-        const kind = path === '/api/analyses' ? 'analysis' : 'experiment';
-        const v = kind === 'analysis' ? validateAnalysisRequest(body) : validateExperimentRequest(body);
-        if (!v.ok) throw invalid(v.errors);
-        try {
-          const rec = jobs.submit(kind, v.value);
-          send(res, 202, { job: jobs.summary(rec) }, { location: `/api/jobs/${rec.id}` });
-        } catch (e) {
-          if (e instanceof QueueFullError) {
-            sendError(res, 429, 'queue-full', 'one job is running and the queue is full; try again later', {}, { 'retry-after': '30' });
-            return;
-          }
-          throw e;
-        }
-        return;
-      }
-      if (parts[1] === 'jobs' && parts.length >= 3) {
-        const rec = jobs.get(parts[2] ?? '');
-        if (!rec) {
-          sendError(res, 404, 'not-found', 'no such job');
+      switch (route.operationId) {
+        case 'getCapabilities':
+          send(res, 200, await capabilities(env));
+          return;
+        case 'getOpenApi': {
+          const doc = openApiDocument(env.paths.root);
+          if (doc === null) sendError(res, 404, 'not-found', 'this installation has no schemas/openapi.json');
+          else send(res, 200, doc, { 'cache-control': 'no-cache' });
           return;
         }
-        if (parts.length === 3 && method === 'GET') {
+        case 'submitAnalysis':
+        case 'submitExperiment': {
+          const body = await parseJsonBody(req);
+          const kind = route.operationId === 'submitAnalysis' ? 'analysis' : 'experiment';
+          const v = kind === 'analysis' ? validateAnalysisRequest(body) : validateExperimentRequest(body);
+          if (!v.ok) throw invalid(v.errors);
+          try {
+            const rec = jobs.submit(kind, v.value);
+            send(res, 202, { job: jobs.summary(rec) }, { location: `/api/jobs/${rec.id}` });
+          } catch (e) {
+            if (e instanceof QueueFullError) {
+              sendError(res, 429, 'queue-full', 'one job is running and the queue is full; try again later', {}, { 'retry-after': '30' });
+              return;
+            }
+            throw e;
+          }
+          return;
+        }
+      }
+      // the remaining routes address one job
+      const rec = jobs.get(route.params['id'] ?? '');
+      if (!rec) {
+        sendError(res, 404, 'not-found', 'no such job');
+        req.resume();
+        return;
+      }
+      switch (route.operationId) {
+        case 'getJob':
           send(res, 200, jobs.view(rec));
           return;
-        }
-        if (parts.length === 4 && parts[3] === 'stop' && method === 'POST') {
+        case 'stopJob':
           req.resume();
           jobs.stop(rec.id);
           send(res, 200, { job: jobs.summary(rec) });
           return;
-        }
-        if (parts.length === 4 && parts[3] === 'bundle' && method === 'GET') {
+        case 'getJobBundle': {
           const view = jobs.view(rec);
           if (!view.bundle || !view.report) {
-            sendError(res, 409, 'not-ready', view.state === 'invalid' ? 'invalid requests have no bundle' : 'the job has not finished');
+            const message =
+              view.state === 'invalid'
+                ? 'invalid requests have no bundle'
+                : TERMINAL_JOB_STATES.includes(view.state)
+                  ? 'the job ended before it produced a report'
+                  : 'the job has not finished';
+            sendError(res, 409, 'not-ready', message);
             return;
           }
           const tc = await env.toolchain();
@@ -386,10 +450,31 @@ export function createApp(opts: ServerOptions): Server {
           res.end(gz);
           return;
         }
+        case 'getJobReportHtml': {
+          const view = jobs.view(rec);
+          if (!view.bundle || !view.report) {
+            const message =
+              view.state === 'invalid'
+                ? 'invalid requests have no report'
+                : TERMINAL_JOB_STATES.includes(view.state)
+                  ? 'the job ended before it produced a report'
+                  : 'the job has not finished';
+            sendError(res, 409, 'not-ready', message);
+            return;
+          }
+          // Byte for byte the bundle's report.html: rendered from the bundled (path-scrubbed) report and pins.
+          const html = Buffer.from(bundleReportHtml({ jobDir: rec.dir, report: view.report, toolchain: await env.toolchain(), paths: env.paths }));
+          res.writeHead(200, {
+            'content-type': 'text/html; charset=utf-8',
+            'content-length': String(html.length),
+            'content-disposition': `attachment; filename="${reportHtmlFileName(view.report)}"`,
+            'content-security-policy': REPORT_HTML_CSP,
+            'cache-control': 'no-store',
+          });
+          res.end(html);
+          return;
+        }
       }
-      sendError(res, method === 'GET' || method === 'POST' ? 404 : 405, method === 'GET' || method === 'POST' ? 'not-found' : 'method-not-allowed', 'no such endpoint');
-      req.resume();
-      return;
     }
 
     if (method !== 'GET' && method !== 'HEAD') {

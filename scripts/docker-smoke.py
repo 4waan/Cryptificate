@@ -7,7 +7,8 @@ Runs, inside containers of IMAGE, with the repository's examples/ mounted at
 /work/examples (steps 1 to 4 without network access):
 
   1. `cryptificate --version`;
-  2. `check examples/designs/aes.json`: the four design claims are proved;
+  2. `check examples/designs/aes.json`: the four design claims and the two
+     S-box quality values are proved;
   3. `check` with examples/programs/aes-wrong-wire.json: the circuit is refuted
      in Lean and by the native harness (cargo and the C linker, offline);
   4. `verify` of every bundle in examples/bundles/aes-wrong-wire/: every
@@ -15,7 +16,7 @@ Runs, inside containers of IMAGE, with the repository's examples/ mounted at
   5. `serve` with the default bind address: healthy inside the container,
      not reachable through the published port;
   6. `serve --host 0.0.0.0` published on 127.0.0.1: capabilities, the web UI,
-     an analysis through the Python client, and a cross-origin POST refused;
+     the OpenAPI description, an analysis through the Python client, and a cross-origin POST refused;
   7. `serve --host 0.0.0.0` on another port given with `-e PORT`: healthy, and
      answering through that port; with `--port` alone, `serve` prints a note
      that the health check polls PORT.
@@ -53,6 +54,8 @@ DESIGN_CLAIMS = {
     "offsets.dispersion": "proved",
     "sbox.bijective": "proved",
     "activity.bound": "proved",
+    "sbox.differential": "proved",
+    "sbox.linearity": "proved",
 }
 WRONG_WIRE_CLAIMS = {
     **DESIGN_CLAIMS,
@@ -226,6 +229,9 @@ def step_published(image: str) -> None:
         status, headers, body = http_request("GET", f"{base}/")
         expect(status == 200 and "text/html" in headers.get("content-type", ""), f"GET / gave {status} {headers}")
         expect(b"<html" in body.lower(), "GET / did not return the workbench")
+
+        spec = client.openapi()
+        expect(spec.get("openapi") == "3.1.0", f"GET /api/openapi.json gave {str(spec)[:200]}")
 
         design = read_json(ROOT / "examples" / "designs" / "aes.json")
         job = client.analyze(design)

@@ -43,6 +43,20 @@
         "witness": null
       },
       {
+        "claim": "activity.partial",
+        "holds": true,
+        "note": "the rows e0 M^0, e0 M^1, e0 M^2 of the powers of the internal matrix M at the masked positions have determinant 1, so no nonzero difference avoids the S-boxes of 3 consecutive partial rounds",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.total",
+        "holds": null,
+        "note": "not established by this method: the bound needs an MDS external matrix, an invertible internal matrix and a bijective power map",
+        "predicted": "not_established",
+        "witness": null
+      },
+      {
         "claim": "circuit.equivalence",
         "holds": true,
         "note": "the program's coefficient matrix equals the external matrix",
@@ -67,6 +81,44 @@
       "zeroMinors": 0
     },
     "model": "hades/bn254/v1",
+    "partial": {
+      "bypass": null,
+      "determinant": "1",
+      "partialRounds": 56,
+      "positions": [
+        0
+      ],
+      "rows": [
+        {
+          "position": 0,
+          "power": 0,
+          "row": [
+            "1",
+            "0",
+            "0"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 1,
+          "row": [
+            "2",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 2,
+          "row": [
+            "6",
+            "5",
+            "6"
+          ]
+        }
+      ],
+      "window": 3
+    },
     "power": {
       "bijective": false,
       "collision": {
@@ -110,7 +162,14 @@
         "temps": 3
       }
     },
-    "target": "external"
+    "target": "external",
+    "total": {
+      "applicable": false,
+      "bound": 34,
+      "claim": "activity.total",
+      "reason": "not established by this method: the bound needs an MDS external matrix, an invertible internal matrix and a bijective power map",
+      "rounds": 64
+    }
   },
   "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4"
 }

@@ -10,7 +10,9 @@ import {
   NOT_ESTABLISHED_TEXT,
   aesLikeActivityBound,
   designClaimsFor,
-  hadesOuterActivityBound,
+  externalMdsTitle,
+  hadesOuterActivityBoundWidth,
+  hadesTotalActivityBoundWidth,
   nativeCorrectnessLabel,
 } from '@cryptificate/schema';
 import type {
@@ -21,6 +23,7 @@ import type {
   NotEstablishedReason,
   Witness,
 } from '@cryptificate/schema';
+import { sameType } from './acceptance.js';
 import type { ClaimVerdict, ExpectedTheorem } from './acceptance.js';
 import type { RefinementStatus } from './refinement.js';
 
@@ -62,6 +65,65 @@ function notEstablished(info: ClaimInfo, reason: NotEstablishedReason, note: str
   };
 }
 
+/**
+ * The statement a certificate proves for an S-box quality claim with this
+ * witness, as the Lean audit prints it; null for any other witness. The
+ * values shown with the claim are taken from the witness only when the
+ * accepted statement is exactly this one.
+ */
+export function sboxQualityStatement(w: Witness | null): string | null {
+  const byte = (h: string): number | null => (/^[0-9A-Fa-f]{2}$/.test(h) ? parseInt(h, 16) : null);
+  const gf = (n: number): string => `(Cryptificate.gf ${n})`;
+  if (w?.kind === 'sbox-differential') {
+    const [a, b] = [byte(w.inputDifference), byte(w.outputDifference)];
+    if (a === null || b === null) return null;
+    const u = w.uniformity;
+    return (
+      `Cryptificate.differentialUniformity CryptificateJob.candSboxTable = ${u} ∧ Cryptificate.gf ${a} ≠ 0 ∧ ` +
+      `diffCount CryptificateJob.candSboxTable ${gf(a)} ${gf(b)} = ${u}`
+    );
+  }
+  if (w?.kind === 'sbox-linearity') {
+    const [a, b] = [byte(w.inputMask), byte(w.outputMask)];
+    if (a === null || b === null) return null;
+    const l = w.linearity;
+    return (
+      `Cryptificate.linearity CryptificateJob.candSboxTable = ${l} ∧ Cryptificate.gf ${b} ≠ 0 ∧ ` +
+      `(Cryptificate.walsh CryptificateJob.candSboxTable ${gf(a)} ${gf(b)}).natAbs = ${l}`
+    );
+  }
+  return null;
+}
+
+/**
+ * Claims whose statement is an exact value, shown with its witness when
+ * proved. `verify` compares their witnesses as well as their status.
+ */
+export const VALUE_CLAIMS: ReadonlySet<ClaimId> = new Set<ClaimId>(['sbox.differential', 'sbox.linearity']);
+
+/** Title and note of a proved S-box quality claim whose witness the statement repeats. */
+function valueClaimText(w: Witness): { title: string; note: string } | null {
+  if (w.kind === 'sbox-differential') {
+    return {
+      title: `Differential uniformity of the S-box table is ${w.uniformity}`,
+      note:
+        `For no nonzero input difference a and output difference b (b may be 00) do more than ${w.uniformity} of the 256 inputs x satisfy S(x ⊕ a) ⊕ S(x) = b; ` +
+        `input difference ${w.inputDifference.toUpperCase()} gives output difference ${w.outputDifference.toUpperCase()} for exactly ${w.uniformity}. ` +
+        'This is a property of the table alone, not a bound on any trail or differential of the cipher.',
+    };
+  }
+  if (w.kind === 'sbox-linearity') {
+    return {
+      title: `Linearity of the S-box table is ${w.linearity}`,
+      note:
+        `No Walsh coefficient at a nonzero output mask exceeds ${w.linearity} in absolute value (nonlinearity ${128 - w.linearity / 2}); ` +
+        `the one at input mask ${w.inputMask.toUpperCase()} and output mask ${w.outputMask.toUpperCase()} reaches it. ` +
+        'This is a property of the table alone, not a bound on any linear trail or hull of the cipher.',
+    };
+  }
+  return null;
+}
+
 function leanClaim(info: ClaimInfo, verdict: ClaimVerdict, expect: ExpectedTheorem | undefined, witness: Witness | null, note: string): Claim {
   const label =
     verdict.status === 'refuted'
@@ -73,6 +135,14 @@ function leanClaim(info: ClaimInfo, verdict: ClaimVerdict, expect: ExpectedTheor
   if (verdict.audit) {
     evidence.type = verdict.audit.type;
     evidence.axioms = [...verdict.audit.axioms];
+  }
+  if (verdict.status === 'proved' && VALUE_CLAIMS.has(info.id) && verdict.audit) {
+    const w = expect?.witness ?? witness;
+    const statement = sboxQualityStatement(w);
+    const text = w && statement !== null && sameType(verdict.audit.type, statement) ? valueClaimText(w) : null;
+    if (w && text) {
+      return { id: info.id, chain: info.chain, title: text.title, status: 'proved', evidence, witness: w, note: `${note} ${text.note}` };
+    }
   }
   return {
     id: info.id,
@@ -150,21 +220,79 @@ function capitalize(s: string): string {
 
 /** What each precondition of an activity bound asks for, in words. */
 const PRECONDITION_TEXT: Partial<Record<ClaimId, string>> = {
+  'field.prime': 'a prime modulus',
   'matrix.mds': 'the MDS property of the matrix',
   'offsets.dispersion': 'distinct row offsets',
   'sbox.bijective': 'a bijective S-box',
   'external.mds': 'the MDS property of the external matrix',
   'internal.invertible': 'an invertible internal matrix',
+  'activity.partial': 'a charged window of partial rounds',
 };
 
-function activityTitle(req: AnalysisRequest, info: ClaimInfo): string {
+/** Preconditions of each activity bound, all of which must be proved first. */
+const ACTIVITY_PRECONDITIONS: Partial<Record<ClaimId, ClaimId[]>> = {
+  'activity.bound': ['matrix.mds', 'offsets.dispersion', 'sbox.bijective'],
+  'activity.outer': ['external.mds', 'internal.invertible', 'sbox.bijective'],
+  'activity.total': ['external.mds', 'internal.invertible', 'sbox.bijective', 'activity.partial'],
+};
+
+/**
+ * Preconditions of an activity bound for a design model. Over a prime field
+ * below 2^64 every bound also needs the modulus proved prime (every claim of
+ * such a certificate uses the field structure that primality gives).
+ */
+function activityPreconditions(model: AnalysisRequest['design']['model'], id: ClaimId): ClaimId[] | undefined {
+  const pre = ACTIVITY_PRECONDITIONS[id];
+  if (pre && model === 'hades/prime/v1') return ['field.prime', ...pre];
+  return pre;
+}
+
+/**
+ * The window length `L` the (unchecked) diagnostics found for the partial
+ * rounds: every `L` consecutive partial rounds activate an S-box.
+ */
+function partialWindow(diagnostics: unknown): number | null {
+  if (!diagnostics || typeof diagnostics !== 'object') return null;
+  const partial = (diagnostics as Record<string, unknown>)['partial'];
+  if (!partial || typeof partial !== 'object') return null;
+  const w = (partial as Record<string, unknown>)['window'];
+  return typeof w === 'number' && Number.isInteger(w) && w > 0 ? w : null;
+}
+
+/**
+ * The window length `L` in the statement Lean accepted for `activity.total`,
+ * whose bound ends in `candPartialRounds / L`. `null` unless the verdict was
+ * accepted with an audited type that names exactly one such `L`.
+ */
+export function checkedTotalWindow(verdict: ClaimVerdict | undefined): number | null {
+  if (!verdict || !verdict.accepted || verdict.claim !== 'activity.total' || !verdict.audit) return null;
+  const found = [...verdict.audit.type.matchAll(/\bCryptificateJob\.candPartialRounds \/ (\d{1,4})(?!\d)/g)];
+  if (found.length !== 1) return null;
+  const w = Number(found[0]![1]);
+  return Number.isInteger(w) && w > 0 ? w : null;
+}
+
+/**
+ * The title of an activity claim. The bound in it comes from the request and,
+ * for `activity.total`, from the window length of the statement Lean checked;
+ * the unchecked diagnostics only have to agree with it, and the generic title
+ * is used otherwise.
+ */
+function activityTitle(req: AnalysisRequest, info: ClaimInfo, diagnostics: unknown, verdict: ClaimVerdict | undefined): string {
   const d = req.design;
   if (info.id === 'activity.bound' && d.model === 'aes-like/gf256/v1' && d.width === 4) {
     return `At least ${aesLikeActivityBound(d.rounds)} active S-boxes over ${d.rounds} rounds`;
   }
-  if (info.id === 'activity.outer' && d.model === 'hades/bn254/v1') {
+  if (info.id === 'activity.outer' && (d.model === 'hades/bn254/v1' || d.model === 'hades/prime/v1')) {
     // Only the full rounds are charged; the partial rounds add nothing to the bound.
-    return `At least ${hadesOuterActivityBound(d.fullRounds)} active S-boxes in the ${d.fullRounds} full rounds`;
+    return `At least ${hadesOuterActivityBoundWidth(d.fullRounds, d.width)} active S-boxes in the ${d.fullRounds} full rounds`;
+  }
+  if (info.id === 'activity.total' && (d.model === 'hades/bn254/v1' || d.model === 'hades/prime/v1')) {
+    const window = checkedTotalWindow(verdict);
+    if (window !== null && window === partialWindow(diagnostics)) {
+      // The full rounds charge their bound; each disjoint window of partial rounds charges one.
+      return `At least ${hadesTotalActivityBoundWidth(d.fullRounds, d.partialRounds, window, d.width)} active S-boxes over all ${d.fullRounds + d.partialRounds} rounds`;
+    }
   }
   return info.title;
 }
@@ -231,15 +359,26 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
   const isProved = (id: ClaimId): boolean => claims.some((c) => c.id === id && c.status === 'proved');
 
   for (const info of designClaimsFor(request.design.model)) {
-    if (info.id === 'activity.bound' || info.id === 'activity.outer') {
-      const title = activityTitle(request, info);
+    const pre = activityPreconditions(request.design.model, info.id);
+    const d = request.design;
+    if (info.id === 'activity.total' && (d.model === 'hades/bn254/v1' || d.model === 'hades/prime/v1') && d.partialRounds === 0) {
+      // No partial rounds: activity.partial does not apply, and activity.outer
+      // already counts every S-box; no certificate is emitted for this claim.
+      const skipped = inp.skipped?.find((x) => x.claim === info.id);
+      claims.push(
+        notEstablished(
+          info,
+          'out-of-scope',
+          skipped ? capitalize(skipped.reason) : `The design has no partial rounds, so activity.outer gives the bound; ${NOT_ESTABLISHED_TEXT}.`,
+        ),
+      );
+      continue;
+    }
+    if (pre) {
+      const title = activityTitle(request, info, diagnostics, byClaim.get(info.id));
       // The bound counts active S-boxes of trails; it only applies to this
       // design when its diffusion layer and S-box have been certified.
-      const pre =
-        info.id === 'activity.bound'
-          ? ['matrix.mds', 'offsets.dispersion', 'sbox.bijective']
-          : ['external.mds', 'internal.invertible', 'sbox.bijective'];
-      const missing = (pre as ClaimId[]).filter((p) => !isProved(p));
+      const missing = pre.filter((p) => !isProved(p));
       if (missing.length > 0) {
         claims.push(
           notEstablished(
@@ -256,10 +395,26 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
       else claims.push(c);
       continue;
     }
+    if (info.id === 'external.mds' && d.model === 'hades/prime/v1') {
+      // The branch number of an MDS matrix is its width plus one.
+      claims.push(fromLean(info, externalMdsTitle(d.width)));
+      continue;
+    }
     claims.push(fromLean(info));
   }
 
   for (const info of IMPLEMENTATION_CLAIMS) {
+    if (request.design.model === 'hades/prime/v1') {
+      // Validation rejects circuits for this profile; say why the chain is empty.
+      claims.push(
+        notEstablished(
+          info,
+          'out-of-scope',
+          'Circuits, native correctness, timing and Rust refinement cover GF(2^8) and BN254 designs; over this prime field only the design claims are checked.',
+        ),
+      );
+      continue;
+    }
     switch (info.id) {
       case 'circuit.equivalence':
         if (!request.program) claims.push(notEstablished(info, 'not-run', 'No circuit was submitted.'));

@@ -136,6 +136,8 @@ COPY crates/native/ crates/native/
 # The digest the refinement proofs were extracted from. The proofs themselves are
 # not checked in the image, so rust.refinement reads not_established here.
 COPY refinement/extract.sha256 refinement/extract.sha256
+# The JSON Schemas: GET /api/openapi.json serves schemas/openapi.json with the schemas it references.
+COPY schemas/ schemas/
 COPY examples/designs/ examples/designs/
 COPY examples/programs/ examples/programs/
 COPY --from=web /src/packages/schema/package.json packages/schema/package.json

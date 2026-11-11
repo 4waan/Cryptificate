@@ -9,7 +9,7 @@ export interface Style {
   status(status: string, text?: string): string;
 }
 
-export function makeStyle(stream: NodeJS.WriteStream): Style {
+export function makeStyle(stream: { isTTY?: boolean }): Style {
   const color = Boolean(stream.isTTY) && !process.env['NO_COLOR'] && process.env['TERM'] !== 'dumb';
   const wrap = (code: string, s: string): string => (color ? `\u001b[${code}m${s}\u001b[0m` : s);
   return {
@@ -57,7 +57,7 @@ export function stepLine(step: Step): string {
   return `${step.name}: ${step.state}${ms}${step.detail ? ` (${step.detail})` : ''}`;
 }
 
-function witnessText(c: Claim): string {
+export function witnessText(c: Claim): string {
   const w = c.witness;
   if (!w) return '';
   switch (w.kind) {
@@ -71,6 +71,12 @@ function witnessText(c: Claim): string {
       return `S(${w.x1}) = S(${w.x2}) = ${w.y}`;
     case 'power-collision':
       return `${w.x1}^${w.exponent} = ${w.x2}^${w.exponent}${w.note ? ` (${w.note})` : ''}`;
+    case 'partial-bypass':
+      return `difference [${w.difference.join(',')}] stays zero at positions ${w.positions.join(',')} through ${w.partialRounds} partial rounds`;
+    case 'sbox-differential':
+      return `uniformity ${w.uniformity}, at input difference ${w.inputDifference} and output difference ${w.outputDifference}`;
+    case 'sbox-linearity':
+      return `linearity ${w.linearity}, at input mask ${w.inputMask} and output mask ${w.outputMask}`;
     default:
       return '';
   }

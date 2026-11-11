@@ -10,6 +10,7 @@ The repository's [`Dockerfile`](../Dockerfile) builds one image with everything 
 | `cryptificate-engine` | this checkout's `crates/` | `cargo build --release --locked` |
 | Rust toolchain, `gcc` linker, every crate in `Cargo.lock` | Rust 1.97.1 | `rust:1.97.1-slim-trixie`, used to compile the generated native variants without network access |
 | Service, `cryptificate` command, workbench | this checkout's `apps/` and `packages/` | `npm ci` and `npm run build` |
+| JSON Schemas and the OpenAPI description served at `/api/openapi.json` | this checkout's `schemas/` | copied |
 | Node.js runtime | 22.23.4 | `node:22.23.4-trixie-slim` |
 | Base | Debian 13 (trixie) slim | `debian:trixie-slim` |
 
@@ -106,11 +107,11 @@ Experiments compile each generated circuit with the image's Rust toolchain and t
 The [docker workflow](../.github/workflows/docker.yml) builds the image with Docker Buildx and the GitHub Actions cache, then runs [`scripts/docker-smoke.py`](../scripts/docker-smoke.py) against it:
 
 1. `cryptificate --version`;
-2. `check examples/designs/aes.json`: the MDS, offsets, S-box and activity-bound claims are `proved`;
+2. `check examples/designs/aes.json`: the MDS, offsets, S-box, activity-bound, differential-uniformity and linearity claims are `proved`;
 3. `check examples/designs/aes.json --program examples/programs/aes-wrong-wire.json`: the circuit is `refuted` in Lean and by the native harness, which compiles the generated Rust inside the container, and `rust.refinement` is `not_established`;
 4. `verify examples/bundles/aes-wrong-wire/*.tar.gz`: the input digest is unchanged and every re-checked claim matches;
 5. `serve` with no flags: healthy inside the container and not reachable through the published port;
-6. `serve --host 0.0.0.0` published on `127.0.0.1`: capabilities report Lean, Rust and the engine available, `/` serves the workbench, an analysis submitted through the Python client proves the four design claims, and a cross-origin `POST` is refused with `403`;
+6. `serve --host 0.0.0.0` published on `127.0.0.1`: capabilities report Lean, Rust and the engine available, `/` serves the workbench, `GET /api/openapi.json` serves the OpenAPI description, an analysis submitted through the Python client proves the same design claims, and a cross-origin `POST` is refused with `403`;
 7. `serve --host 0.0.0.0` with `-e PORT=4175`, published as `-p 127.0.0.1:4175:4175`: healthy, and the capabilities answer through that port; `serve --port 4175` without `PORT` prints the note that the health check polls port 4173.
 
 Steps 1 to 4 run with `--network none`. On a version tag the workflow then pushes the image those steps ran against. With Docker installed, `python3 scripts/docker-smoke.py <image>` runs the same checks locally.

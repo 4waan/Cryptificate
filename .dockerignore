@@ -22,7 +22,6 @@ refinement/*
 !refinement/extract.sha256
 python
 docs
-schemas
 **/__pycache__
 **/*.log
 .DS_Store

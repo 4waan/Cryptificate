@@ -76,3 +76,45 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m unittest discover -s python/tests -t python
+
+  action:
+    name: GitHub Action
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate designs whose claims hold
+        uses: ./
+        with:
+          inputs: examples/designs/aes.json examples/designs/aes-row-scaled.json examples/designs/poseidon2-bn254.json
+          fail-on: refuted
+          upload-sarif: "false"
+          artifact-name: cryptificate-evidence-pass
+      - name: Gate a design with a refuted claim
+        id: refuted
+        continue-on-error: true
+        uses: ./
+        with:
+          inputs: examples/designs/identity.json
+          fail-on: refuted
+          upload-sarif: "false"
+          artifact-name: cryptificate-evidence-refuted
+      - name: The refuted design fails the gate with exit status 1
+        env:
+          OUTCOME: ${{ steps.refuted.outcome }}
+          CODE: ${{ steps.refuted.outputs.exit-code }}
+        run: |
+          test "$OUTCOME" = failure
+          test "$CODE" = 1
+          python3 - "$RUNNER_TEMP/cryptificate/cryptificate.sarif" <<'PY'
+          import json, sys
+          log = json.load(open(sys.argv[1]))
+          assert log["version"] == "2.1.0"
+          assert log["runs"][0]["tool"]["driver"]["name"] == "Cryptificate"
+          hits = [r for r in log["runs"][0]["results"] if r["kind"] == "fail"]
+          assert [r["ruleId"] for r in hits] == ["matrix.mds"], hits
+          loc = hits[0]["locations"][0]["physicalLocation"]
+          assert loc["artifactLocation"]["uri"] == "examples/designs/identity.json", loc
+          assert loc["region"]["startLine"] >= 1, loc
+          assert hits[0]["properties"]["counterexample"]["kind"] == "branch"
+          PY

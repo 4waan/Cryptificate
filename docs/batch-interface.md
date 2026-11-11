@@ -45,6 +45,6 @@ The report records the exact number of cases. The correctness corpus and the tim
 | Interval | 95% paired bootstrap, 10,000 resamples |
 | Confirmation | candidate frozen, then two fresh sessions with new input and order seeds |
 
-A result is **locally confirmed** only when the lower bound of the 95% interval exceeds 1.02 in both confirmation sessions against every relevant baseline. Overlapping intervals or too few samples give **inconclusive**; no faster candidate gives **no improvement**. Both are valid outcomes.
+A result is **locally confirmed** only when the lower bound of the 95% interval exceeds 1.02 in both confirmation sessions against every relevant baseline, and every timed sample in both sessions left the same output checksum. The result is **no improvement** when there is no contender, or when in both confirmation sessions the contender's ratio is at most 1 against some baseline. Every other outcome, and every run under quick-test settings, is **inconclusive**. Both are valid outcomes.
 
 The harness records the CPU model, operating system, RAM, `rustc -V`, flags, source and binary hashes, seeds, calibration counts and checksums. Historical timings stay historical: measuring again creates a new experiment.

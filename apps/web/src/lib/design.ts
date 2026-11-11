@@ -1,5 +1,6 @@
-import { fieldOps } from './field';
-import type { AesLikeDesign, CandidateDesign, HadesDesign } from './types';
+import { displayFieldOf, fieldOps, type DisplayField } from './field';
+import { modulusProblem } from './primefield';
+import type { AesLikeDesign, CandidateDesign, HadesDesign, HadesPrimeDesign } from './types';
 
 export interface DesignIssue {
   path: string;
@@ -16,7 +17,7 @@ function matrixIssues(
   label: string,
   m: string[][],
   width: number,
-  field: 'gf256' | 'bn254',
+  field: DisplayField,
 ): DesignIssue[] {
   const f = fieldOps(field);
   const issues: DesignIssue[] = [];
@@ -69,8 +70,29 @@ export function validateDesign(d: CandidateDesign): DesignIssue[] {
     }
     return issues;
   }
-  issues.push(...matrixIssues('external', 'External matrix', d.external, 3, 'bn254'));
-  issues.push(...matrixIssues('internal', 'Internal matrix', d.internal, 3, 'bn254'));
+  let width = 3;
+  let field: DisplayField = 'bn254';
+  if (d.model === 'hades/prime/v1') {
+    if (d.field === 'prime') {
+      const problem = modulusProblem(d.modulus);
+      if (problem) {
+        issues.push({ path: '/modulus', message: problem });
+        return issues;
+      }
+    }
+    if (d.width !== 3 && d.width !== 4) {
+      issues.push({ path: '/width', message: 'Prime-field designs have width 3 or 4.' });
+      return issues;
+    }
+    width = d.width;
+    field = displayFieldOf(d);
+    const mask = d.partialMask ?? [];
+    if (mask.length !== width || !mask.some(Boolean)) {
+      issues.push({ path: '/partialMask', message: 'Select at least one S-box position for the partial rounds.' });
+    }
+  }
+  issues.push(...matrixIssues('external', 'External matrix', d.external, width, field));
+  issues.push(...matrixIssues('internal', 'Internal matrix', d.internal, width, field));
   const e = d.sbox.exponent;
   if (!Number.isInteger(e) || e < 1 || e > EXPONENT_MAX) {
     issues.push({ path: '/sbox/exponent', message: `The exponent must be a whole number from 1 to ${EXPONENT_MAX}.` });
@@ -113,6 +135,10 @@ export function isAesLike(d: CandidateDesign): d is AesLikeDesign {
 
 export function isHades(d: CandidateDesign): d is HadesDesign {
   return d.model === 'hades/bn254/v1';
+}
+
+export function isHadesPrime(d: CandidateDesign): d is HadesPrimeDesign {
+  return d.model === 'hades/prime/v1';
 }
 
 /** The matrix a program must implement for the given target. */

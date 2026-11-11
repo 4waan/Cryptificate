@@ -103,6 +103,11 @@ export function bundleUrl(id: string): string {
   return `${API}/jobs/${encodeURIComponent(id)}/bundle`;
 }
 
+/** The bundle's report.html, served on its own (path-scrubbed, with the recorded toolchain pins). */
+export function reportHtmlUrl(id: string): string {
+  return `${API}/jobs/${encodeURIComponent(id)}/report.html`;
+}
+
 export function isTerminal(state: string): boolean {
   return state !== 'queued' && state !== 'running';
 }

@@ -1,4 +1,4 @@
-"""Command line: python -m cryptificate check|experiment|capabilities|bundle ..."""
+"""Command line: python -m cryptificate check|experiment|job|stop|bundle|capabilities|openapi ..."""
 
 from __future__ import annotations
 
@@ -98,6 +98,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     exp.add_argument("--quiet", "-q", action="store_true")
 
     sub.add_parser("capabilities", help="print the service capabilities")
+    sub.add_parser("openapi", help="print the OpenAPI description of the HTTP API")
+
+    job = sub.add_parser("job", help="print a job (state, steps, report) as JSON")
+    job.add_argument("job_id")
+
+    stop = sub.add_parser("stop", help="stop a queued or running job")
+    stop.add_argument("job_id")
 
     bundle = sub.add_parser("bundle", help="download a job's evidence bundle")
     bundle.add_argument("job_id")
@@ -108,6 +115,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         if args.command == "capabilities":
             print(json.dumps(client.capabilities(), indent=2))
+            return 0
+        if args.command == "openapi":
+            print(json.dumps(client.openapi(), indent=2))
+            return 0
+        if args.command == "job":
+            print(json.dumps(client.job(args.job_id), indent=2))
+            return 0
+        if args.command == "stop":
+            summary = client.stop(args.job_id)
+            print(f"job {summary['id']}: {summary['state']}")
             return 0
         if args.command == "bundle":
             print(client.bundle(args.job_id, args.path))

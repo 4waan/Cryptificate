@@ -1,0 +1,13 @@
+{
+  "name": "sbox_differential_aes",
+  "kind": "claim",
+  "claim": "sbox.differential",
+  "status": "proved",
+  "theorem": "CryptificateJob.sbox_differential",
+  "expectedType": "Cryptificate.differentialUniformity CryptificateJob.candSboxTable = 4 ∧ Cryptificate.gf 1 ≠ 0 ∧ diffCount CryptificateJob.candSboxTable (Cryptificate.gf 1) (Cryptificate.gf 31) = 4",
+  "placeholders": [],
+  "requires": [
+    "const_sbox_aes"
+  ],
+  "field": "gf256"
+}

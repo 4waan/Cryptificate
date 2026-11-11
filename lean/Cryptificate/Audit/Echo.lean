@@ -23,6 +23,7 @@ The canonical encodings are those of the request format:
 * an element of the BN254 scalar field is its canonical decimal string in `[0, p)`;
 * vectors are arrays and matrices are row-major arrays of rows;
 * naturals and elements of `Fin n` (offsets, rounds, register indices) are JSON numbers;
+* a partial-round mask is an array of booleans;
 * a program is `{"field", "width", "instructions", "outputs"}` with instructions written as
   `{"op":"add","a":…,"b":…}` and `{"op":"mul","k":…,"a":…}`; the program's display name is not
   part of the certificate and is not echoed.
@@ -59,6 +60,8 @@ class ToCanonical (α : Type) where
 export ToCanonical (toCJson)
 
 instance : ToCanonical Nat := ⟨.nat⟩
+
+instance : ToCanonical Bool := ⟨.bool⟩
 
 instance {n : Nat} : ToCanonical (Fin n) := ⟨fun i => .nat i.val⟩
 
@@ -102,6 +105,8 @@ def echoInput {α : Type} [ToCanonical α] (key : String) (value : α) : IO Unit
 #guard inputLine "x"
     (bn 21888242871839275222246405745257275088548364400416034343698204186575808495618) =
   "CRYPTIFICATE_INPUT x \"1\""
+
+#guard inputLine "k" (maskBits3 1 0 0) = "CRYPTIFICATE_INPUT k [true,false,false]"
 
 #guard inputLine "o" (offsets4 0 1 2 3) = "CRYPTIFICATE_INPUT o [0,1,2,3]"
 

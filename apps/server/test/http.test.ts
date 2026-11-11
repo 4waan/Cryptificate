@@ -227,6 +227,7 @@ test('HTTP: one worker, two queued, 429 beyond; stop keeps checkpoints; bundles'
     assert.ok(running.steps.some((st) => st.name === 'validate' && st.state === 'completed'));
     assert.equal(running.bundle, false);
     assert.equal((await call(s.port, 'GET', `/api/jobs/${ids[0]}/bundle`)).status, 409);
+    assert.equal((await call(s.port, 'GET', `/api/jobs/${ids[0]}/report.html`)).status, 409);
     const queued = (await call(s.port, 'GET', `/api/jobs/${ids[2]}`)).json<Job>();
     assert.equal(queued.state, 'queued');
     assert.equal(queued.queuePosition, 2);
@@ -256,7 +257,14 @@ test('HTTP: one worker, two queued, 429 beyond; stop keeps checkpoints; bundles'
     const b2 = await call(s.port, 'GET', `/api/jobs/${ids[1]}/bundle`);
     assert.ok(b1.body.equals(b2.body), 'bundle bytes are stable');
     const files = readTarGz(b1.body);
-    assert.ok(files.has('inputs.json') && files.has('report.json') && files.has('VERIFY.md'));
+    assert.ok(files.has('inputs.json') && files.has('report.json') && files.has('VERIFY.md') && files.has('report.html'));
+    // the HTML report on its own: the bundle's report.html, as a download that runs nothing
+    const page = await call(s.port, 'GET', `/api/jobs/${ids[1]}/report.html`);
+    assert.equal(page.status, 200);
+    assert.equal(page.headers['content-type'], 'text/html; charset=utf-8');
+    assert.equal(page.headers['content-disposition'], `attachment; filename="cryptificate-${ids[1]}.html"`);
+    assert.match(String(page.headers['content-security-policy']), /default-src 'none'/);
+    assert.ok(page.body.equals(files.get('report.html')!));
     // the cancelled job still has a bundle with its completed checkpoints
     assert.equal((await call(s.port, 'GET', `/api/jobs/${ids[0]}/bundle`)).status, 200);
   } finally {

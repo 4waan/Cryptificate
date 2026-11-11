@@ -45,7 +45,8 @@ export function WorkspaceView() {
         <button
           type="button"
           className="btn"
-          disabled={problems.length > 0 || isActive(experiment)}
+          disabled={problems.length > 0 || isActive(experiment) || design.model === 'hades/prime/v1'}
+          title={design.model === 'hades/prime/v1' ? 'Experiments cover GF(2⁸) and BN254 designs only.' : undefined}
           onClick={() => startRun('experiment', 'quick')}
         >
           {source === 'live' ? 'Run quick experiment' : 'Show the quick experiment'}
@@ -86,25 +87,34 @@ export function WorkspaceView() {
         ) : (
           <section className="panel" aria-labelledby="no-circuit">
             <h2 id="no-circuit">Circuit</h2>
-            <p className="muted" style={{ margin: '8px 0 16px' }}>
-              No circuit: only the design guarantees will be checked.
-            </p>
-            <div className="row">
-              <button
-                type="button"
-                className="btn"
-                onClick={() => setProgram(design.field === 'gf256' ? aesSharedSum() : hadesSharedSum())}
-              >
-                <IconPlus size={14} /> Shared-sum circuit
-              </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => setProgram(identityProgram(design.width, design.field))}
-              >
-                <IconPlus size={14} /> Identity circuit
-              </button>
-            </div>
+            {design.model === 'hades/prime/v1' ? (
+              <p className="muted" style={{ margin: '8px 0 16px' }}>
+                No circuit: over this field only the design guarantees are checked. Circuit equivalence, the circuit
+                search and native timing cover GF(2⁸) and BN254.
+              </p>
+            ) : (
+              <>
+                <p className="muted" style={{ margin: '8px 0 16px' }}>
+                  No circuit: only the design guarantees will be checked.
+                </p>
+                <div className="row">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setProgram(design.field === 'gf256' ? aesSharedSum() : hadesSharedSum())}
+                  >
+                    <IconPlus size={14} /> Shared-sum circuit
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setProgram(identityProgram(design.width, design.field))}
+                  >
+                    <IconPlus size={14} /> Identity circuit
+                  </button>
+                </div>
+              </>
+            )}
           </section>
         )}
       </div>
