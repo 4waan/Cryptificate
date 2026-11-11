@@ -297,6 +297,34 @@ function activityTitle(req: AnalysisRequest, info: ClaimInfo, diagnostics: unkno
   return info.title;
 }
 
+function refinementClaim(info: ClaimInfo, request: AnalysisRequest, r: RefinementStatus | null): Claim {
+  if (!request.program) return notEstablished(info, 'not-run', 'No circuit was submitted.');
+  if (r && r.status === 'proved') {
+    return {
+      id: info.id,
+      chain: info.chain,
+      title: info.title,
+      status: 'proved',
+      evidence: { kind: 'refinement', label: EVIDENCE_LABELS.rustRefinement, theorem: r.theorem },
+      witness: null,
+      note: r.note,
+    };
+  }
+  if (r) return { ...notEstablished(info, 'out-of-scope', r.note), status: r.status };
+  return { ...notEstablished(info, 'out-of-scope', 'No refinement proof covers this run.'), status: 'unsupported' };
+}
+
+/**
+ * Replaces the rust.refinement claim of a report's claims with one built from
+ * the current refinement status. Whether the refinement proofs were checked
+ * is a property of this machine, not of the cached Lean certificate, so a
+ * proof-cache hit must not carry over the claim of the run it was cached from.
+ */
+export function withCurrentRefinement(claims: readonly Claim[], request: AnalysisRequest, refinement: RefinementStatus | null): Claim[] {
+  const info = IMPLEMENTATION_CLAIMS.find((i) => i.id === 'rust.refinement');
+  return claims.map((c) => (c.id === 'rust.refinement' && info ? refinementClaim(info, request, refinement) : { ...c }));
+}
+
 export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
   const { request, expect, verdicts, diagnostics } = inp;
   const claims: Claim[] = [];
@@ -421,27 +449,9 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
         }
         break;
       }
-      case 'rust.refinement': {
-        const r = inp.refinement;
-        if (!request.program) {
-          claims.push(notEstablished(info, 'not-run', 'No circuit was submitted.'));
-        } else if (r && r.status === 'proved') {
-          claims.push({
-            id: info.id,
-            chain: info.chain,
-            title: info.title,
-            status: 'proved',
-            evidence: { kind: 'refinement', label: EVIDENCE_LABELS.rustRefinement, theorem: r.theorem },
-            witness: null,
-            note: r.note,
-          });
-        } else if (r) {
-          claims.push({ ...notEstablished(info, 'out-of-scope', r.note), status: r.status });
-        } else {
-          claims.push({ ...notEstablished(info, 'out-of-scope', 'No refinement proof covers this run.'), status: 'unsupported' });
-        }
+      case 'rust.refinement':
+        claims.push(refinementClaim(info, request, inp.refinement ?? null));
         break;
-      }
       case 'native.timing':
         claims.push(notEstablished(info, 'not-run', 'Timing is measured by experiments, not by an analysis.'));
         break;
