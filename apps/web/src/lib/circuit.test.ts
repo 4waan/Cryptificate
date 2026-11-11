@@ -8,14 +8,16 @@ import {
   evaluate,
   expressionOf,
   insertInstruction,
+  matrixDiff,
   moveInstruction,
+  naiveCircuit,
   operandChoices,
   removeInstruction,
   setOutput,
   updateInstruction,
   validateProgram,
 } from './circuit';
-import { AES_MIXCOLUMNS, aesSharedSum, hadesSharedSum, miswiredSharedSum, WIRE_STEP_XTIME } from './presets';
+import { AES_MIXCOLUMNS, aesDesign, aesSharedSum, hadesSharedSum, miswiredSharedSum, WIRE_STEP_XTIME } from './presets';
 import type { Program } from './types';
 
 describe('reference circuits', () => {
@@ -149,5 +151,77 @@ describe('editor operations', () => {
     const s = circuitStats(p);
     expect(s.depth).toBe(3);
     expect(s.unused).toEqual([3]);
+  });
+});
+
+describe('naiveCircuit and matrixDiff', () => {
+  const rand = (seed: number) => () => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed;
+  };
+
+  it('computes random GF(2^8) matrices exactly', () => {
+    const next = rand(7);
+    for (let t = 0; t < 50; t++) {
+      const m = Array.from({ length: 4 }, () =>
+        Array.from({ length: 4 }, () => {
+          const v = next() % 5 === 0 ? 0 : next() % 256; // some zero coefficients
+          return v.toString(16).toUpperCase().padStart(2, '0');
+        }),
+      );
+      const p = naiveCircuit(m, 'gf256');
+      expect(validateProgram(p, 4)).toEqual([]);
+      expect(coefficientMatrix(p)).toEqual(m);
+      expect(matrixDiff(m, p)!.cells).toEqual([]);
+    }
+  });
+
+  it('computes random BN254 matrices exactly', () => {
+    const next = rand(11);
+    for (let t = 0; t < 50; t++) {
+      const m = Array.from({ length: 3 }, () => Array.from({ length: 3 }, () => String(next() % 7)));
+      const p = naiveCircuit(m, 'bn254');
+      expect(validateProgram(p, 3)).toEqual([]);
+      expect(coefficientMatrix(p)).toEqual(m);
+    }
+  });
+
+  it('uses inputs directly for 1, xtime for 02, and computes shared products once', () => {
+    const p = naiveCircuit(aesDesign().matrix, 'gf256');
+    const s = circuitStats(p);
+    expect(s.xtimes).toBe(4);
+    expect(s.otherMuls).toBe(4);
+    expect(s.adds).toBe(12);
+    const twice = naiveCircuit(
+      [
+        ['02', '02'],
+        ['02', '02'],
+      ],
+      'gf256',
+    );
+    expect(twice.instructions.filter((i) => i.op === 'mul')).toHaveLength(2);
+  });
+
+  it('handles all-zero rows and single-term rows', () => {
+    const m = [
+      ['00', '00'],
+      ['00', '01'],
+    ];
+    const p = naiveCircuit(m, 'gf256');
+    expect(coefficientMatrix(p)).toEqual(m);
+    expect(p.outputs[1]).toBe(1);
+  });
+
+  it('lists the coefficients that differ', () => {
+    const d = matrixDiff(aesDesign().matrix, miswiredSharedSum())!;
+    expect(d.cells.length).toBeGreaterThan(0);
+    expect(d.cells.every((c) => c.want !== c.got)).toBe(true);
+    expect(d.cells[0]).toMatchObject({ row: 0 });
+    expect(matrixDiff(aesDesign().matrix, aesSharedSum())!.cells).toEqual([]);
+  });
+
+  it('returns null when the comparison cannot be made', () => {
+    expect(matrixDiff([['zz']], aesSharedSum())).toBeNull();
+    expect(matrixDiff(aesDesign().matrix, { ...aesSharedSum(), outputs: [0, 1, 2] })).toBeNull();
   });
 });

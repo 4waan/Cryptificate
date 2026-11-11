@@ -1,4 +1,4 @@
-import { BN254_P, bnAdd, bnInv, bnMul, formatBn, invMod, isBnDecimal, mod, parseBn } from './bn254';
+import { BN254_P, bnAdd, bnInv, bnMul, compactBn, formatBn, invMod, isBnDecimal, mod, parseBn } from './bn254';
 import { formatGfHex, gfInv, gfMul, isGfHex, parseGfHex } from './gf256';
 import { PRIME_FIELD_PRESETS } from './types';
 import type { CandidateDesign, FieldName } from './types';
@@ -122,4 +122,18 @@ export function displayFieldOf(design: CandidateDesign): DisplayField {
 export function formatVector(field: DisplayField, values: readonly string[]): string {
   const ops = fieldOps(field);
   return `[${values.map((v) => (ops.isValid(v) ? ops.canonical(v) : v)).join(', ')}]`;
+}
+
+/**
+ * Short display text for one element (matrix cells, diff summaries): the
+ * canonical form, with long BN254 values shortened (elements of the 64-bit
+ * prime fields are short enough to show whole). `full` is the whole
+ * value for a tooltip; `spoken` is what a screen reader should read.
+ */
+export function displayElement(field: DisplayField, value: string): { text: string; full: string; spoken: string; short: boolean } {
+  const ops = fieldOps(field);
+  const full = ops.isValid(value) ? ops.canonical(value) : value;
+  if (field !== 'bn254') return { text: full, full, spoken: full, short: false };
+  const c = compactBn(full);
+  return { text: c.text, full, spoken: c.spoken, short: c.short };
 }

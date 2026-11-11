@@ -1,15 +1,119 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CircuitEditor } from '../components/CircuitEditor';
+import { ComputedMatrix, circuitFromDesign, generateCircuit } from '../components/ComputedMatrix';
 import { DesignEditor } from '../components/DesignEditor';
-import { IconPlay, IconPlus, IconTrash } from '../components/icons';
+import { IconCircuit, IconInfo, IconPlay, IconPlus, IconTrash, IconUndo, IconWarning } from '../components/icons';
 import { ImportExport } from '../components/ImportExport';
 import { ResultsPanel } from '../components/ResultsPanel';
 import { RunProgress, isActive } from '../components/RunProgress';
-import { isStale } from '../lib/canonical';
+import { WorkspaceToolbar } from '../components/WorkspaceToolbar';
+import { findRecording } from '../data/replay';
+import { isStale, type WorkspaceInputs } from '../lib/canonical';
+import { matrixDiff } from '../lib/circuit';
+import { targetMatrix } from '../lib/design';
 import { aesSharedSum, hadesSharedSum, identityProgram } from '../lib/presets';
 import type { ExperimentReport } from '../lib/types';
-import { inputProblems, setProgram, startRun } from '../state/actions';
+import {
+  clearNotice,
+  dismissReplaced,
+  inputProblems,
+  SHARED_LINK,
+  restoreReplaced,
+  setProgram,
+  setView,
+  startRun,
+  undo,
+} from '../state/actions';
 import { dataSource, useAppState } from '../state/store';
+
+/** Notices above the editors: a loaded share link, or edits a story step replaced. */
+function WorkspaceNotices() {
+  const replaced = useAppState((s) => s.replaced);
+  const notice = useAppState((s) => s.notice);
+  if (!replaced && !notice) return null;
+  return (
+    <div className="stack" style={{ gap: 12, marginBottom: 24 }}>
+      {notice ? (
+        <div className={`banner ${notice.kind === 'error' ? 'banner-bad' : 'banner-warn'}`} role="status">
+          {notice.kind === 'error' ? <IconWarning /> : <IconInfo />}
+          <div className="banner-body">
+            <span>{notice.text}</span>
+          </div>
+          {notice.kind === 'info' ? (
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => {
+                undo();
+                clearNotice();
+              }}
+            >
+              <IconUndo size={14} /> Undo
+            </button>
+          ) : null}
+          <button type="button" className="btn btn-sm btn-quiet" onClick={clearNotice}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+      {replaced ? (
+        <div className="banner banner-warn" role="status">
+          <IconInfo />
+          <div className="banner-body">
+            <strong>{replaced.by} loaded its own inputs into the workspace.</strong>{' '}
+            <span>Your earlier edits were kept and can be brought back.</span>
+          </div>
+          <button type="button" className="btn btn-sm" onClick={restoreReplaced}>
+            Restore my edits
+          </button>
+          <button type="button" className="btn btn-sm btn-quiet" onClick={dismissReplaced}>
+            {replaced.by === SHARED_LINK ? 'Keep the shared inputs' : 'Keep the story inputs'}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * One polite live region that stays mounted. A new announcement first
+ * clears the text, then sets it on the next frame, so screen readers
+ * speak repeated and back-to-back messages.
+ */
+function Announcer() {
+  const announcement = useAppState((s) => s.announcement);
+  const [text, setText] = useState('');
+  useEffect(() => {
+    if (!announcement.text) return;
+    setText('');
+    const frame = requestAnimationFrame(() => setText(announcement.text));
+    return () => cancelAnimationFrame(frame);
+  }, [announcement]);
+  return (
+    <p className="visually-hidden" role="status" aria-live="polite">
+      {text}
+    </p>
+  );
+}
+
+/** In replay mode, whether a recorded quick experiment exists for these inputs (null while looking). */
+function useRecordedSearch(inputs: WorkspaceInputs, enabled: boolean): boolean | null {
+  const [found, setFound] = useState<{ inputs: WorkspaceInputs; ok: boolean } | null>(null);
+  const latest = useRef(inputs);
+  latest.current = inputs;
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    void findRecording('experiment', inputs).then((m) => {
+      if (live && latest.current === inputs) setFound({ inputs, ok: m !== null });
+    });
+    return () => {
+      live = false;
+    };
+  }, [inputs, enabled]);
+  if (!enabled) return null;
+  return found && found.inputs === inputs ? found.ok : null;
+}
 
 export function WorkspaceView() {
   const design = useAppState((s) => s.design);
@@ -25,6 +129,25 @@ export function WorkspaceView() {
   const analysis = current.analysis ? runs[current.analysis] : undefined;
   const experiment = current.experiment ? runs[current.experiment] : undefined;
   const busy = isActive(analysis) || isActive(experiment);
+  const canGenerate = useMemo(() => circuitFromDesign(design, target) !== null, [design, target]);
+  const recorded = useRecordedSearch(inputs, source === 'replay' && program !== null && problems.length === 0);
+  const circuitDiffers = useMemo(() => {
+    if (!program || program.field !== design.field || program.width !== design.width) return false;
+    const d = matrixDiff(targetMatrix(design, target), program);
+    return d !== null && d.cells.length > 0;
+  }, [design, program, target]);
+  let searchLabel = 'Search for cheaper circuits';
+  let searchNote: string | undefined;
+  if (source === 'replay') {
+    searchLabel =
+      recorded === false ? 'No recorded search for these inputs' : recorded === null ? 'Looking for a recorded search…' : 'Show the recorded search';
+    if (recorded === false && problems.length === 0) {
+      searchNote = 'This static build only replays recorded runs, and none matches these inputs. Run the local service to search any design.';
+    }
+  }
+  if (!searchNote && circuitDiffers) {
+    searchNote = 'Your circuit does not compute the matrix, so the search starts from the matrix alone and leaves your circuit out of the comparison.';
+  }
   const experimentReport =
     experiment?.report?.kind === 'experiment' && !isStale(inputs, experiment.inputs)
       ? (experiment.report as ExperimentReport)
@@ -73,11 +196,26 @@ export function WorkspaceView() {
         </div>
       </div>
 
+      <WorkspaceToolbar field={design.field} problems={problems.length} />
+      <WorkspaceNotices />
+      <Announcer />
+
       <div className="grid-inputs">
         <DesignEditor design={design} target={target} />
         {program ? (
           <div className="stack-lg">
             <CircuitEditor program={program} onChange={setProgram} highlight={highlight} designWidth={design.width} />
+            <ComputedMatrix
+              design={design}
+              target={target}
+              program={program}
+              searchLabel={searchLabel}
+              searchNote={searchNote}
+              searchDisabled={problems.length > 0 || isActive(experiment) || (source === 'replay' && recorded !== true)}
+              onSearch={() => {
+                if (startRun('experiment', 'quick')) setView('experiments');
+              }}
+            />
             <div className="row">
               <button type="button" className="btn btn-sm btn-quiet" onClick={() => setProgram(null)}>
                 <IconTrash size={14} /> Check the design without a circuit
@@ -100,6 +238,15 @@ export function WorkspaceView() {
                 <div className="row">
                   <button
                     type="button"
+                    className="btn btn-primary"
+                    disabled={!canGenerate}
+                    aria-describedby={canGenerate ? undefined : 'generate-why'}
+                    onClick={() => generateCircuit(design, target)}
+                  >
+                    <IconCircuit size={14} /> Generate from matrix
+                  </button>
+                  <button
+                    type="button"
                     className="btn"
                     onClick={() => setProgram(design.field === 'gf256' ? aesSharedSum() : hadesSharedSum())}
                   >
@@ -113,6 +260,11 @@ export function WorkspaceView() {
                     <IconPlus size={14} /> Identity circuit
                   </button>
                 </div>
+                {canGenerate ? null : (
+                  <p id="generate-why" className="small muted" style={{ marginTop: 8 }}>
+                    Fix the matrix cells to generate a circuit from the matrix.
+                  </p>
+                  )}
               </>
             )}
           </section>

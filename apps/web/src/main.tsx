@@ -8,7 +8,12 @@ import '@fontsource/jetbrains-mono/500.css';
 import '@fontsource/jetbrains-mono/700.css';
 import '@fontsource/jetbrains-mono/800.css';
 import { App } from './App';
+import { restoreWorkspace, startPersistence } from './state/actions';
 import './styles.css';
+
+// The workspace saved in this browser comes back before the first render.
+restoreWorkspace();
+startPersistence();
 
 if (__BRAND__.favicon || __BRAND__.mark) {
   const link = document.createElement('link');

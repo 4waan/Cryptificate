@@ -2,15 +2,24 @@ import { ApiError, bundleUrl, createJob, getCapabilities, getJob, isTerminal, st
 import { findRecording, recordedUrl } from '../data/replay';
 import { normalizeAnalysisRequest, normalizeExperimentRequest, type WorkspaceInputs } from '../lib/canonical';
 import { validateProgram } from '../lib/circuit';
+import { debounce } from '../lib/debounce';
 import { validateDesign } from '../lib/design';
+import { record, redo as redoHistory, undo as undoHistory } from '../lib/history';
+import type { Preset } from '../lib/library';
+import { readSavedWorkspace, writeSavedWorkspace, type SavedWorkspace } from '../lib/persist';
+import { decodeShare, encodeShare, shareUrl, ShareError } from '../lib/share';
+import { sameSnapshot, type Snapshot } from '../lib/snapshot';
 import type { CandidateDesign, ExperimentProfile, JobKind, Program, ProgramTarget } from '../lib/types';
 import {
   dataSource,
   getState,
   isReplayBuild,
   setState,
+  snapshotOf,
+  subscribe,
   updateRun,
   workspaceInputs,
+  type AppState,
   type Run,
   type View,
 } from './store';
@@ -26,29 +35,214 @@ export function setView(view: View): void {
   }
 }
 
-export function setDesign(design: CandidateDesign): void {
-  setState({ design });
+/**
+ * Who changed the workspace: the user (editors, presets, imports), a share
+ * link, or a story step. Story changes never count as user edits. When a
+ * story step or a share link replaces user edits, those edits are kept in
+ * `replaced` (and saved with the workspace) so they can be restored.
+ */
+export type Origin = 'user' | 'story' | 'shared';
+
+/** `replaced.by` for edits a share link replaced. */
+export const SHARED_LINK = 'A shared link';
+
+export interface EditOptions {
+  origin?: Origin;
+  /** Edits in the same group within a short burst form one undo step; null always starts a new step. */
+  group?: string | null;
+  /** Names the story step in the "replaced" notice. */
+  label?: string;
 }
 
-export function setProgram(program: Program | null): void {
-  setState({ program });
+function commit(next: Snapshot, { origin = 'user', group = null, label }: EditOptions = {}): void {
+  const s = getState();
+  const before = snapshotOf(s);
+  if (sameSnapshot(before, next)) return;
+  const patch: Partial<AppState> = {
+    design: next.design,
+    program: next.program,
+    target: next.target,
+    history: record(s.history, before, Date.now(), group),
+  };
+  if (origin === 'story') {
+    if (s.dirty) patch.replaced = { inputs: before, by: label ?? 'A story step' };
+    patch.dirty = false;
+  } else if (origin === 'shared') {
+    // The shared inputs become the user's workspace; earlier edits stay restorable.
+    if (s.dirty) patch.replaced = { inputs: before, by: label ?? SHARED_LINK };
+    patch.dirty = true;
+  } else {
+    patch.dirty = true;
+  }
+  setState(patch);
 }
 
-export function setTarget(target: ProgramTarget): void {
-  setState({ target });
+/**
+ * Replaces the design. `group` names what is being edited (for example one
+ * matrix cell) so a burst of keystrokes there is one undo step; pass null
+ * for a discrete change such as a paste.
+ */
+export function setDesign(design: CandidateDesign, options: { origin?: Origin; group?: string | null } = {}): void {
+  const group = options.group === undefined ? 'design' : options.group;
+  commit({ ...snapshotOf(getState()), design }, { origin: options.origin, group });
+}
+
+export function setProgram(program: Program | null, origin: Origin = 'user'): void {
+  commit({ ...snapshotOf(getState()), program }, { origin, group: program ? 'program' : null });
+}
+
+export function setTarget(target: ProgramTarget, origin: Origin = 'user'): void {
+  commit({ ...snapshotOf(getState()), target }, { origin });
 }
 
 export function setHighlight(highlight: number[]): void {
   setState({ highlight });
 }
 
-/** Loads structured inputs into the workspace (used by story steps and imports). */
-export function loadInputs(inputs: { design: CandidateDesign; program: Program | null; target?: ProgramTarget }): void {
-  setState({
-    design: inputs.design,
-    program: inputs.program,
-    target: inputs.target ?? (inputs.design.field === 'gf256' ? 'matrix' : 'external'),
+/** Loads structured inputs into the workspace (story steps, presets, imports, share links). Always one undo step. */
+export function loadInputs(
+  inputs: { design: CandidateDesign; program: Program | null; target?: ProgramTarget },
+  options: Omit<EditOptions, 'group'> = {},
+): void {
+  commit(
+    {
+      design: inputs.design,
+      program: inputs.program,
+      target: inputs.target ?? (inputs.design.field === 'gf256' ? 'matrix' : 'external'),
+    },
+    { ...options, group: null },
+  );
+}
+
+export function announce(text: string): void {
+  setState((s) => ({ announcement: { text, n: s.announcement.n + 1 } }));
+}
+
+export function applyPreset(preset: Preset): void {
+  loadInputs(preset.apply(snapshotOf(getState())));
+  announce(`Loaded ${preset.label}. Undo restores the previous inputs.`);
+}
+
+export function undo(): boolean {
+  const s = getState();
+  const r = undoHistory(s.history, snapshotOf(s));
+  if (!r) return false;
+  setState({ ...r.value, history: r.history, dirty: true });
+  announce('Undone.');
+  return true;
+}
+
+export function redo(): boolean {
+  const s = getState();
+  const r = redoHistory(s.history, snapshotOf(s));
+  if (!r) return false;
+  setState({ ...r.value, history: r.history, dirty: true });
+  announce('Redone.');
+  return true;
+}
+
+/** Brings back the edits a story step replaced. */
+export function restoreReplaced(): void {
+  const r = getState().replaced;
+  if (!r) return;
+  loadInputs(r.inputs);
+  setState({ replaced: undefined });
+  announce('Your earlier workspace is back.');
+}
+
+export function dismissReplaced(): void {
+  setState({ replaced: undefined });
+}
+
+export function clearNotice(): void {
+  setState({ notice: undefined });
+}
+
+/* ---------------- persistence ---------------- */
+
+function browserStorage(): Storage | null {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function savedOf(s: AppState): SavedWorkspace {
+  return { inputs: snapshotOf(s), dirty: s.dirty, ...(s.replaced ? { replaced: s.replaced } : {}) };
+}
+
+/** Restores the workspace saved in this browser, if any. */
+export function restoreWorkspace(storage: Pick<Storage, 'getItem'> | null = browserStorage()): boolean {
+  const saved = readSavedWorkspace(storage);
+  if (!saved) return false;
+  // What is on screen now is what this browser holds, so the toolbar can say it is saved.
+  setState({ ...saved.inputs, dirty: saved.dirty, replaced: saved.replaced, storage: 'saved' });
+  return true;
+}
+
+/** Saves the workspace 300 ms after each change, and when the page is hidden. Returns a stop function. */
+export function startPersistence(storage: Pick<Storage, 'getItem' | 'setItem'> | null = browserStorage()): () => void {
+  const save = debounce((w: SavedWorkspace) => {
+    const ok = writeSavedWorkspace(storage, w);
+    const status = ok ? 'saved' : 'unavailable';
+    if (getState().storage !== status) setState({ storage: status });
+  }, 300);
+  let last = getState();
+  const unsubscribe = subscribe(() => {
+    const s = getState();
+    if (
+      s.design === last.design &&
+      s.program === last.program &&
+      s.target === last.target &&
+      s.dirty === last.dirty &&
+      s.replaced === last.replaced
+    ) {
+      return;
+    }
+    last = s;
+    save.call(savedOf(s));
   });
+  const flush = () => save.flush();
+  if (typeof window !== 'undefined') window.addEventListener('pagehide', flush);
+  return () => {
+    unsubscribe();
+    save.flush();
+    if (typeof window !== 'undefined') window.removeEventListener('pagehide', flush);
+  };
+}
+
+/* ---------------- share links ---------------- */
+
+/** A link that opens the workspace with the current design and circuit. */
+export async function makeShareLink(): Promise<string> {
+  const token = await encodeShare(snapshotOf(getState()));
+  return shareUrl(window.location.href.split('#')[0]!, token);
+}
+
+/** Loads the inputs a share link carries; on failure the workspace is left alone and a notice says why. */
+export async function openShareLink(token: string): Promise<void> {
+  try {
+    const inputs = await decodeShare(token);
+    const before = getState();
+    loadInputs(inputs, { origin: 'shared' });
+    const after = getState();
+    if (after.history === before.history) {
+      setState({ notice: undefined });
+      announce('The shared link holds the inputs already in your workspace.');
+      return;
+    }
+    // With edits kept, the "Restore my edits" banner says what happened; otherwise a notice offers Undo.
+    setState({
+      notice:
+        after.replaced && after.replaced !== before.replaced
+          ? undefined
+          : { kind: 'info', text: 'Loaded the design and circuit from a shared link. Undo returns to your previous workspace.' },
+    });
+  } catch (e) {
+    const why = e instanceof ShareError ? e.message : 'The link could not be read.';
+    setState({ notice: { kind: 'error', text: `This share link could not be opened. ${why} Your workspace is unchanged.` } });
+  }
 }
 
 export function inputProblems(inputs: WorkspaceInputs): string[] {
