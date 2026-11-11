@@ -12,18 +12,24 @@ inputs:
     description: >-
       Design or request files, or patterns (*, ?, [..], **), relative to working-directory and
       separated by spaces or new lines. A request file may hold "design", "program" and "target".
-    required: true
+      Leave it empty to take the inputs, the policy and the claim scope from the nearest
+      cryptificate.json (working-directory or a parent), as cryptificate init writes it.
+    default: ""
   fail-on:
-    description: "Claim statuses that fail the job: none, refuted, not-established or any."
-    default: refuted
+    description: >-
+      Claim statuses that fail the job: none, refuted, not-established or any. Empty: refuted, or
+      the failOn of cryptificate.json when inputs is empty and the file sets one.
+    default: ""
   claims:
-    description: Comma-separated claim ids the policy is restricted to (default every claim the run attempts). An unknown id, or an id an input's report does not carry, fails the job with exit status 2.
+    description: Comma-separated claim ids the policy is restricted to (default the claims of cryptificate.json when inputs is empty, otherwise every claim the run attempts). An unknown id, or an id an input's report does not carry, fails the job with exit status 2.
     default: ""
   target:
     description: "Circuit target for every input: matrix, external or internal (default from each file)."
     default: ""
   working-directory:
-    description: Directory the input patterns and output paths are relative to.
+    description: >-
+      Directory the input patterns are relative to and the command runs in. The SARIF file
+      locations are relative to the repository root ($GITHUB_WORKSPACE) whatever it is.
     default: "."
   upload-sarif:
     description: Upload the SARIF log to GitHub code scanning (needs the security-events write permission).
@@ -205,21 +211,34 @@ runs:
         set -f
         read -r -d '' -a patterns <<< "$INPUT_PATTERNS" || true
         set +f
-        args=(check "${patterns[@]}" --fail-on "$INPUT_FAIL_ON" --format json --output "$out/result.json" --bundle-dir "$out/bundles")
+        # Without inputs, check reads cryptificate.json; its format, output and bundleDir
+        # are replaced by the result files below.
+        args=(check "${patterns[@]}" --format json --output "$out/result.json" --bundle-dir "$out/bundles")
+        if [ -n "$INPUT_FAIL_ON" ]; then
+          args+=(--fail-on "$INPUT_FAIL_ON")
+        elif [ "${#patterns[@]}" -gt 0 ]; then
+          args+=(--fail-on refuted)
+        fi
         [ -n "$INPUT_CLAIMS" ] && args+=(--claims "$INPUT_CLAIMS")
         [ -n "$INPUT_TARGET" ] && args+=(--target "$INPUT_TARGET")
         [ "$INPUT_STEP_SUMMARY" = "true" ] || args+=(--no-step-summary)
         [ "$INPUT_PROOF_CACHE" = "true" ] || args+=(--no-cache)
-        node "$cli" "${args[@]}"
-        code=$?
+        # Actions runs bash with -e: keep going when check exits 1 or 2.
+        code=0
+        node "$cli" "${args[@]}" || code=$?
         outcome=error
         [ "$code" -eq 0 ] && outcome=pass
         [ "$code" -eq 1 ] && outcome=policy-failure
         sarif=""
         if [ -f "$out/result.json" ]; then
-          node "$cli" report "$out/result.json" --format sarif --output "$out/cryptificate.sarif" --no-step-summary > /dev/null
-          node "$cli" report "$out/result.json" --format junit --output "$out/cryptificate.junit.xml" --no-step-summary > /dev/null
-          node "$cli" report "$out/result.json" --format html --output "$out/cryptificate.html" --no-step-summary > /dev/null
+          if grep -q '^  "failOn": "none",' "$out/result.json"; then
+            echo "::warning::Cryptificate: the policy is none, so no claim status fails this job. Set fail-on, or failOn in cryptificate.json."
+          fi
+          # report exits with the recorded policy's status; the files are written either way.
+          # The SARIF file locations are relative to the repository root, as code scanning reads them.
+          node "$cli" report "$out/result.json" --format sarif --output "$out/cryptificate.sarif" --uri-base "${GITHUB_WORKSPACE:-$PWD}" --no-step-summary > /dev/null || true
+          node "$cli" report "$out/result.json" --format junit --output "$out/cryptificate.junit.xml" --no-step-summary > /dev/null || true
+          node "$cli" report "$out/result.json" --format html --output "$out/cryptificate.html" --no-step-summary > /dev/null || true
           [ -f "$out/cryptificate.sarif" ] && sarif="$out/cryptificate.sarif"
         fi
         {

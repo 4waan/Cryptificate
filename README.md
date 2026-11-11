@@ -34,6 +34,17 @@ git clone https://github.com/4waan/Cryptificate && cd Cryptificate && npm start
 
 `npm start` installs anything missing on the first run (the pinned Lean toolchain, the Mathlib cache, the Rust engine and the workbench), starts the local service and opens the workbench at `http://127.0.0.1:4173`. Every later `npm start` opens it in seconds. Then pick a step of the guided story, or open **Workspace**, type a matrix and press **Check design and circuit**.
 
+**In your own repository**, once the checkout above is set up:
+
+```sh
+alias cryptificate="node $PWD/apps/server/dist/src/cli.js"   # in the Cryptificate checkout
+cd ~/src/my-cipher && cryptificate init    # asks for the model, a starting design and the policy
+cryptificate doctor                        # lists anything missing, with the command that fixes it
+cryptificate check                         # applies cryptificate.json
+```
+
+`init` writes `cryptificate.json` (inputs, policy and claim scope), a starting design under `cryptificate/designs/` and `.github/workflows/cryptificate.yml`, which runs the same check on pull requests with the [GitHub Action](docs/ci.md) and uploads the result to code scanning. It never overwrites a file without `--force`; `--yes` (or no terminal) takes the defaults, and `--model`, `--preset`, `--circuit`, `--fail-on` and `--ci` answer the questions from the command line.
+
 ## Who it is for
 
 | You are | You use Cryptificate to |
@@ -205,7 +216,7 @@ For an audit or a pull request, `npx cryptificate report <bundle> --format html 
     fail-on: refuted
 ```
 
-The action at the repository root installs the pinned Lean toolchain, fetches the Mathlib cache, builds the engine and the command, runs the check, uploads the SARIF log to code scanning, where each refuted claim points at its line in your file and carries its counterexample, and uploads one evidence bundle per input as an artifact. The options, the policy scope and the exit codes are in [docs/ci.md](docs/ci.md).
+`cryptificate init` writes such a workflow, with the inputs, the policy and the claim scope kept in `cryptificate.json`; `cryptificate check` and the action read that file when they are given no inputs. The action at the repository root installs the pinned Lean toolchain, fetches the Mathlib cache, builds the engine and the command, runs the check, uploads the SARIF log to code scanning, where each refuted claim points at its line in your file and carries its counterexample, and uploads one evidence bundle per input as an artifact. The options, the policy scope and the exit codes are in [docs/ci.md](docs/ci.md).
 
 ## Architecture
 
