@@ -45,6 +45,9 @@ pub const fn word_bytes(field: FieldKind) -> usize {
     match field {
         FieldKind::Gf256 => 1,
         FieldKind::Bn254 => 32,
+        // Never reached: requests name their field through
+        // `input::field_at`, which admits gf256 and bn254 only.
+        _ => panic!("native measurement covers gf256 and bn254 only"),
     }
 }
 
@@ -63,6 +66,7 @@ pub fn layout_description(field: FieldKind, width: usize) -> String {
             "{width} BN254 Fr values per column ({} bytes), each in arkworks' in-memory form: four little-endian u64 limbs in Montgomery form; buffers aligned to at least 8 bytes",
             column_bytes(field, width)
         ),
+        other => format!("{other}: no native layout (native measurement covers gf256 and bn254)"),
     }
 }
 
@@ -153,6 +157,7 @@ fn header<F: Field>(out: &mut String, id: &str, p: &Program<F>, identity: &str) 
     let field = match F::KIND {
         FieldKind::Gf256 => "GF(2^8)",
         FieldKind::Bn254 => "BN254 Fr",
+        other => other.as_str(),
     };
     let _ = writeln!(out, "//! Native variant `{id}` ({CODEGEN_VERSION}).");
     let _ = writeln!(out, "//!");

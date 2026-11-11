@@ -128,16 +128,27 @@ pub fn bool_at(v: &Value, path: &str) -> Result<bool> {
     })
 }
 
-/// A field name, `"gf256"` or `"bn254"`.
+/// A field name, `"gf256"` or `"bn254"`: the fields that circuits, the
+/// search and native measurement cover. The fields of `hades/prime/v1` are
+/// rejected here, so no other field reaches the search or the native harness.
 pub fn field_at(v: &Value, path: &str) -> Result<FieldKind> {
     let s = str_at(v, path)?;
-    FieldKind::parse(s).ok_or_else(|| {
-        err(
+    match FieldKind::parse(s) {
+        Some(f @ (FieldKind::Gf256 | FieldKind::Bn254)) => Ok(f),
+        Some(f) => Err(err(
+            ErrorCode::FieldMismatch,
+            path,
+            format!(
+                "field {f} is not supported here: circuits, the search and native measurement \
+                 cover gf256 and bn254 only"
+            ),
+        )),
+        None => Err(err(
             ErrorCode::FieldMismatch,
             path,
             format!("unknown field {s:?} (expected gf256 or bn254)"),
-        )
-    })
+        )),
+    }
 }
 
 /// A width that the field supports (experimental GF(2^8) widths included).
@@ -175,7 +186,7 @@ fn element_at<F: Field>(v: &Value, path: &str) -> Result<F> {
     F::decode(s).map_err(|e| {
         let code = match F::KIND {
             FieldKind::Gf256 => ErrorCode::InvalidByte,
-            FieldKind::Bn254 => ErrorCode::ValueNotCanonical,
+            _ => ErrorCode::ValueNotCanonical,
         };
         err(code, path, e.reason)
     })
@@ -218,6 +229,13 @@ pub fn matrix_at(v: &Value, path: &str, field: FieldKind, width: usize) -> Resul
     Ok(match field {
         FieldKind::Gf256 => AnyMatrix::Gf256(square_at::<Gf256>(v, path, width)?),
         FieldKind::Bn254 => AnyMatrix::Bn254(square_at::<Bn254>(v, path, width)?),
+        other => {
+            return Err(err(
+                ErrorCode::FieldMismatch,
+                path,
+                format!("matrices over field {other} are not supported here (gf256 or bn254 only)"),
+            ))
+        }
     })
 }
 
@@ -278,6 +296,7 @@ pub fn encode_matrix(m: &AnyMatrix) -> Vec<Vec<String>> {
     match m {
         AnyMatrix::Gf256(m) => enc(m),
         AnyMatrix::Bn254(m) => enc(m),
+        AnyMatrix::Prime(_, m) => enc(m),
     }
 }
 
@@ -286,6 +305,7 @@ pub fn matrix_field(m: &AnyMatrix) -> FieldKind {
     match m {
         AnyMatrix::Gf256(_) => FieldKind::Gf256,
         AnyMatrix::Bn254(_) => FieldKind::Bn254,
+        AnyMatrix::Prime(..) => FieldKind::Prime,
     }
 }
 
@@ -294,6 +314,7 @@ pub fn matrix_width(m: &AnyMatrix) -> usize {
     match m {
         AnyMatrix::Gf256(m) => m.len(),
         AnyMatrix::Bn254(m) => m.len(),
+        AnyMatrix::Prime(_, m) => m.len(),
     }
 }
 
@@ -346,6 +367,17 @@ mod tests {
         assert_eq!(e.code, ErrorCode::BadReference);
         assert_eq!(e.path, "/program/instructions/0/b");
         let e = program_at(&p, "/program", FieldKind::Bn254, 3).unwrap_err();
+        assert_eq!(e.code, ErrorCode::FieldMismatch);
+    }
+
+    #[test]
+    fn prime_profile_fields_are_rejected() {
+        for f in ["babybear", "koalabear", "mersenne31", "goldilocks", "prime"] {
+            let e = field_at(&json!(f), "/field").unwrap_err();
+            assert_eq!(e.code, ErrorCode::FieldMismatch, "{f}");
+            assert!(e.message.contains("gf256 and bn254 only"), "{}", e.message);
+        }
+        let e = matrix_at(&json!([["1"]]), "/m", FieldKind::Goldilocks, 1).unwrap_err();
         assert_eq!(e.code, ErrorCode::FieldMismatch);
     }
 }
