@@ -30,6 +30,9 @@ arrays that pass three Boolean checks the kernel can evaluate, and then for AES.
 
 `aes_like_encrypt_activity_bound_of_checks` is the activity bound under these three checks; a
 concrete design is then an instance, with each check closed by `decide +kernel`.
+`aes_like_encrypt_with_last_round_activity_bound_of_checks` is the same for
+`aes_like.encrypt_with_last_round`, whose last round has no column mixing and ends with a
+final key.
 
 ## AES
 
@@ -45,8 +48,18 @@ encodings and with WideTrail's algebraic `AES.sbox` (through `aes_sbox_eq_table`
 `r` of them, the executions of `aes_like.encrypt` with these arrays have at least
 `activityBound r` S-boxes with different inputs over the first `r` rounds; `_exists` also
 says that those executions return normally. For `r = 10` the bound is `55`
-(`aes_rust_activity_bound_10`), for `r = 4` it is `25` (`aes_rust_activity_bound_4`). The
-model has no special last round, as in `aes_like.rs`.
+(`aes_rust_activity_bound_10`), for `r = 4` it is `25` (`aes_rust_activity_bound_4`). Every
+round of `aes_like.encrypt` has the four steps, so these are about rounds without the special
+last round.
+
+`aes_rust_cipher_activity_bound` is the same for `aes_like.encrypt_with_last_round`, whose last
+round is the AES final round (no `MixColumns`, then the last key): for any two different
+inputs and at least `r + 1` keys the executions return normally, their outputs are
+`aesLikeCipher` with the AES matrix, offsets and WideTrail's `AES.sbox`, and the `r` rounds of
+that cipher, its final round included, have at least `activityBound r` active S-boxes. For
+`r = 10` (eleven keys, the AES-128 data path) the bound is `55`
+(`aes_rust_cipher_activity_bound_10`). The keys are arbitrary: the AES-128 key expansion is
+one choice, and it is not modelled here.
 -/
 
 set_option autoImplicit false
@@ -209,6 +222,31 @@ theorem aes_like_encrypt_activity_bound_of_checks (m : Std.Array U8 16#usize)
     (table_injective_of_sboxOf_injective (sboxOf_injective_of_tableCovers ht))
     x y (fun h => hxy (stateOf_injective h)) r hr outX outY hX hY
 
+/-- **The activity bound for the Rust kernel with the final round, for every design that
+passes the checks.** Under the three checks of `aes_like_encrypt_activity_bound_of_checks`,
+for any two different input arrays and at least `r + 1` round keys,
+`aes_like.encrypt_with_last_round` returns normally, its outputs read as `aesLikeCipher`
+(`r - 1` rounds, then the final round without column mixing), and over the `r` rounds of that
+cipher, its final round included, at least `activityBound r` S-boxes see different inputs. -/
+theorem aes_like_encrypt_with_last_round_activity_bound_of_checks (m : Std.Array U8 16#usize)
+    (o : Std.Array U8 4#usize) (t : Std.Array U8 256#usize) (ks : Slice (Std.Array U8 16#usize))
+    (hM : minors4Ok (matrixOf m) = true) (hoff : offsetsDistinct o = true)
+    (ht : tableCovers t = true)
+    (x y : Std.Array U8 16#usize) (hxy : x ≠ y) (r : Usize) (hr : r.val < ks.length) :
+    ∃ outX outY : Std.Array U8 16#usize,
+      aes_like.encrypt_with_last_round x m o t ks r = ok outX ∧
+      aes_like.encrypt_with_last_round y m o t ks r = ok outY ∧
+      stateOf outX =
+        aesLikeCipher (matrixOf m) (offsetsOf o) (sboxOf t) (keysOf ks) (stateOf x) r.val ∧
+      stateOf outY =
+        aesLikeCipher (matrixOf m) (offsetsOf o) (sboxOf t) (keysOf ks) (stateOf y) r.val ∧
+      activityBound r.val ≤ aesLikeCipherActiveSboxes (matrixOf m) (offsetsOf o) (sboxOf t)
+        (keysOf ks) r.val (stateOf x) (stateOf y) :=
+  aes_like_encrypt_with_last_round_activity_bound m o t ks (isMDS_of_minors4Ok _ hM)
+    (diffusionOptimal_of_offsetsDistinct hoff)
+    (table_injective_of_sboxOf_injective (sboxOf_injective_of_tableCovers ht))
+    x y (fun h => hxy (stateOf_injective h)) r hr
+
 /-- With at least `r` round keys, `aes_like.encrypt` returns normally for every number of
 rounds below `r`: there is a sequence of outputs `out` with
 `aes_like.encrypt x m o t ks n = ok (out n)`. -/
@@ -363,8 +401,8 @@ theorem aes_rust_activity_bound_exists (ks : Slice (Std.Array U8 16#usize))
   exact ⟨outX, outY, hX, hY, aes_rust_activity_bound ks x y hxy r hr outX outY hX hY⟩
 
 /-- **Ten rounds of AES (without the special last round) activate at least `55` S-boxes**, in
-the executions of the Rust kernel, for any two different inputs and any ten or more round
-keys. -/
+the executions of the Rust kernel `aes_like.encrypt`, for any two different inputs and any ten
+or more round keys. -/
 theorem aes_rust_activity_bound_10 (ks : Slice (Std.Array U8 16#usize))
     (x y : Std.Array U8 16#usize) (hxy : x ≠ y) (hr : 10 ≤ ks.length) :
     ∃ outX outY : ℕ → Std.Array U8 16#usize,
@@ -392,5 +430,55 @@ theorem aes_rust_activity_bound_4 (ks : Slice (Std.Array U8 16#usize))
           stateOf (outX n) p + keysOf ks n p ≠ stateOf (outY n) p + keysOf ks n p).card := by
   have hb : activityBound 4 = 25 := rfl
   simpa only [hb] using aes_rust_activity_bound_exists ks x y hxy 4 hr
+
+/-! ### AES with its final round -/
+
+/-- **AES with its final round, from the Rust source, with no design hypothesis.** For any two
+different input states `x ≠ y` and any round keys `ks`, at least `r + 1` of them,
+`aes_like.encrypt_with_last_round` with the AES matrix, offsets and S-box table returns
+normally; its outputs are the AES-like cipher of the main Lean package with the AES matrix,
+the offsets `0, 1, 2, 3` and WideTrail's `AES.sbox` (`r - 1` full rounds, then the final round
+without `MixColumns` and the last key addition); and over the `r` rounds of that cipher, its
+final round included, at least `activityBound r` S-boxes see different inputs. -/
+theorem aes_rust_cipher_activity_bound (ks : Slice (Std.Array U8 16#usize))
+    (x y : Std.Array U8 16#usize) (hxy : x ≠ y) (r : Usize) (hr : r.val < ks.length) :
+    ∃ outX outY : Std.Array U8 16#usize,
+      aes_like.encrypt_with_last_round x aesMatrixBytes aesOffsetBytes aesSboxBytes ks r
+        = ok outX ∧
+      aes_like.encrypt_with_last_round y aesMatrixBytes aesOffsetBytes aesSboxBytes ks r
+        = ok outY ∧
+      stateOf outX = aesLikeCipher (gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (offsets4 0 1 2 3)
+        AES.sbox (keysOf ks) (stateOf x) r.val ∧
+      stateOf outY = aesLikeCipher (gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (offsets4 0 1 2 3)
+        AES.sbox (keysOf ks) (stateOf y) r.val ∧
+      activityBound r.val ≤ aesLikeCipherActiveSboxes (gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2)
+        (offsets4 0 1 2 3) AES.sbox (keysOf ks) r.val (stateOf x) (stateOf y) := by
+  have h := aes_like_encrypt_with_last_round_activity_bound_of_checks aesMatrixBytes
+    aesOffsetBytes aesSboxBytes ks aesMatrixBytes_minors4Ok aesOffsetBytes_distinct
+    aesSboxBytes_covers x y hxy r hr
+  rwa [matrixOf_aesMatrixBytes, offsetsOf_aesOffsetBytes, sboxOf_aesSboxBytes] at h
+
+/-- **Ten rounds of AES with its final round activate at least `55` S-boxes**, in the
+executions of the Rust kernel `aes_like.encrypt_with_last_round`, for any two different
+inputs and any eleven or more round keys. With the AES-128 key expansion as the keys, the
+outputs are AES-128 ciphertexts; the theorem holds for every key sequence and does not model
+the key expansion. -/
+theorem aes_rust_cipher_activity_bound_10 (ks : Slice (Std.Array U8 16#usize))
+    (x y : Std.Array U8 16#usize) (hxy : x ≠ y) (hr : 11 ≤ ks.length) :
+    ∃ outX outY : Std.Array U8 16#usize,
+      aes_like.encrypt_with_last_round x aesMatrixBytes aesOffsetBytes aesSboxBytes ks 10#usize
+        = ok outX ∧
+      aes_like.encrypt_with_last_round y aesMatrixBytes aesOffsetBytes aesSboxBytes ks 10#usize
+        = ok outY ∧
+      stateOf outX = aesLikeCipher (gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (offsets4 0 1 2 3)
+        AES.sbox (keysOf ks) (stateOf x) 10 ∧
+      stateOf outY = aesLikeCipher (gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (offsets4 0 1 2 3)
+        AES.sbox (keysOf ks) (stateOf y) 10 ∧
+      55 ≤ aesLikeCipherActiveSboxes (gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2)
+        (offsets4 0 1 2 3) AES.sbox (keysOf ks) 10 (stateOf x) (stateOf y) := by
+  have hv : (10#usize).val = 10 := rfl
+  have hb : activityBound 10 = 55 := rfl
+  have h := aes_rust_cipher_activity_bound ks x y hxy 10#usize (by rw [hv]; omega)
+  rwa [hv, hb] at h
 
 end Cryptificate.Refinement

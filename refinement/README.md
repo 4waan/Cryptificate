@@ -7,8 +7,9 @@ This Lean package connects Rust code to WideTrail's mathematics through the chai
    pure Lean program (`Extracted/`). Every function returns a `Result`; a Rust panic
    (overflow, out-of-range shift or index) becomes a failure;
 3. **Executable mathematical model**: WideTrail's `GF256.xtime` and `GF256.rawMul` on
-   `BitVec 8`, and the AES-like execution model `aesLikeRound` / `aesLikeExec` of the main Lean
-   package (`lean/Cryptificate/Bridge.lean`) over WideTrail's field `GF256`;
+   `BitVec 8`, and the AES-like execution model `aesLikeRound` / `aesLikeExec`, with the AES
+   final round `aesLikeFinalRound` / `aesLikeCipher`, of the main Lean package
+   (`lean/Cryptificate/Bridge.lean`) over WideTrail's field `GF256`;
 4. **Named properties**: WideTrail's field laws for `GF256`, and the wide-trail active-S-box bound.
 
 `STATUS.md` lists, link by link, what is proved, what is trusted and what is not established,
@@ -21,7 +22,8 @@ theorems (statement, axioms, toolchain pins, SHA-256 of the Rust sources they co
 | --- | --- | --- | --- |
 | `crates/kernels/src/gf256.rs`: `xtime`, `add`, `mul` | `Extracted/CryptificateKernels.lean` | `Refinement/GF256.lean` | `gf256_mul_refines`, `gf256_xtime_refines`, `gf256_add_refines`, `*_field`, field laws |
 | `crates/kernels/src/aes_like.rs`: `round`, `encrypt` (design as runtime data) | `Extracted/CryptificateKernels.lean` | `Refinement/AesLike.lean` | `aes_like_round_refines`, `aes_like_encrypt_refines`, `aes_like_encrypt_activity_bound` |
-| the same, with the design checked on its bytes; AES | `Extracted/CryptificateKernels.lean` | `Refinement/AesConcrete.lean` | `aes_like_encrypt_activity_bound_of_checks`, `aes_rust_activity_bound`, `aes_rust_activity_bound_10` (`≥ 55`), `aes_rust_activity_bound_4` (`≥ 25`) |
+| the same file: `final_round`, `encrypt_with_last_round` (last round without column mixing, then a final key) | `Extracted/CryptificateKernels.lean` | `Refinement/AesLike.lean` | `aes_like_final_round_refines`, `aes_like_encrypt_with_last_round_refines`, `aes_like_encrypt_with_last_round_activity_bound` |
+| the same, with the design checked on its bytes; AES | `Extracted/CryptificateKernels.lean` | `Refinement/AesConcrete.lean` | `aes_like_encrypt_activity_bound_of_checks`, `aes_rust_activity_bound`, `aes_rust_activity_bound_10` (`≥ 55`), `aes_rust_activity_bound_4` (`≥ 25`); with the final round `aes_like_encrypt_with_last_round_activity_bound_of_checks`, `aes_rust_cipher_activity_bound`, `aes_rust_cipher_activity_bound_10` (`≥ 55`) |
 | gf256 crate 0.3.1, `0x11B`, `no-tables`, `no-xmul`: `mul` (expanded source) | `Extracted/Gf256Aes.lean` | `Refinement/Gf256Crate.lean` | `gf256crate_mul_refines`, `gf256crate_mul_eq_kernels` |
 | BN254 `Fr` (arkworks) | fails in Aeneas (`bn254-probe/`) | none | not established |
 
