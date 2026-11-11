@@ -45,7 +45,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "theorems": [
         "Cryptificate.Refinement.gf256_xtime_refines",
@@ -62,11 +62,11 @@
       "appliesTo": {
         "model": "aes-like/gf256/v1"
       },
-      "specification": "Cryptificate.aesLikeRound and Cryptificate.aesLikeExec of the main Lean package (lean/Cryptificate/Bridge.lean) over WideTrail GF256",
+      "specification": "Cryptificate.aesLikeRound, Cryptificate.aesLikeExec, and the final-round variant Cryptificate.aesLikeFinalRound and Cryptificate.aesLikeCipher, of the main Lean package (lean/Cryptificate/Bridge.lean) over WideTrail GF256",
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -76,7 +76,7 @@
       "rustSources": [
         {
           "path": "crates/kernels/src/aes_like.rs",
-          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
         },
         {
           "path": "crates/kernels/src/gf256.rs",
@@ -89,14 +89,141 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "theorems": [
         "Cryptificate.Refinement.aes_like_round_refines",
         "Cryptificate.Refinement.aes_like_round_eq",
         "Cryptificate.Refinement.aes_like_encrypt_refines",
         "Cryptificate.Refinement.aes_like_encrypt_eq",
-        "Cryptificate.Refinement.aes_like_encrypt_activity_bound"
+        "Cryptificate.Refinement.aes_like_encrypt_activity_bound",
+        "Cryptificate.Refinement.aes_like_final_round_refines",
+        "Cryptificate.Refinement.aes_like_final_round_eq",
+        "Cryptificate.Refinement.aes_like_encrypt_with_last_round_refines",
+        "Cryptificate.Refinement.aes_like_encrypt_with_last_round_eq",
+        "Cryptificate.Refinement.aes_like_encrypt_with_last_round_activity_bound"
+      ]
+    },
+    {
+      "id": "aes-like-checked",
+      "title": "Active-S-box bound of the AES-like kernel of crates/kernels for any design, conditionally on three kernel-evaluable checks on its bytes",
+      "appliesTo": {
+        "model": "aes-like/gf256/v1"
+      },
+      "specification": "Cryptificate.activityBound and the active-S-box count of the main Lean package, with the design checks minors4Ok (canonical minors), distinct offsets and a byte table covering every value as hypotheses",
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "theorems": [
+        "Cryptificate.Refinement.sboxOf_injective_iff",
+        "Cryptificate.Refinement.sboxOf_injective_of_tableCovers",
+        "Cryptificate.Refinement.aes_like_encrypt_activity_bound_of_checks",
+        "Cryptificate.Refinement.aes_like_encrypt_with_last_round_activity_bound_of_checks"
+      ]
+    },
+    {
+      "id": "aes-like-aes",
+      "title": "Active-S-box bound of the AES-like kernel of crates/kernels for AES, with no design hypothesis",
+      "appliesTo": {
+        "model": "aes-like/gf256/v1",
+        "design": "AES: MixColumns [02 03 01 01 / 01 02 03 01 / 01 01 02 03 / 03 01 01 02] row-major, ShiftRows offsets [0 1 2 3], FIPS 197 S-box table"
+      },
+      "specification": "Cryptificate.activityBound and the active-S-box count of the main Lean package for the byte arrays aesMatrixBytes, aesOffsetBytes and aesSboxBytes, identified with the main package encodings gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2, offsets4 0 1 2 3 and the FIPS 197 table aesSboxTable, equal to WideTrail AES.sbox",
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "theorems": [
+        "Cryptificate.Refinement.matrixOf_aesMatrixBytes",
+        "Cryptificate.Refinement.offsetsOf_aesOffsetBytes",
+        "Cryptificate.Refinement.sboxOf_aesSboxBytes",
+        "Cryptificate.Refinement.aes_rust_activity_bound",
+        "Cryptificate.Refinement.aes_rust_activity_bound_exists",
+        "Cryptificate.Refinement.aes_rust_activity_bound_10",
+        "Cryptificate.Refinement.aes_rust_activity_bound_4",
+        "Cryptificate.Refinement.aes_rust_cipher_activity_bound",
+        "Cryptificate.Refinement.aes_rust_cipher_activity_bound_10"
       ]
     },
     {
@@ -145,7 +272,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "theorems": [
         "Cryptificate.Refinement.BN254Mont.bn254_mont_mul_refines",
@@ -184,7 +311,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -220,7 +347,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -257,7 +384,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -294,7 +421,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -330,7 +457,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -367,7 +494,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -395,7 +522,7 @@
       "rustSources": [
         {
           "path": "crates/kernels/src/aes_like.rs",
-          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
         },
         {
           "path": "crates/kernels/src/gf256.rs",
@@ -408,12 +535,12 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -445,7 +572,7 @@
       "rustSources": [
         {
           "path": "crates/kernels/src/aes_like.rs",
-          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
         },
         {
           "path": "crates/kernels/src/gf256.rs",
@@ -458,12 +585,12 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -497,7 +624,7 @@
       "rustSources": [
         {
           "path": "crates/kernels/src/aes_like.rs",
-          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
         },
         {
           "path": "crates/kernels/src/gf256.rs",
@@ -510,12 +637,12 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -549,7 +676,7 @@
       "rustSources": [
         {
           "path": "crates/kernels/src/aes_like.rs",
-          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
         },
         {
           "path": "crates/kernels/src/gf256.rs",
@@ -562,12 +689,12 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -596,13 +723,13 @@
       ],
       "extraAxioms": [],
       "hypotheses": [
-        "IsMDS (matrixOf m), DiffusionOptimal offsets and an S-box table without repeated entries are hypotheses, not proved here; the main package proves them per design on Lean v4.33.1, and a certificate is not combined with this theorem in one Lean environment",
+        "IsMDS (matrixOf m), DiffusionOptimal offsets and an S-box table without repeated entries are hypotheses of this theorem; aes_like_encrypt_activity_bound_of_checks and aes_like_encrypt_with_last_round_activity_bound_of_checks (kernel aes-like-checked) derive them in this package from Boolean checks on the bytes, and the AES instances (kernel aes-like-aes) have none; the main package certificates (Lean v4.33.1) are not combined with it in one Lean environment",
         "at least r round keys (r <= round_keys.len())"
       ],
       "rustSources": [
         {
           "path": "crates/kernels/src/aes_like.rs",
-          "sha256": "48fbe2fff9d7186143a5577617ade5dbf1a9b5d239b1e9f9010f22e564d65fdc"
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
         },
         {
           "path": "crates/kernels/src/gf256.rs",
@@ -615,12 +742,12 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
           "path": "lean/Cryptificate/Bridge.lean",
-          "sha256": "5f0612eaaa6f2c1618b988124a938182ff1a79955ca754d3893f888254dde722"
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
         },
         {
           "path": "lean/Cryptificate/Diffusion/Activity.lean",
@@ -628,6 +755,1147 @@
         }
       ],
       "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_final_round_refines",
+      "status": "proved",
+      "kernel": "aes-like",
+      "statement": "∀ (s : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (k k' : Aeneas.Std.Array Aeneas.Std.U8 16#usize), Aeneas.Std.WP.spec (cryptificate_kernels.aes_like.final_round s o t k k') fun out => Cryptificate.Refinement.stateOf out = Cryptificate.aesLikeFinalRound (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.stateOf k) (Cryptificate.Refinement.stateOf k') (Cryptificate.Refinement.stateOf s)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_final_round_eq",
+      "status": "proved",
+      "kernel": "aes-like",
+      "statement": "∀ (s : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (k k' : Aeneas.Std.Array Aeneas.Std.U8 16#usize), ∃ out, cryptificate_kernels.aes_like.final_round s o t k k' = Aeneas.Std.Result.ok out ∧ Cryptificate.Refinement.stateOf out = Cryptificate.aesLikeFinalRound (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.stateOf k) (Cryptificate.Refinement.stateOf k') (Cryptificate.Refinement.stateOf s)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_encrypt_with_last_round_refines",
+      "status": "proved",
+      "kernel": "aes-like",
+      "statement": "∀ (s m : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (rounds : Aeneas.Std.Usize), ↑rounds < ks.length → Aeneas.Std.WP.spec (cryptificate_kernels.aes_like.encrypt_with_last_round s m o t ks rounds) fun out => Cryptificate.Refinement.stateOf out = Cryptificate.aesLikeCipher (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf s) ↑rounds",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "at least rounds + 1 round keys (rounds < round_keys.len()); with fewer, the Rust code indexes past the slice (for rounds = 0 the code reads no key, but the theorem still asks for one) and the theorem says nothing"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_encrypt_with_last_round_eq",
+      "status": "proved",
+      "kernel": "aes-like",
+      "statement": "∀ (s m : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (rounds : Aeneas.Std.Usize), ↑rounds < ks.length → ∃ out, cryptificate_kernels.aes_like.encrypt_with_last_round s m o t ks rounds = Aeneas.Std.Result.ok out ∧ Cryptificate.Refinement.stateOf out = Cryptificate.aesLikeCipher (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf s) ↑rounds",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "at least rounds + 1 round keys (rounds < round_keys.len()); with fewer, the Rust code indexes past the slice (for rounds = 0 the code reads no key, but the theorem still asks for one) and the theorem says nothing"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_encrypt_with_last_round_activity_bound",
+      "status": "proved",
+      "kernel": "aes-like",
+      "statement": "∀ (m : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)), IsMDS (Cryptificate.Refinement.matrixOf m) → DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 (Cryptificate.Refinement.offsetsOf o)) → (∀ a < 256, ∀ b < 256, t[a]! = t[b]! → a = b) → ∀ (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), Cryptificate.Refinement.stateOf x ≠ Cryptificate.Refinement.stateOf y → ∀ (r : Aeneas.Std.Usize), ↑r < ks.length → ∃ outX outY, cryptificate_kernels.aes_like.encrypt_with_last_round x m o t ks r = Aeneas.Std.Result.ok outX ∧ cryptificate_kernels.aes_like.encrypt_with_last_round y m o t ks r = Aeneas.Std.Result.ok outY ∧ Cryptificate.Refinement.stateOf outX = Cryptificate.aesLikeCipher (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf x) ↑r ∧ Cryptificate.Refinement.stateOf outY = Cryptificate.aesLikeCipher (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf y) ↑r ∧ Cryptificate.activityBound ↑r ≤ Cryptificate.aesLikeCipherActiveSboxes (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.keysOf ks) (↑r) (Cryptificate.Refinement.stateOf x) (Cryptificate.Refinement.stateOf y)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "IsMDS (matrixOf m), DiffusionOptimal offsets and an S-box table without repeated entries are hypotheses of this theorem; aes_like_encrypt_activity_bound_of_checks and aes_like_encrypt_with_last_round_activity_bound_of_checks (kernel aes-like-checked) derive them in this package from Boolean checks on the bytes, and the AES instances (kernel aes-like-aes) have none; the main package certificates (Lean v4.33.1) are not combined with it in one Lean environment",
+        "the last of the r rounds is the final round: no column mixing, then the last key",
+        "at least r + 1 round keys (r < round_keys.len())"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesLike.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.sboxOf_injective_iff",
+      "status": "proved",
+      "kernel": "aes-like-checked",
+      "statement": "∀ (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize), Function.Injective (Cryptificate.Refinement.sboxOf t) ↔ ∀ a < 256, ∀ b < 256, t[a]! = t[b]! → a = b",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.sboxOf_injective_of_tableCovers",
+      "status": "proved",
+      "kernel": "aes-like-checked",
+      "statement": "∀ {t : Aeneas.Std.Array Aeneas.Std.U8 256#usize}, Cryptificate.Refinement.tableCovers t = true → Function.Injective (Cryptificate.Refinement.sboxOf t)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_encrypt_activity_bound_of_checks",
+      "status": "proved",
+      "kernel": "aes-like-checked",
+      "statement": "∀ (m : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)), Cryptificate.minors4Ok (Cryptificate.Refinement.matrixOf m) = true → Cryptificate.Refinement.offsetsDistinct o = true → Cryptificate.Refinement.tableCovers t = true → ∀ (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → ∀ r ≤ ks.length, ∀ (outX outY : ℕ → Aeneas.Std.Array Aeneas.Std.U8 16#usize), (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt x m o t ks n = Aeneas.Std.Result.ok (outX ↑n)) → (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt y m o t ks n = Aeneas.Std.Result.ok (outY ↑n)) → Cryptificate.activityBound r ≤ ∑ n ∈ Finset.range r, {p | Cryptificate.Refinement.stateOf (outX n) p + Cryptificate.Refinement.keysOf ks n p ≠ Cryptificate.Refinement.stateOf (outY n) p + Cryptificate.Refinement.keysOf ks n p}.card",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "the design checks are hypotheses, each a Boolean the kernel evaluates for concrete bytes: minors4Ok (matrixOf m) = true, offsetsDistinct o = true, tableCovers t = true",
+        "at least r round keys (r <= round_keys.len())"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_like_encrypt_with_last_round_activity_bound_of_checks",
+      "status": "proved",
+      "kernel": "aes-like-checked",
+      "statement": "∀ (m : Aeneas.Std.Array Aeneas.Std.U8 16#usize) (o : Aeneas.Std.Array Aeneas.Std.U8 4#usize) (t : Aeneas.Std.Array Aeneas.Std.U8 256#usize) (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)), Cryptificate.minors4Ok (Cryptificate.Refinement.matrixOf m) = true → Cryptificate.Refinement.offsetsDistinct o = true → Cryptificate.Refinement.tableCovers t = true → ∀ (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → ∀ (r : Aeneas.Std.Usize), ↑r < ks.length → ∃ outX outY, cryptificate_kernels.aes_like.encrypt_with_last_round x m o t ks r = Aeneas.Std.Result.ok outX ∧ cryptificate_kernels.aes_like.encrypt_with_last_round y m o t ks r = Aeneas.Std.Result.ok outY ∧ Cryptificate.Refinement.stateOf outX = Cryptificate.aesLikeCipher (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf x) ↑r ∧ Cryptificate.Refinement.stateOf outY = Cryptificate.aesLikeCipher (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf y) ↑r ∧ Cryptificate.activityBound ↑r ≤ Cryptificate.aesLikeCipherActiveSboxes (Cryptificate.Refinement.matrixOf m) (Cryptificate.Refinement.offsetsOf o) (Cryptificate.Refinement.sboxOf t) (Cryptificate.Refinement.keysOf ks) (↑r) (Cryptificate.Refinement.stateOf x) (Cryptificate.Refinement.stateOf y)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "the design checks are hypotheses, each a Boolean the kernel evaluates for concrete bytes: minors4Ok (matrixOf m) = true, offsetsDistinct o = true, tableCovers t = true",
+        "the last of the r rounds is the final round: no column mixing, then the last key",
+        "at least r + 1 round keys (r < round_keys.len())"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.matrixOf_aesMatrixBytes",
+      "status": "proved",
+      "kernel": "aes-like-aes",
+      "statement": "Cryptificate.Refinement.matrixOf Cryptificate.Refinement.aesMatrixBytes = Cryptificate.gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.offsetsOf_aesOffsetBytes",
+      "status": "proved",
+      "kernel": "aes-like-aes",
+      "statement": "Cryptificate.Refinement.offsetsOf Cryptificate.Refinement.aesOffsetBytes = Cryptificate.offsets4 0 1 2 3",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.sboxOf_aesSboxBytes",
+      "status": "proved",
+      "kernel": "aes-like-aes",
+      "statement": "Cryptificate.Refinement.sboxOf Cryptificate.Refinement.aesSboxBytes = AES.sbox",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_rust_activity_bound",
+      "status": "proved",
+      "kernel": "aes-like-aes",
+      "statement": "∀ (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → ∀ r ≤ ks.length, ∀ (outX outY : ℕ → Aeneas.Std.Array Aeneas.Std.U8 16#usize), (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt x Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outX ↑n)) → (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt y Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outY ↑n)) → Cryptificate.activityBound r ≤ ∑ n ∈ Finset.range r, {p | Cryptificate.Refinement.stateOf (outX n) p + Cryptificate.Refinement.keysOf ks n p ≠ Cryptificate.Refinement.stateOf (outY n) p + Cryptificate.Refinement.keysOf ks n p}.card",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "no design hypothesis: the AES matrix, offsets and FIPS 197 S-box table are fixed byte arrays, checked by the kernel; different input states (x != y); no special last round",
+        "at least r round keys (r <= round_keys.len())"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_rust_activity_bound_exists",
+      "status": "proved",
+      "kernel": "aes-like-aes",
+      "statement": "∀ (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → ∀ r ≤ ks.length, ∃ outX outY, (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt x Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outX ↑n)) ∧ (∀ (n : Aeneas.Std.Usize), ↑n < r → cryptificate_kernels.aes_like.encrypt y Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outY ↑n)) ∧ Cryptificate.activityBound r ≤ ∑ n ∈ Finset.range r, {p | Cryptificate.Refinement.stateOf (outX n) p + Cryptificate.Refinement.keysOf ks n p ≠ Cryptificate.Refinement.stateOf (outY n) p + Cryptificate.Refinement.keysOf ks n p}.card",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "no design hypothesis: the AES matrix, offsets and FIPS 197 S-box table are fixed byte arrays, checked by the kernel; different input states (x != y); no special last round",
+        "at least r round keys (r <= round_keys.len())"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_rust_activity_bound_10",
+      "status": "proved",
+      "kernel": "aes-like-aes",
+      "statement": "∀ (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → 10 ≤ ks.length → ∃ outX outY, (∀ (n : Aeneas.Std.Usize), ↑n < 10 → cryptificate_kernels.aes_like.encrypt x Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outX ↑n)) ∧ (∀ (n : Aeneas.Std.Usize), ↑n < 10 → cryptificate_kernels.aes_like.encrypt y Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outY ↑n)) ∧ 55 ≤ ∑ n ∈ Finset.range 10, {p | Cryptificate.Refinement.stateOf (outX n) p + Cryptificate.Refinement.keysOf ks n p ≠ Cryptificate.Refinement.stateOf (outY n) p + Cryptificate.Refinement.keysOf ks n p}.card",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "no design hypothesis: the AES matrix, offsets and FIPS 197 S-box table are fixed byte arrays, checked by the kernel; different input states (x != y); no special last round",
+        "at least 10 round keys"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_rust_activity_bound_4",
+      "status": "proved",
+      "kernel": "aes-like-aes",
+      "statement": "∀ (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → 4 ≤ ks.length → ∃ outX outY, (∀ (n : Aeneas.Std.Usize), ↑n < 4 → cryptificate_kernels.aes_like.encrypt x Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outX ↑n)) ∧ (∀ (n : Aeneas.Std.Usize), ↑n < 4 → cryptificate_kernels.aes_like.encrypt y Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks n = Aeneas.Std.Result.ok (outY ↑n)) ∧ 25 ≤ ∑ n ∈ Finset.range 4, {p | Cryptificate.Refinement.stateOf (outX n) p + Cryptificate.Refinement.keysOf ks n p ≠ Cryptificate.Refinement.stateOf (outY n) p + Cryptificate.Refinement.keysOf ks n p}.card",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "no design hypothesis: the AES matrix, offsets and FIPS 197 S-box table are fixed byte arrays, checked by the kernel; different input states (x != y); no special last round",
+        "at least 4 round keys"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_rust_cipher_activity_bound",
+      "status": "proved",
+      "kernel": "aes-like-aes",
+      "statement": "∀ (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → ∀ (r : Aeneas.Std.Usize), ↑r < ks.length → ∃ outX outY, cryptificate_kernels.aes_like.encrypt_with_last_round x Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks r = Aeneas.Std.Result.ok outX ∧ cryptificate_kernels.aes_like.encrypt_with_last_round y Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks r = Aeneas.Std.Result.ok outY ∧ Cryptificate.Refinement.stateOf outX = Cryptificate.aesLikeCipher (Cryptificate.gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (Cryptificate.offsets4 0 1 2 3) AES.sbox (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf x) ↑r ∧ Cryptificate.Refinement.stateOf outY = Cryptificate.aesLikeCipher (Cryptificate.gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (Cryptificate.offsets4 0 1 2 3) AES.sbox (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf y) ↑r ∧ Cryptificate.activityBound ↑r ≤ Cryptificate.aesLikeCipherActiveSboxes (Cryptificate.gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (Cryptificate.offsets4 0 1 2 3) AES.sbox (Cryptificate.Refinement.keysOf ks) (↑r) (Cryptificate.Refinement.stateOf x) (Cryptificate.Refinement.stateOf y)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "no design hypothesis: the AES matrix, offsets and FIPS 197 S-box table are fixed byte arrays, checked by the kernel; different input states (x != y); the last round is the AES final round (no MixColumns, then the last key); the round keys are arbitrary data, the AES key expansion is not modelled",
+        "at least r + 1 round keys (r < round_keys.len())"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.aes_rust_cipher_activity_bound_10",
+      "status": "proved",
+      "kernel": "aes-like-aes",
+      "statement": "∀ (ks : Aeneas.Std.Slice (Aeneas.Std.Array Aeneas.Std.U8 16#usize)) (x y : Aeneas.Std.Array Aeneas.Std.U8 16#usize), x ≠ y → 11 ≤ ks.length → ∃ outX outY, cryptificate_kernels.aes_like.encrypt_with_last_round x Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks 10#usize = Aeneas.Std.Result.ok outX ∧ cryptificate_kernels.aes_like.encrypt_with_last_round y Cryptificate.Refinement.aesMatrixBytes Cryptificate.Refinement.aesOffsetBytes Cryptificate.Refinement.aesSboxBytes ks 10#usize = Aeneas.Std.Result.ok outY ∧ Cryptificate.Refinement.stateOf outX = Cryptificate.aesLikeCipher (Cryptificate.gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (Cryptificate.offsets4 0 1 2 3) AES.sbox (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf x) 10 ∧ Cryptificate.Refinement.stateOf outY = Cryptificate.aesLikeCipher (Cryptificate.gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (Cryptificate.offsets4 0 1 2 3) AES.sbox (Cryptificate.Refinement.keysOf ks) (Cryptificate.Refinement.stateOf y) 10 ∧ 55 ≤ Cryptificate.aesLikeCipherActiveSboxes (Cryptificate.gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (Cryptificate.offsets4 0 1 2 3) AES.sbox (Cryptificate.Refinement.keysOf ks) 10 (Cryptificate.Refinement.stateOf x) (Cryptificate.Refinement.stateOf y)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "no design hypothesis: the AES matrix, offsets and FIPS 197 S-box table are fixed byte arrays, checked by the kernel; different input states (x != y); the last round is the AES final round (no MixColumns, then the last key); the round keys are arbitrary data, the AES key expansion is not modelled",
+        "at least 11 round keys"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/aes_like.rs",
+          "sha256": "a3cfb9c8667e7f6c247b5800ac36c0f5f08a0790c249f7f3a515fc43300bd7c3"
+        },
+        {
+          "path": "crates/kernels/src/gf256.rs",
+          "sha256": "6ddf87a30db0c88926c76814fa5f63cc2c31edca5e7cb498bc0dcb7eea6b3ff3"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [
+        {
+          "path": "lean/Cryptificate/Bridge.lean",
+          "sha256": "44150df9bcf9c18eb97ce593c0ca703300aebae787e8e028364bd70b4c2791b6"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Activity.lean",
+          "sha256": "2692718b6e89fccd20739876c5a9b7a9f50feee59b1e97119aaa1931508793bb"
+        },
+        {
+          "path": "lean/Cryptificate/Encoding.lean",
+          "sha256": "895c7e25de4f64659402aaa4568b1adecfb333b7c41858802a80b50f46856a07"
+        },
+        {
+          "path": "lean/Cryptificate/Sbox.lean",
+          "sha256": "d18aa69a7563b8f9d880a13733728c3d505a9861d5049e02b308ae7c04874cef"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Minors4.lean",
+          "sha256": "fd3fbf124e09c265a2df1da76b824aca56dacc82862a0bd477d23bc33c563dd1"
+        },
+        {
+          "path": "lean/Cryptificate/Diffusion/Offsets.lean",
+          "sha256": "545dafe39599c36feea2d664c282c1a5b2f643b95d04d7d52be6a1240924a9fb"
+        }
+      ],
+      "proofFile": "refinement/Refinement/AesConcrete.lean",
       "toolchain": {
         "lean": "v4.35.0",
         "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
@@ -777,7 +2045,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/BN254Mont.lean",
@@ -816,7 +2084,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/BN254Mont.lean",
@@ -855,7 +2123,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/BN254Mont.lean",
@@ -892,7 +2160,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/BN254Mont.lean",
@@ -929,7 +2197,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/BN254Mont.lean",
@@ -968,7 +2236,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/BN254Mont.lean",
@@ -1007,7 +2275,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/BN254Mont.lean",
@@ -1046,7 +2314,7 @@
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "852750fc0789c2b32caff50dff8c925058ef797fcd668a8962bbdd891168e62d"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/BN254Mont.lean",
