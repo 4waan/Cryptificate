@@ -19,7 +19,8 @@
 # Two crates are extracted:
 #
 #   cryptificate_kernels  refinement/rust/kernels.rs, which includes the
-#                         unmodified crates/kernels/src/{gf256,aes_like}.rs;
+#                         unmodified crates/kernels/src/{gf256,aes_like,
+#                         bn254_mont}.rs;
 #                         output Extracted/CryptificateKernels.lean.
 #   gf256_aes             refinement/rust/gf256_aes_expanded.rs, the expanded
 #                         gf256 crate configuration (see gf256crate/expand.sh),
@@ -56,6 +57,7 @@ die() { echo "extract.sh: $*" >&2; exit 1; }
 rust_inputs=(
   crates/kernels/src/gf256.rs
   crates/kernels/src/aes_like.rs
+  crates/kernels/src/bn254_mont.rs
   refinement/rust/kernels.rs
   refinement/rust/gf256_aes_expanded.rs
 )

@@ -10,19 +10,24 @@ Statuses: **proved** (checked by Lean, axioms listed), **trusted** (assumed, not
 
 ## Summary
 
-| Link | GF(2⁸) arithmetic (`crates/kernels/src/gf256.rs`) | AES-like round (`crates/kernels/src/aes_like.rs`) | gf256 crate 0.3.1, `0x11B`, `no-tables`, `no-xmul` | BN254 `Fr` (arkworks) |
-| --- | --- | --- | --- | --- |
-| 1. Rust source identity | recorded: SHA-256 in `extract.sha256` | recorded: SHA-256 in `extract.sha256` | recorded: expanded source `rust/gf256_aes_expanded.rs`, SHA-256 in `gf256crate/expanded.sha256` and `extract.sha256` | not established: not extracted |
-| 2. Rust → Aeneas model | trusted (Charon, Aeneas); reproduced byte for byte by `extract.sh` | trusted; reproduced by `extract.sh` | trusted; reproduced by `extract.sh`, with one documented renaming (below) | not established: Aeneas fails (below) |
-| 3. Aeneas model compiles in Lean | yes | yes | yes | — |
-| 4. Model = specification | **proved** | **proved** | **proved**, under the hypothesis `size_of::<u8>() = 1` | not established |
-| 5. Specification → named properties | **proved**: WideTrail's field `GF256` (field laws carried to the Rust functions) | **proved** as a conditional theorem: the active-S-box bound for Rust executions, assuming MDS, diffusion-optimal offsets and an injective S-box table | **proved**: equal to WideTrail's multiplier, hence to the kernels' `mul` | not established |
+| Link | GF(2⁸) arithmetic (`crates/kernels/src/gf256.rs`) | AES-like round (`crates/kernels/src/aes_like.rs`) | gf256 crate 0.3.1, `0x11B`, `no-tables`, `no-xmul` | BN254 Montgomery kernel (`crates/kernels/src/bn254_mont.rs`) | BN254 `Fr` (arkworks) |
+| --- | --- | --- | --- | --- | --- |
+| 1. Rust source identity | recorded: SHA-256 in `extract.sha256` | recorded: SHA-256 in `extract.sha256` | recorded: expanded source `rust/gf256_aes_expanded.rs`, SHA-256 in `gf256crate/expanded.sha256` and `extract.sha256` | recorded: SHA-256 in `extract.sha256` | not established: not extracted |
+| 2. Rust → Aeneas model | trusted (Charon, Aeneas); reproduced byte for byte by `extract.sh` | trusted; reproduced by `extract.sh` | trusted; reproduced by `extract.sh`, with one documented renaming (below) | trusted; reproduced by `extract.sh` | not established: Aeneas fails (below) |
+| 3. Aeneas model compiles in Lean | yes | yes | yes | yes | — |
+| 4. Model = specification | **proved** | **proved** | **proved**, under the hypothesis `size_of::<u8>() = 1` | **proved** on canonical inputs (limbs below `p`; `mul` needs only its first operand below `p`) | not established |
+| 5. Specification → named properties | **proved**: WideTrail's field `GF256` (field laws carried to the Rust functions) | **proved** as a conditional theorem: the active-S-box bound for Rust executions, assuming MDS, diffusion-optimal offsets and an injective S-box table | **proved**: equal to WideTrail's multiplier, hence to the kernels' `mul` | **proved**: multiplication, addition and subtraction of WideTrail's `Poseidon2.BN254.F = ZMod p` under the Montgomery decoding | not established |
+| 5′. Same, for a concrete design | — | **proved** for AES with no design hypothesis (`aes_rust_activity_bound*`; with the AES final round, `aes_rust_cipher_activity_bound*`), and for any design as a theorem whose only design hypotheses are three Boolean checks on its bytes, each closable by `decide +kernel` (`aes_like_encrypt_activity_bound_of_checks`, `aes_like_encrypt_with_last_round_activity_bound_of_checks`): at least `activityBound r` active S-boxes (for AES, `55` over ten rounds, with or without the final round) for any two different inputs and at least `r` (with the final round, `r + 1`) round keys (sections 2.1, 2.2) | — | — | not established |
+
+The native variants (`crates/native`) still compute BN254 with arkworks' `Fr`; the proved
+Montgomery kernel is not called by them (section 4).
 
 ### Axioms and hypotheses of each theorem
 
 What `#print axioms` reports, pinned by `Refinement/Axioms.lean` (the build fails if it changes);
-`claims.json` records the same for every theorem below except the field laws and
-`crateMul_eq_rawMul`. "Standard" is `propext`, `Classical.choice`, `Quot.sound`.
+`claims.json` records the same for every theorem below except the field laws,
+`crateMul_eq_rawMul`, `toField_injective` and `Rinv_spec`. "Standard" is `propext`,
+`Classical.choice`, `Quot.sound`.
 
 | Theorem | Axioms | Hypotheses |
 | --- | --- | --- |
@@ -31,9 +36,23 @@ What `#print axioms` reports, pinned by `Refinement/Axioms.lean` (the build fail
 | `gf256_mul_comm`, `gf256_mul_assoc`, `gf256_mul_add`, `gf256_mul_two`, `gf256_mul_inv` | standard | `a ≠ 0` for `gf256_mul_inv` |
 | `aes_like_round_refines`, `aes_like_round_eq` | standard | none |
 | `aes_like_encrypt_refines`, `aes_like_encrypt_eq` | standard | at least `rounds` round keys |
-| `aes_like_encrypt_activity_bound` | standard | MDS matrix, diffusion-optimal offsets, S-box table without repeated entries (not proved here), different inputs, at least `r` round keys |
+| `aes_like_encrypt_activity_bound` | standard | MDS matrix, diffusion-optimal offsets, S-box table without repeated entries, different inputs, at least `r` round keys |
+| `aes_like_final_round_refines`, `aes_like_final_round_eq` | standard | none |
+| `aes_like_encrypt_with_last_round_refines`, `aes_like_encrypt_with_last_round_eq` | standard | at least `rounds + 1` round keys |
+| `aes_like_encrypt_with_last_round_activity_bound` | standard | MDS matrix, diffusion-optimal offsets, S-box table without repeated entries, different inputs, at least `r + 1` round keys |
+| `aes_like_encrypt_activity_bound_of_checks` | standard | `minors4Ok (matrixOf m)`, `offsetsDistinct o`, `tableCovers t` (Boolean checks on the bytes), different input arrays, at least `r` round keys |
+| `aes_like_encrypt_with_last_round_activity_bound_of_checks` | standard | the same three checks, different input arrays, at least `r + 1` round keys |
+| `sboxOf_injective_iff`, `sboxOf_injective_of_tableCovers` | standard | `tableCovers t` for the second |
+| `matrixOf_aesMatrixBytes`, `offsetsOf_aesOffsetBytes`, `sboxOf_aesSboxBytes` | standard | none |
+| `aes_rust_activity_bound`, `aes_rust_activity_bound_exists`, `aes_rust_activity_bound_10`, `aes_rust_activity_bound_4` | standard | different input arrays, at least `r` (resp. `10`, `4`) round keys; no design hypothesis |
+| `aes_rust_cipher_activity_bound`, `aes_rust_cipher_activity_bound_10` | standard | different input arrays, at least `r + 1` (resp. `11`) round keys; no design hypothesis |
 | `Gf256Crate.crateMul_eq_rawMul` | `propext`, `Quot.sound` | none (bit-level model, no Rust) |
 | `Gf256Crate.gf256crate_mul_refines`, `gf256crate_mul_field`, `gf256crate_mul_eq_kernels` | standard and `gf256_aes.core.mem.size_of`, the uninterpreted function the extraction declares | `SizeOfU8`: `size_of::<u8>()` returns `1` |
+| `BN254Mont.bn254_mont_mul_refines`, `bn254_mont_mul_eq` | standard | first operand below `p` |
+| `BN254Mont.bn254_mont_add_refines`, `bn254_mont_add_eq`, `bn254_mont_sub_refines`, `bn254_mont_sub_eq` | standard | both operands below `p` |
+| `BN254Mont.bn254_mont_to_mont_refines`, `bn254_mont_from_mont_refines` | standard | none |
+| `BN254Mont.toField_injective` | standard | both arguments below `p` |
+| `BN254Mont.Rinv_spec` | `propext` | none |
 
 ## 1. GF(2⁸) arithmetic of `crates/kernels`
 
@@ -112,10 +131,193 @@ from what `aes_like.encrypt` returns. All five theorems of this section use `pro
 
 **Scope.** The hypotheses `hM`, `hoff`, `ht` are stated in the main package's terms (WideTrail's
 `IsMDS`, `DiffusionOptimal`). For a concrete design they are what the main package's per-design
-certificates prove (`matrix.mds`, `offsets.dispersion`, `sbox.bijective`), but those
-certificates are checked by the main package on Lean `v4.33.1`; combining a certificate with
-this theorem in one Lean environment is not done here. The model has no special last round
-(as in `Bridge.lean`).
+certificates prove (`matrix.mds`, `offsets.dispersion`, `sbox.bijective`). Those generated
+certificates are checked by the main package on Lean `v4.33.1` and are not imported here;
+section 2.1 instead compiles the checks they are built on in this package and discharges the
+hypotheses for concrete byte arrays. `round` and `encrypt` have no special last round: every
+round mixes columns. The AES final round is the separate function `final_round`, and
+`encrypt_with_last_round` ends with it (section 2.2).
+
+## 2.1 Design checks on the bytes, and AES without design hypotheses
+
+Proof file `Refinement/AesConcrete.lean`. The refinement package also compiles, from the main
+package's source files and under Lean and Mathlib `v4.35.0`, `lean/Cryptificate/Encoding.lean`,
+`Sbox.lean`, `Diffusion/Minors4.lean` and `Diffusion/Offsets.lean` (roots of
+`CryptificateBridge`; `claims.json` records their SHA-256). Three Boolean checks on the Rust
+byte arrays then replace the design hypotheses of `aes_like_encrypt_activity_bound`:
+
+* `minors4Ok (matrixOf m)`: the `69` canonical minors of the matrix are nonzero, hence `IsMDS`
+  (`isMDS_of_minors4Ok` of the main package);
+* `offsetsDistinct o`: the four offsets are distinct modulo `4`, hence diffusion-optimal
+  (`diffusionOptimal_of_injective`);
+* `tableCovers t`: every byte value occurs among the `256` entries of the table (one pass that
+  sets bit `t[x]` of a mask and compares it with `2 ^ 256 - 1`). Then `sboxOf t` is surjective,
+  hence injective on the finite field, hence the table has no repeated entry
+  (`sboxOf_injective_iff`: injectivity of `sboxOf t` is equivalent to the hypothesis `ht`).
+
+```lean
+theorem aes_like_encrypt_activity_bound_of_checks (m o t ks)
+    (hM : minors4Ok (matrixOf m) = true) (hoff : offsetsDistinct o = true)
+    (ht : tableCovers t = true)
+    (x y) (hxy : x ≠ y) (r) (hr : r ≤ ks.length) (outX outY : ℕ → Array U8 16)
+    (hX : ∀ n : Usize, n.val < r → aes_like.encrypt x m o t ks n = ok (outX n.val))
+    (hY : ∀ n : Usize, n.val < r → aes_like.encrypt y m o t ks n = ok (outY n.val)) :
+    activityBound r ≤ ∑ n ∈ range r,
+      #{p | stateOf (outX n) p + keysOf ks n p ≠ stateOf (outY n) p + keysOf ks n p}
+```
+
+The inputs are now different byte arrays (`x ≠ y`; `stateOf_injective`). For concrete bytes
+each check is closed by `decide +kernel`, an evaluation by the Lean kernel (not
+`native_decide`), so instantiating the theorem for fixed bytes that pass the checks leaves no
+design hypothesis. AES, below, is the only design instantiated in this package; for any other
+design the checks remain hypotheses until someone instantiates it.
+
+In `claims.json` the theorems for any design are kernel `aes-like-checked`, whose `appliesTo`
+names only the model, and the AES theorems are kernel `aes-like-aes`, whose `appliesTo` also
+names the AES design; a consumer must match a submitted design's bytes against it before using
+those claims. `claims.py` refuses to record an AES-only theorem under a kernel that names no
+design.
+
+**AES.** `aesMatrixBytes`, `aesOffsetBytes` and `aesSboxBytes` are the AES `MixColumns` matrix
+`[02 03 01 01 / 01 02 03 01 / 01 01 02 03 / 03 01 01 02]` (row-major), the offsets `[0, 1, 2, 3]`
+and the FIPS 197 S-box table, written in `AesConcrete.lean` as values of Aeneas's types for
+`[u8; 16]`, `[u8; 4]` and `[u8; 256]`, the argument types of `aes_like::encrypt`. They are not
+extracted from a Rust constant (the Rust crate defines the AES constants only in its tests).
+`matrixOf_aesMatrixBytes` (`= gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2`),
+`offsetsOf_aesOffsetBytes` (`= offsets4 0 1 2 3`) and `sboxOf_aesSboxBytes` (`= AES.sbox`,
+WideTrail's algebraic S-box, through the main package's `aes_sbox_eq_table`) identify them.
+
+```lean
+theorem aes_rust_activity_bound_exists (ks) (x y) (hxy : x ≠ y) (r) (hr : r ≤ ks.length) :
+    ∃ outX outY,
+      (∀ n : Usize, n.val < r → aes_like.encrypt x aesMatrixBytes aesOffsetBytes aesSboxBytes ks n = ok (outX n.val)) ∧
+      (∀ n : Usize, n.val < r → aes_like.encrypt y aesMatrixBytes aesOffsetBytes aesSboxBytes ks n = ok (outY n.val)) ∧
+      activityBound r ≤ ∑ n ∈ range r,
+        #{p | stateOf (outX n) p + keysOf ks n p ≠ stateOf (outY n) p + keysOf ks n p}
+theorem aes_rust_activity_bound_10 (ks) (x y) (hxy : x ≠ y) (hr : 10 ≤ ks.length) :
+    ∃ outX outY, (… as above with r = 10 …) ∧ 55 ≤ ∑ n ∈ range 10, #{…}
+theorem aes_rust_activity_bound_4 (ks) (x y) (hxy : x ≠ y) (hr : 4 ≤ ks.length) :
+    ∃ outX outY, (… as above with r = 4 …) ∧ 25 ≤ ∑ n ∈ range 4, #{…}
+```
+
+`aes_rust_activity_bound` is the same bound in the form of section 2 (for given `outX`, `outY`
+with `hX`, `hY`). The only hypotheses are different inputs and enough round keys: the
+executions are shown to return normally, and the bound covers every key schedule, not only the
+AES key expansion. All theorems of this section use `propext`, `Classical.choice`, `Quot.sound`
+only.
+
+**Scope.** These are statements about the Aeneas model of `aes_like::encrypt` (Charon and Aeneas
+trusted, as above), counting S-boxes with different inputs in two executions under the same
+keys, which is the wide-trail activity bound, not a bound on differential or linear trail
+probabilities. AES here has no special last round: every round adds the key, substitutes,
+shifts rows and mixes columns, as in `aes_like.rs`, so `aes_rust_activity_bound_10` is about
+ten such rounds; section 2.2 covers the cipher with the final round. The analysis service
+does not yet instantiate `aes_like_encrypt_activity_bound_of_checks` (or its final-round form)
+for submitted designs.
+
+## 2.2 The AES final round
+
+AES ends with a different round: no `MixColumns`, and one more key is added after it.
+`aes_like::final_round(state, offsets, sbox, round_key, final_key)` adds `round_key`,
+substitutes bytes, shifts rows and adds `final_key`. `aes_like::encrypt_with_last_round(state,
+matrix, offsets, sbox, round_keys, rounds)` applies `encrypt` with `rounds - 1` rounds, then
+`final_round` with `round_keys[rounds - 1]` and `round_keys[rounds]` (with `rounds = 0` it
+leaves the state unchanged); it panics if `rounds > 0` and fewer than `rounds + 1` keys are
+given. With the AES matrix, offsets and S-box, `rounds = 10` and the eleven keys of the AES-128
+key expansion it is AES-128 encryption: the Rust tests compute that expansion (in test code;
+the kernel takes keys as data) and check the ciphertexts of FIPS 197 Appendices B and C.1.
+
+**Model** (`lean/Cryptificate/Bridge.lean`, added next to the unchanged `aesLikeRound` and
+`aesLikeExec`):
+
+```lean
+def aesLikeFinalRound off sbox key finalKey s :=
+  addRoundKey finalKey (shiftRows off (subBytes sbox (addRoundKey key s)))
+def aesLikeCipher M off sbox keys x : ℕ → Fin 16 → K
+  | 0 => x
+  | n + 1 => aesLikeFinalRound off sbox (keys n) (keys (n + 1)) (aesLikeExec M off sbox keys x n)
+```
+
+`aesLikeCipherExec M off sbox keys r x n` is the state at the input of round `n` of the
+`r`-round cipher, round by round (`aesLikeCipherExec_self`: after `r` rounds it is
+`aesLikeCipher … r`), and `aesLikeCipherActiveSboxes … r x y` counts, over its `r` rounds, the
+S-boxes whose inputs differ. Since rounds `0, …, r - 2` are full rounds, the state at the input
+of round `n < r` is that of `aesLikeExec` (`aesLikeCipherExec_of_lt`), so
+
+```lean
+theorem aesLikeCipherActiveSboxes_eq (M off sbox keys r x y) :
+    aesLikeCipherActiveSboxes M off sbox keys r x y = activeSboxes M off sbox keys x y r
+theorem aesLikeCipherActiveSboxes_bound (hM : IsMDS M) (hoff : DiffusionOptimal …)
+    (hs : Function.Injective sbox) (keys) (hxy : x ≠ y) (r) :
+    activityBound r ≤ aesLikeCipherActiveSboxes M off sbox keys r x y
+```
+
+The final round's S-boxes are counted (they are the `r`-th round's), and the count over the
+`r` rounds of the cipher is exactly the count over the first `r` rounds of `aesLikeExec`: the
+missing linear layer and the final key come after the last S-box, so they neither add to nor
+take from the bound. These two theorems are in the main package and checked there (the
+diffusion audit example prints them; axioms `propext`, `Classical.choice`, `Quot.sound`).
+`lean/Cryptificate/Examples/DiffusionCipher.lean` evaluates `aesLikeCipher` with the AES
+parameters and the expanded FIPS 197 key, round by round, and proves that it maps the plaintext
+of Appendix B to its ciphertext.
+
+**Refinement** (`Refinement/AesLike.lean`):
+
+```lean
+theorem aes_like_final_round_refines (s o t k k') :
+    aes_like.final_round s o t k k' ⦃ out =>
+      stateOf out = aesLikeFinalRound (offsetsOf o) (sboxOf t) (stateOf k) (stateOf k') (stateOf s) ⦄
+theorem aes_like_encrypt_with_last_round_refines (s m o t ks rounds) (hks : rounds.val < ks.length) :
+    aes_like.encrypt_with_last_round s m o t ks rounds ⦃ out =>
+      stateOf out = aesLikeCipher (matrixOf m) (offsetsOf o) (sboxOf t) (keysOf ks) (stateOf s) rounds.val ⦄
+theorem aes_like_encrypt_with_last_round_activity_bound (m o t ks) (hM hoff ht)  -- as in section 2
+    (x y) (hxy : stateOf x ≠ stateOf y) (r : Usize) (hr : r.val < ks.length) :
+    ∃ outX outY,
+      aes_like.encrypt_with_last_round x m o t ks r = ok outX ∧
+      aes_like.encrypt_with_last_round y m o t ks r = ok outY ∧
+      stateOf outX = aesLikeCipher (matrixOf m) … (stateOf x) r.val ∧
+      stateOf outY = aesLikeCipher (matrixOf m) … (stateOf y) r.val ∧
+      activityBound r.val ≤ aesLikeCipherActiveSboxes (matrixOf m) … r.val (stateOf x) (stateOf y)
+```
+
+with the `_eq` forms `aes_like_final_round_eq` and `aes_like_encrypt_with_last_round_eq`. For
+`rounds = 0` the code reads no key but the theorem still asks for one (`rounds < ks.length`).
+
+**Checks and AES** (`Refinement/AesConcrete.lean`):
+`aes_like_encrypt_with_last_round_activity_bound_of_checks` replaces `hM`, `hoff`, `ht` by the
+three byte checks of section 2.1 (and `stateOf x ≠ stateOf y` by `x ≠ y`), and
+
+```lean
+theorem aes_rust_cipher_activity_bound (ks) (x y) (hxy : x ≠ y) (r : Usize) (hr : r.val < ks.length) :
+    ∃ outX outY,
+      aes_like.encrypt_with_last_round x aesMatrixBytes aesOffsetBytes aesSboxBytes ks r = ok outX ∧
+      aes_like.encrypt_with_last_round y aesMatrixBytes aesOffsetBytes aesSboxBytes ks r = ok outY ∧
+      stateOf outX = aesLikeCipher (gfMat4 2 3 1 1 1 2 3 1 1 1 2 3 3 1 1 2) (offsets4 0 1 2 3)
+        AES.sbox (keysOf ks) (stateOf x) r.val ∧
+      stateOf outY = aesLikeCipher … (stateOf y) r.val ∧
+      activityBound r.val ≤ aesLikeCipherActiveSboxes (gfMat4 …) (offsets4 0 1 2 3) AES.sbox
+        (keysOf ks) r.val (stateOf x) (stateOf y)
+theorem aes_rust_cipher_activity_bound_10 (ks) (x y) (hxy : x ≠ y) (hr : 11 ≤ ks.length) :
+    ∃ outX outY, (… as above with r = 10#usize …) ∧
+      55 ≤ aesLikeCipherActiveSboxes (gfMat4 …) (offsets4 0 1 2 3) AES.sbox (keysOf ks) 10 (stateOf x) (stateOf y)
+```
+
+The outputs of the Rust function are identified with the AES-like cipher over WideTrail's
+algebraic `AES.sbox`; the count is over that cipher's trace. The S-box inputs of its round
+`n < r` are the outputs of `aes_like.encrypt` after `n` rounds plus key `n`
+(`aesLikeCipherExec_of_lt` with `aes_like_encrypt_refines`), which is what
+`encrypt_with_last_round` computes before its final round; the theorems do not restate the
+count in terms of those Rust values. All theorems of this section use `propext`,
+`Classical.choice`, `Quot.sound` only (`Refinement/Axioms.lean`).
+
+**Scope.** As in section 2.1: the Aeneas model of the Rust source, Charon and Aeneas trusted,
+the wide-trail activity count, not a bound on trail probabilities. The keys are arbitrary data:
+`aes_rust_cipher_activity_bound_10` holds for every sequence of eleven or more keys, so in
+particular for the AES-128 key expansion, which no theorem here models (the FIPS 197
+ciphertexts are checked by the Rust tests and, for the model, by the example above, not by a
+refinement theorem). AES-192 and AES-256 use the same data path with `12` and `14` rounds;
+`aes_rust_cipher_activity_bound` covers those round counts (with `13` and `15` keys), not their
+key expansions.
 
 ## 3. The gf256 crate (crates.io, version 0.3.1)
 
@@ -168,11 +370,73 @@ resulting bit-level function equals `GF256.rawMul` (`crateMul_eq_rawMul`, axioms
 `Quot.sound`): both are additive in each argument, so the kernel checks the 64 products of
 single-bit bytes and additivity extends them to all 65,536.
 
-## 4. BN254 scalar field (arkworks): not established
+## 4. BN254 scalar field
 
-`crates/kernels` re-exports `ark_bn254::Fr` (ark-bn254 / ark-ff 0.6), whose multiplication is
-arkworks' generic Montgomery multiplication (`MontBackend<T, 4>`). No refinement theorem covers
-it, and none covers a HADES round over it. What blocks the chain at this toolchain:
+### 4a. The Montgomery kernel of `crates/kernels`: proved
+
+`crates/kernels/src/bn254_mont.rs` implements arithmetic modulo the BN254 scalar-field prime
+`p = 21888242871839275222246405745257275088548364400416034343698204186575808495617`
+(`Poseidon2.BN254.modulus` in WideTrail) on four little-endian `u64` limbs (`[u64; 4]`), in
+Montgomery form with `R = 2^256`, the representation arkworks uses for `Fr`. It is written in the
+subset the pinned Charon and Aeneas translate: plain functions on `u64`, `u128` and `[u64; 4]`,
+no traits, generics or loops. `mac`, `adc` and `sbb` are the limb steps (`u128` products and
+sums); `mont_row` is one row of coarsely integrated operand scanning (CIOS): add `a·b[i]`, then
+`m·p` with `m = t₀·(-p⁻¹) mod 2^64`, and drop the cleared low limb; `mul` runs four rows from zero
+and ends with `reduce_once`, one conditional subtraction of `p`. `add` adds with carries and
+calls `reduce_once`; `sub` subtracts with borrows and adds `p` back when the last borrow is set.
+`to_mont x = mul(R² mod p, x)` and `from_mont x = mul(1, x)`. Because `p < 2^254`, the CIOS
+accumulator stays below `2p < 2^256` between rows. The code branches on the final comparisons;
+it is not written to run in constant time. Rust tests (`cargo test -p cryptificate-kernels`)
+compare `mul`, `add`, `sub`, `to_mont` and `from_mont` with `ark_bn254::Fr`, limb for limb, on
+edge cases (`0`, `1`, `p - 1`, `R mod p`, `R² mod p`, limb boundaries) and 100,000 random pairs,
+and the limb helpers with `u128` arithmetic.
+
+Proof file `Refinement/BN254Mont.lean`, namespace `Cryptificate.Refinement.BN254Mont`.
+`val4 x` is the number held by the limbs `x`; `toField x = (val4 x : F) · (2^256)⁻¹` is the
+element of WideTrail's `F = Poseidon2.BN254.F = ZMod p` that `x` represents in Montgomery form;
+`Rinv` is the numeral `R⁻¹ mod p` (`Rinv_spec : 2^256 * Rinv % modulus = 1`).
+
+```lean
+theorem bn254_mont_mul_refines (a b) (ha : val4 a < modulus) :
+    bn254_mont.mul a b ⦃ r => val4 r < modulus ∧ val4 r = val4 a * val4 b * Rinv % modulus ∧
+      toField r = toField a * toField b ⦄
+theorem bn254_mont_add_refines (a b) (ha : val4 a < modulus) (hb : val4 b < modulus) :
+    bn254_mont.add a b ⦃ r => val4 r < modulus ∧ val4 r = (val4 a + val4 b) % modulus ∧
+      toField r = toField a + toField b ⦄
+theorem bn254_mont_sub_refines (a b) (ha : val4 a < modulus) (hb : val4 b < modulus) :
+    bn254_mont.sub a b ⦃ r => val4 r < modulus ∧
+      val4 r = (val4 a + modulus - val4 b) % modulus ∧ toField r = toField a - toField b ⦄
+theorem bn254_mont_to_mont_refines (x) :
+    bn254_mont.to_mont x ⦃ r => val4 r < modulus ∧ val4 r = val4 x * 2 ^ 256 % modulus ∧
+      toField r = (val4 x : F) ⦄
+theorem bn254_mont_from_mont_refines (x) :
+    bn254_mont.from_mont x ⦃ r => val4 r < modulus ∧ val4 r = val4 x * Rinv % modulus ∧
+      (val4 r : F) = toField x ⦄
+```
+
+and `bn254_mont_mul_eq`, `bn254_mont_add_eq`, `bn254_mont_sub_eq`, the same statements in the
+form `∃ r, f a b = ok r ∧ …`. So `mul`, `add` and `sub` never panic on canonical inputs (for
+`mul`, only the first operand needs to be below `p`; the second may be any 256-bit value), and
+return canonical results (below `p`); `to_mont` and `from_mont` never panic on any input.
+`toField_injective` says that on canonical limbs the decoding is injective, so the field
+equations determine the Rust results. All of these use `propext`, `Classical.choice`,
+`Quot.sound` only.
+
+The proof has three layers: limb specifications of `mac`, `adc` and `sbb` (Aeneas's `step`
+tactic and `omega`); the arithmetic of one CIOS row on natural numbers (`row_arith`:
+`2^64 · t' = t + a·bᵢ + m·p`, and `t' < 2p` for `t < 2p`, `a < p`, which also shows that the
+last limb addition of the row cannot overflow); and the four rows of `mul` combined over the
+integers (`2^256 · t₄ = a·b + p·(m₁ + 2^64·m₂ + 2^128·m₃ + 2^192·m₄)`), followed by the
+conditional subtraction (`reduce_once_spec`: for `t < 2p` it returns `t mod p`). The field
+statements follow in `ZMod p`, using WideTrail's `Fact (Nat.Prime modulus)`.
+
+### 4b. arkworks `Fr`: not established
+
+`crates/kernels` still re-exports `ark_bn254::Fr` (ark-bn254 / ark-ff 0.6), whose multiplication
+is arkworks' generic Montgomery multiplication (`MontBackend<T, 4>`), and **the generated BN254
+native variants (`crates/native`) call that `Fr`, not the kernel of 4a.** No refinement theorem
+covers arkworks' code, and none covers a HADES round over BN254 in Rust. What blocks the chain
+for arkworks at this toolchain:
 
 * `bn254-probe/probe.sh` runs the pinned Charon and Aeneas on `a * b` for `Fr`. Charon
   translates it with two warnings (`GATs cannot work with the --lift-associated-types option
@@ -183,17 +447,14 @@ it, and none covers a HADES round over it. What blocks the chain at this toolcha
   the signatures of `Fp::mul` and of `MontBackend`'s `mul_assign`, `add_assign`, … and finally
   `Unimplemented` at `ark-ff-0.6.0/src/fields/mod.rs` lines 160–201, exiting with status 2.
   No Lean model of the arkworks code exists.
-* Even with a model, the proof would have to show that arkworks' Montgomery multiplication
-  (4×64-bit limbs, with carries in `u128`) and its final conditional subtraction compute
-  `a·b·R⁻¹ mod p` for the BN254 modulus, and relate the Montgomery representation to
-  WideTrail's `Poseidon2.BN254.F`. That proof has not been attempted.
 
-So for designs over BN254, the evidence label "Rust-source refinement (Aeneas)" does not apply.
-A possible route is a self-contained Montgomery kernel in `crates/kernels`, written in the
-subset Aeneas handles, proved against `ZMod p`, and used by the native code instead of
-arkworks; that is not done.
+So for designs over BN254, the evidence label "Rust-source refinement (Aeneas)" does not apply
+to the code that is timed. The kernel of 4a computes the same limbs as arkworks (same `R`, same
+representation; the Rust tests check this on the inputs above, which is testing, not proof), so
+switching the native variants to it would bring the timed BN254 arithmetic under the theorems of
+4a; that switch is not made here.
 
-### The 64-bit prime fields: no Rust kernel to refine
+## 5. The 64-bit prime fields: no Rust kernel to refine
 
 The prime-field profile (`hades/prime/v1`: BabyBear, KoalaBear, Mersenne31, Goldilocks or a
 custom prime below `2⁶⁴`) is checked in Lean only. `crates/kernels` has no arithmetic for these
@@ -212,7 +473,8 @@ certificate data that Lean then checks; it is not part of any claim.
   65,536 products, not proved; and the renaming of module paths that `extract.sh` applies to
   `Extracted/Gf256Aes.lean` before Lean checks it.
 * **The Aeneas Lean library**: its models of Rust integers (`U8`, `I8`, `I32`, `U16`, `U32`,
-  `Usize`), shifts, casts, arrays and slices. It also declares axioms of its own for parts of
+  `U64`, `U128`, `Usize`), shifts, casts (including the truncating `u128 as u64`),
+  `u64::wrapping_mul`, arrays and slices. It also declares axioms of its own for parts of
   the standard library it does not model (`Aeneas.Std.get_target`, `get_target.spec`,
   `target_feature_enabled`, the opaque types `core.sync.atomic.AtomicBool`, `AtomicU32`,
   `core.panic.panic_info.PanicInfo`, `core.pin.Pin`, `core.pin.helper.PinHelper`, and
@@ -223,12 +485,14 @@ certificate data that Lean then checks; it is not part of any claim.
   optimizer and linker. The theorems are about the source.
 * **The hardware.**
 
-Not claimed: constant-time execution or the absence of other side channels; correctness of the
-compiled machine code; anything about the generated native variants (`crates/native`) beyond
-their calls to these kernel functions (the generated circuit code is checked by tests, not
-refined); the BN254 arithmetic. The AES-like round kernel is proved, but the timed GF(2⁸)
-native variants implement the column mixing as generated circuits and call only `gf256::add`,
-`xtime` and `mul` from these kernels.
+Not claimed: constant-time execution or the absence of other side channels (the BN254 kernel
+branches on its final comparisons); correctness of the compiled machine code; anything about the
+generated native variants (`crates/native`) beyond their calls to these kernel functions (the
+generated circuit code is checked by tests, not refined); the arkworks BN254 arithmetic that the
+native BN254 variants call, and HADES rounds over BN254 in Rust. The AES-like round kernel is
+proved, but the timed GF(2⁸) native variants implement the column mixing as generated circuits
+and call only `gf256::add`, `xtime` and `mul` from these kernels; the timed BN254 variants call
+arkworks, not `bn254_mont`.
 
 ## Reproducing
 
