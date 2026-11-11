@@ -149,9 +149,10 @@ The native code Cryptificate measures is built on [`crates/kernels`](crates/kern
 | `gf256::mul` | `gf256.mul a b = ok ⟨GF256.rawMul a.bv b.bv⟩` | WideTrail's field `GF256` |
 | `gf256::xtime`, `gf256::add` | equal to `GF256.xtime` and to XOR | WideTrail's field `GF256` |
 | `aes_like::round`, `aes_like::encrypt` | equal to `aesLikeRound` and `aesLikeExec` of [`Bridge.lean`](lean/Cryptificate/Bridge.lean) for every matrix, offsets, S-box table and key schedule (`encrypt` given at least `rounds` keys) | the active-S-box bound, assuming an MDS matrix, distinct offsets and an injective S-box table |
+| `aes_like::encrypt` with the AES matrix, offsets `[0, 1, 2, 3]` and the FIPS 197 S-box as byte arrays | for any two different inputs and any round keys (at least `r`), the executions return normally and have at least `activityBound r` active S-boxes: `≥ 55` over 10 rounds, `≥ 25` over 4; no design hypothesis, the design checks are evaluated by the Lean kernel | the active-S-box bound, for AES rounds without the special last round |
 | gf256 crate 0.3.1 (`0x11B`, table-free), expanded source | its `mul` equals WideTrail's multiplier, assuming `size_of::<u8>() = 1` | WideTrail's field `GF256` |
 
-Because the round kernel takes the design as runtime data, one proof covers every AES-like design you submit. The extraction script reproduces the Lean translation byte for byte from the pinned source; pins and hashes are in [refinement/](refinement/STATUS.md).
+Because the round kernel takes the design as runtime data, one proof covers every AES-like design you submit. For a concrete design, `aes_like_encrypt_activity_bound_of_checks` replaces the three design hypotheses by Boolean checks on its bytes; the AES row is that theorem with the checks evaluated, and the service does not yet run it for submitted designs. The extraction script reproduces the Lean translation byte for byte from the pinned source; pins and hashes are in [refinement/](refinement/STATUS.md).
 
 ## Search and measurement
 

@@ -21,6 +21,7 @@ theorems (statement, axioms, toolchain pins, SHA-256 of the Rust sources they co
 | --- | --- | --- | --- |
 | `crates/kernels/src/gf256.rs`: `xtime`, `add`, `mul` | `Extracted/CryptificateKernels.lean` | `Refinement/GF256.lean` | `gf256_mul_refines`, `gf256_xtime_refines`, `gf256_add_refines`, `*_field`, field laws |
 | `crates/kernels/src/aes_like.rs`: `round`, `encrypt` (design as runtime data) | `Extracted/CryptificateKernels.lean` | `Refinement/AesLike.lean` | `aes_like_round_refines`, `aes_like_encrypt_refines`, `aes_like_encrypt_activity_bound` |
+| the same, with the design checked on its bytes; AES | `Extracted/CryptificateKernels.lean` | `Refinement/AesConcrete.lean` | `aes_like_encrypt_activity_bound_of_checks`, `aes_rust_activity_bound`, `aes_rust_activity_bound_10` (`≥ 55`), `aes_rust_activity_bound_4` (`≥ 25`) |
 | gf256 crate 0.3.1, `0x11B`, `no-tables`, `no-xmul`: `mul` (expanded source) | `Extracted/Gf256Aes.lean` | `Refinement/Gf256Crate.lean` | `gf256crate_mul_refines`, `gf256crate_mul_eq_kernels` |
 | BN254 `Fr` (arkworks) | fails in Aeneas (`bn254-probe/`) | none | not established |
 
@@ -47,12 +48,14 @@ kernel only: no `native_decide`, `bv_decide` or `sorry`.
 The `CryptificateBridge` library in `lakefile.toml` compiles `lean/Cryptificate/Bridge.lean`
 and `lean/Cryptificate/Diffusion/Activity.lean` of the main package from their source files, so
 the AES-like theorems are stated against the main package's definitions rather than a copy of
-them. The main package itself builds on Lean `v4.33.1`; here the same files are compiled with
-Lean and Mathlib `v4.35.0`, into this package's build directory. The correspondence is the
-identical source text (`claims.json` records its SHA-256), not a shared Lean environment: the
-main package's per-design certificates (MDS, offsets, S-box), which discharge the hypotheses of
-`aes_like_encrypt_activity_bound` for a concrete design, are checked on `v4.33.1` and are not
-imported here.
+them. It also compiles `Encoding.lean`, `Sbox.lean`, `Diffusion/Minors4.lean` and
+`Diffusion/Offsets.lean`, the checks behind the main package's per-design certificates, which
+`Refinement/AesConcrete.lean` uses to discharge the hypotheses of
+`aes_like_encrypt_activity_bound` for concrete byte arrays (and for AES). The main package itself
+builds on Lean `v4.33.1`; here the same files are compiled with Lean and Mathlib `v4.35.0`, into
+this package's build directory. The correspondence is the identical source text (`claims.json`
+records its SHA-256), not a shared Lean environment: the certificates the main package
+generates for a submitted design are checked on `v4.33.1` and are not imported here.
 
 ## WideTrail on Lean and Mathlib v4.35.0
 
