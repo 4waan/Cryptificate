@@ -96,8 +96,18 @@ fn aes_with_known_circuit() {
             (claim_ids::OFFSETS_DISPERSION, Status::Proved),
             (claim_ids::SBOX_BIJECTIVE, Status::Proved),
             (claim_ids::ACTIVITY_BOUND, Status::Proved),
+            (claim_ids::SBOX_DIFFERENTIAL, Status::Proved),
+            (claim_ids::SBOX_LINEARITY, Status::Proved),
             (claim_ids::CIRCUIT_EQUIVALENCE, Status::Proved),
         ]
+    );
+    assert_eq!(
+        v["sbox"]["differential"],
+        json!({"uniformity": 4, "inputDifference": "01", "outputDifference": "1F"})
+    );
+    assert_eq!(
+        v["sbox"]["linear"],
+        json!({"linearity": 32, "inputMask": "01", "outputMask": "48"})
     );
 }
 

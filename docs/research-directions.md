@@ -53,7 +53,7 @@ Cryptificate builds on the [WideTrail](https://github.com/4waan/Wide-Trail-forma
 - `Differential`: exact differential-count identities, independent-round-key trail bounds, and small examples separating fixed-key from key-averaged behaviour.
 - `Poseidon2/BN254`: bijectivity, external MDS mixing and an outer-round activity bound for the pinned width-three instance.
 
-Cryptificate adds fresh-input certificates (canonical minors, checked counterexamples, offsets, activity instantiation, partial-round windows and bypasses), primality certificates for submitted moduli, a universal circuit-equivalence checker, S-box and exponent certificates, an optimizer, a native measurement harness, the Rust refinement chain, and replayable bundles.
+Cryptificate adds fresh-input certificates (canonical minors, checked counterexamples, offsets, activity instantiation, partial-round windows and bypasses), primality certificates for submitted moduli, a universal circuit-equivalence checker, S-box and exponent certificates, exact differential uniformity and linearity of byte S-box tables, an optimizer, a native measurement harness, the Rust refinement chain, and replayable bundles.
 
 ### Prime fields: what is proved
 
@@ -112,9 +112,20 @@ The bound counts S-boxes with a nonzero input difference in two executions with 
 
 A search tool proposes low-activity trails; each is checked independently. A support-compatible trail, a realizable differential trail and a concrete fixed-key pair are different objects. A candidate bounds the minimum from above only in the model where its feasibility is checked; a stronger lower bound needs a proof or a checked completeness certificate. Not finding a trail proves nothing. The implementation optimizer in Cryptificate and a cryptanalytic trail search are different search problems.
 
-## 4. S-box quality and probability under an explicit model (proposed)
+## 4. S-box quality and probability under an explicit model (byte tables implemented; the rest proposed)
 
-Bijectivity does not imply good differential behaviour. For byte S-boxes, a checked difference-distribution table gives exact local evidence; for large prime fields, structural proofs replace tables. Edited S-boxes inherit nothing from AES or fifth-power bounds. A future report can combine charged activity, a local bound and the exact probability space into an individual-trail inequality. That is not a fixed-key bound, a hull bound or a security level.
+Bijectivity does not imply good differential behaviour. For byte S-boxes, a checked difference-distribution table gives exact local evidence; for large prime fields, structural proofs replace tables. Edited S-boxes inherit nothing from AES or fifth-power bounds.
+
+*Implemented for byte S-boxes.* Every AES-like report has two claims about the submitted table (`lean/Cryptificate/Sbox/Quality.lean`):
+
+- `sbox.differential`: the differential uniformity, the exact maximum over `a ≠ 0` and `b` of `#{x : S(x ⊕ a) ⊕ S(x) = b}`, stated over WideTrail's `diffCount`. `differentialUniformity F ≤ u` is WideTrail's `IsDiffUniform F u`, the hypothesis of its trail-probability theorems.
+- `sbox.linearity`: the linearity, the exact maximum over `a` and `b ≠ 0` of `|∑ₓ (-1)^(a·x ⊕ b·S(x))|`. The usual nonlinearity is `128 − linearity / 2`; the certificate states the Walsh value.
+
+Each claim states the value together with a pair attaining it, so both the bound and its sharpness are checked. The kernel evaluates the table packed into one natural number: each row of the difference table becomes 256 ten-bit counters tested against the bound with one addition and one mask, and for each output mask a fast Walsh-Hadamard transform in counting form computes all 256 input masks' disagreement counts in eight packed butterfly stages; the soundness of both encodings is proved once. A certificate for a submitted table checks both claims in about 11 s on one thread, of which about 4 s is loading the library; the AES S-box values (4 and 32) are checked once in the library. An edited AES table with two entries swapped has differential uniformity 6 (`SboxQualityEdited`).
+
+These are properties of one table. They are not a bound on any trail, differential or linear hull of a cipher using it, and they do not depend on keys. Algebraic degree and boomerang uniformity are not checked.
+
+*Proposed.* Prime-field power maps need structural proofs instead of tables (WideTrail has `x⁵` over BN254 only). A future report can combine charged activity, a local bound and the exact probability space into an individual-trail inequality. That is not a fixed-key bound, a hull bound or a security level.
 
 ## 5. Trails, hulls and real key schedules (proposed)
 

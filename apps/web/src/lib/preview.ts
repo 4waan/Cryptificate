@@ -6,6 +6,7 @@ import { isPrime64, modulusOf, primeFieldLabel } from './primefield';
 import { aesSbox, formatGfHex, parseGfHex } from './gf256';
 import { branchWitness, rankAndKernel, weight } from './linalg';
 import { externalMdsTitle } from './types';
+import { differentialUniformity, linearity } from './sboxQuality';
 import type { CandidateDesign, ClaimChain, ClaimId, Program, ProgramTarget, Witness } from './types';
 
 /**
@@ -23,6 +24,30 @@ export interface PreviewItem {
   outcome: PreviewOutcome;
   witness: Witness | null;
   note: string;
+}
+
+/** The exact differential uniformity and linearity of a byte table. */
+function sboxQualityPreview(table: readonly number[]): PreviewItem[] {
+  const d = differentialUniformity(table);
+  const l = linearity(table);
+  return [
+    {
+      id: 'sbox.differential',
+      chain: 'design',
+      title: `Differential uniformity of the S-box table is ${d.uniformity}`,
+      outcome: 'holds',
+      witness: d,
+      note: 'The largest entry of the difference table outside the row of input difference 0. A property of the table, not a trail bound.',
+    },
+    {
+      id: 'sbox.linearity',
+      chain: 'design',
+      title: `Linearity of the S-box table is ${l.linearity}`,
+      outcome: 'holds',
+      witness: l,
+      note: 'The largest absolute Walsh coefficient at a nonzero output mask. A property of the table, not a bound on any linear trail.',
+    },
+  ];
 }
 
 export function previewDesign(d: CandidateDesign): PreviewItem[] {
@@ -102,7 +127,7 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
           ? 'Not established by this method: the bound is stated for width 4.'
           : 'Not established by this method: the bound needs an MDS matrix and distinct offsets.',
     };
-    return [mds, offsets, sbox, activity];
+    return [mds, offsets, sbox, activity, ...sboxQualityPreview(table)];
   }
 
   const f = fieldOps(displayFieldOf(d));

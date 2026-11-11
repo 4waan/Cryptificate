@@ -193,7 +193,9 @@ export type DesignClaimId =
   | 'internal.invertible'
   | 'activity.outer'
   | 'activity.partial'
-  | 'activity.total';
+  | 'activity.total'
+  | 'sbox.differential'
+  | 'sbox.linearity';
 
 export type ImplementationClaimId =
   | 'circuit.equivalence'
@@ -256,6 +258,31 @@ export interface SboxCollisionWitness {
   y: GfHex;
 }
 
+/**
+ * The differential uniformity of a byte S-box: for no nonzero input
+ * difference a and output difference b (b may be 00) do more than
+ * `uniformity` of the 256 inputs x satisfy S(x ⊕ a) ⊕ S(x) = b, and for
+ * this pair exactly `uniformity` do.
+ */
+export interface SboxDifferentialWitness {
+  kind: 'sbox-differential';
+  uniformity: number;
+  inputDifference: GfHex;
+  outputDifference: GfHex;
+}
+
+/**
+ * The linearity of a byte S-box: no Walsh coefficient at a nonzero output
+ * mask exceeds `linearity` in absolute value, and the one at these masks
+ * reaches it.
+ */
+export interface SboxLinearityWitness {
+  kind: 'sbox-linearity';
+  linearity: number;
+  inputMask: GfHex;
+  outputMask: GfHex;
+}
+
 export interface PowerCollisionWitness {
   kind: 'power-collision';
   exponent: number;
@@ -282,7 +309,9 @@ export type Witness =
   | DistinguishingInputWitness
   | SboxCollisionWitness
   | PowerCollisionWitness
-  | PartialBypassWitness;
+  | PartialBypassWitness
+  | SboxDifferentialWitness
+  | SboxLinearityWitness;
 
 export type WitnessKind = Witness['kind'];
 

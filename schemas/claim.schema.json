@@ -17,6 +17,8 @@
         "activity.outer",
         "activity.partial",
         "activity.total",
+        "sbox.differential",
+        "sbox.linearity",
         "circuit.equivalence",
         "native.correctness",
         "rust.refinement",

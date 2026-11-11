@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { EVIDENCE_LABELS, CLAIM_STATUSES } from '../src/index.js';
+import {
+  AES_LIKE_DESIGN_CLAIMS,
+  CLAIM_STATUSES,
+  EVIDENCE_LABELS,
+  HADES_DESIGN_CLAIMS,
+  HADES_PRIME_DESIGN_CLAIMS,
+  IMPLEMENTATION_CLAIMS,
+} from '../src/index.js';
+import type { WitnessKind } from '../src/index.js';
 
 const dir = fileURLToPath(new URL('../../../../schemas/', import.meta.url));
 
@@ -53,6 +61,28 @@ test('claim schema uses the exact evidence labels and statuses', () => {
   assert.deepEqual(claim.properties.status.enum, [...CLAIM_STATUSES]);
   const labels = resolvePointer(claim, '/$defs/evidence/properties/label/anyOf/0/enum') as string[];
   assert.deepEqual([...labels].sort(), Object.values(EVIDENCE_LABELS).sort());
+});
+
+test('claim schema lists exactly the catalogued claim ids', () => {
+  const claim = load('claim.schema.json') as { properties: { id: { enum: string[] } } };
+  const ids = new Set([...AES_LIKE_DESIGN_CLAIMS, ...HADES_DESIGN_CLAIMS, ...HADES_PRIME_DESIGN_CLAIMS, ...IMPLEMENTATION_CLAIMS].map((c) => c.id));
+  assert.deepEqual([...claim.properties.id.enum].sort(), [...ids].sort());
+});
+
+test('witness schema has one alternative per witness kind', () => {
+  const witness = load('witness.schema.json') as { oneOf: { properties: { kind: { const: string } } }[] };
+  // Typed so that a new WitnessKind fails to compile until it is listed here.
+  const kinds: Record<WitnessKind, true> = {
+    branch: true,
+    'offset-collision': true,
+    'distinguishing-input': true,
+    'sbox-collision': true,
+    'power-collision': true,
+    'sbox-differential': true,
+    'sbox-linearity': true,
+    'partial-bypass': true,
+  };
+  assert.deepEqual(witness.oneOf.map((w) => w.properties.kind.const).sort(), Object.keys(kinds).sort());
 });
 
 test('the example designs and programs pass the request validators', async () => {

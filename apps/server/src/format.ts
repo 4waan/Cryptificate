@@ -73,6 +73,10 @@ function witnessText(c: Claim): string {
       return `${w.x1}^${w.exponent} = ${w.x2}^${w.exponent}${w.note ? ` (${w.note})` : ''}`;
     case 'partial-bypass':
       return `difference [${w.difference.join(',')}] stays zero at positions ${w.positions.join(',')} through ${w.partialRounds} partial rounds`;
+    case 'sbox-differential':
+      return `uniformity ${w.uniformity}, at input difference ${w.inputDifference} and output difference ${w.outputDifference}`;
+    case 'sbox-linearity':
+      return `linearity ${w.linearity}, at input mask ${w.inputMask} and output mask ${w.outputMask}`;
     default:
       return '';
   }
