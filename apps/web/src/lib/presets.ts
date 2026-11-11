@@ -1,5 +1,5 @@
 import { identityMatrix } from './design';
-import type { AesLikeDesign, HadesDesign, Instruction, Program } from './types';
+import type { AesLikeDesign, HadesDesign, HadesPrimeDesign, Instruction, Program } from './types';
 
 export const AES_MIXCOLUMNS: string[][] = [
   ['02', '03', '01', '01'],
@@ -117,4 +117,55 @@ export function rowScaledAesDesign(): AesLikeDesign {
   const d = aesDesign();
   d.matrix[0] = ['04', '06', '02', '02'];
   return d;
+}
+
+/** Poseidon2's 4 × 4 matrix M4, the external matrix of a width-4 design. */
+export const POSEIDON2_M4 = [
+  ['5', '7', '1', '3'],
+  ['4', '6', '1', '1'],
+  ['1', '3', '5', '7'],
+  ['1', '1', '4', '6'],
+];
+
+/** An internal matrix of the Poseidon2 form 1·1ᵀ + diag(1, 2, 4, 8), for width 4. */
+export const INTERNAL_4 = [
+  ['2', '1', '1', '1'],
+  ['1', '3', '1', '1'],
+  ['1', '1', '5', '1'],
+  ['1', '1', '1', '9'],
+];
+
+/**
+ * The prime-field examples of the repository: width 4 over KoalaBear with
+ * x^3 and 20 partial rounds (examples/designs/koalabear-t4.json), or over
+ * BabyBear with x^7 and 13 partial rounds (babybear-t4.json); other fields
+ * get the KoalaBear parameters with x^5. Chosen for illustration, not
+ * deployed instances.
+ */
+export function primeDesign(field: HadesPrimeDesign['field'] = 'koalabear', modulus?: string): HadesPrimeDesign {
+  const exponent = field === 'koalabear' ? 3 : field === 'babybear' ? 7 : 5;
+  return {
+    model: 'hades/prime/v1',
+    field,
+    ...(modulus !== undefined ? { modulus } : {}),
+    width: 4,
+    external: POSEIDON2_M4.map((r) => [...r]),
+    internal: INTERNAL_4.map((r) => [...r]),
+    fullRounds: 8,
+    partialRounds: field === 'babybear' ? 13 : 20,
+    sbox: { kind: 'power', exponent },
+    partialMask: [true, false, false, false],
+  };
+}
+
+/** The same design at width 3: Poseidon2's width-3 matrices. */
+export function primeDesign3(field: HadesPrimeDesign['field'], modulus?: string): HadesPrimeDesign {
+  const h = hadesDesign();
+  return {
+    ...primeDesign(field, modulus),
+    width: 3,
+    external: h.external,
+    internal: h.internal,
+    partialMask: [true, false, false],
+  };
 }

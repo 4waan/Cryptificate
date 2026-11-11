@@ -16,4 +16,9 @@ canonical decimal strings below the modulus. The validators reject numbers in th
 unknown members, out-of-range offsets, rounds and exponents, forward register references and
 programs longer than 256 instructions. Semantic checks (MDS, equivalence) belong to the engine.
 
-`npm run build` compiles to `dist/`; `npm test` runs the validator and schema tests.
+`renderReportHtml(report)` renders an analysis or experiment report as the self-contained HTML
+evidence report shared by the command line (`--format html`), evidence bundles (`report.html`) and
+the web workbench (Export report). All markup goes through an escaping element builder, and the page
+declares a Content Security Policy that forbids scripts and external loads.
+
+`npm run build` compiles to `dist/`; `npm test` runs the validator, schema and HTML report tests.

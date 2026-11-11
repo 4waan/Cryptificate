@@ -12,5 +12,5 @@
   "requires": [
     "header"
   ],
-  "field": "bn254"
+  "field": "any"
 }

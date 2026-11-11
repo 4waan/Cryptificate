@@ -1,0 +1,18 @@
+{
+  "name": "const_witness_bypass_basis_prime",
+  "kind": "constant",
+  "claim": null,
+  "status": null,
+  "theorem": null,
+  "expectedType": null,
+  "placeholders": [
+    "WIDTH",
+    "BYPASS_DIM",
+    "BYPASS_BASIS_ENTRIES",
+    "BYPASS_COEFF_ENTRIES"
+  ],
+  "requires": [
+    "const_modulus_prime"
+  ],
+  "field": "prime"
+}

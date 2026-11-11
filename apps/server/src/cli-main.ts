@@ -8,7 +8,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFil
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
-import type { AnalysisReport, AnalysisRequest, ExecutionState, ExperimentReport, ExperimentRequest, ProgramTarget, Report } from '@cryptificate/schema';
+import type { AnalysisReport, AnalysisRequest, ExecutionState, ExperimentReport, ExperimentRequest, HtmlToolchain, ProgramTarget, Report } from '@cryptificate/schema';
 import { buildBundle } from './bundle.js';
 import { ANALYSIS_BUDGET_MS, ANALYSIS_STEPS, runAnalysis } from './analysis.js';
 import { JobContext } from './context.js';
@@ -34,22 +34,25 @@ import { CONFIG_FILE, findConfig, loadConfig } from './project.js';
 import type { LoadedConfig } from './project.js';
 import { runLean } from './leanrun.js';
 import {
+  checkToHtml,
   checkToJUnit,
   checkToMarkdown,
   checkToSarif,
   checkToText,
   evaluateCheckEntry,
   evaluateVerifyEntry,
+  evidenceToHtml,
   makeCheckRun,
   makeVerifyRun,
   toJson,
   toSarifText,
+  verifyToHtml,
   verifyToJUnit,
   verifyToMarkdown,
   verifyToSarif,
   verifyToText,
 } from './report-formats.js';
-import type { CheckEntry, CheckInput, CheckRun, GateRun, VerifyEntry, VerifyRun } from './report-formats.js';
+import type { CheckEntry, CheckInput, CheckRun, EvidenceInput, GateRun, HtmlOptions, VerifyEntry, VerifyRun } from './report-formats.js';
 import { createApp } from './server.js';
 import { readTarGz } from './tar.js';
 import { readToolchain } from './toolchain.js';
@@ -83,10 +86,13 @@ Commands:
         Re-derive bundles' claims with the installed engine and Lean checker.
   report <result.json|report.json|bundle.tar.gz|glob>... [GATE OPTIONS]
         Render saved results (check or verify --format json output, a report.json or a
-        bundle) in another format, without running anything.
+        bundle) in another format, without running anything. With --format html and no
+        --fail-on or --claims, experiment reports and bundles are accepted too, alone or
+        with analysis reports and bundles (not with saved check or verify results).
 
 Gate options (check, verify, report):
-  --format text|json|sarif|junit|markdown   output format (default text)
+  --format text|json|sarif|junit|markdown|html   output format (default text); html is a
+                        self-contained evidence report (no scripts, no external requests)
   --output FILE         write the formatted result to FILE; the text result goes to stdout
   --fail-on none|refuted|not-established|any
                         claim statuses that fail the run (default none; report keeps the
@@ -233,7 +239,7 @@ function onInterrupt(controller: AbortController, io: Io): void {
 // ---------------------------------------------------------------------------
 // Gate options shared by check, verify and report
 
-const FORMATS = ['text', 'json', 'sarif', 'junit', 'markdown'] as const;
+const FORMATS = ['text', 'json', 'sarif', 'junit', 'markdown', 'html'] as const;
 type Format = (typeof FORMATS)[number];
 
 const GATE_OPTIONS = {
@@ -285,7 +291,7 @@ function textOf(run: GateRun, style: Style): string {
   return run.command === 'check' ? checkToText(run, style) : verifyToText(run, style);
 }
 
-export function render(run: GateRun, format: Format, cwd: string, style: Style, uriBase?: string): string {
+export function render(run: GateRun, format: Format, cwd: string, style: Style, html: HtmlOptions = {}, uriBase?: string): string {
   const read = (p: string): string | null => {
     try {
       return readFileSync(p, 'utf8');
@@ -304,21 +310,23 @@ export function render(run: GateRun, format: Format, cwd: string, style: Style, 
       return run.command === 'check' ? checkToJUnit(run) : verifyToJUnit(run);
     case 'markdown':
       return run.command === 'check' ? checkToMarkdown(run) : verifyToMarkdown(run);
+    case 'html':
+      return run.command === 'check' ? checkToHtml(run, html) : verifyToHtml(run);
   }
 }
 
 const PLAIN: Style = { bold: (s) => s, dim: (s) => s, status: (_s, t = _s) => t };
 
 /** Write the result where the options say, and the GitHub step summary when asked. */
-function emit(run: GateRun, opts: GateOptions, io: Io): void {
+function emit(run: GateRun, opts: GateOptions, io: Io, html: HtmlOptions = {}): void {
   if (opts.output) {
     const target = resolve(io.cwd, opts.output);
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, render(run, opts.format, io.cwd, PLAIN, opts.uriBase));
+    writeFileSync(target, render(run, opts.format, io.cwd, PLAIN, html, opts.uriBase));
     io.stdout.write(render(run, 'text', io.cwd, makeStyle(io.stdout)));
     io.stderr.write(`${opts.format}: ${target}\n`);
   } else {
-    io.stdout.write(render(run, opts.format, io.cwd, opts.format === 'text' ? makeStyle(io.stdout) : PLAIN, opts.uriBase));
+    io.stdout.write(render(run, opts.format, io.cwd, opts.format === 'text' ? makeStyle(io.stdout) : PLAIN, html, opts.uriBase));
   }
   const summary = io.environ['GITHUB_STEP_SUMMARY'];
   if (opts.stepSummary && summary) {
@@ -532,12 +540,24 @@ async function cmdVerify(argv: string[], io: Io): Promise<number> {
 
 /** A saved result read by `report`, before the policy is applied. */
 type Loaded =
-  | { kind: 'check'; entries: CheckEntry[]; failOn: FailOn; claims: string[] | null; recorded?: boolean }
-  | { kind: 'verify'; entries: VerifyEntry[]; failOn: FailOn; claims: string[] | null; recorded?: boolean };
+  | { kind: 'check'; entries: CheckEntry[]; failOn: FailOn; claims: string[] | null; recorded?: boolean; toolchain?: HtmlToolchain }
+  | { kind: 'verify'; entries: VerifyEntry[]; failOn: FailOn; claims: string[] | null; recorded?: boolean }
+  | { kind: 'experiment'; file: string; report: ExperimentReport; toolchain?: HtmlToolchain };
+
+/** The toolchain document of a bundle, when it holds a readable one. */
+function bundleToolchain(files: Map<string, Buffer>): HtmlToolchain | undefined {
+  try {
+    const doc = JSON.parse(files.get('toolchain.json')?.toString('utf8') ?? 'null') as unknown;
+    return doc && typeof doc === 'object' && !Array.isArray(doc) ? (doc as HtmlToolchain) : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 function loadSaved(file: string, cwd: string): Loaded {
   const path = resolve(cwd, file);
   let doc: unknown;
+  let toolchain: HtmlToolchain | undefined;
   let input: CheckInput = { file, designPointer: '/inputs/design', programPointer: null };
   const errorEntry = (message: string): Loaded => ({
     kind: 'check',
@@ -551,6 +571,7 @@ function loadSaved(file: string, cwd: string): Loaded {
       const report = files.get('report.json');
       if (!report) return errorEntry(`${file} holds no report.json`);
       doc = JSON.parse(report.toString('utf8')) as unknown;
+      toolchain = bundleToolchain(files);
     } else {
       doc = readJsonFile(file, cwd);
     }
@@ -582,9 +603,10 @@ function loadSaved(file: string, cwd: string): Loaded {
       entries: [{ input, state: terminal.includes(state as ExecutionState) ? (state as ExecutionState) : 'error', report, outcome: 'pass', violations: [], unavailable: [] }],
       failOn: 'none',
       claims: null,
+      ...(toolchain ? { toolchain } : {}),
     };
   }
-  if (o['kind'] === 'experiment') return errorEntry(`${file} is an experiment report; report renders analysis reports and check or verify results`);
+  if (o['kind'] === 'experiment' && Array.isArray(o['candidates'])) return { kind: 'experiment', file, report: doc as ExperimentReport, ...(toolchain ? { toolchain } : {}) };
   return errorEntry(`${file} is not a check or verify result, an analysis report or a bundle`);
 }
 
@@ -592,7 +614,9 @@ async function cmdReport(argv: string[], io: Io): Promise<number> {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { ...GATE_OPTIONS } });
   const gate = gateOptions(values, io.cwd);
   const files = expand(positionals, io, 'report needs at least one result file');
-  const loaded = files.map((f) => loadSaved(f, io.cwd));
+  const all = files.map((f) => loadSaved(f, io.cwd));
+  if (all.some((l) => l.kind === 'experiment')) return reportEvidence(all, gate, io);
+  const loaded = all as Exclude<Loaded, { kind: 'experiment' }>[];
   const kinds = new Set(loaded.map((l) => l.kind));
   if (kinds.size > 1) fail('report cannot mix verify results with check results, reports or bundles');
   // Without --fail-on or --claims, keep the policy of the first saved check or verify result.
@@ -604,11 +628,43 @@ async function cmdReport(argv: string[], io: Io): Promise<number> {
     const entries = loaded.flatMap((l) => l.entries as VerifyEntry[]).map((e) => evaluateVerifyEntry({ bundle: e.bundle, result: e.result, ...(e.error !== undefined ? { error: e.error } : {}) }, failOn, claims));
     run = makeVerifyRun(entries, failOn, claims);
   } else {
-    const entries = loaded.flatMap((l) => l.entries as CheckEntry[]).map((e) => evaluateCheckEntry(e, failOn, claims));
+    const entries = loaded.flatMap((l) => (l.kind === 'check' ? l.entries : [])).map((e) => evaluateCheckEntry(e, failOn, claims));
     run = makeCheckRun(entries, failOn, claims, io.cwd);
   }
-  emit(run, gate, io);
+  const toolchains = new Map<string, HtmlToolchain>();
+  for (const l of loaded) if (l.kind === 'check' && l.toolchain && l.entries[0]) toolchains.set(l.entries[0].input.file, l.toolchain);
+  emit(run, gate, io, { toolchains });
   return run.exitCode;
+}
+
+/**
+ * Experiment reports render only as HTML evidence reports: the gate formats
+ * and the policy describe analysis claims. Analysis reports and bundles given
+ * alongside render on the same page, in input order; saved check or verify
+ * results, which carry a policy, cannot be mixed in. Exit 0 when every input
+ * was read and its run completed, 2 otherwise.
+ */
+function reportEvidence(loaded: Loaded[], gate: GateOptions, io: Io): number {
+  const usage =
+    'report renders experiment reports only with --format html and without --fail-on or --claims, alone or with analysis reports and bundles (not with saved check or verify results)';
+  if (gate.format !== 'html' || gate.failOn !== undefined || gate.claims !== null) fail(usage);
+  const inputs: EvidenceInput[] = [];
+  for (const l of loaded) {
+    if (l.kind === 'experiment') inputs.push({ kind: 'experiment', file: l.file, report: l.report, ...(l.toolchain ? { toolchain: l.toolchain } : {}) });
+    else if (l.kind === 'check' && !l.recorded) for (const entry of l.entries) inputs.push({ kind: 'analysis', entry, ...(l.toolchain ? { toolchain: l.toolchain } : {}) });
+    else fail(usage);
+  }
+  const { html, exitCode, problems } = evidenceToHtml(inputs);
+  for (const p of problems) io.stderr.write(`cryptificate: ${p}\n`);
+  if (gate.output) {
+    const target = resolve(io.cwd, gate.output);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, html);
+    io.stderr.write(`html: ${target}\n`);
+  } else {
+    io.stdout.write(html);
+  }
+  return exitCode;
 }
 
 // ---------------------------------------------------------------------------

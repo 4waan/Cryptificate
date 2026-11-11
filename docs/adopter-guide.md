@@ -47,7 +47,7 @@ Edit the design file, then run `cryptificate check` in the directory of `cryptif
 
 ## 3. Describe a design
 
-Designs and circuits are JSON. Bytes are two hex digits; BN254 values are decimal strings.
+Designs and circuits are JSON. Bytes are two hex digits; elements of a prime field (BN254, BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime) are decimal strings.
 
 ```json
 {
@@ -130,7 +130,9 @@ Download the bundle from the workbench, with `client.bundle(...)`, or with `cryp
 npx cryptificate verify aes-check.tar.gz
 ```
 
-`verify` reads only the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It never runs Lean, Rust or shell code from the bundle. Recorded timings are shown as historical; measuring again creates a new experiment.
+`verify` reads only the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It never runs Lean, Rust or shell code from the bundle. Recorded timings are shown as historical; measuring again creates a new experiment. For the S-box differential uniformity and linearity claims the comparison covers the value and the pair of bytes as well as the status, so a bundle that records another value does not verify. A bundle that lacks both of these claims and whose recorded Lean certificate digest differs from the regenerated one, as for a bundle recorded before they existed, lists them as *not recorded*: they are re-derived but there is nothing to compare them with, and `verify` adds a note saying so. Bundles are not signed, so this cannot rule out that the claims were removed by hand; a bundle whose certificate digest is the regenerated one and lacks them does not verify. The partial-round claims `activity.partial` and `activity.total` follow the same rule with another marker: a bundle that lacks both is *not recorded* for them only when its recorded checker revision is a commit of your checkout whose claim list does not name them; otherwise the omission is a mismatch.
+
+To attach the evidence to an audit or a pull request, use the bundle's `report.html`, the workbench's **Export report** button, or `npx cryptificate report aes-check.tar.gz --format html --output report.html`: one HTML file with no scripts and no external requests that prints cleanly to PDF. It is a view of `report.json`, not evidence; the bundle is what `verify` re-checks.
 
 ## 8. Bring your own implementation language
 
@@ -140,6 +142,6 @@ A verdict of `locally confirmed` covers one machine and the recorded workloads. 
 
 ## Limits to keep in mind
 
-- Checked profiles: GF(2⁸) width 4 (AES-like, 4 to 32 rounds) and BN254 width 3 (HADES, up to 160 rounds). Other widths are experimental.
+- Checked profiles: GF(2⁸) width 4 (AES-like, 4 to 32 rounds), BN254 width 3 (HADES, up to 160 rounds), and HADES over BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime below 2⁶⁴ at widths 3 and 4 (design claims only: no circuits, search or native timing over these fields). Other widths are experimental or rejected.
 - Activity figures are conservative lower bounds on active S-boxes. They do not rank passing designs and they are not security levels.
 - Native timings describe the recorded machine and workload only.

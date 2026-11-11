@@ -1,0 +1,175 @@
+import Cryptificate
+
+/-!
+# Example: the partial rounds of the reference Poseidon2 parameters
+
+The reference parameters (external matrix `[[2,1,1],[1,2,1],[1,1,2]]`, internal matrix
+`[[2,1,1],[1,2,1],[1,1,3]]`, `x ↦ x ^ 5`, `8` full and `56` partial rounds, S-box on coordinate
+`0` in the partial rounds), with the partial rounds counted. The rows `e₀`, `e₀ M` and `e₀ M²` of
+the powers of the internal matrix are `[1, 0, 0]`, `[2, 1, 1]` and `[6, 5, 6]`, with determinant
+`1`, so every three consecutive partial rounds activate the S-box of coordinate `0` for two
+distinct states (`partial_active`). The `56` partial rounds hold `18` disjoint such windows, and
+with the `16` active S-boxes of the full rounds two distinct inputs activate at least `34` S-boxes
+over the whole permutation, for every choice of round constants (`hades_total_activity`). This is
+a lower bound on active S-boxes, not a tightness result or a security level.
+
+Instantiated by `scripts/instantiate.py` from the fragments `header`, `const_external_bn254`,
+`const_internal_bn254`, `const_exponent`, `const_rounds_hades`, `const_mask_hades`,
+`external_mds`, `internal_invertible`, `power_bijective`, `hades_activity`, `partial_active`,
+`hades_total_activity` and `footer`.
+-/
+
+set_option autoImplicit false
+set_option maxRecDepth 16000
+set_option maxHeartbeats 2000000
+
+namespace CryptificateJob
+
+open Cryptificate
+
+/-- The candidate's external matrix over the BN254 scalar field, row-major as submitted. HADES
+mixes with it in every full round and, as Poseidon2 does, once before the first round. -/
+def candExternal : Matrix (Fin 3) (Fin 3) Poseidon2.BN254.F :=
+  bnMat3 2 1 1 1 2 1 1 1 2
+
+#eval Audit.echoInput "candExternal" candExternal
+
+/-- The candidate's internal matrix over the BN254 scalar field, row-major as submitted. HADES
+mixes with it in every partial round. -/
+def candInternal : Matrix (Fin 3) (Fin 3) Poseidon2.BN254.F :=
+  bnMat3 2 1 1 1 2 1 1 1 3
+
+#eval Audit.echoInput "candInternal" candInternal
+
+/-- The exponent `e` of the candidate's power S-box `x ↦ x ^ e`. -/
+def candExponent : ℕ := 5
+
+#eval Audit.echoInput "candExponent" candExponent
+
+/-- The candidate's number of full rounds, half of them before the partial rounds and half
+after. -/
+def candFullRounds : ℕ := 8
+
+#eval Audit.echoInput "candFullRounds" candFullRounds
+
+/-- The candidate's number of partial rounds. -/
+def candPartialRounds : ℕ := 56
+
+#eval Audit.echoInput "candPartialRounds" candPartialRounds
+
+/-- The candidate's partial-round mask: `true` at the positions where a partial round applies
+the S-box, as submitted. -/
+def candPartialMask : Fin 3 → Bool :=
+  maskBits3 1 0 0
+
+#eval Audit.echoInput "candPartialMask" candPartialMask
+
+/-- The positions where `candPartialMask` is `true`: the S-box positions of a partial round. -/
+def candMask : Finset (Fin 3) :=
+  Finset.univ.filter fun i => candPartialMask i = true
+
+/-- Claim `external.mds`: every square submatrix of `candExternal` is nonsingular, so its branch
+number is `4`. The kernel evaluates the `19` canonical minors by explicit formulas
+(`Mat3.minorsOk`), and `Mat3.isMDS_of_minorsOk`, proved once for every `3 × 3` matrix, turns
+that into WideTrail's `IsMDS`. -/
+theorem external_mds : IsMDS candExternal :=
+  Mat3.isMDS_of_minorsOk candExternal (by decide)
+
+/-- Claim `internal.invertible`: the determinant of `candInternal`, which the kernel evaluates
+with the six-term formula of `Matrix.det_fin_three`, is nonzero. -/
+theorem internal_invertible : candInternal.det ≠ 0 :=
+  Mat3.det_ne_zero_of_det3 (by decide)
+
+/-- Claim `sbox.bijective`: `x ↦ x ^ candExponent` permutes the BN254 scalar field. The
+certificate is an inverse exponent `d` and a multiplier `k` with
+`candExponent * d = (p - 1) * k + 1`, given below in that order: an identity between natural
+numbers that the kernel checks. By Fermat's little theorem `x ↦ x ^ d` is then the inverse
+map. -/
+theorem power_bijective : Function.Bijective (fun x : Poseidon2.BN254.F => x ^ candExponent) :=
+  PrimePower.BN254.pow_bijective candExponent
+    17510594297471420177797124596205820070838691520332827474958563349260646796493
+    4 (by decide) (by decide) (by decide)
+
+/-- Claim `activity.outer`: run the candidate permutation on two distinct inputs: the external
+matrix, then `h = candFullRounds / 2` full rounds, `candPartialRounds` partial rounds with
+S-boxes on the positions in `mask`, and `h` full rounds, where each round adds its constant,
+applies `x ↦ x ^ candExponent` and multiplies by its matrix. For every mask and every choice of
+round constants, at least `(h / 2 + h / 2) * 4 + h % 2 + h % 2` S-box evaluations in the full
+rounds receive different inputs in the two executions. Partial rounds are not counted. The
+design is written out field by field from the candidate constants, so the statement names every
+value the bound depends on. Uses `external_mds`, `internal_invertible` and `power_bijective`
+from this file. -/
+theorem hades_activity :
+    ∀ (mask : Finset (Fin 3)) (constants : ℕ → Fin 3 → Poseidon2.BN254.F)
+      (x y : Fin 3 → Poseidon2.BN254.F), x ≠ y →
+        (candFullRounds / 2 / 2 + candFullRounds / 2 / 2) * 4
+            + candFullRounds / 2 % 2 + candFullRounds / 2 % 2
+          ≤ Hades.Design.outerActivity
+              { external := candExternal, internal := candInternal, exponent := candExponent,
+                fullRounds := candFullRounds, partialRounds := candPartialRounds }
+              mask constants x y :=
+  -- The design is passed explicitly: leaving it to unification makes elaboration time out.
+  fun mask constants _ _ hxy =>
+    Hades.Design.outer_activity
+      { external := candExternal, internal := candInternal, exponent := candExponent,
+        fullRounds := candFullRounds, partialRounds := candPartialRounds }
+      external_mds internal_invertible power_bijective mask constants hxy
+
+/-- Claim `activity.partial`: the candidate's partial rounds cannot be passed by a nonzero
+difference without an active S-box. Each partial round adds its round constants, applies
+`x ↦ x ^ candExponent` at the positions of `candMask` and multiplies by `candInternal`. The
+statement says that there are at least as many partial rounds as the window length, and that every
+window of that many consecutive partial rounds is charged: for every choice of round constants,
+every window inside the partial rounds and every two distinct states entering it, some S-box of
+the window receives different inputs in the two runs. A bypass is therefore impossible
+(`Hades.Design.not_bypass_of_windowActive`). The certificate is observability: the rows of
+`candInternal ^ j` at masked positions, for `j` below the window length, include three rows with a
+nonzero determinant (`Hades.observable_of_rows3`); the powers and positions of those rows are
+listed below in that order. -/
+theorem partial_active :
+    3 ≤ candPartialRounds ∧
+      Hades.Design.WindowActive
+        { external := candExternal, internal := candInternal, exponent := candExponent,
+          fullRounds := candFullRounds, partialRounds := candPartialRounds }
+        candMask 3 :=
+  ⟨by decide,
+    Hades.Design.windowActive_of_observable
+      { external := candExternal, internal := candInternal, exponent := candExponent,
+        fullRounds := candFullRounds, partialRounds := candPartialRounds }
+      (Hades.observable_of_rows3 candInternal candMask 3
+        ![0, 1, 2] ![0, 0, 0] (by decide) (by decide) (by decide))⟩
+
+/-- Claim `activity.total`: run the candidate permutation on two distinct inputs, with the
+partial-round S-boxes at the positions of `candMask`. For every choice of round constants, the
+full rounds and the partial rounds together contain at least the full-round bound of
+`hades_activity` plus one S-box for each of the disjoint windows of consecutive partial rounds
+that `partial_active` charges, here written `candPartialRounds / L` with `L` the window length.
+Full rounds count every S-box, partial rounds the masked ones, so the two counts together are
+every active S-box of the permutation. Uses `external_mds`, `internal_invertible`,
+`power_bijective` and `partial_active` from this file. -/
+theorem hades_total_activity :
+    ∀ (constants : ℕ → Fin 3 → Poseidon2.BN254.F) (x y : Fin 3 → Poseidon2.BN254.F), x ≠ y →
+        (candFullRounds / 2 / 2 + candFullRounds / 2 / 2) * 4
+            + candFullRounds / 2 % 2 + candFullRounds / 2 % 2 + candPartialRounds / 3
+          ≤ Hades.Design.outerActivity
+              { external := candExternal, internal := candInternal, exponent := candExponent,
+                fullRounds := candFullRounds, partialRounds := candPartialRounds }
+              candMask constants x y
+            + Hades.Design.partialActivity
+              { external := candExternal, internal := candInternal, exponent := candExponent,
+                fullRounds := candFullRounds, partialRounds := candPartialRounds }
+              candMask constants x y :=
+  -- The design is passed explicitly, as in `hades_activity`.
+  fun constants _ _ hxy =>
+    Hades.Design.total_activity
+      { external := candExternal, internal := candInternal, exponent := candExponent,
+        fullRounds := candFullRounds, partialRounds := candPartialRounds }
+      external_mds internal_invertible power_bijective partial_active.2 constants hxy
+
+end CryptificateJob
+#cryptificate_audit CryptificateJob.external_mds
+#cryptificate_audit CryptificateJob.internal_invertible
+#cryptificate_audit CryptificateJob.power_bijective
+#cryptificate_audit CryptificateJob.hades_activity
+#cryptificate_audit CryptificateJob.partial_active
+#cryptificate_audit CryptificateJob.hades_total_activity

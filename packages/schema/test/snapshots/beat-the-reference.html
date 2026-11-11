@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; img-src data:; base-uri &#39;none&#39;; form-action &#39;none&#39;"><meta name="referrer" content="no-referrer"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><title>Cryptificate evidence report: experiment 9697de03f7061aa26360c427ef463a04</title><style>
+:root{--fg:#1b1f24;--muted:#57606a;--bg:#fff;--panel:#f6f8fa;--line:#d0d7de;--code:#0b3b6f;
+--ok:#116329;--ok-bg:#dafbe1;--bad:#a40e26;--bad-bg:#ffebe9;--warn:#7d4e00;--warn-bg:#fff8c5;--other-bg:#eaeef2;
+font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.5;color:var(--fg);background:var(--bg)}
+@media screen and (prefers-color-scheme:dark){:root{--fg:#e6edf3;--muted:#9da7b3;--bg:#0d1117;--panel:#161b22;--line:#30363d;--code:#a5d6ff;
+--ok:#7ee787;--ok-bg:#12261e;--bad:#ffa198;--bad-bg:#2d1214;--warn:#e3b341;--warn-bg:#2b2111;--other-bg:#21262d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg)}
+main{max-width:60rem;margin:0 auto;padding:2rem 1.25rem 3rem}
+h1{font-size:1.6rem;margin:.2rem 0 1rem;line-height:1.25}
+h2{font-size:1.25rem;margin:2.2rem 0 .8rem;padding-bottom:.3rem;border-bottom:1px solid var(--line)}
+h3{font-size:1.05rem;margin:1.4rem 0 .5rem}
+h4{font-size:.95rem;margin:1rem 0 .4rem}
+p{margin:.4rem 0 .8rem}
+a{color:var(--code)}
+code,pre{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;font-size:.88em}
+code{color:var(--code);overflow-wrap:break-word}
+code.digest{overflow-wrap:anywhere}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.6rem .8rem;white-space:pre-wrap;overflow-wrap:anywhere;margin:.4rem 0 .8rem}
+pre.statement{margin:0;background:transparent;border:0;padding:0;color:var(--code)}
+pre.json{font-size:.78em}
+pre.program{column-width:13rem;column-gap:2rem;column-rule:1px solid var(--line)}
+.eyebrow{text-transform:uppercase;letter-spacing:.06em;font-size:.75rem;color:var(--muted);margin:0}
+.id{font-size:.8em}
+.digest{font-size:.82em}
+.muted{color:var(--muted)}
+.warn{color:var(--warn);font-weight:600}
+dl.kv{display:grid;grid-template-columns:minmax(9rem,max-content) 1fr;gap:.25rem 1rem;margin:.4rem 0 .8rem}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0;min-width:0}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .9rem;font-size:.9em}
+caption{text-align:left;color:var(--muted);padding-bottom:.3rem}
+th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;vertical-align:top;overflow-wrap:break-word}
+thead th{background:var(--panel)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.matrix{width:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.82em}
+table.matrix th{color:var(--muted);font-weight:normal;background:var(--panel)}
+table.matrix td{text-align:right;max-width:22rem}
+table.sbox td{padding:.1rem .3rem}
+table.vector{width:auto}
+.badge{display:inline-block;padding:.05rem .5rem;border-radius:999px;font-size:.8rem;font-weight:600;white-space:nowrap;border:1px solid transparent}
+.badge-proved{color:var(--ok);background:var(--ok-bg);border-color:var(--ok)}
+.badge-refuted{color:var(--bad);background:var(--bad-bg);border-color:var(--bad)}
+.badge-not-established{color:var(--warn);background:var(--warn-bg);border-color:var(--warn)}
+.badge-unsupported,.badge-other{color:var(--fg);background:var(--other-bg);border-color:var(--line)}
+.legend{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.6rem 1rem;margin:1rem 0;font-size:.9em}
+.legend h3{margin:.2rem 0 .4rem;font-size:.95rem}
+.legend ul{margin:0 0 .4rem;padding-left:1rem}
+.legend li{margin:.2rem 0}
+.claim{border:1px solid var(--line);border-left-width:4px;border-radius:6px;padding:.6rem .9rem;margin:.8rem 0}
+.claim-proved{border-left-color:var(--ok)}
+.claim-refuted{border-left-color:var(--bad)}
+.claim-not-established{border-left-color:var(--warn)}
+.claim>header{display:flex;justify-content:space-between;align-items:baseline;gap:1rem}
+.claim>header h3{margin:0 0 .4rem;font-size:1rem}
+.witness{background:var(--bad-bg);border-radius:6px;padding:.4rem .8rem;margin-top:.4rem}
+.claim-proved .witness,.claim-not-established .witness{background:var(--panel)}
+.witness h4{margin:.2rem 0 .3rem}
+.candidate{margin:1.4rem 0}
+.report-head{margin-bottom:1rem}
+footer{margin-top:2.5rem;padding-top:.6rem;border-top:1px solid var(--line);color:var(--muted);font-size:.85em}
+.report+.report{margin-top:3rem;border-top:3px double var(--line);padding-top:1rem}
+.gate+.report{margin-top:2.5rem}
+@media screen and (max-width:640px){dl.kv{grid-template-columns:1fr}dl.kv dt{margin-top:.3rem}main{padding:1rem}
+table{display:block;max-width:100%;overflow-x:auto}td.num,th.num{white-space:normal}.claim>header{flex-wrap:wrap}}
+@page{margin:16mm 14mm}
+@media print{
+:root{--fg:#000;--muted:#444;--bg:#fff;--panel:#f3f4f6;--line:#b8bfc7;--code:#0b3b6f;font-size:10pt}
+main{max-width:none;padding:0}
+a{color:inherit;text-decoration:none}
+h2{break-after:avoid;page-break-after:avoid}
+h2+p,h3+p{break-after:avoid;page-break-after:avoid}
+h3,h4{break-after:avoid;page-break-after:avoid}
+.claim,.legend,.witness,table.matrix,dl.kv,tr{break-inside:avoid;page-break-inside:avoid}
+pre{break-inside:auto}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.report+.report{break-before:page;page-break-before:always;border-top:0}
+}
+</style></head><body><main><article class="report"><header class="report-head"><p class="eyebrow">Cryptificate evidence report</p><h1>Experiment <code class="id">9697de03f7061aa26360c427ef463a04</code></h1><dl class="kv"><dt>Inputs</dt><dd><code class="digest">sha256:0e507a53080179eced7cf8148798d7ddbc81de276c822abbb8a1503622daab6c</code></dd><dt>Run</dt><dd><span class="badge badge-proved">completed</span> live</dd><dt>Checker</dt><dd><code>cryptificate 0.1.0 (e74b8e6)</code></dd><dt>Profile</dt><dd><code>quick</code></dd><dt>Circuit equivalence</dt><dd>4 proved</dd><dt>Timing verdict</dt><dd>inconclusive</dd></dl></header><aside class="legend" aria-label="How to read this report"><h3>How to read this report</h3><ul><li><span class="badge badge-proved">proved</span> The evidence named in the claim establishes the property. For a Lean certificate (evidence kind <code>lean</code>) that is a Lean-checked theorem about the exact submitted values. For native correctness it is agreement on every recorded test case (testing, not a proof). For <code>rust.refinement</code> it is an Aeneas refinement proof, checked by Lean, that the shared kernel primitives refine the Lean field operations: it does not depend on the submitted values and it trusts the Charon/Aeneas translation (see <code>refinement/claims.json</code>).</li><li><span class="badge badge-refuted">refuted</span> A concrete counterexample for the exact submitted values: checked by Lean, or, for native correctness, a test case on which the generated code gave a wrong output.</li><li><span class="badge badge-not-established">not established</span> This method did not establish the property. It is not a counterexample; a timeout or a missing tool lands here.</li><li><span class="badge badge-unsupported">unsupported</span> The input is outside the supported model.</li></ul><p>Design guarantees and implementation correspondence are separate chains: a circuit can compute its matrix exactly while the matrix diffuses poorly, and an MDS matrix can have a miswired circuit. A Lean certificate (evidence kind <code>lean</code>) is accepted only when its printed statement equals the expected statement about the exact inputs and its axioms are within <code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code>. The refinement proofs are checked once, by <code>scripts/setup.sh --with-refinement</code>, and reported as proved only while the kernel source keeps the digest they were extracted from; they go through neither of these two checks, and their axioms are pinned in <code>refinement/claims.json</code>.</p></aside><section id="summary" aria-labelledby="summary-h"><h2 id="summary-h">Candidates</h2><table><thead><tr><th scope="col">Candidate</th><th scope="col">Origin</th><th scope="col">Operations</th><th scope="col">Equivalence</th><th scope="col">Native correctness</th></tr></thead><tbody><tr><td><a href="#candidate-c1">c1</a></td><td>search</td><td>12 add, 4 mul</td><td><span class="badge badge-proved">proved</span></td><td>passed 9214 cases</td></tr><tr><td><a href="#candidate-baseline-direct">baseline-direct</a></td><td>baseline-direct</td><td>16 add, 4 mul</td><td><span class="badge badge-proved">proved</span></td><td>passed 9214 cases</td></tr><tr><td><a href="#candidate-baseline-known">baseline-known</a></td><td>baseline-known</td><td>15 add, 4 mul</td><td><span class="badge badge-proved">proved</span></td><td>passed 9214 cases</td></tr><tr><td><a href="#candidate-user">user</a></td><td>user</td><td>15 add, 4 mul</td><td><span class="badge badge-proved">proved</span></td><td>passed 9214 cases</td></tr></tbody></table><p>Search seed <code>26e6b3d3da9145b2</code>, 8 generated, shortlist c1.</p></section><section id="inputs" aria-labelledby="inputs-h"><h2 id="inputs-h">Inputs</h2><p>Input digest <code class="digest">sha256:0e507a53080179eced7cf8148798d7ddbc81de276c822abbb8a1503622daab6c</code>: SHA-256 of the canonical JSON of the normalized inputs below. Every claim in this report is about exactly these values.</p><h3>Design</h3><dl class="kv"><dt>Model</dt><dd><code>aes-like/gf256/v1</code></dd><dt>Field</dt><dd><code>gf256</code></dd><dt>Width</dt><dd>4</dd><dt>Rounds</dt><dd>4</dd><dt>Row offsets</dt><dd><code>0, 1, 2, 3</code></dd></dl><h4>Matrix</h4><table class="matrix" aria-label="Matrix"><thead><tr><th></th><th scope="col">c0</th><th scope="col">c1</th><th scope="col">c2</th><th scope="col">c3</th></tr></thead><tbody><tr><th scope="row">r0</th><td>02</td><td>03</td><td>01</td><td>01</td></tr><tr><th scope="row">r1</th><td>01</td><td>02</td><td>03</td><td>01</td></tr><tr><th scope="row">r2</th><td>01</td><td>01</td><td>02</td><td>03</td></tr><tr><th scope="row">r3</th><td>03</td><td>01</td><td>01</td><td>02</td></tr></tbody></table><h4>S-box</h4><p>The AES S-box (<code>kind: aes</code>).</p><h3>Circuit</h3><dl class="kv"><dt>Name</dt><dd><code>aes-shared-sum</code></dd><dt>Field</dt><dd><code>gf256</code></dd><dt>Width</dt><dd>4</dd><dt>Size</dt><dd>19 instructions: 15 additions, 4 multiplications by a constant</dd></dl><pre class="listing program" aria-label="Circuit">inputs r0..r3
+r4 = r0 + r1
+r5 = r4 + r2
+r6 = r5 + r3
+r7 = r0 + r1
+r8 = 02 · r7
+r9 = r0 + r8
+r10 = r9 + r6
+r11 = r1 + r2
+r12 = 02 · r11
+r13 = r1 + r12
+r14 = r13 + r6
+r15 = r2 + r3
+r16 = 02 · r15
+r17 = r2 + r16
+r18 = r17 + r6
+r19 = r3 + r0
+r20 = 02 · r19
+r21 = r3 + r20
+r22 = r21 + r6
+y0 = r10
+y1 = r14
+y2 = r18
+y3 = r22</pre></section><section id="design" aria-labelledby="design-h"><h2 id="design-h">Design guarantees</h2><p class="muted">An experiment does not check design guarantees; an analysis of the same design does. The circuits below are checked against the design matrix above.</p></section><section id="implementation" aria-labelledby="implementation-h"><h2 id="implementation-h">Implementation correspondence</h2><p class="muted">Circuit equivalence of every candidate, checked by Lean, and native correctness of the generated Rust.</p><div class="candidate" id="candidate-c1"><h3>Candidate <code>c1</code> (search, 12 add, 4 mul)</h3><article class="claim claim-proved" id="claim-circuit.equivalence"><header><h3><code>circuit.equivalence</code> Circuit computes the design matrix</h3><span class="badge badge-proved">proved</span></header><dl class="kv"><dt>Evidence</dt><dd>Lean-checked circuit equivalence</dd><dt>Kind</dt><dd>lean</dd><dt>Theorem</dt><dd><code>CryptificateJob.circuit_equivalence</code></dd><dt>Lean statement</dt><dd><pre class="statement">CryptificateJob.candProgram.WellFormed ∧ ∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x</pre></dd><dt>Axioms</dt><dd><code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code><span class="muted"> (within the accepted set)</span></dd><dt>Note</dt><dd>Lean checked CryptificateJob.circuit_equivalence using only the standard axioms.</dd></dl></article><dl class="kv"><dt>Native correctness</dt><dd>passed 9214 cases</dd><dt>Output checksum</dt><dd><code class="digest">sha256:f74c1c30a4a4450b5ca2e6098c6994b526326ccae711f4aa1197a5253f14fe77</code></dd></dl><pre class="listing program" aria-label="Circuit c1">inputs r0..r3
+r4 = r0 + r1
+r5 = 02 · r4
+r6 = r2 + r3
+r7 = r1 + r6
+r8 = r5 + r7
+r9 = r1 + r2
+r10 = 02 · r9
+r11 = r0 + r6
+r12 = r10 + r11
+r13 = 02 · r6
+r14 = r3 + r4
+r15 = r13 + r14
+r16 = r0 + r3
+r17 = 02 · r16
+r18 = r2 + r4
+r19 = r17 + r18
+y0 = r8
+y1 = r12
+y2 = r15
+y3 = r19</pre></div><div class="candidate" id="candidate-baseline-direct"><h3>Candidate <code>baseline-direct</code> (baseline-direct, 16 add, 4 mul)</h3><article class="claim claim-proved" id="claim-circuit.equivalence"><header><h3><code>circuit.equivalence</code> Circuit computes the design matrix</h3><span class="badge badge-proved">proved</span></header><dl class="kv"><dt>Evidence</dt><dd>Lean-checked circuit equivalence</dd><dt>Kind</dt><dd>lean</dd><dt>Theorem</dt><dd><code>CryptificateJob.circuit_equivalence</code></dd><dt>Lean statement</dt><dd><pre class="statement">CryptificateJob.candProgram.WellFormed ∧ ∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x</pre></dd><dt>Axioms</dt><dd><code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code><span class="muted"> (within the accepted set)</span></dd><dt>Note</dt><dd>Lean checked CryptificateJob.circuit_equivalence using only the standard axioms.</dd></dl></article><dl class="kv"><dt>Native correctness</dt><dd>passed 9214 cases</dd><dt>Output checksum</dt><dd><code class="digest">sha256:f74c1c30a4a4450b5ca2e6098c6994b526326ccae711f4aa1197a5253f14fe77</code></dd></dl><pre class="listing program" aria-label="Circuit baseline-direct">inputs r0..r3
+r4 = 02 · r0
+r5 = 02 · r1
+r6 = 02 · r2
+r7 = 02 · r3
+r8 = r4 + r1
+r9 = r8 + r5
+r10 = r9 + r2
+r11 = r10 + r3
+r12 = r0 + r5
+r13 = r12 + r2
+r14 = r13 + r6
+r15 = r14 + r3
+r16 = r0 + r1
+r17 = r16 + r6
+r18 = r17 + r3
+r19 = r18 + r7
+r20 = r0 + r4
+r21 = r20 + r1
+r22 = r21 + r2
+r23 = r22 + r7
+y0 = r11
+y1 = r15
+y2 = r19
+y3 = r23</pre></div><div class="candidate" id="candidate-baseline-known"><h3>Candidate <code>baseline-known</code> (baseline-known, 15 add, 4 mul)</h3><article class="claim claim-proved" id="claim-circuit.equivalence"><header><h3><code>circuit.equivalence</code> Circuit computes the design matrix</h3><span class="badge badge-proved">proved</span></header><dl class="kv"><dt>Evidence</dt><dd>Lean-checked circuit equivalence</dd><dt>Kind</dt><dd>lean</dd><dt>Theorem</dt><dd><code>CryptificateJob.circuit_equivalence</code></dd><dt>Lean statement</dt><dd><pre class="statement">CryptificateJob.candProgram.WellFormed ∧ ∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x</pre></dd><dt>Axioms</dt><dd><code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code><span class="muted"> (within the accepted set)</span></dd><dt>Note</dt><dd>Lean checked CryptificateJob.circuit_equivalence using only the standard axioms.</dd></dl></article><dl class="kv"><dt>Native correctness</dt><dd>passed 9214 cases</dd><dt>Output checksum</dt><dd><code class="digest">sha256:f74c1c30a4a4450b5ca2e6098c6994b526326ccae711f4aa1197a5253f14fe77</code></dd></dl><pre class="listing program" aria-label="Circuit baseline-known">inputs r0..r3
+r4 = r0 + r1
+r5 = r4 + r2
+r6 = r5 + r3
+r7 = r0 + r1
+r8 = 02 · r7
+r9 = r8 + r6
+r10 = r9 + r0
+r11 = r1 + r2
+r12 = 02 · r11
+r13 = r12 + r6
+r14 = r13 + r1
+r15 = r2 + r3
+r16 = 02 · r15
+r17 = r16 + r6
+r18 = r17 + r2
+r19 = r3 + r0
+r20 = 02 · r19
+r21 = r20 + r6
+r22 = r21 + r3
+y0 = r10
+y1 = r14
+y2 = r18
+y3 = r22</pre></div><div class="candidate" id="candidate-user"><h3>Candidate <code>user</code> (user, 15 add, 4 mul)</h3><article class="claim claim-proved" id="claim-circuit.equivalence"><header><h3><code>circuit.equivalence</code> Circuit computes the design matrix</h3><span class="badge badge-proved">proved</span></header><dl class="kv"><dt>Evidence</dt><dd>Lean-checked circuit equivalence</dd><dt>Kind</dt><dd>lean</dd><dt>Theorem</dt><dd><code>CryptificateJob.circuit_equivalence</code></dd><dt>Lean statement</dt><dd><pre class="statement">CryptificateJob.candProgram.WellFormed ∧ ∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x</pre></dd><dt>Axioms</dt><dd><code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code><span class="muted"> (within the accepted set)</span></dd><dt>Note</dt><dd>Lean checked CryptificateJob.circuit_equivalence using only the standard axioms.</dd></dl></article><dl class="kv"><dt>Native correctness</dt><dd>passed 9214 cases</dd><dt>Output checksum</dt><dd><code class="digest">sha256:f74c1c30a4a4450b5ca2e6098c6994b526326ccae711f4aa1197a5253f14fe77</code></dd></dl><pre class="listing program" aria-label="Circuit user">inputs r0..r3
+r4 = r0 + r1
+r5 = r4 + r2
+r6 = r5 + r3
+r7 = r0 + r1
+r8 = 02 · r7
+r9 = r0 + r8
+r10 = r9 + r6
+r11 = r1 + r2
+r12 = 02 · r11
+r13 = r1 + r12
+r14 = r13 + r6
+r15 = r2 + r3
+r16 = 02 · r15
+r17 = r2 + r16
+r18 = r17 + r6
+r19 = r3 + r0
+r20 = 02 · r19
+r21 = r3 + r20
+r22 = r21 + r6
+y0 = r10
+y1 = r14
+y2 = r18
+y3 = r22</pre></div></section><section id="native" aria-labelledby="native-h"><h2 id="native-h">Native timing</h2><p>Verdict: <strong>inconclusive</strong>. The confirmation sessions met neither the locally confirmed criterion nor the no improvement criterion, or the run used quick-test settings, which never confirm; no speed-up is claimed.</p><h3>Speed-up at the primary workload (64 KiB)</h3><p class="muted">Speed-up: the median over paired rounds of baseline time / candidate time per column; above 1 means the candidate is faster. The interval is the 95% paired bootstrap interval of that median recorded by the harness.</p><table><thead><tr><th scope="col" class="num">Session</th><th scope="col" class="num">Bytes</th><th scope="col">Candidate</th><th scope="col">Baseline</th><th scope="col" class="num">Ratio</th><th scope="col" class="num">95% interval</th></tr></thead><tbody><tr><td class="num">1</td><td class="num">65536</td><td>c1</td><td>baseline-direct</td><td class="num">1.009</td><td class="num">[0.971, 1.029]</td></tr><tr><td class="num">1</td><td class="num">65536</td><td>c1</td><td>baseline-known</td><td class="num">1.004</td><td class="num">[0.967, 1.028]</td></tr><tr><td class="num">1</td><td class="num">65536</td><td>c1</td><td>user</td><td class="num">1.000</td><td class="num">[0.988, 1.033]</td></tr><tr><td class="num">1</td><td class="num">65536</td><td>user</td><td>baseline-direct</td><td class="num">1.001</td><td class="num">[0.982, 1.009]</td></tr><tr><td class="num">1</td><td class="num">65536</td><td>user</td><td>baseline-known</td><td class="num">0.989</td><td class="num">[0.973, 1.006]</td></tr><tr><td class="num">2</td><td class="num">65536</td><td>c1</td><td>baseline-direct</td><td class="num">1.002</td><td class="num">[0.979, 1.012]</td></tr><tr><td class="num">2</td><td class="num">65536</td><td>c1</td><td>baseline-known</td><td class="num">1.026</td><td class="num">[0.973, 1.084]</td></tr><tr><td class="num">2</td><td class="num">65536</td><td>c1</td><td>user</td><td class="num">1.015</td><td class="num">[0.984, 1.057]</td></tr><tr><td class="num">2</td><td class="num">65536</td><td>user</td><td>baseline-direct</td><td class="num">0.973</td><td class="num">[0.957, 1.002]</td></tr><tr><td class="num">2</td><td class="num">65536</td><td>user</td><td>baseline-known</td><td class="num">0.989</td><td class="num">[0.972, 1.018]</td></tr><tr><td class="num">3</td><td class="num">65536</td><td>c1</td><td>baseline-direct</td><td class="num">1.003</td><td class="num">[0.998, 1.008]</td></tr><tr><td class="num">3</td><td class="num">65536</td><td>c1</td><td>baseline-known</td><td class="num">1.009</td><td class="num">[1.000, 1.025]</td></tr><tr><td class="num">3</td><td class="num">65536</td><td>c1</td><td>user</td><td class="num">0.994</td><td class="num">[0.986, 1.016]</td></tr><tr><td class="num">3</td><td class="num">65536</td><td>user</td><td>baseline-direct</td><td class="num">1.001</td><td class="num">[0.999, 1.015]</td></tr><tr><td class="num">3</td><td class="num">65536</td><td>user</td><td>baseline-known</td><td class="num">1.010</td><td class="num">[1.002, 1.021]</td></tr></tbody></table><h3>Other workloads</h3><table><thead><tr><th scope="col" class="num">Session</th><th scope="col" class="num">Bytes</th><th scope="col">Candidate</th><th scope="col">Baseline</th><th scope="col" class="num">Ratio</th><th scope="col" class="num">95% interval</th></tr></thead><tbody><tr><td class="num">1</td><td class="num">4096</td><td>c1</td><td>baseline-direct</td><td class="num">1.008</td><td class="num">[0.979, 1.033]</td></tr><tr><td class="num">1</td><td class="num">4096</td><td>c1</td><td>baseline-known</td><td class="num">1.002</td><td class="num">[0.971, 1.014]</td></tr><tr><td class="num">1</td><td class="num">4096</td><td>c1</td><td>user</td><td class="num">0.987</td><td class="num">[0.943, 1.004]</td></tr><tr><td class="num">1</td><td class="num">4096</td><td>user</td><td>baseline-direct</td><td class="num">1.024</td><td class="num">[1.008, 1.037]</td></tr><tr><td class="num">1</td><td class="num">4096</td><td>user</td><td>baseline-known</td><td class="num">1.004</td><td class="num">[0.996, 1.028]</td></tr><tr><td class="num">1</td><td class="num">1048576</td><td>c1</td><td>baseline-direct</td><td class="num">0.994</td><td class="num">[0.983, 1.021]</td></tr><tr><td class="num">1</td><td class="num">1048576</td><td>c1</td><td>baseline-known</td><td class="num">0.992</td><td class="num">[0.971, 1.015]</td></tr><tr><td class="num">1</td><td class="num">1048576</td><td>c1</td><td>user</td><td class="num">1.010</td><td class="num">[1.005, 1.024]</td></tr><tr><td class="num">1</td><td class="num">1048576</td><td>user</td><td>baseline-direct</td><td class="num">0.985</td><td class="num">[0.976, 0.997]</td></tr><tr><td class="num">1</td><td class="num">1048576</td><td>user</td><td>baseline-known</td><td class="num">0.983</td><td class="num">[0.958, 0.993]</td></tr><tr><td class="num">2</td><td class="num">4096</td><td>c1</td><td>baseline-direct</td><td class="num">0.995</td><td class="num">[0.983, 1.022]</td></tr><tr><td class="num">2</td><td class="num">4096</td><td>c1</td><td>baseline-known</td><td class="num">1.006</td><td class="num">[0.970, 1.034]</td></tr><tr><td class="num">2</td><td class="num">4096</td><td>c1</td><td>user</td><td class="num">0.998</td><td class="num">[0.970, 1.035]</td></tr><tr><td class="num">2</td><td class="num">4096</td><td>user</td><td>baseline-direct</td><td class="num">1.000</td><td class="num">[0.979, 1.016]</td></tr><tr><td class="num">2</td><td class="num">4096</td><td>user</td><td>baseline-known</td><td class="num">0.997</td><td class="num">[0.976, 1.017]</td></tr><tr><td class="num">2</td><td class="num">1048576</td><td>c1</td><td>baseline-direct</td><td class="num">1.030</td><td class="num">[0.999, 1.057]</td></tr><tr><td class="num">2</td><td class="num">1048576</td><td>c1</td><td>baseline-known</td><td class="num">1.014</td><td class="num">[0.979, 1.060]</td></tr><tr><td class="num">2</td><td class="num">1048576</td><td>c1</td><td>user</td><td class="num">1.019</td><td class="num">[0.993, 1.048]</td></tr><tr><td class="num">2</td><td class="num">1048576</td><td>user</td><td>baseline-direct</td><td class="num">1.001</td><td class="num">[0.992, 1.051]</td></tr><tr><td class="num">2</td><td class="num">1048576</td><td>user</td><td>baseline-known</td><td class="num">0.995</td><td class="num">[0.955, 1.050]</td></tr><tr><td class="num">3</td><td class="num">4096</td><td>c1</td><td>baseline-direct</td><td class="num">0.992</td><td class="num">[0.964, 1.002]</td></tr><tr><td class="num">3</td><td class="num">4096</td><td>c1</td><td>baseline-known</td><td class="num">0.994</td><td class="num">[0.982, 1.002]</td></tr><tr><td class="num">3</td><td class="num">4096</td><td>c1</td><td>user</td><td class="num">0.990</td><td class="num">[0.972, 1.005]</td></tr><tr><td class="num">3</td><td class="num">4096</td><td>user</td><td>baseline-direct</td><td class="num">0.998</td><td class="num">[0.981, 1.003]</td></tr><tr><td class="num">3</td><td class="num">4096</td><td>user</td><td>baseline-known</td><td class="num">0.999</td><td class="num">[0.994, 1.009]</td></tr><tr><td class="num">3</td><td class="num">1048576</td><td>c1</td><td>baseline-direct</td><td class="num">0.959</td><td class="num">[0.900, 1.016]</td></tr><tr><td class="num">3</td><td class="num">1048576</td><td>c1</td><td>baseline-known</td><td class="num">0.953</td><td class="num">[0.909, 0.991]</td></tr><tr><td class="num">3</td><td class="num">1048576</td><td>c1</td><td>user</td><td class="num">0.970</td><td class="num">[0.882, 1.021]</td></tr><tr><td class="num">3</td><td class="num">1048576</td><td>user</td><td>baseline-direct</td><td class="num">0.994</td><td class="num">[0.957, 1.024]</td></tr><tr><td class="num">3</td><td class="num">1048576</td><td>user</td><td>baseline-known</td><td class="num">0.998</td><td class="num">[0.963, 1.020]</td></tr></tbody></table><h3>Output checks per session</h3><table><thead><tr><th scope="col" class="num">Session</th><th scope="col">All variants agree</th><th scope="col">Every sample consistent</th></tr></thead><tbody><tr><td class="num">1</td><td>yes</td><td>yes</td></tr><tr><td class="num">2</td><td>yes</td><td>yes</td></tr><tr><td class="num">3</td><td>yes</td><td>yes</td></tr></tbody></table><h3>Workloads</h3><table><thead><tr><th scope="col" class="num">Session</th><th scope="col">Variant</th><th scope="col" class="num">Bytes</th><th scope="col" class="num">Median ns/column</th><th scope="col" class="num">IQR ns/column</th><th scope="col" class="num">MiB/s</th><th scope="col" class="num">Samples</th></tr></thead><tbody><tr><td class="num">1</td><td>c1</td><td class="num">4096</td><td class="num">1.5608</td><td class="num">0.0562</td><td class="num">2444.0</td><td class="num">15</td></tr><tr><td class="num">1</td><td>baseline-direct</td><td class="num">4096</td><td class="num">1.5769</td><td class="num">0.0753</td><td class="num">2419.2</td><td class="num">15</td></tr><tr><td class="num">1</td><td>baseline-known</td><td class="num">4096</td><td class="num">1.5676</td><td class="num">0.0632</td><td class="num">2433.5</td><td class="num">15</td></tr><tr><td class="num">1</td><td>user</td><td class="num">4096</td><td class="num">1.5306</td><td class="num">0.0523</td><td class="num">2492.3</td><td class="num">15</td></tr><tr><td class="num">1</td><td>c1</td><td class="num">65536</td><td class="num">1.5743</td><td class="num">0.0612</td><td class="num">2423.2</td><td class="num">15</td></tr><tr><td class="num">1</td><td>baseline-direct</td><td class="num">65536</td><td class="num">1.5934</td><td class="num">0.0341</td><td class="num">2394.1</td><td class="num">15</td></tr><tr><td class="num">1</td><td>baseline-known</td><td class="num">65536</td><td class="num">1.5851</td><td class="num">0.0400</td><td class="num">2406.7</td><td class="num">15</td></tr><tr><td class="num">1</td><td>user</td><td class="num">65536</td><td class="num">1.5765</td><td class="num">0.0488</td><td class="num">2419.7</td><td class="num">15</td></tr><tr><td class="num">1</td><td>c1</td><td class="num">1048576</td><td class="num">1.5773</td><td class="num">0.0800</td><td class="num">2418.5</td><td class="num">15</td></tr><tr><td class="num">1</td><td>baseline-direct</td><td class="num">1048576</td><td class="num">1.5884</td><td class="num">0.0673</td><td class="num">2401.6</td><td class="num">15</td></tr><tr><td class="num">1</td><td>baseline-known</td><td class="num">1048576</td><td class="num">1.5626</td><td class="num">0.0703</td><td class="num">2441.3</td><td class="num">15</td></tr><tr><td class="num">1</td><td>user</td><td class="num">1048576</td><td class="num">1.6202</td><td class="num">0.0533</td><td class="num">2354.5</td><td class="num">15</td></tr><tr><td class="num">2</td><td>c1</td><td class="num">4096</td><td class="num">1.5566</td><td class="num">0.0414</td><td class="num">2450.7</td><td class="num">15</td></tr><tr><td class="num">2</td><td>baseline-direct</td><td class="num">4096</td><td class="num">1.5469</td><td class="num">0.0368</td><td class="num">2466.1</td><td class="num">15</td></tr><tr><td class="num">2</td><td>baseline-known</td><td class="num">4096</td><td class="num">1.5496</td><td class="num">0.0506</td><td class="num">2461.7</td><td class="num">15</td></tr><tr><td class="num">2</td><td>user</td><td class="num">4096</td><td class="num">1.5372</td><td class="num">0.0774</td><td class="num">2481.6</td><td class="num">15</td></tr><tr><td class="num">2</td><td>c1</td><td class="num">65536</td><td class="num">1.5557</td><td class="num">0.0961</td><td class="num">2452.1</td><td class="num">15</td></tr><tr><td class="num">2</td><td>baseline-direct</td><td class="num">65536</td><td class="num">1.5313</td><td class="num">0.0653</td><td class="num">2491.2</td><td class="num">15</td></tr><tr><td class="num">2</td><td>baseline-known</td><td class="num">65536</td><td class="num">1.5564</td><td class="num">0.1365</td><td class="num">2451.0</td><td class="num">15</td></tr><tr><td class="num">2</td><td>user</td><td class="num">65536</td><td class="num">1.5857</td><td class="num">0.1010</td><td class="num">2405.7</td><td class="num">15</td></tr><tr><td class="num">2</td><td>c1</td><td class="num">1048576</td><td class="num">1.5490</td><td class="num">0.0804</td><td class="num">2462.8</td><td class="num">15</td></tr><tr><td class="num">2</td><td>baseline-direct</td><td class="num">1048576</td><td class="num">1.6267</td><td class="num">0.0658</td><td class="num">2345.1</td><td class="num">15</td></tr><tr><td class="num">2</td><td>baseline-known</td><td class="num">1048576</td><td class="num">1.6085</td><td class="num">0.1239</td><td class="num">2371.6</td><td class="num">15</td></tr><tr><td class="num">2</td><td>user</td><td class="num">1048576</td><td class="num">1.5838</td><td class="num">0.0706</td><td class="num">2408.5</td><td class="num">15</td></tr><tr><td class="num">3</td><td>c1</td><td class="num">4096</td><td class="num">1.6009</td><td class="num">0.0511</td><td class="num">2382.9</td><td class="num">15</td></tr><tr><td class="num">3</td><td>baseline-direct</td><td class="num">4096</td><td class="num">1.5739</td><td class="num">0.0250</td><td class="num">2423.7</td><td class="num">15</td></tr><tr><td class="num">3</td><td>baseline-known</td><td class="num">4096</td><td class="num">1.5788</td><td class="num">0.0249</td><td class="num">2416.3</td><td class="num">15</td></tr><tr><td class="num">3</td><td>user</td><td class="num">4096</td><td class="num">1.5793</td><td class="num">0.0225</td><td class="num">2415.4</td><td class="num">15</td></tr><tr><td class="num">3</td><td>c1</td><td class="num">65536</td><td class="num">1.5970</td><td class="num">0.0432</td><td class="num">2388.7</td><td class="num">15</td></tr><tr><td class="num">3</td><td>baseline-direct</td><td class="num">65536</td><td class="num">1.6001</td><td class="num">0.0417</td><td class="num">2384.1</td><td class="num">15</td></tr><tr><td class="num">3</td><td>baseline-known</td><td class="num">65536</td><td class="num">1.6122</td><td class="num">0.0319</td><td class="num">2366.1</td><td class="num">15</td></tr><tr><td class="num">3</td><td>user</td><td class="num">65536</td><td class="num">1.5904</td><td class="num">0.0646</td><td class="num">2398.6</td><td class="num">15</td></tr><tr><td class="num">3</td><td>c1</td><td class="num">1048576</td><td class="num">1.7067</td><td class="num">0.2285</td><td class="num">2235.1</td><td class="num">15</td></tr><tr><td class="num">3</td><td>baseline-direct</td><td class="num">1048576</td><td class="num">1.6424</td><td class="num">0.0681</td><td class="num">2322.7</td><td class="num">15</td></tr><tr><td class="num">3</td><td>baseline-known</td><td class="num">1048576</td><td class="num">1.6508</td><td class="num">0.0733</td><td class="num">2310.8</td><td class="num">15</td></tr><tr><td class="num">3</td><td>user</td><td class="num">1048576</td><td class="num">1.6514</td><td class="num">0.0892</td><td class="num">2310.0</td><td class="num">15</td></tr></tbody></table><p class="muted">Raw samples are in report.json and native/ in the bundle.</p></section><section id="provenance" aria-labelledby="provenance-h"><h2 id="provenance-h">Provenance</h2><dl class="kv"><dt>Report id</dt><dd><code>9697de03f7061aa26360c427ef463a04</code></dd><dt>Origin</dt><dd>live</dd><dt>Checker (engine version)</dt><dd><code>cryptificate 0.1.0 (e74b8e6)</code></dd><dt>Lean</dt><dd><code>v4.33.1</code></dd><dt>Mathlib</dt><dd><code>v4.33.1</code></dd><dt>WideTrail revision</dt><dd><code>162c0f8a9e59841032ec5d66874fee31cf3b6298</code></dd><dt>rustc</dt><dd><code>rustc 1.97.0 (2d8144b78)</code></dd></dl><h3>Machine</h3><dl class="kv"><dt>CPU</dt><dd>Intel(R) Xeon(R) Processor @ 2.10GHz</dd><dt>Operating system</dt><dd>Linux 6.18.44-fc-v153 x86_64</dd><dt>RAM</dt><dd>16091 MiB</dd><dt>rustc</dt><dd><code>rustc 1.97.0 (2d8144b78)</code></dd><dt>Build flags</dt><dd><code>opt-level=3 codegen-units=1 lto=false panic=abort debug=false overflow-checks=false incremental=false target-cpu=default rustflags=none</code></dd></dl><h3>Execution</h3><table><thead><tr><th scope="col">Step</th><th scope="col">State</th><th scope="col" class="num">Duration</th><th scope="col">Detail</th></tr></thead><tbody><tr><td><code>validate</code></td><td>completed</td><td class="num">0.0 s</td><td></td></tr><tr><td><code>search</code></td><td>completed</td><td class="num">0.0 s</td><td>8 generated, 1 shortlisted</td></tr><tr><td><code>equivalence</code></td><td>completed</td><td class="num">18.2 s</td><td>4 proved</td></tr><tr><td><code>native-correctness</code></td><td>completed</td><td class="num">19.9 s</td><td></td></tr><tr><td><code>benchmark-1</code></td><td>completed</td><td class="num">25.5 s</td><td>frozen c1</td></tr><tr><td><code>benchmark-2</code></td><td>completed</td><td class="num">25.3 s</td><td>confirming c1</td></tr><tr><td><code>benchmark-3</code></td><td>completed</td><td class="num">25.6 s</td><td>confirming c1</td></tr><tr><td><code>report</code></td><td>completed</td><td class="num">0.0 s</td><td></td></tr></tbody></table><p class="muted">Durations are wall-clock times on the machine that produced the report. A timeout or a missing tool is an execution outcome, never a refutation.</p></section><section id="verify" aria-labelledby="verify-h"><h2 id="verify-h">How to verify</h2><p>From a Cryptificate checkout prepared with <code>scripts/setup.sh</code>:</p><pre class="listing">npx cryptificate verify beat-the-reference.tar.gz</pre><p><code>verify</code> reads only <code>inputs.json</code> and <code>report.json</code> from the bundle. It regenerates the Lean certificate with the installed engine and templates, runs the installed Lean checker, recomputes each claim and compares it with the status recorded here. It never runs Lean, Rust or shell code from the bundle, and it ignores this page (<code>report.html</code>), which is a rendering of <code>report.json</code>, not evidence.</p><p>For an experiment it re-checks <code>circuit.equivalence</code> of every recorded candidate. Native correctness results and timings are historical: they describe the machine that recorded them and are shown, not re-measured.</p><p>To render this page again from a bundle or a report.json without running anything:</p><pre class="listing">npx cryptificate report beat-the-reference.tar.gz --format html --output report.html</pre></section><section id="appendix" aria-labelledby="appendix-h"><h2 id="appendix-h">Appendix: inputs as recorded</h2><p>The normalized inputs exactly as <code>report.json</code> records them:</p><pre class="json">{
+  &quot;design&quot;: {
+    &quot;field&quot;: &quot;gf256&quot;,
+    &quot;matrix&quot;: [
+      [&quot;02&quot;, &quot;03&quot;, &quot;01&quot;, &quot;01&quot;],
+      [&quot;01&quot;, &quot;02&quot;, &quot;03&quot;, &quot;01&quot;],
+      [&quot;01&quot;, &quot;01&quot;, &quot;02&quot;, &quot;03&quot;],
+      [&quot;03&quot;, &quot;01&quot;, &quot;01&quot;, &quot;02&quot;]
+    ],
+    &quot;model&quot;: &quot;aes-like/gf256/v1&quot;,
+    &quot;offsets&quot;: [0, 1, 2, 3],
+    &quot;rounds&quot;: 4,
+    &quot;sbox&quot;: {&quot;kind&quot;: &quot;aes&quot;},
+    &quot;width&quot;: 4
+  },
+  &quot;profile&quot;: &quot;quick&quot;,
+  &quot;program&quot;: {
+    &quot;field&quot;: &quot;gf256&quot;,
+    &quot;instructions&quot;: [
+      {&quot;a&quot;: 0, &quot;b&quot;: 1, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 4, &quot;b&quot;: 2, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 5, &quot;b&quot;: 3, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 0, &quot;b&quot;: 1, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 7, &quot;k&quot;: &quot;02&quot;, &quot;op&quot;: &quot;mul&quot;},
+      {&quot;a&quot;: 0, &quot;b&quot;: 8, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 9, &quot;b&quot;: 6, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 1, &quot;b&quot;: 2, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 11, &quot;k&quot;: &quot;02&quot;, &quot;op&quot;: &quot;mul&quot;},
+      {&quot;a&quot;: 1, &quot;b&quot;: 12, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 13, &quot;b&quot;: 6, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 2, &quot;b&quot;: 3, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 15, &quot;k&quot;: &quot;02&quot;, &quot;op&quot;: &quot;mul&quot;},
+      {&quot;a&quot;: 2, &quot;b&quot;: 16, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 17, &quot;b&quot;: 6, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 3, &quot;b&quot;: 0, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 19, &quot;k&quot;: &quot;02&quot;, &quot;op&quot;: &quot;mul&quot;},
+      {&quot;a&quot;: 3, &quot;b&quot;: 20, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 21, &quot;b&quot;: 6, &quot;op&quot;: &quot;add&quot;}
+    ],
+    &quot;name&quot;: &quot;aes-shared-sum&quot;,
+    &quot;outputs&quot;: [10, 14, 18, 22],
+    &quot;width&quot;: 4
+  }
+}</pre></section><footer><p>Rendered from the report of run <code>9697de03f7061aa26360c427ef463a04</code> (inputs <code class="digest">sha256:0e507a53080179eced7cf8148798d7ddbc81de276c822abbb8a1503622daab6c</code>). This page shows what the report records and adds no claim of its own.</p></footer></article></main></body></html>

@@ -1,4 +1,5 @@
 import Cryptificate.Hades.Design
+import Cryptificate.Hades.Partial
 import Cryptificate.PrimePower
 
 /-!
@@ -16,6 +17,15 @@ This file checks the execution model of `Hades.Design` against that pinned permu
 order of `Design.round` (constants, masked S-box, matrix) and the initial external layer are
 those of the reference, not a reinterpretation. `reference_activity` then recovers the figure
 `16` through `Design.outer_activity`, counting the full rounds only.
+
+The partial rounds add to this. The internal matrix is observable from coordinate `0` in three
+steps: the rows `e₀`, `e₀ M` and `e₀ M²` are `[1, 0, 0]`, `[2, 1, 1]` and `[6, 5, 6]`, with
+determinant `1` (`reference_observable`). So every three consecutive partial rounds activate the
+S-box of coordinate `0` for two distinct states, the `56` partial rounds contain `18` disjoint
+such windows, and `reference_total_activity` gives at least `16 + 18 = 34` active S-boxes over
+the whole permutation for two distinct inputs, any round constants, with the reference mask
+`{0}`. This is a lower bound on the active S-boxes of one pair of executions; it is not a
+tightness result and not a security level.
 -/
 
 set_option autoImplicit false
@@ -71,5 +81,25 @@ theorem reference_activity (partialMask : Finset (Fin 3)) (c : ℕ → State) {x
   reference_outerBound ▸ reference.outer_activity external_mds reference_internal_det
     (PrimePower.BN254.pow_bijective 5 inverseExponent 4 (by decide) inverseExponent_positive
       inverseExponent_equation) partialMask c hxy
+
+/-- The reference internal matrix is observable from coordinate `0` in three steps: the rows
+`e₀`, `e₀ M`, `e₀ M²` have determinant `1`. -/
+theorem reference_observable : Observable reference.internal {0} 3 :=
+  observable_of_rows3 _ _ 3 ![0, 1, 2] ![0, 0, 0] (by decide) (by decide) (by decide)
+
+/-- Every three consecutive partial rounds of the reference design activate the S-box of
+coordinate `0`, for every two distinct states entering them and any round constants. -/
+theorem reference_windowActive : reference.WindowActive {0} 3 :=
+  reference.windowActive_of_observable reference_observable
+
+/-- **The reference bound over the whole permutation.** With mask `{0}`, any round constants
+and two distinct inputs, the full and partial rounds together contain at least `34` S-boxes
+with a nonzero input difference: `16` in the full rounds and one in each of the `18` disjoint
+windows of three partial rounds. -/
+theorem reference_total_activity (c : ℕ → State) {x y : State} (hxy : x ≠ y) :
+    34 ≤ reference.outerActivity {0} c x y + reference.partialActivity {0} c x y :=
+  reference.total_activity external_mds reference_internal_det
+    (PrimePower.BN254.pow_bijective 5 inverseExponent 4 (by decide) inverseExponent_positive
+      inverseExponent_equation) reference_windowActive c hxy
 
 end Cryptificate.Hades

@@ -2,25 +2,40 @@ import { useMemo } from 'react';
 import { isStale, normalizeAnalysisRequest, type WorkspaceInputs } from '../lib/canonical';
 import { downloadJson } from '../lib/download';
 import { previewDesign, previewEquivalence, type PreviewItem } from '../lib/preview';
-import type { AnalysisReport, Claim, ClaimId, ExperimentReport, FieldName } from '../lib/types';
+import { displayFieldOf } from '../lib/field';
+import { exportReport, serverReportUrl } from '../lib/report';
+import type { AnalysisReport, Claim, ClaimId, ExperimentReport, ModelId } from '../lib/types';
 import { startRun } from '../state/actions';
 import type { Run } from '../state/store';
 import { ClaimCard, MissingClaimCard, PreviewCard } from './ClaimCard';
 import { IconDownload, IconPreview, IconRefresh, IconWarning } from './icons';
 import { RunProgress, isActive } from './RunProgress';
 
-const DESIGN_CLAIMS: Record<FieldName, { id: ClaimId; title: string }[]> = {
-  gf256: [
+const DESIGN_CLAIMS: Record<ModelId, { id: ClaimId; title: string }[]> = {
+  'aes-like/gf256/v1': [
     { id: 'matrix.mds', title: 'Matrix is MDS (branch number 5)' },
     { id: 'offsets.dispersion', title: 'Row offsets spread every column' },
     { id: 'sbox.bijective', title: 'S-box is a permutation' },
     { id: 'activity.bound', title: 'Active S-box lower bound' },
+    { id: 'sbox.differential', title: 'Differential uniformity of the S-box table' },
+    { id: 'sbox.linearity', title: 'Linearity of the S-box table' },
   ],
-  bn254: [
+  'hades/bn254/v1': [
     { id: 'external.mds', title: 'External matrix is MDS' },
     { id: 'internal.invertible', title: 'Internal matrix is invertible' },
     { id: 'sbox.bijective', title: 'Power map is a permutation' },
     { id: 'activity.outer', title: 'Active S-box bound in full rounds' },
+    { id: 'activity.partial', title: 'No difference passes the partial rounds without an active S-box' },
+    { id: 'activity.total', title: 'Active S-box bound over the whole permutation' },
+  ],
+  'hades/prime/v1': [
+    { id: 'field.prime', title: 'Modulus is prime' },
+    { id: 'external.mds', title: 'External matrix is MDS' },
+    { id: 'internal.invertible', title: 'Internal matrix is invertible' },
+    { id: 'sbox.bijective', title: 'Power map is a permutation' },
+    { id: 'activity.outer', title: 'Active S-box bound in full rounds' },
+    { id: 'activity.partial', title: 'No difference passes the partial rounds without an active S-box' },
+    { id: 'activity.total', title: 'Active S-box bound over the whole permutation' },
   ],
 };
 
@@ -50,6 +65,12 @@ function missingReason(id: ClaimId, inputs: WorkspaceInputs, experiment: Experim
     return 'Not part of this analysis. Run an experiment to compile, test and time generated Rust.';
   }
   if (id === 'rust.refinement') return 'This run did not include a Rust-source refinement result.';
+  if (id === 'activity.partial' || id === 'activity.total') {
+    return 'This report was recorded before the partial-round claims were added; check the design again to derive them.';
+  }
+  if (id === 'sbox.differential' || id === 'sbox.linearity') {
+    return 'This run did not report S-box quality; reports recorded before these claims existed do not include them.';
+  }
   return 'This run did not report this claim.';
 }
 
@@ -91,7 +112,7 @@ function previewItems(inputs: WorkspaceInputs): PreviewItem[] {
 
 export function UnverifiedPreview({ inputs, reason }: { inputs: WorkspaceInputs; reason: string }) {
   const items = useMemo(() => previewItems(inputs), [inputs]);
-  const field = inputs.design.field;
+  const field = displayFieldOf(inputs.design);
   return (
     <div className="stack">
       <div className="banner banner-warn" role="status">
@@ -142,7 +163,9 @@ export function ClaimChains({
   experiment?: ExperimentReport | null;
   only?: ClaimId[];
 }) {
-  const field = report.inputs?.design?.field ?? inputs.design.field;
+  const reportDesign = report.inputs?.design ?? inputs.design;
+  const field = displayFieldOf(reportDesign);
+  const designClaims = DESIGN_CLAIMS[reportDesign.model];
   const rounds =
     report.inputs?.design && report.inputs.design.model === 'aes-like/gf256/v1'
       ? report.inputs.design.rounds
@@ -162,12 +185,12 @@ export function ClaimChains({
     );
   };
   const extra = report.claims.filter(
-    (c) => !DESIGN_CLAIMS[field].some((d) => d.id === c.id) && !IMPLEMENTATION_CLAIMS.some((d) => d.id === c.id),
+    (c) => !designClaims.some((d) => d.id === c.id) && !IMPLEMENTATION_CLAIMS.some((d) => d.id === c.id),
   );
   return (
     <div className="grid-2">
       <Chain title="Design guarantees" subtitle="what the design promises">
-        {DESIGN_CLAIMS[field].map(render)}
+        {designClaims.map(render)}
         {extra
           .filter((c) => c.chain === 'design' && (!only || only.includes(c.id)))
           .map((c) => (
@@ -183,6 +206,34 @@ export function ClaimChains({
           ))}
       </Chain>
     </div>
+  );
+}
+
+/**
+ * Downloads the self-contained HTML evidence report of a finished run. For a
+ * live run it is the bundle's report.html, served by the local service; for a
+ * recorded run it is rendered in the browser by the same renderer from the
+ * recorded report, without the bundle's toolchain.json section.
+ */
+export function ExportReportButton({ report, run }: { report: AnalysisReport | ExperimentReport; run: Run }) {
+  if (isActive(run) || run.state === 'unavailable') return null;
+  const href = serverReportUrl(run);
+  if (href) {
+    return (
+      <a className="btn btn-sm" href={href} download title="Download this run's evidence bundle report.html, printable to PDF">
+        <IconDownload size={12} /> Export report
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="btn btn-sm"
+      onClick={() => exportReport(report, run)}
+      title="Download a self-contained HTML report of this run, printable to PDF"
+    >
+      <IconDownload size={12} /> Export report
+    </button>
   );
 }
 
@@ -210,6 +261,7 @@ export function ProvenanceLine({ report, run }: { report: AnalysisReport | Exper
           <IconDownload size={12} /> Evidence bundle
         </a>
       ) : null}
+      <ExportReportButton report={report} run={run} />
     </p>
   );
 }

@@ -50,6 +50,28 @@
       }
     },
     {
+      "title": "S-box differential uniformity",
+      "type": "object",
+      "required": ["kind", "uniformity", "inputDifference", "outputDifference"],
+      "properties": {
+        "kind": { "const": "sbox-differential" },
+        "uniformity": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "inputDifference": { "$ref": "field-element.schema.json#/$defs/gf256" },
+        "outputDifference": { "$ref": "field-element.schema.json#/$defs/gf256" }
+      }
+    },
+    {
+      "title": "S-box linearity",
+      "type": "object",
+      "required": ["kind", "linearity", "inputMask", "outputMask"],
+      "properties": {
+        "kind": { "const": "sbox-linearity" },
+        "linearity": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "inputMask": { "$ref": "field-element.schema.json#/$defs/gf256" },
+        "outputMask": { "$ref": "field-element.schema.json#/$defs/gf256" }
+      }
+    },
+    {
       "title": "Power map collision",
       "type": "object",
       "required": ["kind", "exponent", "x1", "x2", "note"],
@@ -59,6 +81,18 @@
         "x1": { "$ref": "field-element.schema.json#/$defs/bn254" },
         "x2": { "$ref": "field-element.schema.json#/$defs/bn254" },
         "note": { "type": "string" }
+      }
+    },
+    {
+      "title": "Partial-round bypass",
+      "description": "A nonzero difference that every power of the internal matrix below partialRounds keeps at zero on the masked positions, so it passes every partial round with no active S-box.",
+      "type": "object",
+      "required": ["kind", "difference", "positions", "partialRounds"],
+      "properties": {
+        "kind": { "const": "partial-bypass" },
+        "difference": { "type": "array", "items": { "$ref": "field-element.schema.json#/$defs/bn254" } },
+        "positions": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+        "partialRounds": { "type": "integer", "minimum": 0 }
       }
     }
   ]

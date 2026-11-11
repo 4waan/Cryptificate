@@ -19,6 +19,7 @@ from cryptificate import (
     gf,
     hades_design,
     identity_program,
+    prime_design,
 )
 from cryptificate.__main__ import main
 
@@ -50,6 +51,8 @@ class FakeService(BaseHTTPRequestHandler):
                 return self._send(404, {"error": {"code": "not-found", "message": "no such job"}})
             if len(parts) == 4 and parts[3] == "bundle":
                 return self._send(200, b"\x1f\x8bfake", "application/gzip")
+            if len(parts) == 4 and parts[3] == "report.html":
+                return self._send(200, b"<!DOCTYPE html>\n<title>report</title>", "text/html; charset=utf-8")
             job["polls"] += 1
             state = "completed" if job["polls"] >= 2 else "running"
             report = {
@@ -109,6 +112,8 @@ class ClientTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             out = self.client.bundle(job["id"], Path(d) / "b.tar.gz")
             self.assertEqual(out.read_bytes()[:2], b"\x1f\x8b")
+            page = self.client.report_html(job["id"], Path(d) / "report.html")
+            self.assertTrue(page.read_bytes().startswith(b"<!DOCTYPE html>"))
 
     def test_experiment_body(self):
         self.client.experiment(aes_like_design(), profile="research", seed="c0ffee")
@@ -207,6 +212,24 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(bn_shared_sum_program()["outputs"], [4 + 1, 4 + 2, 4 + 3])
         small = aes_like_design(matrix=[[3, 2], [2, 3]], offsets=[0, 1])
         self.assertTrue(small["experimental"])
+
+    def test_prime_designs(self):
+        m4 = [[5, 7, 1, 3], [4, 6, 1, 1], [1, 3, 5, 7], [1, 1, 4, 6]]
+        internal = [[2, 1, 1, 1], [1, 3, 1, 1], [1, 1, 5, 1], [1, 1, 1, 9]]
+        d = prime_design("koalabear", m4, internal, 8, 20, 3)
+        self.assertEqual(d["model"], "hades/prime/v1")
+        self.assertEqual(d["modulus"], "2130706433")
+        self.assertEqual(d["partialMask"], [True, False, False, False])
+        self.assertNotIn("constants", d)
+        self.assertEqual(prime_design("babybear", m4, [[-1] * 4] * 4, 8, 13, 7)["internal"][0][0], "2013265920")
+        examples = Path(__file__).resolve().parents[2] / "examples" / "designs"
+        example = json.loads((examples / "koalabear-t4.json").read_text())
+        self.assertEqual({**example, "modulus": "2130706433"}, d)
+        custom = prime_design("prime", m4, internal, 8, 2, 3, modulus=18446744073709551557)
+        self.assertEqual(custom["modulus"], "18446744073709551557")
+        self.assertRaises(ValueError, prime_design, "prime", m4, internal, 8, 2, 3)
+        self.assertRaises(ValueError, prime_design, "babybear", m4, internal, 8, 2, 3, modulus=7)
+        self.assertRaises(ValueError, prime_design, "bn254", m4, internal, 8, 2, 3)
 
 
 if __name__ == "__main__":

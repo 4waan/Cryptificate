@@ -11,6 +11,10 @@ pub const GF256_MIN_EXPERIMENTAL_WIDTH: usize = 2;
 /// The only supported width of a HADES BN254 design.
 pub const BN254_WIDTH: usize = 3;
 
+/// The supported widths of a HADES design over a 64-bit prime field
+/// (`hades/prime/v1`).
+pub const PRIME_WIDTHS: [usize; 2] = [3, 4];
+
 /// Inclusive bounds on the AES-like round count.
 pub const MIN_ROUNDS: u32 = 4;
 /// See [`MIN_ROUNDS`].
@@ -47,6 +51,7 @@ pub fn width_status(field: crate::FieldKind, width: usize) -> Option<WidthStatus
             Some(WidthStatus::Experimental)
         }
         crate::FieldKind::Bn254 if width == BN254_WIDTH => Some(WidthStatus::Supported),
+        f if f.is_prime64() && PRIME_WIDTHS.contains(&width) => Some(WidthStatus::Supported),
         _ => None,
     }
 }

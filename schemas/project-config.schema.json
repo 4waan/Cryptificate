@@ -32,9 +32,14 @@
           "offsets.dispersion",
           "sbox.bijective",
           "activity.bound",
+          "sbox.differential",
+          "sbox.linearity",
+          "field.prime",
           "external.mds",
           "internal.invertible",
           "activity.outer",
+          "activity.partial",
+          "activity.total",
           "circuit.equivalence",
           "native.correctness",
           "rust.refinement",
@@ -48,7 +53,7 @@
     },
     "format": {
       "description": "Output format, as --format. Default text.",
-      "enum": ["text", "json", "sarif", "junit", "markdown"]
+      "enum": ["text", "json", "sarif", "junit", "markdown", "html"]
     },
     "output": {
       "description": "File the formatted result is written to, as --output.",

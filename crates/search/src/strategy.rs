@@ -96,7 +96,8 @@ impl Strategy {
                 let shallow = rng.gen_bool(0.5);
                 let (double_as_add, shared_rows) = match field {
                     FieldKind::Gf256 => (false, SharedRows::None),
-                    FieldKind::Bn254 => (
+                    // BN254, the only prime field the search covers.
+                    _ => (
                         rng.gen_bool(0.75),
                         [SharedRows::None, SharedRows::Modes, SharedRows::Random]
                             [rng.gen_range(0..3)],

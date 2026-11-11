@@ -42,8 +42,8 @@ What the action does, in order:
 
 1. Restores its caches from the repository's Actions cache: `~/.elan` (keyed on `lean/lean-toolchain`), the Mathlib cache archives in `~/.cache/mathlib` (keyed on `lean/lake-manifest.json`), the Cryptificate and WideTrail Lean builds (keyed on the manifest and the Lean sources), the cargo registry and engine build (keyed on `Cargo.lock` and `rustc -V`) and the npm cache (keyed on `package-lock.json`).
 2. Installs elan and the toolchain pinned in `lean/lean-toolchain`, runs `lake exe cache get` and `lake build Cryptificate` in `lean/`, builds `cryptificate-engine` with `cargo build --release --locked`, and builds the command with `npm ci` and `npm run build`.
-3. Runs `cryptificate check <inputs> --fail-on <policy> --format json --output result.json --bundle-dir bundles` in `working-directory`. Without `inputs` it runs `cryptificate check --format json --output result.json --bundle-dir bundles`, which reads the nearest `cryptificate.json` (in `working-directory` or a parent); `--fail-on` is added only when `fail-on` is set, and the file's `format`, `output` and `bundleDir` are replaced by the action's result files. The text report goes to the job log and the Markdown report to the job summary, and a warning is logged when the policy in force is `none`. `cryptificate report` then renders the same result as SARIF and JUnit, with the same policy, resolving the input paths against the directory recorded in `result.json` (see [Project configuration](#project-configuration)); the SARIF locations are made relative to the repository root with `--uri-base "$GITHUB_WORKSPACE"`, as code scanning reads them.
-4. Uploads the SARIF log with `github/codeql-action/upload-sarif@v3` and the directory with `result.json`, `cryptificate.sarif`, `cryptificate.junit.xml` and one evidence bundle per input with `actions/upload-artifact@v4`, as artifact `cryptificate-evidence`.
+3. Runs `cryptificate check <inputs> --fail-on <policy> --format json --output result.json --bundle-dir bundles` in `working-directory`. Without `inputs` it runs `cryptificate check --format json --output result.json --bundle-dir bundles`, which reads the nearest `cryptificate.json` (in `working-directory` or a parent); `--fail-on` is added only when `fail-on` is set, and the file's `format`, `output` and `bundleDir` are replaced by the action's result files. The text report goes to the job log and the Markdown report to the job summary, and a warning is logged when the policy in force is `none`. `cryptificate report` then renders the same result as SARIF, JUnit and the HTML evidence report, with the same policy, resolving the input paths against the directory recorded in `result.json` (see [Project configuration](#project-configuration)); the SARIF locations are made relative to the repository root with `--uri-base "$GITHUB_WORKSPACE"`, as code scanning reads them.
+4. Uploads the SARIF log with `github/codeql-action/upload-sarif@v3` and the directory with `result.json`, `cryptificate.sarif`, `cryptificate.junit.xml`, the HTML evidence report `cryptificate.html` and one evidence bundle per input with `actions/upload-artifact@v4`, as artifact `cryptificate-evidence`.
 5. Fails the job with the exit status of `check` (below).
 
 A cold run downloads the Mathlib cache archives (about 0.9 GB for the pinned Mathlib) and builds the engine; later runs restore both from the Actions cache.
@@ -89,7 +89,7 @@ GitLab, Jenkins and Buildkite read the JUnit file: each claim is a test case, a 
   "$schema": "https://raw.githubusercontent.com/4waan/Cryptificate/main/schemas/project-config.schema.json",
   "inputs": ["cryptificate/designs/*.json"],
   "failOn": "refuted",
-  "claims": ["matrix.mds", "offsets.dispersion", "sbox.bijective", "activity.bound"],
+  "claims": ["matrix.mds", "offsets.dispersion", "sbox.bijective", "activity.bound", "sbox.differential", "sbox.linearity"],
   "bundleDir": "cryptificate/evidence"
 }
 ```
@@ -121,14 +121,14 @@ cryptificate: cryptificate.json is not a valid project configuration (2 problems
 
 | Option | Meaning |
 | --- | --- |
-| `--format text\|json\|sarif\|junit\|markdown` | Output format, `text` by default. |
+| `--format text\|json\|sarif\|junit\|markdown\|html` | Output format, `text` by default. `html` is the [HTML evidence report](#html-evidence-report). |
 | `--output FILE` | Write the formatted result to `FILE` (creating its directory); the text report then goes to stdout. Without it the formatted result goes to stdout. Progress always goes to stderr. |
 | `--fail-on none\|refuted\|not-established\|any` | Policy, `none` by default (for `check` with a `cryptificate.json`, the file's `failOn`, else `refuted`). `report` keeps the policy recorded in a saved `check` or `verify` result unless `--fail-on` or `--claims` is given. |
 | `--claims ID[,ID...]` | Restrict the policy to these claim ids (repeatable). An id that is not one of the claim ids listed under [SARIF](#sarif) (a typo, or the wrong case) is a usage error. |
 | `--no-step-summary` | Do not append Markdown to `$GITHUB_STEP_SUMMARY`. When that variable is set (as it is in GitHub Actions), the Markdown report is appended to the file it names, whatever `--format` is. |
 | `--uri-base DIR` | Make the file locations in a SARIF log relative to `DIR` (relative to the working directory), by default the working directory; a file outside it gets a `file://` URI. Code scanning reads relative locations from the repository root, so pass the root (`$GITHUB_WORKSPACE`) when the command runs elsewhere. |
 
-`check` takes one or more design or request files or patterns, or none to read `cryptificate.json` ([Project configuration](#project-configuration)); `--config FILE` names that file. `--program`, `--json` and `--bundle` need a single input; with several, put `program` (and `target`) in each request file, use `--format json --output FILE` for the results and `--bundle-dir DIR` for one bundle per input (named after the input file). `verify` takes one or more bundles or patterns. `report` takes saved results: `check --format json` or `verify --format json` output, a `report.json`, or a bundle.
+`check` takes one or more design or request files or patterns, or none to read `cryptificate.json` ([Project configuration](#project-configuration)); `--config FILE` names that file. `--program`, `--json` and `--bundle` need a single input; with several, put `program` (and `target`) in each request file, use `--format json --output FILE` for the results and `--bundle-dir DIR` for one bundle per input (named after the input file). `verify` takes one or more bundles or patterns. `report` takes saved results: `check --format json` or `verify --format json` output, a `report.json`, or a bundle. With `--format html` (and no `--fail-on` or `--claims`) it also renders experiment reports and experiment bundles, alone or together with analysis reports and bundles on one page in input order, so `report evidence/bundles/*.tar.gz --format html` works on a directory that holds both; that page applies no policy and exits 2 when an input cannot be read or its run did not complete. The other formats, a policy, and saved `check` or `verify` results (which carry a policy) refuse experiments, because the policy and the gate formats describe analysis claims.
 
 ## Policy
 
@@ -141,7 +141,7 @@ cryptificate: cryptificate.json is not a valid project configuration (2 problems
 
 **Scope.** With `--claims`, the policy applies to exactly those claim ids. Under a policy other than `none`, an input whose report (or bundle) does not carry one of them is an error (exit 2), not a vacuous pass: a gate on `matrix.mds` over a HADES design, whose report has `external.mds` instead, fails with exit 2. Use one gate per design family, or list the ids of both. Without `--claims`, `check` applies the policy to every claim of the report except those the run does not attempt by design, which carry the reason `not-run`: the circuit claims when no circuit was submitted, and native timing, which only experiments measure.
 
-`verify` gates on recomputed statuses only, never on the status a bundle records about itself. By default it applies the policy to the claims it re-checked (again except `not-run` ones). With `--claims`, an id that `verify` does not re-check (`rust.refinement`, `native.timing`, and `native.correctness` without `--native`) is an error (exit 2) under a policy, because the only status available for it is the one the bundle records.
+`verify` gates on recomputed statuses only, never on the status a bundle records about itself. By default it applies the policy to the claims it re-checked (again except `not-run` ones). A claim added after the bundle was recorded and shown as `not recorded` (see the server README) was re-derived as well, so the policy applies to its recomputed status like any other re-checked claim. With `--claims`, an id that `verify` does not re-check (`rust.refinement`, `native.timing`, and `native.correctness` without `--native`) is an error (exit 2) under a policy, because the only status available for it is the one the bundle records.
 
 **A missing tool is never a pass.** Under a policy other than `none`, an in-scope claim that is not established because the engine, Lean or the native toolchain was unavailable makes the run an error (exit 2), not a pass. For `verify` this holds under any policy when the re-run did not complete, or when a missing tool turned a recorded status into a mismatch: that is reported as an error (exit 2), not as a bundle that does not reproduce (exit 1).
 
@@ -185,6 +185,20 @@ Locations point into the file you wrote, with a line and column:
 The design is found at the top of a bare design file or under `design` in a request file; the circuit under `program`, or in the `--program` file. Paths are relative to the working directory, or to the `--uri-base` directory when it is given; code scanning expects them relative to the repository root. For `verify`, results point at the bundle file, without a line. A failed input, an input that lacks a requested claim, and a bundle that could not be re-checked (with the reason) are reported as tool execution notifications with level `error`.
 
 GitHub code scanning shows `fail` results as alerts. How it presents `pass`, `open` and `notApplicable` results is up to GitHub; the job's pass or fail is decided by the exit status, not by the upload.
+
+## HTML evidence report
+
+`--format html` writes one self-contained HTML file to attach to an audit or a pull request. It has inline CSS, no scripts and no external requests (the page declares a Content Security Policy that forbids them), and every value taken from a report is escaped. It shows, for each input:
+
+- the inputs (design, circuit) and their digest, and the normalized inputs as JSON in an appendix;
+- both claim chains, each claim with its status, evidence label, theorem name, the exact Lean statement and axioms as the audit printed them (axioms outside `propext`, `Classical.choice`, `Quot.sound` are pointed out), and the counterexample or witness values;
+- native correctness and, for experiments, the timing tables: speed-up ratios with their 95% intervals, medians and interquartile ranges per workload, the per-session output checks and the verdict;
+- provenance: origin, checker version, Lean, Mathlib and WideTrail pins, `rustc`, the Lean source digest, the proof cache key, the machine of an experiment, the execution steps, and, when the input is a bundle, its `toolchain.json`;
+- how to re-check it with `cryptificate verify`.
+
+Printing it from a browser (Save as PDF) gives a light A4 or Letter document. For `check` the policy outcome comes first when a policy applies or there are several inputs; for `verify` the page shows the recorded and recomputed status of every claim. The page renders what the report records and adds no claim of its own; the evidence is the bundle.
+
+Every evidence bundle also carries the same page as `report.html`, rendered from its own (path-scrubbed) `report.json` and `toolchain.json`; the local service serves it on its own at `GET /api/jobs/:id/report.html`. The workbench's **Export report** button downloads that page for a live run. For a recorded run, which has no service behind it, the button renders the page in the browser with the same renderer from the recorded `report.json`; that page has no *Recorded toolchain (toolchain.json)* section. `verify` never reads `report.html`. Bundles recorded before `report.html` existed render with `cryptificate report <bundle> --format html`.
 
 ## Re-checking bundles in CI
 

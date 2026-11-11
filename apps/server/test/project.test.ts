@@ -47,7 +47,7 @@ test('the validator accepts a full configuration and reports every problem with 
   assert.ok(ok.ok);
   assert.deepEqual(ok.value, { inputs: full.inputs, failOn: 'not-established', claims: full.claims, target: 'matrix', format: 'sarif', output: full.output, bundleDir: 'evidence' });
 
-  const bad = validateConfig({ inputs: 'designs/*.json', fialOn: 'refuted', failOn: 'sometimes', claims: ['matrix.mds', 'MATRIX.MDS', 'matrix.mds'], format: 'html', target: 3, bundleDir: '' });
+  const bad = validateConfig({ inputs: 'designs/*.json', fialOn: 'refuted', failOn: 'sometimes', claims: ['matrix.mds', 'MATRIX.MDS', 'matrix.mds'], format: 'pdf', target: 3, bundleDir: '' });
   assert.ok(!bad.ok);
   assert.deepEqual(
     bad.errors.map((e) => e.path),

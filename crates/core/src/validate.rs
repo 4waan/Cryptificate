@@ -11,12 +11,13 @@
 use serde_json::{Map, Value};
 
 use crate::design::{
-    AesLikeDesign, CandidateDesign, ConstantsSpec, HadesDesign, SboxSpec, Target, MODEL_AES_LIKE,
-    MODEL_HADES,
+    default_partial_mask, AesLikeDesign, CandidateDesign, ConstantsSpec, HadesDesign, SboxSpec,
+    Target, MODEL_AES_LIKE, MODEL_HADES, MODEL_HADES_PRIME,
 };
 use crate::error::{pointer_push as at, ErrorCode, ValidationError};
 use crate::field::{Bn254, Field, FieldKind, Gf256};
 use crate::limits;
+use crate::prime::{decode_decimal_u64, is_prime_u64, with_modulus, Fp, Modulus};
 use crate::program::{AnyProgram, Instruction, Program};
 use crate::request::{AnalysisRequest, ExperimentRequest, Profile};
 
@@ -87,6 +88,17 @@ pub fn validate_analysis_request(v: &Value) -> Result<AnalysisRequest> {
 pub fn validate_experiment_request(v: &Value) -> Result<ExperimentRequest> {
     let o = Obj::new(v, "", &["design", "program", "profile", "seed"])?;
     let design = design_at(o.req("design")?, &o.path("design"))?;
+    if let CandidateDesign::HadesPrime(d) = &design {
+        return Err(err(
+            ErrorCode::FieldMismatch,
+            at(&o.path("design"), "field"),
+            format!(
+                "experiments (the circuit search and native measurement) cover gf256 and bn254 \
+                 designs only, not field {}",
+                d.field
+            ),
+        ));
+    }
     let program = o
         .opt("program")
         .map(|p| program_for_design(p, &o.path("program"), &design))
@@ -194,11 +206,15 @@ fn design_at(v: &Value, base: &str) -> Result<CandidateDesign> {
     let mut design = match str_at(model, &model_path)? {
         MODEL_AES_LIKE => CandidateDesign::AesLike(aes_like_at(v, base)?),
         MODEL_HADES => CandidateDesign::Hades(hades_at(v, base)?),
+        MODEL_HADES_PRIME => CandidateDesign::HadesPrime(hades_prime_at(v, base)?),
         other => {
             return Err(err(
                 ErrorCode::UnknownModel,
                 model_path,
-                format!("unknown model {other:?} (expected {MODEL_AES_LIKE} or {MODEL_HADES})"),
+                format!(
+                    "unknown model {other:?} (expected {MODEL_AES_LIKE}, {MODEL_HADES} or \
+                     {MODEL_HADES_PRIME})"
+                ),
             ))
         }
     };
@@ -270,31 +286,110 @@ fn aes_like_at(v: &Value, base: &str) -> Result<AesLikeDesign> {
     })
 }
 
+const HADES_MEMBERS: [&str; 10] = [
+    "model",
+    "field",
+    "width",
+    "external",
+    "internal",
+    "fullRounds",
+    "partialRounds",
+    "sbox",
+    "partialMask",
+    "constants",
+];
+
 fn hades_at(v: &Value, base: &str) -> Result<HadesDesign> {
-    let o = Obj::new(
-        v,
-        base,
-        &[
-            "model",
-            "field",
-            "width",
-            "external",
-            "internal",
-            "fullRounds",
-            "partialRounds",
-            "sbox",
-            "partialMask",
-            "constants",
-        ],
-    )?;
+    let o = Obj::new(v, base, &HADES_MEMBERS)?;
     let field = field_member(&o, FieldKind::Bn254)?;
+    hades_body(&o, field, None, ConstantsSpec::Reference)
+}
+
+/// A `hades/prime/v1` design. The field and modulus are read first, and the
+/// modulus is checked to be prime, so that every element can then be decoded
+/// as a residue of it.
+fn hades_prime_at(v: &Value, base: &str) -> Result<HadesDesign<Fp>> {
+    let mut members = HADES_MEMBERS.to_vec();
+    members.push("modulus");
+    let o = Obj::new(v, base, &members)?;
+    let path = o.path("field");
+    let s = str_at(o.req("field")?, &path)?;
+    let field = match FieldKind::parse(s) {
+        Some(f) if f.is_prime64() => f,
+        _ => {
+            return Err(err(
+                ErrorCode::FieldMismatch,
+                path,
+                format!(
+                    "model {MODEL_HADES_PRIME} requires field \"babybear\", \"koalabear\", \
+                     \"mersenne31\", \"goldilocks\" or \"prime\" (BN254 designs use model \
+                     {MODEL_HADES}), got {s:?}"
+                ),
+            ))
+        }
+    };
+    let modulus_path = o.path("modulus");
+    let given = match o.opt("modulus") {
+        None => None,
+        Some(m) => {
+            let text = str_at(m, &modulus_path)?;
+            let p = decode_decimal_u64(text).map_err(|e| {
+                err(
+                    ErrorCode::BadModulus,
+                    &modulus_path,
+                    format!(
+                        "a modulus is a prime below 2^64 as a decimal string: {}",
+                        e.reason
+                    ),
+                )
+            })?;
+            Some(p)
+        }
+    };
+    let p = check_modulus(field, given, &modulus_path)?;
+    with_modulus(p, || {
+        hades_body(&o, field, Some(Modulus(p)), ConstantsSpec::Unspecified)
+    })
+}
+
+/// The modulus of a prime-field design: the named field's (a given modulus
+/// must equal it) or the given custom prime.
+pub fn check_modulus(field: FieldKind, given: Option<u64>, path: &str) -> Result<u64> {
+    match (field.preset_modulus(), given) {
+        (Some(preset), None) => Ok(preset),
+        (Some(preset), Some(p)) if p == preset => Ok(p),
+        (Some(preset), Some(p)) => Err(err(
+            ErrorCode::BadModulus,
+            path,
+            format!("field \"{}\" has modulus {preset}, got {p}", field.as_str()),
+        )),
+        (None, None) => Err(err(
+            ErrorCode::MissingField,
+            path,
+            "field \"prime\" needs a \"modulus\": a prime below 2^64 as a decimal string",
+        )),
+        (None, Some(p)) if is_prime_u64(p) => Ok(p),
+        (None, Some(p)) => Err(err(
+            ErrorCode::BadModulus,
+            path,
+            format!("{p} is not prime"),
+        )),
+    }
+}
+
+fn hades_body<F: Field>(
+    o: &Obj,
+    field: FieldKind,
+    modulus: Option<Modulus>,
+    default_constants: ConstantsSpec<F>,
+) -> Result<HadesDesign<F>> {
     let width = usize_at(
         o.req("width")?,
         &o.path("width"),
         ErrorCode::UnsupportedWidth,
     )?;
-    let external = matrix_at::<Bn254>(o.req("external")?, &o.path("external"))?;
-    let internal = matrix_at::<Bn254>(o.req("internal")?, &o.path("internal"))?;
+    let external = matrix_at::<F>(o.req("external")?, &o.path("external"))?;
+    let internal = matrix_at::<F>(o.req("internal")?, &o.path("internal"))?;
     let full_rounds = u32_at(
         o.req("fullRounds")?,
         &o.path("fullRounds"),
@@ -307,7 +402,7 @@ fn hades_at(v: &Value, base: &str) -> Result<HadesDesign> {
     )?;
     let sbox = sbox_at(o.req("sbox")?, &o.path("sbox"))?;
     let partial_mask = match o.opt("partialMask") {
-        None => HadesDesign::default_partial_mask(width),
+        None => default_partial_mask(width),
         Some(m) => {
             let path = o.path("partialMask");
             array_at(m, &path)?
@@ -318,11 +413,12 @@ fn hades_at(v: &Value, base: &str) -> Result<HadesDesign> {
         }
     };
     let constants = match o.opt("constants") {
-        None => ConstantsSpec::Reference,
-        Some(c) => constants_at(c, &o.path("constants"))?,
+        None => default_constants,
+        Some(c) => constants_at::<F>(c, &o.path("constants"))?,
     };
     Ok(HadesDesign {
         field,
+        modulus,
         width,
         external,
         internal,
@@ -373,21 +469,27 @@ fn sbox_at(v: &Value, base: &str) -> Result<SboxSpec> {
     }
 }
 
-fn constants_at(v: &Value, base: &str) -> Result<ConstantsSpec> {
+fn constants_at<F: Field>(v: &Value, base: &str) -> Result<ConstantsSpec<F>> {
     match kind_of(v, base)? {
         "reference" => {
             Obj::new(v, base, &["kind"])?;
             Ok(ConstantsSpec::Reference)
         }
+        "unspecified" => {
+            Obj::new(v, base, &["kind"])?;
+            Ok(ConstantsSpec::Unspecified)
+        }
         "explicit" => {
             let o = Obj::new(v, base, &["kind", "values"])?;
-            let values = matrix_at::<Bn254>(o.req("values")?, &o.path("values"))?;
+            let values = matrix_at::<F>(o.req("values")?, &o.path("values"))?;
             Ok(ConstantsSpec::Explicit { values })
         }
         other => Err(err(
             ErrorCode::BadConstantsKind,
             at(base, "kind"),
-            format!("unknown constants kind {other:?} (expected reference or explicit)"),
+            format!(
+                "unknown constants kind {other:?} (expected reference, unspecified or explicit)"
+            ),
         )),
     }
 }
@@ -407,7 +509,17 @@ fn program_at(v: &Value, base: &str) -> Result<AnyProgram> {
     let program = match FieldKind::parse(s) {
         Some(FieldKind::Gf256) => AnyProgram::Gf256(program_body::<Gf256>(&o)?),
         Some(FieldKind::Bn254) => AnyProgram::Bn254(program_body::<Bn254>(&o)?),
-        None => {
+        Some(f) if f.is_prime64() => {
+            return Err(err(
+                ErrorCode::FieldMismatch,
+                path,
+                format!(
+                    "circuits over field {f} are not supported: circuit equivalence, search and \
+                     native measurement cover gf256 and bn254 only"
+                ),
+            ))
+        }
+        Some(_) | None => {
             return Err(err(
                 ErrorCode::FieldMismatch,
                 path,
@@ -625,7 +737,7 @@ fn u32_at(v: &Value, path: &str, range_code: ErrorCode) -> Result<u32> {
 fn elem_at<F: Field>(v: &Value, path: &str) -> Result<F> {
     let code = match F::KIND {
         FieldKind::Gf256 => ErrorCode::InvalidByte,
-        FieldKind::Bn254 => ErrorCode::ValueNotCanonical,
+        _ => ErrorCode::ValueNotCanonical,
     };
     match v {
         Value::String(s) => F::decode(s).map_err(|e| err(code, path, e.reason)),
@@ -636,7 +748,7 @@ fn elem_at<F: Field>(v: &Value, path: &str) -> Result<F> {
                 "field elements are strings ({}), got {}",
                 match F::KIND {
                     FieldKind::Gf256 => "two hex digits",
-                    FieldKind::Bn254 => "canonical decimal",
+                    _ => "canonical decimal",
                 },
                 type_name(v)
             ),

@@ -4,6 +4,7 @@ import Cryptificate.Diffusion.Offsets
 import Cryptificate.Diffusion.Activity
 import Cryptificate.Bridge
 import Cryptificate.Sbox
+import Cryptificate.Sbox.Quality
 import Cryptificate.Diffusion.Echo
 
 /-!
@@ -21,9 +22,12 @@ small concrete computation:
 * `Diffusion.Activity`: an MDS matrix and diffusion-optimal offsets give WideTrail's
   active-S-box bound for every trail of the candidate's specification.
 * `Bridge`: an AES-like execution on the 16-byte state; two executions under the same round
-  keys with an injective S-box produce such a trail, so the bound holds for executions.
+  keys with an injective S-box produce such a trail, so the bound holds for executions. The
+  variant with the AES final round (no column mixing, then a final key) has the same bound.
 * `Sbox`: byte S-boxes given as tables; an inverse table certifies bijectivity and a
   collision refutes injectivity. WideTrail's AES S-box is checked against the table of
   FIPS 197.
+* `Sbox.Quality`: the differential uniformity and the linearity of a byte S-box, checked
+  exactly on its table with a witness attaining each value; `4` and `32` for the AES S-box.
 * `Diffusion.Echo`: the request encoding of an S-box, for the certificate's input echo.
 -/

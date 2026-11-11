@@ -11,7 +11,8 @@ import { extname, join, normalize, sep } from 'node:path';
 import { LIMITS, MODELS, validateAnalysisRequest, validateExperimentRequest } from '@cryptificate/schema';
 import type { Capabilities, ErrorResponse, ExperimentProfile, ValidationIssue } from '@cryptificate/schema';
 import { ANALYSIS_BUDGET_MS } from './analysis.js';
-import { buildBundle } from './bundle.js';
+import { REPORT_HTML_CSP, reportHtmlFileName } from '@cryptificate/schema';
+import { buildBundle, bundleReportHtml } from './bundle.js';
 import type { PipelineEnv } from './context.js';
 import { PROFILE_BUDGETS } from './experiment.js';
 import { JobManager, QueueFullError } from './jobs.js';
@@ -336,6 +337,24 @@ export function createApp(opts: ServerOptions): Server {
             'cache-control': 'no-store',
           });
           res.end(gz);
+          return;
+        }
+        if (parts.length === 4 && parts[3] === 'report.html' && method === 'GET') {
+          const view = jobs.view(rec);
+          if (!view.bundle || !view.report) {
+            sendError(res, 409, 'not-ready', view.state === 'invalid' ? 'invalid requests have no report' : 'the job has not finished');
+            return;
+          }
+          // Byte for byte the bundle's report.html: rendered from the bundled (path-scrubbed) report and pins.
+          const html = Buffer.from(bundleReportHtml({ jobDir: rec.dir, report: view.report, toolchain: await env.toolchain(), paths: env.paths }));
+          res.writeHead(200, {
+            'content-type': 'text/html; charset=utf-8',
+            'content-length': String(html.length),
+            'content-disposition': `attachment; filename="${reportHtmlFileName(view.report)}"`,
+            'content-security-policy': REPORT_HTML_CSP,
+            'cache-control': 'no-store',
+          });
+          res.end(html);
           return;
         }
       }

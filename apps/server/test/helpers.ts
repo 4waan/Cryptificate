@@ -11,10 +11,19 @@ import type { PipelineEnv } from '../src/context.js';
 import { Engine } from '../src/engine.js';
 import { pathReplacements, resolvePaths } from '../src/paths.js';
 import type { ToolchainInfo } from '../src/toolchain.js';
+import { sboxQualityStatement } from '../src/claims.js';
 
 export const MDS_TYPE = 'Cryptificate.IsMDS4 CryptificateJob.candMatrix';
 export const NOT_MDS_TYPE = '¬Cryptificate.IsMDS4 CryptificateJob.candMatrix';
 export const EQ_TYPE = 'Cryptificate.Circuit.implements CryptificateJob.candProgram CryptificateJob.candMatrix';
+
+export const AES_DIFF_WITNESS = { kind: 'sbox-differential' as const, uniformity: 4, inputDifference: '01', outputDifference: '1F' };
+export const AES_LIN_WITNESS = { kind: 'sbox-linearity' as const, linearity: 32, inputMask: '01', outputMask: '48' };
+/** S-box quality theorems the fake engine emits for a design that is not the identity. */
+const QUALITY = [
+  { claim: 'sbox.differential', theorem: 'CryptificateJob.sbox_differential', type: sboxQualityStatement(AES_DIFF_WITNESS), witness: AES_DIFF_WITNESS },
+  { claim: 'sbox.linearity', theorem: 'CryptificateJob.sbox_linearity', type: sboxQualityStatement(AES_LIN_WITNESS), witness: AES_LIN_WITNESS },
+];
 
 /**
  * Fake engine. emit-lean writes the stdout the fake Lean should print into
@@ -65,6 +74,10 @@ process.stdin.on('end', () => {
       out.push('CRYPTIFICATE_AUDIT {"theorem":"CryptificateJob.matrix_mds","type":"${MDS_TYPE}","axioms":' + ax + '}');
       expect.push({ claim: 'activity.bound', theorem: 'CryptificateJob.activity_bound', status: 'proved', expectedType: 'activity' });
       out.push('CRYPTIFICATE_AUDIT {"theorem":"CryptificateJob.activity_bound","type":"activity","axioms":[]}');
+      for (const q of ${JSON.stringify(QUALITY)}) {
+        expect.push({ claim: q.claim, theorem: q.theorem, status: 'proved', expectedType: q.type, witness: q.witness });
+        out.push('CRYPTIFICATE_AUDIT ' + JSON.stringify({ theorem: q.theorem, type: q.type, axioms: ['propext', 'Quot.sound'] }));
+      }
     }
     expect.push({ claim: 'offsets.dispersion', theorem: 'CryptificateJob.offsets_optimal', status: 'proved', expectedType: 'offsets' });
     out.push('CRYPTIFICATE_AUDIT {"theorem":"CryptificateJob.offsets_optimal","type":"offsets","axioms":[]}');

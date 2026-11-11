@@ -1,9 +1,12 @@
 import { BN254_P, gcd, invMod, powMod } from './bn254';
 import { coefficientMatrix, validateProgram } from './circuit';
 import { activityBound, activityFormula, isAesLike, targetMatrix, validateDesign } from './design';
-import { fieldOps } from './field';
+import { displayFieldOf, fieldOps } from './field';
+import { isPrime64, modulusOf, primeFieldLabel } from './primefield';
 import { aesSbox, formatGfHex, parseGfHex } from './gf256';
 import { branchWitness, rankAndKernel, weight } from './linalg';
+import { externalMdsTitle } from './types';
+import { differentialUniformity, linearity } from './sboxQuality';
 import type { CandidateDesign, ClaimChain, ClaimId, Program, ProgramTarget, Witness } from './types';
 
 /**
@@ -21,6 +24,30 @@ export interface PreviewItem {
   outcome: PreviewOutcome;
   witness: Witness | null;
   note: string;
+}
+
+/** The exact differential uniformity and linearity of a byte table. */
+function sboxQualityPreview(table: readonly number[]): PreviewItem[] {
+  const d = differentialUniformity(table);
+  const l = linearity(table);
+  return [
+    {
+      id: 'sbox.differential',
+      chain: 'design',
+      title: `Differential uniformity of the S-box table is ${d.uniformity}`,
+      outcome: 'holds',
+      witness: d,
+      note: 'The largest entry of the difference table outside the row of input difference 0. A property of the table, not a trail bound.',
+    },
+    {
+      id: 'sbox.linearity',
+      chain: 'design',
+      title: `Linearity of the S-box table is ${l.linearity}`,
+      outcome: 'holds',
+      witness: l,
+      note: 'The largest absolute Walsh coefficient at a nonzero output mask. A property of the table, not a bound on any linear trail.',
+    },
+  ];
 }
 
 export function previewDesign(d: CandidateDesign): PreviewItem[] {
@@ -100,15 +127,17 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
           ? 'Not established by this method: the bound is stated for width 4.'
           : 'Not established by this method: the bound needs an MDS matrix and distinct offsets.',
     };
-    return [mds, offsets, sbox, activity];
+    return [mds, offsets, sbox, activity, ...sboxQualityPreview(table)];
   }
 
-  const f = fieldOps('bn254');
+  const f = fieldOps(displayFieldOf(d));
+  const w = d.width;
+  const modulus = modulusOf(d) ?? BN254_P;
   const bw = branchWitness(f, d.external);
   const external: PreviewItem = {
     id: 'external.mds',
     chain: 'design',
-    title: 'External matrix is MDS (branch number 4)',
+    title: externalMdsTitle(w),
     outcome: bw ? 'fails' : 'holds',
     witness: bw
       ? {
@@ -117,29 +146,44 @@ export function previewDesign(d: CandidateDesign): PreviewItem[] {
           output: bw.output,
           inputWeight: weight(f, bw.input),
           outputWeight: weight(f, bw.output),
-          bound: 4,
+          bound: w + 1,
         }
       : null,
-    note: bw ? 'A square submatrix is singular.' : 'All 19 square submatrices are nonsingular.',
+    note: bw ? 'A square submatrix is singular.' : `All ${w === 3 ? 19 : 69} square submatrices are nonsingular.`,
   };
   const internalRank = rankAndKernel(f, d.internal).rank;
   const internal: PreviewItem = {
     id: 'internal.invertible',
     chain: 'design',
     title: 'Internal matrix is invertible',
-    outcome: internalRank === 3 ? 'holds' : 'fails',
+    outcome: internalRank === w ? 'holds' : 'fails',
     witness: null,
-    note: internalRank === 3 ? 'The determinant is nonzero.' : 'The determinant is zero.',
+    note: internalRank === w ? 'The determinant is nonzero.' : 'The determinant is zero.',
   };
-  return [external, internal, powerPreview(d.sbox.exponent)];
+  const items = [external, internal, powerPreview(d.sbox.exponent, modulus)];
+  if (d.model === 'hades/prime/v1') {
+    const prime = isPrime64(modulus);
+    items.unshift({
+      id: 'field.prime',
+      chain: 'design',
+      title: 'Modulus is prime',
+      outcome: prime ? 'holds' : 'fails',
+      witness: null,
+      note: prime
+        ? `${primeFieldLabel(d.field)}: ${modulus} passes the Miller-Rabin test the engine also uses; a report proves it prime in Lean from a Pratt certificate.`
+        : `${modulus} is not prime.`,
+    });
+  }
+  return items;
 }
 
-export function powerPreview(exponent: number): PreviewItem {
+/** The power map over F_p, the BN254 scalar field unless `p` is given. */
+export function powerPreview(exponent: number, p: bigint = BN254_P): PreviewItem {
   const e = BigInt(exponent);
-  const pm1 = BN254_P - 1n;
+  const pm1 = p - 1n;
   const g = gcd(e, pm1);
   if (g === 1n) {
-    const d = invMod(e, pm1)!;
+    const d = pm1 === 1n ? 1n : invMod(e, pm1)!;
     return {
       id: 'sbox.bijective',
       chain: 'design',
@@ -150,8 +194,9 @@ export function powerPreview(exponent: number): PreviewItem {
     };
   }
   let omega = 1n;
-  for (const h of [5n, 7n, 2n, 3n, 11n, 13n]) {
-    omega = powMod(h, pm1 / g);
+  for (const h of [5n, 7n, 2n, 3n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n]) {
+    if (h % p === 0n) continue;
+    omega = powMod(h, pm1 / g, p);
     if (omega !== 1n) break;
   }
   return {

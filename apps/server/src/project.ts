@@ -16,7 +16,7 @@ export const CONFIG_FILE = 'cryptificate.json';
 
 export const CONFIG_SCHEMA_URL = 'https://raw.githubusercontent.com/4waan/Cryptificate/main/schemas/project-config.schema.json';
 
-export const CONFIG_FORMATS = ['text', 'json', 'sarif', 'junit', 'markdown'] as const;
+export const CONFIG_FORMATS = ['text', 'json', 'sarif', 'junit', 'markdown', 'html'] as const;
 export const CONFIG_TARGETS = ['matrix', 'external', 'internal'] as const;
 
 export interface ProjectConfig {
