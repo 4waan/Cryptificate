@@ -21,5 +21,23 @@
       "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "path": { "type": "string" } }
     },
     "bundle": { "type": "boolean" }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "required": ["id", "kind", "state", "origin"],
+      "properties": {
+        "id": { "$ref": "#/properties/id" },
+        "kind": { "$ref": "#/properties/kind" },
+        "state": { "$ref": "#/properties/state" },
+        "origin": { "$ref": "#/properties/origin" }
+      }
+    },
+    "envelope": {
+      "description": "Response of POST /api/analyses, POST /api/experiments and POST /api/jobs/:id/stop.",
+      "type": "object",
+      "required": ["job"],
+      "properties": { "job": { "$ref": "#/$defs/summary" } }
+    }
   }
 }

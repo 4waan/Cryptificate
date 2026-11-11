@@ -17,3 +17,4 @@ export {
   witnessSummary,
 } from './report-html.js';
 export type { Child as HtmlChild, HtmlReportOptions, HtmlToolchain } from './report-html.js';
+export * from './jsonschema.js';

@@ -113,6 +113,8 @@ for claim in final["report"]["claims"]:
 client.bundle(job["id"], "evidence.tar.gz")
 ```
 
+Over HTTP, from any language: the service's API is described in [docs/api.md](docs/api.md) and, machine-readably, in [`schemas/openapi.json`](schemas/openapi.json) (OpenAPI 3.1, also served at `GET /api/openapi.json`).
+
 The [adopter guide](docs/adopter-guide.md) walks through a first design end to end.
 
 ## What it proves
@@ -239,11 +241,11 @@ For an audit or a pull request, `npx cryptificate report <bundle> --format html 
 | [`lean/`](lean) | Circuit semantics, canonical-minor MDS certificates, counterexample lemmas, offsets, the execution bridge, S-box and exponent certificates, Pratt primality certificates, HADES full-round and partial-round bounds at widths 3 and 4, the audit command and the certificate templates |
 | [`refinement/`](refinement) | Charon/Aeneas translations of `crates/kernels` and the gf256 crate, with their Lean proofs |
 | [`crates/`](crates) | `core` (validation, diagnostics, certificate emission), `cli` (`cryptificate-engine`), `search`, `native` (code generation and timing harness), `kernels` |
-| [`apps/server`](apps/server) | HTTP API, job queue, proof acceptance, bundles and the `cryptificate` CLI |
+| [`apps/server`](apps/server) | [HTTP API](docs/api.md), job queue, proof acceptance, bundles and the `cryptificate` CLI |
 | [`apps/web`](apps/web) | The workbench, also published online |
 | [`python/`](python) | Python client |
 | [`examples/`](examples) | Designs, circuits, evidence bundles and measurements |
-| [`docs/`](docs) | [Evidence model](docs/evidence-model.md), [architecture](docs/architecture.md), [batch interface](docs/batch-interface.md), [adopter guide](docs/adopter-guide.md), [CI](docs/ci.md), [research directions](docs/research-directions.md) |
+| [`docs/`](docs) | [Evidence model](docs/evidence-model.md), [architecture](docs/architecture.md), [batch interface](docs/batch-interface.md), [HTTP API](docs/api.md), [adopter guide](docs/adopter-guide.md), [CI](docs/ci.md), [research directions](docs/research-directions.md) |
 
 ## Built on WideTrail
 

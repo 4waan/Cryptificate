@@ -5,7 +5,7 @@ its design, which diffusion guarantees survive the change, and whether it
 is faster. This package talks to `cryptificate serve` over HTTP.
 """
 
-from .client import DEFAULT_URL, TERMINAL_STATES, Client, CryptificateError
+from .client import DEFAULT_URL, OPERATIONS, TERMINAL_STATES, Client, CryptificateError
 from .designs import (
     AES_MIXCOLUMNS,
     BN254_MODULUS,
@@ -27,6 +27,7 @@ __all__ = [
     "AES_MIXCOLUMNS",
     "BN254_MODULUS",
     "DEFAULT_URL",
+    "OPERATIONS",
     "POSEIDON2_EXTERNAL_3",
     "POSEIDON2_INTERNAL_3",
     "PRIME_FIELDS",
