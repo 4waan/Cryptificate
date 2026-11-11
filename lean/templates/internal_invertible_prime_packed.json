@@ -1,0 +1,17 @@
+{
+  "name": "internal_invertible_prime_packed",
+  "kind": "claim",
+  "claim": "internal.invertible",
+  "status": "proved",
+  "theorem": "CryptificateJob.internal_invertible",
+  "expectedType": "CryptificateJob.candInternal.det ≠ 0",
+  "placeholders": [
+    "PACK_BITS"
+  ],
+  "requires": [
+    "const_internal_prime",
+    "const_witness_internal_inverse_prime",
+    "field_prime"
+  ],
+  "field": "prime"
+}

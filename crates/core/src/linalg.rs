@@ -182,6 +182,40 @@ pub fn kernel_vector<F: Field>(m: &[Vec<F>]) -> Option<Vec<F>> {
     Some(x)
 }
 
+/// The inverse of a square matrix, or `None` when it is singular.
+///
+/// Gauss-Jordan elimination on `[m | I]`. Equal inputs give equal outputs.
+pub fn inverse<F: Field>(m: &[Vec<F>]) -> Option<Matrix<F>> {
+    let n = m.len();
+    let mut a: Matrix<F> = m
+        .iter()
+        .enumerate()
+        .map(|(i, row)| {
+            let mut r = row.clone();
+            r.extend((0..n).map(|j| if i == j { F::one() } else { F::zero() }));
+            r
+        })
+        .collect();
+    for c in 0..n {
+        let p = (c..n).find(|&r| !a[r][c].is_zero())?;
+        a.swap(c, p);
+        let inv = a[c][c].inverse().expect("nonzero pivot");
+        for x in a[c].iter_mut() {
+            *x = *x * inv;
+        }
+        let pivot = a[c].clone();
+        for (r, row) in a.iter_mut().enumerate() {
+            if r != c && !row[c].is_zero() {
+                let f = row[c];
+                for (x, &y) in row.iter_mut().zip(&pivot) {
+                    *x = *x - f * y;
+                }
+            }
+        }
+    }
+    Some(a.into_iter().map(|row| row[n..].to_vec()).collect())
+}
+
 /// `x M` for a row vector `x`. Panics if `x` and the rows of `m` differ in
 /// number.
 pub fn vec_mat<F: Field>(x: &[F], m: &[Vec<F>]) -> Vec<F> {
@@ -368,6 +402,22 @@ mod tests {
             determinant::<Gf256>(&aes_mixcolumns()),
             leibniz(&aes_mixcolumns())
         );
+    }
+
+    #[test]
+    fn inverses() {
+        let m = bn(&[&[2, 1, 1], &[1, 2, 1], &[1, 1, 3]]);
+        let w = inverse(&m).expect("invertible");
+        let id: Matrix<Bn254> = identity(3);
+        let prod: Matrix<Bn254> = (0..3)
+            .map(|i| {
+                (0..3)
+                    .map(|j| (0..3).fold(Bn254::zero(), |acc, k| acc + m[i][k] * w[k][j]))
+                    .collect()
+            })
+            .collect();
+        assert_eq!(prod, id);
+        assert!(inverse(&bn(&[&[1, 2], &[2, 4]])).is_none());
     }
 
     #[test]

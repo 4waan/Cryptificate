@@ -164,6 +164,19 @@ describe('claim cards', () => {
         'for every j < 56, so no partial-round S-box is active.',
     );
   });
+  it('shows the kernel vector of a singular matrix', () => {
+    // The kernel vector of the deliberately bad BabyBear width-8 internal
+    // matrix (crates/cli/tests/snapshots/babybear-t8-bad.json).
+    const w = { kind: 'kernel' as const, vector: ['0', '2013265920', '1', '0', '0', '0', '0', '0'] };
+    const html = renderToStaticMarkup(<WitnessView witness={w} field="prime:2013265921" />);
+    expect(html).toContain('Kernel vector');
+    expect(html).toContain('[0, -1, 1, 0, 0, 0, 0, 0]');
+    expect(html).toContain('(nonzero)');
+    expect(describeWitness(w, 'prime:2013265921')).toBe(
+      'The matrix sends the nonzero vector [0, -1, 1, 0, 0, 0, 0, 0] to zero, so it is singular and not ' +
+        'invertible: two states that differ by this vector have the same image.',
+    );
+  });
   it('words a short bypass by the powers that were checked', () => {
     // Two partial rounds of the reference internal matrix: M^0 v and M^1 v
     // vanish at x0, but M^2 v = [-1, 0, -5] does not.
@@ -177,5 +190,23 @@ describe('claim cards', () => {
     expect(text).toContain('in all 2 partial rounds');
     expect(text).toContain('M^j v is zero there for every j < 2');
     expect(text).not.toContain('every power');
+  });
+  it('shows a round-constant mismatch with both values', () => {
+    const w = {
+      kind: 'constant-mismatch' as const,
+      index: 16,
+      round: 4,
+      position: 0,
+      expected: '245687908',
+      actual: '245687909',
+    };
+    const html = renderToStaticMarkup(<WitnessView witness={w} field="prime:2130706433" />);
+    expect(html).toContain('Round-constant mismatch');
+    expect(html).toContain('round 4, position 0 (index 16)');
+    expect(html).toContain('245687909');
+    expect(describeWitness(w, 'prime:2130706433')).toBe(
+      'The round constant of round 4 at position 0 (index 16 of the flat list) is 245687909, and the Grain ' +
+        'procedure for this field, width and round numbers generates 245687908 there (Poseidon2 layout).',
+    );
   });
 });

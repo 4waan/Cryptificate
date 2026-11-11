@@ -1,0 +1,17 @@
+{
+  "name": "external_invertible_prime",
+  "kind": "claim",
+  "claim": "external.invertible",
+  "status": "proved",
+  "theorem": "CryptificateJob.external_invertible",
+  "expectedType": "CryptificateJob.candExternal.det ≠ 0",
+  "placeholders": [
+    "PACK_BITS"
+  ],
+  "requires": [
+    "const_external_prime",
+    "const_witness_external_inverse_prime",
+    "field_prime"
+  ],
+  "field": "prime"
+}

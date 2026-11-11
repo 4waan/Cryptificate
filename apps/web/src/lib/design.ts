@@ -1,5 +1,6 @@
 import { displayFieldOf, fieldOps, type DisplayField } from './field';
 import { modulusProblem } from './primefield';
+import { PRIME_WIDTHS } from './types';
 import type { AesLikeDesign, CandidateDesign, HadesDesign, HadesPrimeDesign } from './types';
 
 export interface DesignIssue {
@@ -80,8 +81,8 @@ export function validateDesign(d: CandidateDesign): DesignIssue[] {
         return issues;
       }
     }
-    if (d.width !== 3 && d.width !== 4) {
-      issues.push({ path: '/width', message: 'Prime-field designs have width 3 or 4.' });
+    if (!PRIME_WIDTHS.includes(d.width)) {
+      issues.push({ path: '/width', message: `Prime-field designs have width ${PRIME_WIDTHS.join(', ')}.` });
       return issues;
     }
     width = d.width;

@@ -1,0 +1,19 @@
+{
+  "name": "constants_not_grain_prime",
+  "kind": "claim",
+  "claim": "constants.grain",
+  "status": "refuted",
+  "theorem": "CryptificateJob.constants_not_grain",
+  "expectedType": "Cryptificate.Grain.constantAt CryptificateJob.candModulus {{WIDTH}} CryptificateJob.candFullRounds CryptificateJob.candPartialRounds {{INDEX}} = some {{EXPECTED}} ∧ CryptificateJob.candConstants[{{INDEX}}]? ≠ some {{EXPECTED}}",
+  "placeholders": [
+    "WIDTH",
+    "INDEX",
+    "EXPECTED"
+  ],
+  "requires": [
+    "const_modulus_prime",
+    "const_rounds_hades",
+    "const_constants"
+  ],
+  "field": "prime"
+}

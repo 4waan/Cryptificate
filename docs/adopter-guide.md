@@ -4,7 +4,7 @@ This guide is for a research group that wants to use Cryptificate on its own des
 
 ## 1. Install
 
-Linux with 8 GB of RAM is enough. You need git, curl, a C toolchain, Rust (stable), Node 20+ and Python 3.10+.
+Linux with 8 GB of RAM is enough. You need git, curl, a C toolchain, Rust (stable), Node 20+ and Python 3.10+ (for the repository's scripts; the client package in [`python/`](../python) declares 3.9+).
 
 ```sh
 git clone https://github.com/4waan/Cryptificate
@@ -43,6 +43,8 @@ cryptificate init
 
 The claim scope written to `claims` is the design claims of the model and, with a circuit, `circuit.equivalence` and `native.correctness`. It leaves out `rust.refinement`, which the action reports as not established because it does not build the refinement proofs (see [ci.md](ci.md#github-action)), and `native.timing`, which only experiments measure. In a subdirectory of a git repository the workflow goes to the repository root with `working-directory` set to the subdirectory; the action still writes the SARIF locations relative to the repository root, so the annotations land on your files. The push trigger names the remote's default branch when git has recorded it (`refs/remotes/origin/HEAD`), otherwise `main` or `master` when the repository has one, otherwise the branch checked out; check it in the written workflow. The workflow uses `4waan/Cryptificate@main`; pin a commit SHA (`--action 4waan/Cryptificate@<sha>`) for a gate that does not change under you. `init` never overwrites an existing file unless `--force` is given, and writes nothing when one of its files exists.
 
+`init` has no preset for the prime-field profile `hades/prime/v1`. To gate such a design, run `cryptificate init --model hades`, replace `cryptificate/designs/poseidon2-bn254.json` with your design (for example a copy of [`examples/designs/koalabear-t4.json`](../examples/designs/koalabear-t4.json)) and add `field.prime` to `claims`; a BN254 design left in the same folder would fail the check, because its report has no `field.prime`. Above width 4, also add `external.m4_mds` and `external.invertible`, and remove `external.mds`, `activity.outer` and `activity.total`, which a Poseidon2 external matrix of these widths refutes or does not establish; remove `activity.partial` too when the design has fewer partial rounds than its width (see [ci.md](ci.md#policy)).
+
 Edit the design file, then run `cryptificate check` in the directory of `cryptificate.json` or below it: without arguments it reads the nearest `cryptificate.json` and exits 0 when the policy holds, 1 when a claim violates it and 2 when a design could not be checked.
 
 ## 3. Describe a design
@@ -75,6 +77,16 @@ A circuit lists instructions over registers. Registers `0..3` are the inputs; in
 ```
 
 `mul` multiplies by a public constant; `mul` by `02` is the AES `xtime`. Circuits have at most 256 instructions and may only reference registers that already exist. More examples live in [`examples/`](../examples).
+
+A HADES design may list its round constants (`"constants": {"kind": "explicit", "values": [...]}`, one row of `width` decimal strings per round, partial rounds as `[c, "0", …]`). Claim `constants.grain` then checks whether they are exactly the constants of the Poseidon2 reference procedure for the design's field, width and round numbers. To take them from an implementation instead of typing them:
+
+```sh
+npx cryptificate import poseidon2_instance_bn256.rs --base examples/designs/poseidon2-bn254.json -o mine.json
+npx cryptificate import koala-bear/src/poseidon2.rs --name KOALABEAR_POSEIDON2_RC_16 --base wide.json -o mine.json
+npx cryptificate import constants.csv --base examples/designs/koalabear-t4.json -o mine.json
+```
+
+The importer reads Plonky3's `…_EXTERNAL_INITIAL`, `…_INTERNAL` and `…_EXTERNAL_FINAL` arrays, HorizenLabs poseidon2 instance files (`RC3`, `RC16`, …) and the list `print_round_constants` prints, JSON (rows, a flat list or the split form `externalInitial`, `internal`, `externalFinal`) and CSV. It copies everything else from `--base`, sets the round numbers the layout gives (and says so), and rejects values that are not below the modulus. It does not judge the constants; `check` does, at every width the profiles accept (Plonky3's wide instances included).
 
 ## 4. Check it
 
@@ -130,7 +142,7 @@ Download the bundle from the workbench, with `client.bundle(...)`, or with `cryp
 npx cryptificate verify aes-check.tar.gz
 ```
 
-`verify` reads only the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It never runs Lean, Rust or shell code from the bundle. Recorded timings are shown as historical; measuring again creates a new experiment. For the S-box differential uniformity and linearity claims the comparison covers the value and the pair of bytes as well as the status, so a bundle that records another value does not verify. A bundle that lacks both of these claims and whose recorded Lean certificate digest differs from the regenerated one, as for a bundle recorded before they existed, lists them as *not recorded*: they are re-derived but there is nothing to compare them with, and `verify` adds a note saying so. Bundles are not signed, so this cannot rule out that the claims were removed by hand; a bundle whose certificate digest is the regenerated one and lacks them does not verify. The partial-round claims `activity.partial` and `activity.total` follow the same rule with another marker: a bundle that lacks both is *not recorded* for them only when its recorded checker revision is a commit of your checkout whose claim list does not name them; otherwise the omission is a mismatch.
+`verify` reads only the bundle's inputs and claims, regenerates the certificate with the installed generator, checks it with the installed Lean toolchain and prints a claim-by-claim comparison. It never runs Lean, Rust or shell code from the bundle. Recorded timings are shown as historical; measuring again creates a new experiment. For the S-box differential uniformity and linearity claims the comparison covers the value and the pair of bytes as well as the status, so a bundle that records another value does not verify. A bundle that lacks both of these claims and whose recorded Lean certificate digest differs from the regenerated one, as for a bundle recorded before they existed, lists them as *not recorded*: they are re-derived but there is nothing to compare them with, and `verify` adds a note saying so. Bundles are not signed, so this cannot rule out that the claims were removed by hand; a bundle whose certificate digest is the regenerated one and lacks them does not verify. The partial-round claims `activity.partial` and `activity.total` follow the same rule with another marker: a bundle that lacks both is *not recorded* for them only when its recorded checker revision is a commit of your checkout whose claim list does not name them; otherwise the omission is a mismatch. `constants.grain` follows the same revision rule as the partial-round claims, as a group of its own.
 
 To attach the evidence to an audit or a pull request, use the bundle's `report.html`, the workbench's **Export report** button, or `npx cryptificate report aes-check.tar.gz --format html --output report.html`: one HTML file with no scripts and no external requests that prints cleanly to PDF. It is a view of `report.json`, not evidence; the bundle is what `verify` re-checks.
 
@@ -142,6 +154,6 @@ A verdict of `locally confirmed` covers one machine and the recorded workloads. 
 
 ## Limits to keep in mind
 
-- Checked profiles: GF(2⁸) width 4 (AES-like, 4 to 32 rounds), BN254 width 3 (HADES, up to 160 rounds), and HADES over BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime below 2⁶⁴ at widths 3 and 4 (design claims only: no circuits, search or native timing over these fields). Other widths are experimental or rejected.
+- Checked profiles: GF(2⁸) width 4 (AES-like, 4 to 32 rounds), BN254 width 3 (HADES, up to 160 rounds), and HADES over BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime below 2⁶⁴ at widths 2, 3, 4, 8, 12, 16 and 24 (design claims only: no circuits, search or native timing over these fields; above width 4 the full-round activity bounds are not established and the external matrix is checked for the Poseidon2 structure and invertibility instead of MDS). Other widths are experimental or rejected.
 - Activity figures are conservative lower bounds on active S-boxes. They do not rank passing designs and they are not security levels.
 - Native timings describe the recorded machine and workload only.

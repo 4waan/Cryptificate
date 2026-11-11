@@ -217,7 +217,7 @@ test('doctor usage errors, and the minimum Node.js version matches package.json'
   });
   const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8')) as { engines: { node: string } };
   assert.equal(pkg.engines.node, `>=${MIN_NODE_MAJOR}`);
-  assert.equal(workspaceVersion(fileURLToPath(new URL('../../../../', import.meta.url))), '0.1.0');
+  assert.equal(workspaceVersion(fileURLToPath(new URL('../../../../', import.meta.url))), '0.2.0');
 });
 
 test('the paths in the fix commands are quoted for the shell', () => {

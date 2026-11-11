@@ -180,5 +180,40 @@ function WitnessBody({ witness: w, field }: { witness: Witness; field: DisplayFi
           </span>
         </div>
       );
+    case 'kernel':
+      return (
+        <div className="witness-rows">
+          <span className="witness-label">Vector x</span>
+          <Cells
+            field={field}
+            values={w.vector}
+            highlight={nonzero(w.vector)}
+            highlightLabel="nonzero"
+            tone="accent"
+            prefix="x"
+          />
+          <span className="witness-label">Signed</span>
+          <span className="mono">[{w.vector.map((x) => signedDecimal(x, field)).join(', ')}]</span>
+          <span className="witness-label">Image M·x</span>
+          <span className="mono">0</span>
+        </div>
+      );
+    case 'constant-mismatch':
+      return (
+        <div className="witness-rows">
+          <span className="witness-label">Position</span>
+          <span className="mono">
+            round {w.round}, position {w.position} (index {w.index})
+          </span>
+          <span className="witness-label">Submitted</span>
+          <span className="mono" style={{ wordBreak: 'break-all' }}>
+            {w.actual}
+          </span>
+          <span className="witness-label">Generated</span>
+          <span className="mono" style={{ wordBreak: 'break-all' }}>
+            {w.expected}
+          </span>
+        </div>
+      );
   }
 }

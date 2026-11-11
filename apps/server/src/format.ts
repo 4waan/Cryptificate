@@ -77,6 +77,10 @@ export function witnessText(c: Claim): string {
       return `uniformity ${w.uniformity}, at input difference ${w.inputDifference} and output difference ${w.outputDifference}`;
     case 'sbox-linearity':
       return `linearity ${w.linearity}, at input mask ${w.inputMask} and output mask ${w.outputMask}`;
+    case 'kernel':
+      return `nonzero [${w.vector.join(',')}] is sent to zero by the matrix`;
+    case 'constant-mismatch':
+      return `round ${w.round}, position ${w.position} (index ${w.index}): submitted ${w.actual}, the Grain procedure generates ${w.expected}`;
     default:
       return '';
   }

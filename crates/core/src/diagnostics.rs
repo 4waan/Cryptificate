@@ -21,11 +21,12 @@ use num_traits::{One, ToPrimitive};
 use serde::{Serialize, Serializer};
 
 use crate::circuit::{CircuitStats, CoefficientMismatch, Distinguisher};
-use crate::design::{AesLikeDesign, CandidateDesign, HadesDesign, SboxSpec, Target};
+use crate::design::{AesLikeDesign, CandidateDesign, ConstantsSpec, HadesDesign, SboxSpec, Target};
 use crate::field::{bn254_modulus, Bn254, Field, FieldKind, Gf256};
+use crate::grain;
 use crate::limits;
 use crate::linalg::{
-    basis, combinations, coordinates, determinant, encode_vec, kernel_vector, mat_vec,
+    basis, combinations, coordinates, determinant, encode_vec, inverse, kernel_vector, mat_vec,
     nullspace_basis, rank, submatrix, vec_mat, weight, Matrix,
 };
 use crate::prime::{pratt_certificate, with_modulus, Fp, Modulus, PrattStep};
@@ -131,9 +132,26 @@ impl<F: Field> BranchWitness<F> {
 ///
 /// This uses Gaussian elimination only and does not consult the minors list.
 pub fn branch_witness<F: Field>(m: &Matrix<F>) -> Option<BranchWitness<F>> {
+    search_branch_witness(m, m.len(), false)
+}
+
+/// The first singular square submatrix of order at most `max_order`, in
+/// order of size, then of columns, then of rows, as a branch witness (the
+/// lightest is not searched for). `None` means that every such submatrix is
+/// nonsingular, not that `m` is MDS. The search costs at most `C(n, s)^2`
+/// eliminations of order `s` for each `s`.
+pub fn first_branch_witness<F: Field>(m: &Matrix<F>, max_order: usize) -> Option<BranchWitness<F>> {
+    search_branch_witness(m, max_order, true)
+}
+
+fn search_branch_witness<F: Field>(
+    m: &Matrix<F>,
+    max_order: usize,
+    first: bool,
+) -> Option<BranchWitness<F>> {
     let n = m.len();
     let mut best: Option<BranchWitness<F>> = None;
-    for s in 1..=n {
+    for s in 1..=max_order.min(n) {
         let subsets = combinations(n, s);
         for support in &subsets {
             for zero_outputs in &subsets {
@@ -154,6 +172,9 @@ pub fn branch_witness<F: Field>(m: &Matrix<F>) -> Option<BranchWitness<F>> {
                     support: support.clone(),
                     zero_outputs: zero_outputs.clone(),
                 };
+                if first {
+                    return Some(candidate);
+                }
                 if best
                     .as_ref()
                     .is_none_or(|b| candidate.combined_weight() < b.combined_weight())
@@ -171,11 +192,15 @@ pub fn branch_witness<F: Field>(m: &Matrix<F>) -> Option<BranchWitness<F>> {
 #[serde(rename_all = "camelCase")]
 pub struct MatrixAnalysis<F> {
     pub matrix: Matrix<F>,
+    /// Whether the minors were enumerated. They are not for matrices wider
+    /// than [`limits::MAX_MINOR_WIDTH`]: `minors` is then empty, `mds` is
+    /// `false` and means "not checked", and there is no branch witness.
+    pub minors_checked: bool,
     /// All square minors, in the order of [`all_minors`].
     pub minors: Vec<Minor<F>>,
     pub minor_count: usize,
     pub zero_minors: usize,
-    /// Every minor is nonzero.
+    /// Every minor is nonzero (and they were enumerated).
     pub mds: bool,
     pub determinant: F,
     pub invertible: bool,
@@ -185,13 +210,43 @@ pub struct MatrixAnalysis<F> {
     pub kernel_vector: Option<Vec<F>>,
 }
 
+/// The report witness of a singular matrix: its kernel vector.
+pub fn kernel_witness<F: Field>(vector: &[F]) -> Witness {
+    Witness::Kernel {
+        vector: encode_vec(vector),
+    }
+}
+
 /// Minors, MDS decision, determinant, and the witnesses for a failure.
+///
+/// A matrix wider than [`limits::MAX_MINOR_WIDTH`] has too many minors to
+/// enumerate (a `16 x 16` matrix has about `6 * 10^8`): its determinant and
+/// kernel are computed, `minors_checked` is `false`, and the only minors
+/// examined are those of order at most [`limits::WIDE_WITNESS_ORDER`]: the
+/// first singular one gives a branch witness ([`first_branch_witness`]),
+/// which refutes the MDS property; without one the property is not decided.
 pub fn analyze_matrix<F: Field>(m: &Matrix<F>) -> MatrixAnalysis<F> {
+    if m.len() > limits::MAX_MINOR_WIDTH {
+        let det = determinant(m);
+        return MatrixAnalysis {
+            matrix: m.clone(),
+            minors_checked: false,
+            minors: Vec::new(),
+            minor_count: 0,
+            zero_minors: 0,
+            mds: false,
+            determinant: det,
+            invertible: !det.is_zero(),
+            branch_witness: first_branch_witness(m, limits::WIDE_WITNESS_ORDER),
+            kernel_vector: kernel_vector(m),
+        };
+    }
     let minors = all_minors(m);
     let zero_minors = minors.iter().filter(|x| x.value.is_zero()).count();
     let det = determinant(m);
     MatrixAnalysis {
         matrix: m.clone(),
+        minors_checked: true,
         minor_count: minors.len(),
         zero_minors,
         mds: zero_minors == 0,
@@ -848,7 +903,168 @@ pub struct HadesDiagnostics<F = Bn254> {
     pub partial: PartialAnalysis<F>,
     /// The bound over the whole permutation (claim `activity.total`).
     pub total: ActivityAnalysis,
+    /// The round constants against the Grain procedure (claim `constants.grain`).
+    pub constants: ConstantsAnalysis,
     pub program: Option<ProgramAnalysis<F>>,
+}
+
+/// Where a design's round constants come from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ConstantsSource {
+    /// Submitted as an explicit array.
+    Explicit,
+    /// The profile's reference constants (`hades/bn254/v1` only).
+    Reference,
+    /// Not given (`hades/prime/v1` only).
+    Unspecified,
+}
+
+/// The first position at which submitted constants differ from the ones the
+/// Grain procedure generates.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConstantMismatch {
+    /// Position in the flat list, `round * width + position`.
+    pub index: usize,
+    pub round: usize,
+    pub position: usize,
+    /// The generated constant, decimal.
+    pub expected: String,
+    /// The submitted constant, decimal.
+    pub actual: String,
+}
+
+impl ConstantMismatch {
+    pub fn to_witness(&self) -> Witness {
+        Witness::ConstantMismatch {
+            index: self.index,
+            round: self.round,
+            position: self.position,
+            expected: self.expected.clone(),
+            actual: self.actual.clone(),
+        }
+    }
+}
+
+/// Claim `constants.grain`: are the round constants exactly those of the
+/// Poseidon2 reference generation (Grain LFSR, Poseidon2 layout) for the
+/// design's modulus, width and round numbers?
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConstantsAnalysis {
+    pub source: ConstantsSource,
+    /// Always `"poseidon2"`: `R_F·t + R_P` constants, partial rounds `[c, 0, …, 0]`.
+    pub layout: &'static str,
+    /// The field size of the seed: the bit length of the modulus.
+    pub field_size: u64,
+    /// `Some` when decided: whether the constants are the generated ones.
+    pub matches: Option<bool>,
+    pub mismatch: Option<ConstantMismatch>,
+    pub note: String,
+}
+
+/// The constants of `d` against the Grain procedure for modulus `p`.
+fn analyze_constants<F: Field>(d: &HadesDesign<F>, p: &BigUint) -> ConstantsAnalysis {
+    let field_size = grain::field_size(p);
+    let undecided = |source, note: String| ConstantsAnalysis {
+        source,
+        layout: "poseidon2",
+        field_size,
+        matches: None,
+        mismatch: None,
+        note,
+    };
+    let values = match &d.constants {
+        ConstantsSpec::Unspecified => {
+            return undecided(
+                ConstantsSource::Unspecified,
+                "not established: the design gives no round constants".into(),
+            )
+        }
+        ConstantsSpec::Reference => {
+            // The profile's reference constants are WideTrail's pinned BN254
+            // table for 8 full and 56 partial rounds; the library proves them
+            // equal to the Grain constants (`Grain.bn254_reference`).
+            return if d.width == 3 && d.full_rounds == 8 && d.partial_rounds == 56 {
+                ConstantsAnalysis {
+                    matches: Some(true),
+                    note: "the reference constants are the Grain constants of the BN254 \
+                           instance with t = 3, R_F = 8, R_P = 56 (Grain.bn254_reference)"
+                        .into(),
+                    ..undecided(ConstantsSource::Reference, String::new())
+                }
+            } else {
+                undecided(
+                    ConstantsSource::Reference,
+                    format!(
+                        "not established: the reference constants are those of R_F = 8 and \
+                         R_P = 56, and this design has R_F = {} and R_P = {}; submit explicit \
+                         constants to compare them with the Grain procedure",
+                        d.full_rounds, d.partial_rounds
+                    ),
+                )
+            };
+        }
+        ConstantsSpec::Explicit { values } => values,
+    };
+    let expected = match grain::poseidon2_constants(p, d.width, d.full_rounds, d.partial_rounds) {
+        Ok(c) => c,
+        Err(e) => {
+            return undecided(
+                ConstantsSource::Explicit,
+                format!("not established: the Grain procedure is not defined here: {e}"),
+            )
+        }
+    };
+    let submitted: Vec<BigUint> = values
+        .iter()
+        .flatten()
+        .map(|x| {
+            x.to_string()
+                .parse()
+                .expect("canonical elements are decimal")
+        })
+        .collect();
+    let w = d.width;
+    match grain::first_difference(&expected, &submitted) {
+        None => ConstantsAnalysis {
+            matches: Some(true),
+            note: format!(
+                "all {} constants are the Grain constants for n = {field_size}, t = {w}, \
+                 R_F = {}, R_P = {} in the Poseidon2 layout",
+                expected.len(),
+                d.full_rounds,
+                d.partial_rounds
+            ),
+            ..undecided(ConstantsSource::Explicit, String::new())
+        },
+        Some(i) if i < expected.len() && i < submitted.len() => {
+            let m = ConstantMismatch {
+                index: i,
+                round: i / w,
+                position: i % w,
+                expected: expected[i].to_string(),
+                actual: submitted[i].to_string(),
+            };
+            ConstantsAnalysis {
+                matches: Some(false),
+                note: format!(
+                    "the constant of round {} at position {} is {}, and the Grain procedure \
+                     for n = {field_size}, t = {w}, R_F = {}, R_P = {} (Poseidon2 layout) \
+                     generates {} there",
+                    m.round, m.position, m.actual, d.full_rounds, d.partial_rounds, m.expected
+                ),
+                mismatch: Some(m),
+                ..undecided(ConstantsSource::Explicit, String::new())
+            }
+        }
+        // Validation fixes the number of constants, so the lengths agree.
+        Some(_) => undecided(
+            ConstantsSource::Explicit,
+            "not established: the number of constants differs from the generated list".into(),
+        ),
+    }
 }
 
 /// The modulus of a prime-field design and the Pratt certificate the
@@ -908,12 +1124,126 @@ impl PrimeFieldAnalysis {
 }
 
 /// A HADES design over a 64-bit prime field: its modulus and certificate,
-/// then the same analyses as over BN254.
+/// then the same analyses as over BN254, and for the widths certified with
+/// packed arithmetic the witnesses those certificates need.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct HadesPrimeDiagnostics {
     pub prime: PrimeFieldAnalysis,
     #[serde(flatten)]
     pub hades: HadesDiagnostics<Fp>,
+    /// Present for every width but 3 and 4 ([`limits::prime_width_is_packed`]).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub packed: Option<PackedAnalysis<Fp>>,
+}
+
+/// The `4 x 4` block of a Poseidon2 external matrix `circ(2 M4, M4, ..., M4)`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct M4Analysis<F> {
+    /// `M4`, read from the block on rows 0-3 and columns 4-7 of the external
+    /// matrix (its first off-diagonal block).
+    pub m4: MatrixAnalysis<F>,
+}
+
+/// The rows `e_i M^j` an observability certificate keeps, and their inverse.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ObservabilityWitness<F> {
+    /// Indices of the kept rows in the stack of rows `e_i M^j`, power major
+    /// and masked position minor (`index = j * positions + rank of i`).
+    pub rows: Vec<usize>,
+    /// The inverse of the kept rows, taken as a square matrix.
+    pub inverse: Matrix<F>,
+}
+
+/// Witnesses of the certificates that check matrices with packed arithmetic
+/// (Lean `Cryptificate.Packed`): inverse matrices, the observability
+/// inverse, and the Poseidon2 block structure of a wide external matrix.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PackedAnalysis<F> {
+    /// `S`, the bit width of one digit: the smallest with `n^2 p^2 <= 2^S`,
+    /// so that no digit of a product of packed vectors overflows.
+    pub pack_bits: u32,
+    /// The inverse of the internal matrix, when it is invertible.
+    pub internal_inverse: Option<Matrix<F>>,
+    /// Widths above 4: the inverse of the external matrix, when it is
+    /// invertible.
+    pub external_inverse: Option<Matrix<F>>,
+    /// Widths above 4: `M4` when the external matrix is
+    /// `circ(2 M4, M4, ..., M4)`.
+    pub m4: Option<M4Analysis<F>>,
+    /// The observability certificate of `activity.partial`, when the
+    /// partial rounds have a charged window.
+    pub observability: Option<ObservabilityWitness<F>>,
+}
+
+/// The smallest `S` with `n^2 p^2 <= 2^S`.
+pub fn pack_bits(n: usize, p: u64) -> u32 {
+    let bound = BigUint::from(n) * BigUint::from(n) * BigUint::from(p) * BigUint::from(p);
+    let bits = (bound - BigUint::one()).bits();
+    u32::try_from(bits).expect("a small bit count")
+}
+
+/// `M4` if `m` is `circ(2 M4, M4, ..., M4)` for a `4 x 4` matrix `M4`
+/// (entry `(i, j)` is `M4[i mod 4][j mod 4]`, doubled when `i` and `j` are in
+/// the same block of four), for a width that is a multiple of 4 and at least 8.
+pub fn poseidon2_m4<F: Field>(m: &Matrix<F>) -> Option<Matrix<F>> {
+    let n = m.len();
+    if n < 8 || !n.is_multiple_of(4) {
+        return None;
+    }
+    let m4: Matrix<F> = (0..4).map(|i| m[i][4..8].to_vec()).collect();
+    let two = F::one() + F::one();
+    let ok = (0..n).all(|i| {
+        (0..n).all(|j| {
+            let base = m4[i % 4][j % 4];
+            m[i][j] == if i / 4 == j / 4 { two * base } else { base }
+        })
+    });
+    ok.then_some(m4)
+}
+
+/// See [`PackedAnalysis`]; `partial` is the analysis of the partial rounds.
+pub fn analyze_packed<F: Field>(
+    d: &HadesDesign<F>,
+    p: u64,
+    partial: &PartialAnalysis<F>,
+) -> PackedAnalysis<F> {
+    let n = d.width;
+    let wide = limits::prime_width_is_wide(n);
+    let observability = partial.window.map(|_| {
+        let kept: Matrix<F> = partial.rows.iter().map(|r| r.row.clone()).collect();
+        let count = partial.positions.len();
+        ObservabilityWitness {
+            rows: partial
+                .rows
+                .iter()
+                .map(|r| {
+                    let rank = partial
+                        .positions
+                        .iter()
+                        .position(|&i| i == r.position)
+                        .expect("a kept row is at a masked position");
+                    r.power as usize * count + rank
+                })
+                .collect(),
+            inverse: inverse(&kept).expect("the kept rows have full rank"),
+        }
+    });
+    PackedAnalysis {
+        pack_bits: pack_bits(n, p),
+        internal_inverse: inverse(&d.internal),
+        external_inverse: if wide { inverse(&d.external) } else { None },
+        m4: if wide {
+            poseidon2_m4(&d.external).map(|m4| M4Analysis {
+                m4: analyze_matrix(&m4),
+            })
+        } else {
+            None
+        },
+        observability,
+    }
 }
 
 /// The per-model part of [`Diagnostics`].
@@ -976,20 +1306,35 @@ pub fn diagnose(req: &AnalysisRequest) -> Diagnostics {
                 Some(AnyProgram::Bn254(p)) if p.width == d.width => Some(p),
                 _ => None,
             };
-            let (h, claims) = diagnose_hades(d, program, req.target, analyze_power);
+            let (h, claims) =
+                diagnose_hades(d, program, req.target, bn254_modulus(), analyze_power);
             (ModelDiagnostics::Hades(h), claims)
         }
         CandidateDesign::HadesPrime(d) => {
             let p = d.modulus_value();
             let prime = PrimeFieldAnalysis::new(d.field, p);
-            let (hades, mut claims) =
-                with_modulus(p, || diagnose_hades(d, None, req.target, analyze_power_fp));
+            let (mut hades, mut claims, packed) = with_modulus(p, || {
+                let (hades, claims) =
+                    diagnose_hades(d, None, req.target, &BigUint::from(p), analyze_power_fp);
+                let packed = limits::prime_width_is_packed(d.width)
+                    .then(|| analyze_packed(d, p, &hades.partial));
+                (hades, claims, packed)
+            });
             claims.insert(
                 0,
                 ClaimPrediction::decided(claim_ids::FIELD_PRIME, true, None, prime.note()),
             );
+            if let Some(packed) = &packed {
+                if limits::prime_width_is_wide(d.width) {
+                    with_modulus(p, || wide_claims(d.width, &mut hades, packed, &mut claims));
+                }
+            }
             (
-                ModelDiagnostics::HadesPrime(HadesPrimeDiagnostics { prime, hades }),
+                ModelDiagnostics::HadesPrime(HadesPrimeDiagnostics {
+                    prime,
+                    hades,
+                    packed,
+                }),
                 claims,
             )
         }
@@ -1007,6 +1352,115 @@ pub fn diagnose(req: &AnalysisRequest) -> Diagnostics {
         details,
         claims,
     }
+}
+
+/// The claims of a design wider than [`limits::MAX_MINOR_WIDTH`]: the
+/// external matrix's minors are not enumerated, so `external.mds` is refuted
+/// by a singular submatrix of small order or else not established;
+/// `external.m4_mds` and `external.invertible` say what is checked about it;
+/// and the activity bounds of the full rounds, which need an MDS external
+/// matrix, are not established.
+fn wide_claims<F: Field>(
+    width: usize,
+    hades: &mut HadesDiagnostics<F>,
+    packed: &PackedAnalysis<F>,
+    claims: &mut Vec<ClaimPrediction>,
+) {
+    let not_established = |claim: &'static str, note: String| ClaimPrediction {
+        claim,
+        predicted: Status::NotEstablished,
+        holds: None,
+        witness: None,
+        note,
+    };
+    let outer_reason = format!(
+        "not established by this method for width {width}: the full-round bound needs an MDS \
+         external matrix, the minors of a {width} x {width} matrix are not enumerated (and the \
+         Poseidon2 matrix circ(2 M4, M4, ..., M4) of width above 4 is not MDS), and no theorem \
+         here bounds the activity of full rounds whose external matrix is not MDS"
+    );
+    hades.activity.applicable = false;
+    hades.activity.bound = None;
+    hades.activity.reason = outer_reason.clone();
+    hades.total.applicable = false;
+    hades.total.bound = None;
+    hades.total.reason = outer_reason.clone();
+    let m4 = match &packed.m4 {
+        Some(M4Analysis { m4 }) => ClaimPrediction::decided(
+            claim_ids::EXTERNAL_M4_MDS,
+            m4.mds,
+            m4.branch_witness.as_ref().map(BranchWitness::to_witness),
+            format!(
+                "the external matrix is circ(2 M4, M4, ..., M4) for its 4 x 4 block M4; {}",
+                mds_note(m4, "block M4")
+            ),
+        ),
+        None => not_established(
+            claim_ids::EXTERNAL_M4_MDS,
+            "not applicable: the external matrix is not circ(2 M4, M4, ..., M4) for a 4 x 4 \
+             matrix M4 (the Poseidon2 external matrix of a width that is a multiple of 4)"
+                .into(),
+        ),
+    };
+    let invertible = ClaimPrediction::decided(
+        claim_ids::EXTERNAL_INVERTIBLE,
+        hades.external.invertible,
+        hades.external.kernel_vector.as_deref().map(kernel_witness),
+        if hades.external.invertible {
+            format!(
+                "the external matrix has determinant {}; an inverse matrix is the certificate",
+                hades.external.determinant.encode()
+            )
+        } else {
+            "the external matrix has determinant 0 and a nonzero kernel vector".into()
+        },
+    );
+    for c in claims.iter_mut() {
+        match c.claim {
+            claim_ids::EXTERNAL_MDS => {
+                *c = match &hades.external.branch_witness {
+                    Some(w) => ClaimPrediction::decided(
+                        claim_ids::EXTERNAL_MDS,
+                        false,
+                        Some(w.to_witness()),
+                        format!(
+                            "the {width} x {width} external matrix is not MDS: its square \
+                             submatrix on rows {:?} and columns {:?} is singular, so a nonzero \
+                             input of weight {} maps to an output of weight {}, {} in total, \
+                             below the {} an MDS matrix guarantees (only submatrices of order \
+                             at most {} are searched at this width)",
+                            w.zero_outputs,
+                            w.support,
+                            w.input_weight,
+                            w.output_weight,
+                            w.combined_weight(),
+                            w.bound,
+                            limits::WIDE_WITNESS_ORDER
+                        ),
+                    ),
+                    None => not_established(
+                        claim_ids::EXTERNAL_MDS,
+                        format!(
+                            "not established by this method for width {width}: the minors of a \
+                             {width} x {width} matrix are too many to enumerate, and none of \
+                             order at most {} is singular; external.m4_mds and \
+                             external.invertible state what is checked",
+                            limits::WIDE_WITNESS_ORDER
+                        ),
+                    ),
+                }
+            }
+            claim_ids::ACTIVITY_OUTER | claim_ids::ACTIVITY_TOTAL => {
+                *c = not_established(c.claim, outer_reason.clone())
+            }
+            _ => {}
+        }
+    }
+    let at = claims
+        .iter()
+        .position(|c| c.claim == claim_ids::EXTERNAL_MDS)
+        .map_or(claims.len(), |i| i + 1);
+    claims.splice(at..at, [m4, invertible]);
 }
 
 fn mds_note(a: &MatrixAnalysis<impl Field>, what: &str) -> String {
@@ -1195,6 +1649,7 @@ fn diagnose_hades<F: Field>(
     d: &HadesDesign<F>,
     program: Option<&Program<F>>,
     target: Target,
+    modulus: &BigUint,
     power: impl Fn(u32) -> PowerAnalysis<F>,
 ) -> (HadesDiagnostics<F>, Vec<ClaimPrediction>) {
     let external = analyze_matrix(&d.external);
@@ -1268,7 +1723,7 @@ fn diagnose_hades<F: Field>(
         ClaimPrediction::decided(
             claim_ids::INTERNAL_INVERTIBLE,
             internal.invertible,
-            None,
+            internal.kernel_vector.as_deref().map(kernel_witness),
             if internal.invertible {
                 format!(
                     "the internal matrix has determinant {}",
@@ -1341,6 +1796,25 @@ fn diagnose_hades<F: Field>(
             note: total.reason.clone(),
         },
     ];
+    let constants = analyze_constants(d, modulus);
+    claims.push(match constants.matches {
+        Some(holds) => ClaimPrediction::decided(
+            claim_ids::CONSTANTS_GRAIN,
+            holds,
+            constants
+                .mismatch
+                .as_ref()
+                .map(ConstantMismatch::to_witness),
+            constants.note.clone(),
+        ),
+        None => ClaimPrediction {
+            claim: claim_ids::CONSTANTS_GRAIN,
+            predicted: Status::NotEstablished,
+            holds: None,
+            witness: None,
+            note: constants.note.clone(),
+        },
+    });
     if let Some(p) = &program {
         claims.push(program_prediction(p));
     }
@@ -1352,6 +1826,7 @@ fn diagnose_hades<F: Field>(
             activity,
             partial,
             total,
+            constants,
             program,
         },
         claims,

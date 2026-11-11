@@ -809,20 +809,38 @@ fn prime_model_fields_widths_and_constants() {
         ErrorCode::FieldMismatch,
         "/field",
     );
-    for width in [2usize, 5, 16] {
+    let at_width = |v: &mut Value, width: usize| {
+        v["width"] = json!(width);
+        let m: Vec<Vec<&str>> = (0..width).map(|_| vec!["1"; width]).collect();
+        v["external"] = json!(m);
+        v["internal"] = json!(m);
+        v["partialMask"] = json!((0..width).map(|i| i == 0).collect::<Vec<_>>());
+    };
+    for width in [1usize, 5, 6, 20, 32] {
         rejects(
             validate_design,
             &base,
-            |v| {
-                v["width"] = json!(width);
-                let m: Vec<Vec<&str>> = (0..width).map(|_| vec!["1"; width]).collect();
-                v["external"] = json!(m);
-                v["internal"] = json!(m);
-                v["partialMask"] = json!((0..width).map(|i| i == 0).collect::<Vec<_>>());
-            },
+            |v| at_width(v, width),
             ErrorCode::UnsupportedWidth,
             "/width",
         );
+    }
+    let e = {
+        let mut v = base.clone();
+        at_width(&mut v, 5);
+        validate_design(&v).unwrap_err()
+    };
+    assert!(
+        e.message.contains("use 2, 3, 4, 8, 12, 16 or 24"),
+        "{}",
+        e.message
+    );
+    // The Poseidon2 widths 2, 8, 12, 16 and 24 are supported.
+    for width in [2usize, 8, 12, 16, 24] {
+        let mut v = base.clone();
+        at_width(&mut v, width);
+        let d = validate_design(&v).unwrap();
+        assert_eq!(d.width(), width);
     }
     // Width three is supported as well.
     validate_design(&json!({

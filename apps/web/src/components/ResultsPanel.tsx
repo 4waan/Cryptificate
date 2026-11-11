@@ -1,15 +1,17 @@
 import { useMemo } from 'react';
 import { isStale, normalizeAnalysisRequest, type WorkspaceInputs } from '../lib/canonical';
 import { downloadJson } from '../lib/download';
-import { previewDesign, previewEquivalence, type PreviewItem } from '../lib/preview';
-import { displayFieldOf } from '../lib/field';
+import type { PreviewItem } from '../lib/preview';
+import { displayFieldOf, type DisplayField } from '../lib/field';
 import { exportReport, serverReportUrl } from '../lib/report';
-import type { AnalysisReport, Claim, ClaimId, ExperimentReport, ModelId } from '../lib/types';
-import { startRun } from '../state/actions';
+import { PRIME_MINOR_WIDTH, WIDE_EXTERNAL_CLAIMS } from '../lib/types';
+import type { AnalysisReport, CandidateDesign, Claim, ClaimId, ExperimentReport, ModelId } from '../lib/types';
+import { checkNow } from '../state/actions';
 import type { Run } from '../state/store';
 import { ClaimCard, MissingClaimCard, PreviewCard } from './ClaimCard';
-import { IconDownload, IconPreview, IconRefresh, IconWarning } from './icons';
-import { RunProgress, isActive } from './RunProgress';
+import { IconDownload, IconPlay, IconPreview, IconRefresh, IconWarning } from './icons';
+import { PREVIEW_LABEL, previewItems } from './LiveChecks';
+import { RunDetails, isActive } from './RunProgress';
 
 const DESIGN_CLAIMS: Record<ModelId, { id: ClaimId; title: string }[]> = {
   'aes-like/gf256/v1': [
@@ -27,17 +29,28 @@ const DESIGN_CLAIMS: Record<ModelId, { id: ClaimId; title: string }[]> = {
     { id: 'activity.outer', title: 'Active S-box bound in full rounds' },
     { id: 'activity.partial', title: 'No difference passes the partial rounds without an active S-box' },
     { id: 'activity.total', title: 'Active S-box bound over the whole permutation' },
+    { id: 'constants.grain', title: 'Round constants are the Grain constants' },
   ],
   'hades/prime/v1': [
     { id: 'field.prime', title: 'Modulus is prime' },
     { id: 'external.mds', title: 'External matrix is MDS' },
+    // Only above PRIME_MINOR_WIDTH; see designClaimSpecs.
+    { id: 'external.m4_mds', title: 'External matrix is circ(2 M4, M4, …, M4) with M4 MDS' },
+    { id: 'external.invertible', title: 'External matrix is invertible' },
     { id: 'internal.invertible', title: 'Internal matrix is invertible' },
     { id: 'sbox.bijective', title: 'Power map is a permutation' },
     { id: 'activity.outer', title: 'Active S-box bound in full rounds' },
     { id: 'activity.partial', title: 'No difference passes the partial rounds without an active S-box' },
     { id: 'activity.total', title: 'Active S-box bound over the whole permutation' },
+    { id: 'constants.grain', title: 'Round constants are the Grain constants' },
   ],
 };
+
+/** The design claims of a design: the wide external claims only above width four. */
+function designClaimSpecs(design: CandidateDesign): { id: ClaimId; title: string }[] {
+  const wide = design.model === 'hades/prime/v1' && design.width > PRIME_MINOR_WIDTH;
+  return DESIGN_CLAIMS[design.model].filter((c) => wide || !WIDE_EXTERNAL_CLAIMS.includes(c.id));
+}
 
 const IMPLEMENTATION_CLAIMS: { id: ClaimId; title: string }[] = [
   { id: 'circuit.equivalence', title: 'Circuit computes the design matrix' },
@@ -71,6 +84,9 @@ function missingReason(id: ClaimId, inputs: WorkspaceInputs, experiment: Experim
   if (id === 'sbox.differential' || id === 'sbox.linearity') {
     return 'This run did not report S-box quality; reports recorded before these claims existed do not include them.';
   }
+  if (id === 'constants.grain') {
+    return 'This report was recorded before the round-constant claim was added; check the design again to derive it.';
+  }
   return 'This run did not report this claim.';
 }
 
@@ -101,13 +117,30 @@ function Chain({ title, subtitle, children }: { title: string; subtitle: string;
   );
 }
 
-function previewItems(inputs: WorkspaceInputs): PreviewItem[] {
-  const items = previewDesign(inputs.design);
-  if (inputs.program) {
-    const eq = previewEquivalence(inputs.design, inputs.program, inputs.target);
-    if (eq) items.push(eq);
-  }
-  return items;
+/** Both chains of browser diagnostics, labelled as a preview Lean has not checked. */
+export function PreviewChains({ items, field }: { items: PreviewItem[]; field: DisplayField }) {
+  return (
+    <div className="grid-2">
+      <Chain title="Design guarantees" subtitle={PREVIEW_LABEL}>
+        {items
+          .filter((i) => i.chain === 'design')
+          .map((i) => (
+            <PreviewCard key={i.id} item={i} field={field} />
+          ))}
+      </Chain>
+      <Chain title="Implementation correspondence" subtitle={PREVIEW_LABEL}>
+        {items
+          .filter((i) => i.chain === 'implementation')
+          .map((i) => (
+            <PreviewCard key={i.id} item={i} field={field} />
+          ))}
+        <MissingClaimCard
+          title="Rust refinement, native correctness and timing"
+          reason="These need the local service: they are never computed in the browser."
+        />
+      </Chain>
+    </div>
+  );
 }
 
 export function UnverifiedPreview({ inputs, reason }: { inputs: WorkspaceInputs; reason: string }) {
@@ -124,32 +157,38 @@ export function UnverifiedPreview({ inputs, reason }: { inputs: WorkspaceInputs;
           <IconDownload /> Export JSON
         </button>
       </div>
-      {items.length ? (
-        <div className="grid-2">
-          <Chain title="Design guarantees" subtitle="computed in the browser">
-            {items
-              .filter((i) => i.chain === 'design')
-              .map((i) => (
-                <PreviewCard key={i.id} item={i} field={field} />
-              ))}
-          </Chain>
-          <Chain title="Implementation correspondence" subtitle="computed in the browser">
-            {items
-              .filter((i) => i.chain === 'implementation')
-              .map((i) => (
-                <PreviewCard key={i.id} item={i} field={field} />
-              ))}
-            <MissingClaimCard
-              title="Rust refinement, native correctness and timing"
-              reason="These need the local service: they are never computed in the browser."
-            />
-          </Chain>
-        </div>
-      ) : (
-        <p className="muted">Fix the highlighted inputs to see the results.</p>
-      )}
+      {items.length ? <PreviewChains items={items} field={field} /> : <p className="muted">Fix the highlighted inputs to see the results.</p>}
     </div>
   );
+}
+
+/**
+ * The instant preview in the result area: shown while there is no Lean
+ * result for the inputs in the editor, and replaced by it when it arrives.
+ */
+export function LivePreview({
+  items,
+  field,
+  note,
+  action,
+}: {
+  items: PreviewItem[];
+  field: DisplayField;
+  note: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <section className="stack" aria-label={PREVIEW_LABEL} data-live-preview="">
+      <div className="banner banner-preview">
+        <IconPreview />
+        <div className="banner-body">
+          <strong>{PREVIEW_LABEL}.</strong> <span>{note}</span>
+        </div>
+        {action}
+      </div>
+      {items.length ? <PreviewChains items={items} field={field} /> : <p className="muted">Fix the input problems to see the preview.</p>}
+    </section>
+  )
 }
 
 export function ClaimChains({
@@ -165,7 +204,7 @@ export function ClaimChains({
 }) {
   const reportDesign = report.inputs?.design ?? inputs.design;
   const field = displayFieldOf(reportDesign);
-  const designClaims = DESIGN_CLAIMS[reportDesign.model];
+  const designClaims = designClaimSpecs(reportDesign);
   const rounds =
     report.inputs?.design && report.inputs.design.model === 'aes-like/gf256/v1'
       ? report.inputs.design.rounds
@@ -266,6 +305,16 @@ export function ProvenanceLine({ report, run }: { report: AnalysisReport | Exper
   );
 }
 
+/** What a run that ended without any report did, in words. */
+export function noReportText(run: Run): string {
+  const started = run.source !== 'live' || run.jobId !== undefined;
+  if (!started) {
+    if (run.state === 'cancelled') return 'Stopped before the service started it, so nothing was checked.';
+    return 'The service never started this run, so nothing was checked.';
+  }
+  return `${EXECUTION_TEXT[run.state] ?? 'The run ended.'} It ended before producing a report, so nothing was checked.`;
+}
+
 export function ExecutionProblems({ report, run }: { report: AnalysisReport | ExperimentReport | null; run: Run }) {
   const state = report?.execution?.state ?? run.state;
   if (!['failed', 'timeout', 'cancelled', 'invalid'].includes(state)) return null;
@@ -275,40 +324,64 @@ export function ExecutionProblems({ report, run }: { report: AnalysisReport | Ex
     <section className="banner banner-bad" aria-label="Execution problems">
       <IconWarning />
       <div className="banner-body">
-        <strong>Execution: {state}.</strong> {EXECUTION_TEXT[state] ?? ''}{' '}
+        <strong>Execution: {state}.</strong> {report ? (EXECUTION_TEXT[state] ?? '') : noReportText(run)}{' '}
+        {run.error ? (
+          <span className="block">
+            {run.error}
+            {run.errorPath ? <span className="mono"> ({run.errorPath})</span> : null}
+          </span>
+        ) : null}
         {bad.length ? (
           <span>
             Affected step{bad.length > 1 ? 's' : ''}: {bad.map((s) => `${s.name} (${s.state})`).join(', ')}.
           </span>
         ) : null}{' '}
         <span>
-          This is an execution outcome, not a mathematical result: claims that did not finish are reported as not
-          established, never as refuted.
+          {report
+            ? 'This is an execution outcome, not a mathematical result: claims that did not finish are reported as not established, never as refuted.'
+            : 'This is an execution outcome, not a mathematical result.'}
         </span>
       </div>
     </section>
   );
 }
 
-/** The workspace result area: staleness, execution problems and both claim chains. */
+/** The workspace result area: staleness, execution problems, the instant preview and both claim chains. */
 export function ResultsPanel({
   run,
   inputs,
   experiment,
+  preview,
+  source = 'live',
 }: {
   run: Run | undefined;
   inputs: WorkspaceInputs;
   experiment?: ExperimentReport | null;
+  /** Browser diagnostics for the inputs (debounced by the caller); computed here when absent. */
+  preview?: PreviewItem[];
+  source?: 'live' | 'replay';
 }) {
+  const computed = useMemo(() => (preview ? null : previewItems(inputs)), [preview, inputs]);
+  const items = preview ?? computed ?? [];
+  const field = displayFieldOf(inputs.design);
   const stale = run ? isStale(inputs, run.inputs) : false;
+  const checkLabel = source === 'live' ? 'Check with Lean' : 'Show the recorded check';
   if (!run) {
     return (
-      <div className="panel">
-        <p className="muted">
-          No results yet. <strong>Check</strong> the design and circuit to see which guarantees hold and whether the
-          circuit implements the design.
-        </p>
-      </div>
+      <LivePreview
+        items={items}
+        field={field}
+        note={
+          source === 'live'
+            ? 'Computed in this browser as you edit, with no proof. Check to get Lean certificates for these exact values.'
+            : 'Computed in this browser as you edit, with no proof. Lean runs on the local service; this page shows recorded runs.'
+        }
+        action={
+          <button type="button" className="btn btn-primary" onClick={() => checkNow()} aria-keyshortcuts="Control+Enter Meta+Enter">
+            <IconPlay size={12} /> {checkLabel}
+          </button>
+        }
+      />
     );
   }
   const report = run.report && run.report.kind === 'analysis' ? (run.report as AnalysisReport) : null;
@@ -320,33 +393,61 @@ export function ResultsPanel({
       />
     );
   }
+  const active = isActive(run);
   return (
     <div className="stack-lg">
-      {stale ? (
-        run.source === 'replay' ? (
-          <UnverifiedPreview
-            inputs={inputs}
-            reason="You changed the inputs. The results below belong to the earlier version."
-          />
-        ) : (
-          <div className="banner banner-warn" role="status">
-            <IconWarning />
-            <div className="banner-body">
-              <strong>These results are from an earlier version of the inputs.</strong> They no longer describe what is
-              in the editor.
-            </div>
-            <button type="button" className="btn btn-primary" onClick={() => startRun('analysis')}>
-              <IconRefresh /> Re-check
-            </button>
-          </div>
-        )
+      {stale && run.source === 'replay' && !active ? (
+        <UnverifiedPreview
+          inputs={inputs}
+          reason="You changed the inputs. The results below belong to the earlier version."
+        />
       ) : null}
-      {isActive(run) ? (
-        <div className="panel">
-          <RunProgress run={run} />
+      {stale && run.source === 'live' ? (
+        <div className="banner banner-warn" role="status">
+          <IconWarning />
+          <div className="banner-body">
+            {active ? (
+              <strong>The running check is for an earlier version of the inputs.</strong>
+            ) : (
+              <>
+                <strong>These results are from an earlier version of the inputs.</strong> They no longer describe what is
+                in the editor.
+              </>
+            )}
+          </div>
+          <button type="button" className="btn btn-primary" onClick={() => checkNow()}>
+            <IconRefresh /> {active ? 'Check the current inputs' : 'Re-check'}
+          </button>
         </div>
       ) : null}
+      {/* The workspace action bar shows this run's status and its one Stop button; here are its steps. */}
+      <RunDetails run={run} className="panel" stopWhere="Stop in the run bar at the top of the workspace" />
+      {active && !stale ? (
+        <LivePreview
+          items={items}
+          field={field}
+          note="Computed in this browser. The Lean result for these inputs replaces it when it arrives."
+        />
+      ) : stale && run.source === 'live' ? (
+        <LivePreview
+          items={items}
+          field={field}
+          note="Computed in this browser for the inputs in the editor. Check them to replace this with Lean evidence."
+        />
+      ) : null}
       <ExecutionProblems report={report} run={run} />
+      {!active && !stale && !report ? (
+        <LivePreview
+          items={items}
+          field={field}
+          note="Computed in this browser. Lean did not check these inputs: the run ended before a result."
+          action={
+            <button type="button" className="btn btn-primary" onClick={() => checkNow()} aria-keyshortcuts="Control+Enter Meta+Enter">
+              <IconPlay size={12} /> {source === 'live' ? 'Check again' : checkLabel}
+            </button>
+          }
+        />
+      ) : null}
       {report ? (
         <div className={stale ? 'stale' : undefined} aria-label={stale ? 'Results from an earlier version' : undefined}>
           {stale ? <p className="stale-label">From an earlier version</p> : null}

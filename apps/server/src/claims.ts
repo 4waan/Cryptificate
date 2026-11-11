@@ -13,6 +13,7 @@ import {
   externalMdsTitle,
   hadesOuterActivityBoundWidth,
   hadesTotalActivityBoundWidth,
+  nativeCorrectnessFailedLabel,
   nativeCorrectnessLabel,
 } from '@cryptificate/schema';
 import type {
@@ -153,6 +154,38 @@ function leanClaim(info: ClaimInfo, verdict: ClaimVerdict, expect: ExpectedTheor
     witness: verdict.status === 'refuted' ? (expect?.witness ?? witness) : null,
     note,
   };
+}
+
+function sameNumber(a: unknown, b: string): boolean {
+  if (typeof a !== 'string' || !/^(0|[1-9][0-9]*)$/.test(a) || !/^(0|[1-9][0-9]*)$/.test(b)) return false;
+  return BigInt(a) === BigInt(b);
+}
+
+/**
+ * The witness of an accepted constants.grain refutation, kept only when it
+ * agrees with what Lean checked and with the request: `index` and `expected`
+ * are those of the accepted statement (`constantAt … INDEX = some EXPECTED ∧
+ * candConstants[INDEX]? ≠ some EXPECTED`, and Lean echoed `candConstants` equal
+ * to the submitted rows), `round * width + position = index`, and `actual` is
+ * the submitted constant there. That this is the first difference is the
+ * engine's observation and is not checked. Anything else is dropped.
+ */
+export function checkedConstantMismatch(req: AnalysisRequest, verdict: ClaimVerdict, witness: Witness | null | undefined): Witness | null {
+  if (!witness || witness.kind !== 'constant-mismatch' || !verdict.accepted || verdict.status !== 'refuted' || !verdict.audit) return null;
+  const d = req.design;
+  if ((d.model !== 'hades/bn254/v1' && d.model !== 'hades/prime/v1') || d.constants?.kind !== 'explicit') return null;
+  const m =
+    /^Cryptificate\.Grain\.constantAt \S+ (\d+) CryptificateJob\.candFullRounds CryptificateJob\.candPartialRounds (\d+) = some (\d+) ∧ CryptificateJob\.candConstants\[(\d+)\]\? ≠ some (\d+)$/.exec(
+      verdict.audit.type.replace(/\s+/g, ' ').trim(),
+    );
+  if (!m || m[2] !== m[4] || m[3] !== m[5] || Number(m[1]) !== d.width) return null;
+  const { index, round, position, expected, actual } = witness;
+  if (![index, round, position].every((x) => Number.isSafeInteger(x) && x >= 0)) return null;
+  if (String(index) !== m[2] || !sameNumber(expected, m[3]!)) return null;
+  if (position >= d.width || round * d.width + position !== index) return null;
+  const submitted = d.constants.values[round]?.[position];
+  if (submitted === undefined || !sameNumber(actual, String(submitted)) || sameNumber(actual, m[3]!)) return null;
+  return witness;
 }
 
 /** Find a witness of the given claim in the (unchecked) diagnostics. */
@@ -343,7 +376,10 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
         verdict.status === 'refuted'
           ? `Lean checked a counterexample (${verdict.theorem}).`
           : `Lean checked ${verdict.theorem} using only the standard axioms.`;
-      return leanClaim(named, verdict, e, witness, note);
+      const c = leanClaim(named, verdict, e, witness, note);
+      // The constant-mismatch witness is shown as Lean-checked: keep only what the accepted statement binds.
+      if (info.id === 'constants.grain' && c.status === 'refuted') c.witness = checkedConstantMismatch(request, verdict, c.witness);
+      return c;
     }
     if (verdict) {
       const hint = diagnosticHint(diagnostics, info.id);
@@ -358,7 +394,7 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
 
   const isProved = (id: ClaimId): boolean => claims.some((c) => c.id === id && c.status === 'proved');
 
-  for (const info of designClaimsFor(request.design.model)) {
+  for (const info of designClaimsFor(request.design.model, request.design.width)) {
     const pre = activityPreconditions(request.design.model, info.id);
     const d = request.design;
     if (info.id === 'activity.total' && (d.model === 'hades/bn254/v1' || d.model === 'hades/prime/v1') && d.partialRounds === 0) {
@@ -410,7 +446,7 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
         notEstablished(
           info,
           'out-of-scope',
-          'Circuits, native correctness, timing and Rust refinement cover GF(2^8) and BN254 designs; over this prime field only the design claims are checked.',
+          'Circuits, native correctness and timing cover GF(2^8) and BN254 designs, Rust refinement GF(2^8) only; over this prime field only the design claims are checked.',
         ),
       );
       continue;
@@ -436,13 +472,13 @@ export function buildAnalysisClaims(inp: ClaimInputs): Claim[] {
             note: `Generated Rust matched the independently computed matrix product on all ${n.cases} test vectors. This is testing, not a proof.`,
           });
         } else {
-          const passedCases = Math.max(0, n.cases - (n.failures ?? n.cases));
+          const failures = Math.min(n.cases, n.failures ?? n.cases);
           claims.push({
             id: info.id,
             chain: info.chain,
             title: info.title,
             status: 'refuted',
-            evidence: { kind: 'native', label: nativeCorrectnessLabel(passedCases), cases: n.cases },
+            evidence: { kind: 'native', label: nativeCorrectnessFailedLabel(failures, n.cases), cases: n.cases },
             witness: n.witness ?? null,
             note: n.detail ? capitalize(n.detail) : 'Generated Rust disagreed with the reference matrix product on a test vector.',
           });

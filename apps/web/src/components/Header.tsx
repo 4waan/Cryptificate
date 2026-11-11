@@ -52,7 +52,8 @@ const VIEWS: { view: View; label: string; key: string }[] = [
 const THEME_NEXT: Record<Theme, Theme> = { system: 'light', light: 'dark', dark: 'system' };
 const THEME_TEXT: Record<Theme, string> = { system: 'Theme: system', light: 'Theme: light', dark: 'Theme: dark' };
 
-function Connection({ connection }: { connection: AppState['connection'] }) {
+/** The connection badge. `retry` adds a Try now button while the service is unreachable. */
+function Connection({ connection, retry }: { connection: AppState['connection']; retry: boolean }) {
   const caps = connection.capabilities;
   let text: string;
   let detail: string | undefined;
@@ -86,9 +87,9 @@ function Connection({ connection }: { connection: AppState['connection'] }) {
         {text}
         {detail ? <span className="muted conn-detail"> ({detail})</span> : null}
       </span>
-      {connection.status === 'unreachable' ? (
+      {retry && connection.status === 'unreachable' ? (
         <button type="button" className="btn btn-quiet btn-sm" onClick={() => void checkConnection()}>
-          <IconRefresh size={12} /> Retry
+          <IconRefresh size={12} /> Try now
         </button>
       ) : null}
     </span>
@@ -157,7 +158,8 @@ export function Header({
               {stale ? <span> · earlier version</span> : null}
             </span>
           ) : null}
-          <Connection connection={connection} />
+          {/* The workspace and experiments show the service card, which has its own Try now. */}
+          <Connection connection={connection} retry={view === 'story'} />
           <button
             type="button"
             className="btn btn-quiet btn-icon"

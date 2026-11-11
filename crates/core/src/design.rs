@@ -452,12 +452,13 @@ impl HadesDesign<Fp> {
                 ErrorCode::UnsupportedWidth,
                 at(base, "width"),
                 format!(
-                    "width {w} is not supported over a prime field (use {})",
-                    limits::PRIME_WIDTHS
+                    "width {w} is not supported over a prime field (use {} or {})",
+                    limits::PRIME_WIDTHS[..limits::PRIME_WIDTHS.len() - 1]
                         .iter()
                         .map(usize::to_string)
                         .collect::<Vec<_>>()
-                        .join(" or ")
+                        .join(", "),
+                    limits::PRIME_WIDTHS[limits::PRIME_WIDTHS.len() - 1]
                 ),
             ));
         }

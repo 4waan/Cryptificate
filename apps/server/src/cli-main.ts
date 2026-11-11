@@ -57,6 +57,8 @@ import { bindNotes, createApp, serveHost } from './server.js';
 import { readTarGz } from './tar.js';
 import { readToolchain } from './toolchain.js';
 import { verifyBundle } from './verify.js';
+import { IMPORT_FORMATS, ImportError, detectFormat, intoDesign, parseConstants } from './import.js';
+import type { ImportFormat } from './import.js';
 import type { VerifyResult } from './verify.js';
 
 const USAGE = `Usage: cryptificate <command> [options]
@@ -90,6 +92,11 @@ Commands:
         bundle) in another format, without running anything. With --format html and no
         --fail-on or --claims, experiment reports and bundles are accepted too, alone or
         with analysis reports and bundles (not with saved check or verify results).
+  import <constants-file> --base <design.json> [--format plonky3|horizen|json|csv] [--name NAME]
+        [-o out.json]
+        Put round constants from an implementation's file (Plonky3 split arrays, a HorizenLabs
+        poseidon2 instance or printed list, JSON or CSV) into a copy of a HADES design, in the
+        Poseidon2 layout; check the result to compare them with the Grain procedure.
 
 Gate options (check, verify, report):
   --format text|json|sarif|junit|markdown|html   output format (default text); html is a
@@ -114,6 +121,7 @@ unavailable, a --claims id an input does not carry, or (verify) an in-scope clai
 does not re-check. experiment: 0 completed, 1 failed, timed out or stopped, 2 invalid.
 init: 0 written, 1 declined at the prompt, 2 usage error, a file exists, or a question left
 without a valid answer (end of input, or five invalid answers); nothing is written unless 0.
+import: 0 written, 2 usage error or an unreadable, invalid or mismatched constants file.
 Environment: CRYPTIFICATE_HOME (state directory), CRYPTIFICATE_ENGINE, CRYPTIFICATE_LAKE,
 CRYPTIFICATE_ROOT, GITHUB_STEP_SUMMARY, PORT and CRYPTIFICATE_HOST (serve defaults),
 CRYPTIFICATE_ALLOWED_ORIGINS (comma-separated).
@@ -838,6 +846,57 @@ async function cmdDoctor(argv: string[], io: Io): Promise<number> {
   return report.ok ? 0 : 1;
 }
 
+function cmdImport(argv: string[], io: Io): number {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      base: { type: 'string' },
+      format: { type: 'string' },
+      name: { type: 'string' },
+      output: { type: 'string', short: 'o' },
+    },
+  });
+  if (positionals.length !== 1) fail('import needs exactly one constants file\n\n' + USAGE);
+  if (!values.base) fail('import needs --base <design.json>: the design whose constants are replaced\n\n' + USAGE);
+  if (values.format !== undefined && !(IMPORT_FORMATS as readonly string[]).includes(values.format)) {
+    fail(`unknown format "${values.format}" (expected ${IMPORT_FORMATS.join(', ')})`);
+  }
+  const path = positionals[0]!;
+  let text: string;
+  let base: unknown;
+  try {
+    text = readFileSync(resolve(io.cwd, path), 'utf8');
+  } catch (e) {
+    fail(`cannot read ${path}: ${(e as NodeJS.ErrnoException).code ?? (e as Error).message}`);
+  }
+  try {
+    base = readJsonFile(values.base, io.cwd);
+  } catch (e) {
+    if (e instanceof InputError) fail(e.message);
+    throw e;
+  }
+  const baseDesign = isRequestDoc(base) ? base['design'] : base;
+  const width = baseDesign && typeof baseDesign === 'object' ? (baseDesign as Record<string, unknown>)['width'] : undefined;
+  try {
+    const format = (values.format as ImportFormat | undefined) ?? detectFormat(path, text);
+    const imported = parseConstants(format, text, { name: values.name, width: typeof width === 'number' ? width : undefined });
+    const { design, notices } = intoDesign(base, imported);
+    const json = `${JSON.stringify(design, null, 2)}\n`;
+    if (values.output) writeFileSync(resolve(io.cwd, values.output), json);
+    else io.stdout.write(json);
+    io.stderr.write(
+      `read ${imported.source} (${format}): ${imported.rows.length} rounds of width ${imported.width}, ` +
+        `R_F = ${imported.fullRounds}, R_P = ${imported.partialRounds}\n`,
+    );
+    for (const n of notices) io.stderr.write(`note: ${n}\n`);
+    return 0;
+  } catch (e) {
+    if (e instanceof ImportError) fail(`${path}: ${e.message}`);
+    throw e;
+  }
+}
+
 async function cmdServe(argv: string[]): Promise<number> {
   const { values } = parseArgs({
     args: argv,
@@ -931,6 +990,8 @@ export async function main(argv: string[], deps: CliDeps = {}): Promise<number> 
         return await cmdVerify(rest, io);
       case 'report':
         return await cmdReport(rest, io);
+      case 'import':
+        return cmdImport(rest, io);
       case undefined:
       case '-h':
       case '--help':

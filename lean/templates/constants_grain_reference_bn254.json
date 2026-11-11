@@ -1,0 +1,13 @@
+{
+  "name": "constants_grain_reference_bn254",
+  "kind": "claim",
+  "claim": "constants.grain",
+  "status": "proved",
+  "theorem": "CryptificateJob.constants_grain",
+  "expectedType": "Cryptificate.Grain.poseidon2Constants Poseidon2.BN254.modulus 3 CryptificateJob.candFullRounds CryptificateJob.candPartialRounds = some Cryptificate.Grain.bn254ReferenceFlat",
+  "placeholders": [],
+  "requires": [
+    "const_rounds_hades"
+  ],
+  "field": "bn254"
+}

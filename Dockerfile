@@ -79,7 +79,7 @@ FROM ${NODE_IMAGE} AS node
 
 # ---------------------------------------------------------------- Runtime
 FROM ${DEBIAN_IMAGE} AS runtime
-ARG CRYPTIFICATE_VERSION=0.1.0
+ARG CRYPTIFICATE_VERSION=0.2.0
 ARG CRYPTIFICATE_REVISION=
 LABEL org.opencontainers.image.title="Cryptificate" \
       org.opencontainers.image.description="Lean-checked certificates for cipher diffusion layers and their circuits, with native Rust measurements and replayable evidence bundles" \

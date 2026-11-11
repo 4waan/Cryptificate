@@ -11,7 +11,9 @@ import {
   StatusPill,
 } from '../components/icons';
 import { ExecutionProblems, ExportReportButton, UnverifiedPreview } from '../components/ResultsPanel';
-import { RunProgress, isActive } from '../components/RunProgress';
+import { RunDetails, RunProgress, isActive } from '../components/RunProgress';
+import { ServiceCard } from '../components/ServiceCard';
+import { budgetMs, formatDuration } from '../lib/progress';
 import { isStale } from '../lib/canonical';
 import { circuitStats } from '../lib/circuit';
 import { bestCandidate, candidateLabel, labelForId, PRIMARY_BYTES, savingsSummary, THRESHOLD } from '../lib/experiment';
@@ -355,6 +357,13 @@ export function ExperimentsView() {
   const run = current.experiment ? runs[current.experiment] : undefined;
   const report = run?.report?.kind === 'experiment' ? (run.report as ExperimentReport) : null;
   const stale = run ? isStale(inputs, run.inputs) : false;
+  const connection = useAppState((s) => s.connection);
+  const showServiceCard =
+    connection.status === 'unreachable' || (connection.status === 'checking' && connection.message !== undefined);
+  const budget = (p: ExperimentProfile) => {
+    const ms = budgetMs(connection.capabilities, 'experiment', p);
+    return ms !== undefined ? `at most ${formatDuration(ms)}` : undefined;
+  };
 
   return (
     <div className="stack-lg">
@@ -364,11 +373,20 @@ export function ExperimentsView() {
           Search for cheaper circuits, prove them equivalent, test and time them natively
         </span>
       </div>
+      {showServiceCard ? <ServiceCard connection={connection} /> : null}
       <div className="actionbar" style={{ marginBottom: 0 }}>
         <div className="segmented" role="radiogroup" aria-label="Profile">
           {(['quick', 'research'] as const).map((p) => (
-            <button key={p} type="button" role="radio" aria-checked={profile === p} onClick={() => setProfile(p)}>
+            <button
+              key={p}
+              type="button"
+              role="radio"
+              aria-checked={profile === p}
+              onClick={() => setProfile(p)}
+              title={budget(p) ? `Service budget: ${budget(p)}` : undefined}
+            >
               {p === 'quick' ? 'Quick' : 'Research'}
+              {budget(p) ? <span className="seg-tag">{budget(p)}</span> : null}
             </button>
           ))}
         </div>
@@ -389,11 +407,8 @@ export function ExperimentsView() {
           <IconWarning /> Fix the workspace inputs first: {problems[0]}
         </p>
       ) : null}
-      {run && isActive(run) ? (
-        <div className="panel">
-          <RunProgress run={run} />
-        </div>
-      ) : null}
+      {/* The action bar's RunProgress is the status and the one Stop button; this panel adds the steps. */}
+      {run ? <RunDetails run={run} className="panel" /> : null}
       {run && stale ? (
         run.source === 'replay' ? (
           <UnverifiedPreview inputs={inputs} reason="The workspace changed since this experiment." />
@@ -413,6 +428,7 @@ export function ExperimentsView() {
           </div>
         )
       ) : null}
+      {run && !report && !isActive(run) && run.state !== 'unavailable' ? <ExecutionProblems report={null} run={run} /> : null}
       {run?.state === 'unavailable' ? (
         <UnverifiedPreview
           inputs={inputs}

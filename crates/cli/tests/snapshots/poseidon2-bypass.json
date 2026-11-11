@@ -60,8 +60,23 @@
         "note": "not established by this method: the bound needs every window of some length inside the partial rounds to be charged, and a nonzero difference passes them with no active S-box",
         "predicted": "not_established",
         "witness": null
+      },
+      {
+        "claim": "constants.grain",
+        "holds": true,
+        "note": "the reference constants are the Grain constants of the BN254 instance with t = 3, R_F = 8, R_P = 56 (Grain.bn254_reference)",
+        "predicted": "proved",
+        "witness": null
       }
     ],
+    "constants": {
+      "fieldSize": 254,
+      "layout": "poseidon2",
+      "matches": true,
+      "mismatch": null,
+      "note": "the reference constants are the Grain constants of the BN254 instance with t = 3, R_F = 8, R_P = 56 (Grain.bn254_reference)",
+      "source": "reference"
+    },
     "external": {
       "branchWitness": null,
       "determinant": "4",

@@ -1,4 +1,4 @@
-import { PRIME_FIELD_PRESETS } from './types';
+import { PRIME_FIELD_PRESETS, PRIME_WIDTHS } from './types';
 import type { CandidateDesign, HadesPrimeDesign, Instruction, Program, ProgramTarget } from './types';
 
 /**
@@ -106,7 +106,7 @@ export function coerceDesign(x: unknown, path = ''): CandidateDesign {
     }
     if (x.modulus !== undefined && typeof x.modulus !== 'string') fail(`${path}/modulus`, 'the modulus is a decimal string');
     const width = int(x.width, `${path}/width`);
-    if (width !== 3 && width !== 4) fail(`${path}/width`, 'expected 3 or 4');
+    if (!PRIME_WIDTHS.includes(width)) fail(`${path}/width`, `expected one of ${PRIME_WIDTHS.join(', ')}`);
     const sbox = x.sbox;
     if (!isObj(sbox) || sbox.kind !== 'power') fail(`${path}/sbox`, 'expected {"kind":"power","exponent":…}');
     const mask = x.partialMask;
@@ -131,7 +131,7 @@ export function coerceDesign(x: unknown, path = ''): CandidateDesign {
       model: 'hades/prime/v1',
       field: field as HadesPrimeDesign['field'],
       ...(typeof x.modulus === 'string' ? { modulus: x.modulus } : {}),
-      width: width as 3 | 4,
+      width: width as HadesPrimeDesign['width'],
       external: stringMatrix(x.external, width, `${path}/external`),
       internal: stringMatrix(x.internal, width, `${path}/internal`),
       fullRounds: int(x.fullRounds, `${path}/fullRounds`),

@@ -13,12 +13,15 @@
         "sbox.bijective",
         "activity.bound",
         "external.mds",
+        "external.m4_mds",
+        "external.invertible",
         "internal.invertible",
         "activity.outer",
         "activity.partial",
         "activity.total",
         "sbox.differential",
         "sbox.linearity",
+        "constants.grain",
         "circuit.equivalence",
         "native.correctness",
         "rust.refinement",
@@ -57,7 +60,8 @@
                 "Unchecked diagnostic"
               ]
             },
-            { "type": "string", "pattern": "^Generated Rust passed [0-9]+ correctness cases$" }
+            { "type": "string", "pattern": "^Generated Rust passed [0-9]+ correctness cases$" },
+            { "type": "string", "pattern": "^Generated Rust failed [0-9]+ of [0-9]+ correctness cases$" }
           ]
         },
         "theorem": { "type": "string" },

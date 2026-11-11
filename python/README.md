@@ -80,7 +80,9 @@ register by register (`add`, `mul`, `xtime`, `sum`).
 
 `prime_design(field, external, internal, full_rounds, partial_rounds, exponent)` builds a HADES
 design over BabyBear, KoalaBear, Mersenne31 or Goldilocks (`PRIME_FIELDS`), or over a custom prime
-below `2^64` with `field="prime", modulus=p`, at width 3 or 4. Every report on such a design proves
+below `2^64` with `field="prime", modulus=p`, at width 2, 3, 4, 8, 12, 16 or 24 (above 4 the report
+checks `external.m4_mds` and `external.invertible` instead of the external matrix's minors;
+`poseidon2_external(t)` and `one_plus_diagonal(V)` build Poseidon2's matrices). Every report proves
 the modulus prime in Lean (claim `field.prime`) before the other claims; circuits, experiments and
 native timing are not offered over these fields.
 

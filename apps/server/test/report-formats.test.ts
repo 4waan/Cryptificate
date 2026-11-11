@@ -517,7 +517,7 @@ test('input patterns', () => {
   }
 });
 
-test('annotations for the partial-round, primality and S-box quality claims point into the design', () => {
+test('annotations for the partial-round, primality, S-box quality, wide-width and round-constant claims point into the design', () => {
   const input: CheckInput = { file: 'd.json', designPointer: '/design', programPointer: null };
   const c = (id: ClaimId, witness: Claim['witness'] = null): Claim => ({ id, chain: 'design', title: id, status: witness ? 'refuted' : 'proved', evidence: { kind: 'lean', label: 'Lean-checked proof' }, witness, note: '' });
   assert.equal(claimLocation(c('activity.partial', { kind: 'partial-bypass', difference: ['0', '1', '2'], positions: [0], partialRounds: 56 }), input).pointer, '/design/internal');
@@ -526,4 +526,11 @@ test('annotations for the partial-round, primality and S-box quality claims poin
   assert.equal(claimLocation(c('field.prime'), input).pointer, '/design/modulus');
   assert.equal(claimLocation(c('sbox.differential'), input).pointer, '/design/sbox');
   assert.equal(claimLocation(c('sbox.linearity'), input).pointer, '/design/sbox');
+  assert.equal(claimLocation(c('external.m4_mds'), input).pointer, '/design/external');
+  assert.equal(claimLocation(c('external.invertible', { kind: 'kernel', vector: ['1', '0'] }), input).pointer, '/design/external');
+  assert.equal(claimLocation(c('constants.grain'), input).pointer, '/design/constants');
+  assert.equal(
+    claimLocation(c('constants.grain', { kind: 'constant-mismatch', index: 16, round: 4, position: 0, expected: '245687908', actual: '245687909' }), input).pointer,
+    '/design/constants/values/4/0',
+  );
 });

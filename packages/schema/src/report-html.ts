@@ -480,6 +480,10 @@ export function witnessSummary(w: Witness | null | undefined): string | null {
       const nl = l === null ? '' : ` (nonlinearity ${128 - l / 2})`;
       return `linearity ${str(x['linearity'])}${nl}, attained at input mask ${str(x['inputMask'])} and output mask ${str(x['outputMask'])}`;
     }
+    case 'kernel':
+      return `the nonzero vector ${vector(x['vector'])} is sent to zero by the matrix, so the matrix is singular`;
+    case 'constant-mismatch':
+      return `the round constant of round ${str(x['round'])} at position ${str(x['position'])} (index ${str(x['index'])}) is ${str(x['actual'])}, and the Grain procedure generates ${str(x['expected'])} there`;
     default:
       return w ? JSON.stringify(w) : null;
   }
@@ -538,6 +542,8 @@ function witnessBlock(w: Witness | null | undefined, status: string): Child {
     case 'partial-bypass':
     case 'sbox-differential':
     case 'sbox-linearity':
+    case 'kernel':
+    case 'constant-mismatch':
       body = h('p', null, h('code', null, witnessSummary(w) ?? ''), x['kind'] === 'power-collision' && str(x['note']) ? ` (${str(x['note'])})` : '', '.');
       break;
     default:

@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from 'react';
 import type { WorkspaceInputs } from '../lib/canonical';
 import { emptyHistory, type History } from '../lib/history';
+import type { Timings } from '../lib/progress';
 import type { Snapshot } from '../lib/snapshot';
+import type { EndMark } from '../lib/signals';
 import { aesDesign, aesSharedSum } from '../lib/presets';
 import type {
   Capabilities,
@@ -18,7 +20,12 @@ import type {
 export type View = 'story' | 'workspace' | 'experiments';
 export type Theme = 'system' | 'light' | 'dark';
 
-export type RunState = JobState | 'submitting' | 'unavailable';
+/**
+ * A run's state: the service's job states, plus 'submitting' (request in
+ * flight), 'retrying' (the service was busy; resubmitting at `retryAt`)
+ * and 'unavailable' (replay mode found no recording).
+ */
+export type RunState = JobState | 'submitting' | 'retrying' | 'unavailable';
 
 /** One submitted analysis or experiment, live or replayed. */
 export interface Run {
@@ -36,9 +43,39 @@ export interface Run {
   bundleUrl?: string;
   queuePosition?: number;
   recordingId?: string;
+  /** Started by auto-check rather than a button or shortcut. */
+  auto?: boolean;
+  /** Client clock (ms) when the run was started and when it ended. */
+  startedAt?: number;
+  finishedAt?: number;
+  /** Client clock (ms) when each step was first seen running. */
+  stepStarts?: Record<string, number>;
+  /** While 'retrying': when the next submission goes out, and how many have been refused. */
+  retryAt?: number;
+  attempts?: number;
 }
 
 export type ConnectionStatus = 'checking' | 'connected' | 'unreachable' | 'replay-build';
+
+/** Per-browser settings, saved in localStorage (lib/prefs.ts). */
+export interface Prefs {
+  /** Check the workspace automatically shortly after edits stop. Off by default. */
+  autoCheck: boolean;
+  /** Desktop notification when a run finishes while the page is hidden (needs permission). */
+  notify: boolean;
+  /** A short, quiet tone when a run finishes. Off by default. */
+  sound: boolean;
+}
+
+/** What auto-check is doing, for the switch's status text. */
+export type AutoStatus =
+  | { kind: 'off' }
+  | { kind: 'idle'; reason: string }
+  | { kind: 'scheduled'; at: number }
+  | { kind: 'checking' };
+
+/** The open overlay: the shortcuts help, the command palette or the Alerts popover. */
+export type Overlay = 'help' | 'palette' | 'alerts' | null;
 
 export interface AppState {
   view: View;
@@ -51,7 +88,21 @@ export interface AppState {
   runs: Record<string, Run>;
   /** Latest run of each kind started from the workspace or the story. */
   current: { analysis?: string; experiment?: string };
-  connection: { status: ConnectionStatus; capabilities?: Capabilities; message?: string };
+  connection: {
+    status: ConnectionStatus;
+    capabilities?: Capabilities;
+    message?: string;
+    /** When unreachable: client clock (ms) of the next automatic attempt. */
+    nextAttemptAt?: number;
+  };
+  prefs: Prefs;
+  auto: AutoStatus;
+  /** The open overlay. While one is open, the window key handler leaves Escape and "?" to it. */
+  overlay: Overlay;
+  /** Recent durations of finished runs in this browser, for the progress estimate. */
+  timings: Timings;
+  /** A run finished while the page was in the background; shown in the tab title until the page is back. */
+  attention: EndMark | null;
   theme: Theme;
   /** Undo/redo over the workspace inputs. */
   history: History<Snapshot>;
@@ -88,6 +139,11 @@ export const initialState = (): AppState => ({
   current: {},
   connection: { status: replayBuild ? 'replay-build' : 'checking' },
   theme: 'system',
+  prefs: { autoCheck: false, notify: false, sound: false },
+  auto: { kind: 'off' },
+  overlay: null,
+  timings: {},
+  attention: null,
   history: emptyHistory<Snapshot>(),
   dirty: false,
   storage: 'idle',

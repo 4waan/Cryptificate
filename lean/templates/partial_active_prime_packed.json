@@ -1,0 +1,22 @@
+{
+  "name": "partial_active_prime_packed",
+  "kind": "claim",
+  "claim": "activity.partial",
+  "status": "proved",
+  "theorem": "CryptificateJob.partial_active",
+  "expectedType": "{{OBS_LENGTH}} ≤ CryptificateJob.candPartialRounds ∧ { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.WindowActive CryptificateJob.candMask {{OBS_LENGTH}}",
+  "placeholders": [
+    "OBS_LENGTH",
+    "PACK_BITS"
+  ],
+  "requires": [
+    "const_external_prime",
+    "const_internal_prime",
+    "const_exponent",
+    "const_rounds_hades",
+    "const_mask_prime",
+    "const_witness_observability_prime",
+    "field_prime"
+  ],
+  "field": "prime"
+}

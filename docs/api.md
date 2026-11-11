@@ -9,8 +9,9 @@
 - A running service serves the same description at `GET /api/openapi.json`, as one
   self-contained document: the schemas are embedded under `components/schemas` and every
   reference is local, so code generators and API browsers can load it from the URL.
-- Every example in the description is a response recorded from a live service (version 0.1.0,
-  release engine, Lean checker), except the fixed body of the 500 response.
+- Every example in the description is a response recorded from a live service (release
+  engine, Lean checker), except the fixed body of the 500 response. They were recorded on the
+  release branch before its version was set to 0.2.0, so their version fields read 0.1.0.
 
 The test `apps/server/test/openapi.test.ts` keeps the description and the service in step: the
 routes the handler dispatches and the operations described are the same set, every example
@@ -39,7 +40,8 @@ Request bodies are [`AnalysisRequest`](../schemas/analysis-request.schema.json) 
 [`AnalysisReport`](../schemas/analysis-report.schema.json) or
 [`ExperimentReport`](../schemas/experiment-report.schema.json), and every error an
 [`ErrorResponse`](../schemas/error.schema.json). Field elements are strings: two hex digits for
-GF(2⁸) (`"1B"`), canonical decimals below the modulus for BN254. Requests are checked strictly
+GF(2⁸) (`"1B"`), canonical decimals below the modulus for BN254, and for `hades/prime/v1`
+canonical decimals below the design's modulus. Requests are checked strictly
 (unknown members are rejected); responses may gain new optional members, which clients should
 ignore.
 
@@ -168,6 +170,8 @@ matrix.mds proved Lean-checked proof
 offsets.dispersion proved Lean-checked proof
 sbox.bijective proved Lean-checked proof
 activity.bound proved Lean-checked proof
+sbox.differential proved Lean-checked proof
+sbox.linearity proved Lean-checked proof
 circuit.equivalence refuted Lean-checked counterexample
 ...
 ```

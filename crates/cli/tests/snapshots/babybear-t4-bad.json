@@ -74,8 +74,23 @@
         "note": "not established by this method: the bound needs every window of some length inside the partial rounds to be charged, and a nonzero difference passes them with no active S-box",
         "predicted": "not_established",
         "witness": null
+      },
+      {
+        "claim": "constants.grain",
+        "holds": null,
+        "note": "not established: the design gives no round constants",
+        "predicted": "not_established",
+        "witness": null
       }
     ],
+    "constants": {
+      "fieldSize": 31,
+      "layout": "poseidon2",
+      "matches": null,
+      "mismatch": null,
+      "note": "not established: the design gives no round constants",
+      "source": "unspecified"
+    },
     "external": {
       "branchWitness": null,
       "determinant": "2013265857",

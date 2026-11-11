@@ -22,6 +22,10 @@ You change a cipher component: the MixColumns matrix, the circuit that computes 
 
 </div>
 
+## What's new in 0.2.0
+
+Partial-round and whole-permutation bounds for Poseidon2 (at least 34 active S-boxes for the pinned BN254 instance), a prime-field profile for BabyBear, KoalaBear, Mersenne31, Goldilocks and custom primes with Lean-checked primality and the Poseidon2 widths 2, 3, 4, 8, 12, 16 and 24, Grain round-constant conformance, exact S-box differential uniformity and linearity, an end-to-end AES theorem from the Rust kernel (final round included) and a proved BN254 Montgomery kernel. For adopters: a CI gate with a GitHub Action, HTML evidence reports, `init` and `doctor`, an OpenAPI description and a container image. What each item proves, and what it does not, is in the [changelog](CHANGELOG.md#020---2026-11-07).
+
 ## Start in one step
 
 **In your browser, with nothing to install:** open the guided story at **[4waan.github.io/Cryptificate](https://4waan.github.io/Cryptificate/)** and click through the four steps.
@@ -56,7 +60,7 @@ cryptificate check                         # applies cryptificate.json
 ## How you use it
 
 1. **Describe the change.** Edit the matrix, offsets, rounds, S-box and circuit in the workbench, or write them as JSON. Bytes are two hex digits; elements of a prime field (BN254, BabyBear, KoalaBear, Mersenne31, Goldilocks or your own prime below 2⁶⁴) are decimal strings. Start from a preset (AES MixColumns and InvMixColumns, circulants, Poseidon2 t = 3, deliberately weak controls), paste a matrix straight from C, Rust, Python or Sage, or generate a term-by-term circuit from the matrix. The workspace is saved in your browser, every edit can be undone, and **Copy share link** puts the design and circuit in a URL; opening someone's link keeps your own edits so you can restore them.
-2. **Check it.** Cryptificate generates a Lean certificate for your exact values and checks it. A fresh 4×4 MDS certificate takes about three seconds.
+2. **Check it.** Cryptificate generates a Lean certificate for your exact values and checks it. A fresh 4×4 MDS certificate takes about three seconds. While you edit, the workbench shows quick browser diagnostics labelled *Preview (not yet checked by Lean)* until the Lean result arrives; switch on **Auto-check** to have every pause in editing checked, or press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd>. <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> opens a command palette and <kbd>?</kbd> lists the shortcuts.
 3. **Read the evidence.** The report shows two chains side by side: *design guarantees* (MDS, offsets, S-box, activity bound, S-box differential uniformity and linearity) and *implementation correspondence* (circuit equivalence, Rust-source refinement, native correctness, timing). Every refutation comes with concrete bytes you can check by hand.
 4. **Search and measure.** A bounded search proposes cheaper circuits. Each candidate is proved equivalent in Lean and run against 9,214 test inputs before it is timed against the textbook circuit and the direct implementation.
 5. **Share it.** Download the evidence bundle. `cryptificate verify` regenerates the design and circuit claims from the bundle's inputs with the installed checker.
@@ -80,7 +84,7 @@ Open the guided story online: **[4waan.github.io/Cryptificate](https://4waan.git
 
 ## Install
 
-Linux with 8 GB of RAM is enough. You need git, curl, a C toolchain, Rust stable, Node 20+ and Python 3.10+.
+Linux with 8 GB of RAM is enough. You need git, curl, a C toolchain, Rust stable, Node 20+ and Python 3.10+ (for the repository's scripts; the client package in [`python/`](python) declares 3.9+).
 
 ```sh
 git clone https://github.com/4waan/Cryptificate && cd Cryptificate
@@ -132,7 +136,7 @@ docker run --rm -v "$PWD:/work" ghcr.io/4waan/cryptificate check my-design.json
 docker run --rm -v "$PWD:/work:ro" ghcr.io/4waan/cryptificate verify examples/bundles/aes-wrong-wire/aes-wrong-wire.tar.gz
 ```
 
-`--host 0.0.0.0` is needed because a published port does not reach the container's loopback interface; `-p 127.0.0.1:…` keeps the port on your machine's loopback, since the service has no authentication. The image does not check the Rust-source refinement proofs, so `rust.refinement` reads `not_established` there. Details, port and permission rules and limits: [docs/docker.md](docs/docker.md).
+`--host 0.0.0.0` is needed because a published port does not reach the container's loopback interface; `-p 127.0.0.1:…` keeps the port on your machine's loopback, since the service has no authentication. The image does not check the Rust-source refinement proofs, so `rust.refinement` reads `not_established` there for GF(2^8) circuits (`unsupported` for BN254 circuits, which no refinement proof covers). Details, port and permission rules and limits: [docs/docker.md](docs/docker.md).
 
 ## What it proves
 
@@ -146,7 +150,9 @@ docker run --rm -v "$PWD:/work:ro" ghcr.io/4waan/cryptificate verify examples/bu
 | Exact differential uniformity and linearity of a byte S-box | The kernel tests every row of the difference table and every Walsh coefficient of the submitted table, packed into one number, against the value, and recounts a witness that attains it; a property of the table, not a trail bound | AES: 4 and 32 (nonlinearity 112); AES with two entries swapped: 6 and 32 |
 | The modulus is prime (prime-field profile) | A Pratt certificate for your modulus, computed by the engine and checked by kernel evaluation (`Pratt.prime_of_checkFlat`); every other claim uses the field it gives | Goldilocks `2⁶⁴ - 2³² + 1`, where trial division is out of reach |
 | HADES outer rounds | WideTrail's outer-round bound for your external and internal matrices, branch number width + 1 | 16 active S-boxes over 8 full rounds at width 3, 20 at width 4 |
+| Wide Poseidon2 layers (widths 8 to 24) | The engine computes inverse matrices modulo `p`; the kernel checks `M · M⁻¹ = 1` with each row and column packed into one number, so every entry is one big-number product (`Packed.checkInverse`). The same check certifies the rows `eᵢ Mʲ` behind a window of `L = t` partial rounds, and one packed comparison shows that the external matrix is `circ(2 M₄, M₄, …, M₄)` with `M₄` MDS. That matrix is not MDS: a singular `2 × 2` submatrix refutes it, and no full-round bound is stated | Plonky3's BabyBear, KoalaBear and Mersenne31 width 16 and 24 and Goldilocks width 8 and 12: both matrices invertible; KoalaBear-16 and Goldilocks charge every window of `t` partial rounds; with fewer partial rounds than the width (BabyBear 13 < 16) a difference passes them all |
 | HADES partial rounds | As many rows `eᵢ Mʲ` of the internal matrix's powers at the partial-round S-box positions as the width, with a nonzero determinant: every `L` consecutive partial rounds activate an S-box, for any round constants. Otherwise a nonzero difference `v` with `Mʲ v` zero there for every `j` below the number of partial rounds passes all of them with no active S-box: checked through an invariant subspace, or directly on the first powers when there are fewer partial rounds than the width needs. A design with no partial rounds gets neither (out of scope) | the pinned internal matrix: `L = 3` (determinant 1), so at least 16 + ⌊56/3⌋ = 34 active S-boxes over all 64 rounds; the external matrix reused as internal matrix: `[0, 1, -1]` bypasses all 56 partial rounds |
+| The round constants are the Grain constants (HADES, `constants.grain`) | The kernel runs a transcription of the Poseidon2 reference procedure (`poseidon2_rust_params.sage` of HorizenLabs/poseidon2, commit `055bde3`): the 80-bit Grain LFSR seeded from the field, S-box type, bit length of `p`, width and round numbers, 160 discarded clocks, the self-shrinking generator and rejection of candidates `≥ p`, in the Poseidon2 layout (one constant per partial round, padded with zeros), and compares the result with your constants. Otherwise it checks one position where they differ (the first one, as located by the engine) and the value the procedure generates there. This is provenance, not security: it says the constants come from the reference procedure, and nothing about how good they are | WideTrail's pinned BN254 constants are proved to be the Grain constants of `t = 3`, `R_F = 8`, `R_P = 56`; one KoalaBear constant changed from `245687908` to `245687909` is refuted at round 4, position 0 |
 | The Rust source computes the model | Charon and Aeneas translate the Rust kernels to Lean, where they are proved equal to the model | GF(2⁸) arithmetic and the full AES-like round, for every design |
 | The generated Rust is correct | 9,214 test inputs per GF(2⁸) variant (8,278 for BN254) before any timing | a fast but wrong circuit is kept off the leaderboard |
 | It is faster on your machine | 15 paired rounds per workload, 95% bootstrap intervals, two fresh confirmation sessions | ratios with intervals for every candidate and baseline |
@@ -155,13 +161,17 @@ Which of these claims a design gets depends on its profile:
 
 | Profile | Fields | Widths | Claims |
 |---|---|---|---|
-| AES-like | GF(2⁸), `0x11B` | 4 (2 and 3 experimental, not certified) | MDS, offsets, S-box, activity bound; circuits, search, native timing; Rust refinement |
-| HADES, `hades/bn254/v1` | BN254 scalar field | 3 | external MDS, internal invertibility, power map, full-round, partial-round and total activity; circuits, search, native timing |
-| HADES, `hades/prime/v1` | BabyBear, KoalaBear, Mersenne31, Goldilocks, or a custom prime below 2⁶⁴ | 3 and 4 | primality of the modulus, then the same design claims as over BN254. No circuits, search, native timing or Rust refinement over these fields |
+| AES-like | GF(2⁸), `0x11B` | 4 (2 and 3 experimental, not certified) | MDS, offsets, S-box, activity bound, S-box differential uniformity and linearity; circuits, search, native timing; Rust refinement |
+| HADES, `hades/bn254/v1` | BN254 scalar field | 3 | external MDS, internal invertibility, power map, full-round, partial-round and total activity, Grain round constants; circuits, search, native timing |
+| HADES, `hades/prime/v1` | BabyBear, KoalaBear, Mersenne31, Goldilocks, or a custom prime below 2⁶⁴ | 2, 3, 4, 8, 12, 16 and 24 | primality of the modulus, then the same design claims as over BN254 up to width 4. Above width 4: `external.mds` (refuted by a small singular submatrix, else not established), `external.m4_mds` (the Poseidon2 block structure with `M₄` MDS), `external.invertible`, internal invertibility, the power map, `activity.partial` and the Grain round constants; the full-round and total activity bounds are not established, because they need an MDS external matrix. No circuits, search, native timing or Rust refinement over these fields |
 
 The modulus is part of every claim's meaning: a matrix can be MDS modulo one prime and not another, and `x³` permutes KoalaBear but not BabyBear. The example designs [`koalabear-t4.json`](examples/designs/koalabear-t4.json) (`x³`) and [`babybear-t4.json`](examples/designs/babybear-t4.json) (`x⁷`) use Poseidon2's `M4` as external matrix with an illustrative internal matrix and round counts; they are not deployed instances. [`babybear-t4-bad.json`](examples/designs/babybear-t4-bad.json) is deliberately wrong: `x³` collides over BabyBear, and its internal matrix lets `[0, 1, −1, 0]` pass all 13 partial rounds.
 
-Every report labels its origin: **Live** or **Cached exact result**. Editing any input marks earlier results as belonging to an earlier version until you check again. The full vocabulary of statuses and evidence labels is in [docs/evidence-model.md](docs/evidence-model.md).
+The wide examples are deployed instances: [`babybear-t16.json`](examples/designs/babybear-t16.json), `babybear-t24`, `koalabear-t16`, `koalabear-t24`, `mersenne31-t16`, `mersenne31-t24`, `goldilocks-t8` and `goldilocks-t12` take the internal diagonal, round numbers and S-box exponent of Plonky3's Poseidon2 at commit [`0d803737`](https://github.com/Plonky3/Plonky3/tree/0d803737b681774186cd283b1fd2d8e493655c82) (`<field>/src/poseidon2.rs`) and its external matrix `circ(2 M₄, M₄, …, M₄)` (`poseidon2/src/external.rs`); they give no round constants, so `constants.grain` is not established for them until constants are imported (below). Lean proves for each that both matrices are invertible and that `M₄` is MDS, and refutes the MDS property of the full external matrix. KoalaBear-16 and both Goldilocks instances charge every window of `t` partial rounds from the single partial-round S-box. The BabyBear and Mersenne31 instances and KoalaBear-24 have fewer partial rounds than the width (13, 14, 21, 22 and 23), so a nonzero difference passes all of them with no active S-box; that is a statement about the partial rounds alone, which is expected whenever there are fewer of them than the width, and says nothing about the full rounds. The same holds for the custom-modulus example [`prime-t12.json`](examples/designs/prime-t12.json) (8 partial rounds at width 12): expect `activity.partial` to be refuted for any design with fewer partial rounds than its width. The full-round bound is not established for any of these widths: it needs an MDS external matrix, and no theorem here bounds the activity of full rounds through `circ(2 M₄, M₄, …, M₄)`.
+
+Claim `constants.grain` compares explicit round constants (and, over BN254, the profile's reference constants) with the Poseidon2 reference procedure for the design's modulus, width and round numbers; a design that gives no constants gets it as not established. `npx cryptificate import FILE --base DESIGN.json` puts constants from a Plonky3 source file (`…_EXTERNAL_INITIAL`, `…_INTERNAL`, `…_EXTERNAL_FINAL`), a HorizenLabs poseidon2 instance (`RC3`, `RC16`, …) or printed list, JSON or CSV into a copy of a design, in the Poseidon2 layout; this works at every width of the profiles, including Plonky3's wide instances (Plonky3's KoalaBear width-16 constants imported into `koalabear-t16.json` are proved to be the Grain constants). The model's faithfulness to the reference scripts is the trusted part: it reproduces WideTrail's pinned BN254 constants in the kernel and published BabyBear, KoalaBear and Goldilocks constants in tests, and is not derived from a formal semantics of the scripts. Poseidon (version 1) lays out its constants differently, `t` per partial round, and is not covered.
+
+Every report labels its origin: **Live**, **Cached exact result**, or **Recorded run** (replayed from a recorded bundle without a running service; nothing was checked now). Editing any input marks earlier results as belonging to an earlier version until you check again. The full vocabulary of statuses and evidence labels is in [docs/evidence-model.md](docs/evidence-model.md).
 
 ## Why you can trust a result
 
@@ -169,7 +179,7 @@ Every report labels its origin: **Live** or **Cached exact result**. Editing any
 
 1. its name and printed type match the expected statement about your exact constants;
 2. Lean's own evaluation of those constants equals your normalized request, so the proof is about the numbers you submitted;
-3. the audit command re-checks the theorem and its local dependencies in the kernel, and its axioms are exactly the standard three: `propext`, `Classical.choice`, `Quot.sound`.
+3. the audit command re-checks the theorem and its local dependencies in the kernel, and its axioms are among the standard three: `propext`, `Classical.choice`, `Quot.sound`.
 
 **The hard mathematics is proved once.** Each certificate only evaluates bytes in the kernel with `decide`: the coefficient theorem, the minor-coverage theorem and the execution bridge are general results. Certificates use the kernel alone, without `native_decide` or `bv_decide`, which would extend trust to the whole compiler ([Lean reference: axioms](https://lean-lang.org/doc/reference/latest/Axioms/)).
 
@@ -183,8 +193,11 @@ Every report labels its origin: **Live** or **Cached exact result**. Editing any
 | MDS, offsets and activity bound for a fresh matrix | 3.3–8.5 s |
 | HADES: external MDS, internal invertibility, exponent, full-round activity | 3.9–4.4 s |
 | HADES with the partial rounds: window certificate and whole-permutation bound, or a bypass | 3.9–4.8 s |
-| HADES over BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime, width 3 or 4: primality and every design claim | 4.2–5.8 s |
+| HADES over BabyBear, KoalaBear, Mersenne31, Goldilocks or a custom prime, width 2, 3 or 4: primality and every design claim | 3.2–5.8 s |
 | Differential uniformity and linearity of a submitted byte table | 10.5–11.5 s |
+| Poseidon2 widths 8 to 24 (Plonky3 instances): primality, inverse witnesses of both matrices, `M₄`, the low-weight refutation and the partial rounds | 4.4–6.8 s |
+| HADES with explicit round constants: the Grain procedure run in the kernel (KoalaBear `t = 4`, 52 constants; BN254 `t = 3`, 80 constants of 254 bits, 192 layout entries) | 3.9–6.4 s |
+| Plonky3 KoalaBear width 16 with its imported round constants: the wide-width claims and the Grain procedure (148 constants) | 5.8 s (one run) |
 
 **Every push re-checks everything.** [CI](https://github.com/4waan/Cryptificate/actions/workflows/checks.yml) rebuilds the Lean library, runs every certificate example, re-checks the refinement proofs on Lean 4.35, runs the Rust, Node and Python test suites, and runs the GitHub Action on example designs, one of which must fail the gate.
 
@@ -209,7 +222,7 @@ Because the round kernel takes the design as runtime data, one proof covers ever
 
 The search builds a primitive circuit from polynomial-basis multiples, extracts shared pairs, factors `xtime(a) ⊕ xtime(b) = xtime(a ⊕ b)`, cancels repeated XORs, hash-conses and removes dead code, with tie choices driven by fixed seeds. For AES MixColumns it finds a 12-XOR, 4-xtime circuit, three XORs fewer than the textbook circuit.
 
-Every compared variant uses the same arithmetic, compiler and flags, is built as its own shared library, and is timed by one harness over 4 KiB, 64 KiB and 1 MiB workloads: samples of at least 50 ms, 3 warmups, 15 paired rounds in randomized order, 95% paired bootstrap intervals over 10,000 resamples, then two confirmation sessions with fresh seeds. A speed-up is reported as **locally confirmed** when the interval's lower bound clears 1.02 in both sessions against every baseline. On the BN254 internal layer `[[2,1,1],[1,2,1],[1,1,3]]` the searched circuit replaces three multiplications with additions and runs about 7.2× faster than the direct implementation, with the lowest 95% lower bound at 7.05 across both confirmation sessions ([raw data](examples/measurements/bn254-internal)). On AES the compiler already vectorizes every variant, and the harness shows the three circuits within each other's intervals.
+Every compared variant uses the same arithmetic, compiler and flags, is built as its own shared library, and is timed by one harness over 4 KiB, 64 KiB and 1 MiB workloads: samples of at least 50 ms, 3 warmups, 15 paired rounds in randomized order, 95% paired bootstrap intervals over 10,000 resamples, then two confirmation sessions with fresh seeds. A speed-up is reported as **locally confirmed** when the interval's lower bound clears 1.02 in both sessions against every baseline. On the BN254 internal layer `[[2,1,1],[1,2,1],[1,1,3]]` the searched circuit replaces three multiplications with additions and runs about 7.2× faster than the direct implementation on the 64 KiB primary workload (about 3.1× at 1 MiB), with the lowest 95% lower bound at 7.05 across both confirmation sessions ([raw data](examples/measurements/bn254-internal)). On AES the compiler already vectorizes every variant, and the harness shows the three circuits within each other's intervals.
 
 The measurement ABI, `mix_batch(input, output, column_count)`, is plain C, so an implementation in any language can join the comparison: see [docs/batch-interface.md](docs/batch-interface.md).
 
@@ -255,7 +268,7 @@ For an audit or a pull request, `npx cryptificate report <bundle> --format html 
 
 | Path | What it holds |
 |---|---|
-| [`lean/`](lean) | Circuit semantics, canonical-minor MDS certificates, counterexample lemmas, offsets, the execution bridge, S-box and exponent certificates, Pratt primality certificates, HADES full-round and partial-round bounds at widths 3 and 4, the audit command and the certificate templates |
+| [`lean/`](lean) | Circuit semantics, canonical-minor MDS certificates, counterexample lemmas, offsets, the execution bridge, S-box and exponent certificates, Pratt primality certificates, HADES full-round bounds at widths 2 to 4 and partial-round certificates at every profile width, packed inverse-witness checks for the Poseidon2 widths 2 to 24, the Grain round-constant generator, the audit command and the certificate templates |
 | [`refinement/`](refinement) | Charon/Aeneas translations of `crates/kernels` and the gf256 crate, with their Lean proofs |
 | [`crates/`](crates) | `core` (validation, diagnostics, certificate emission), `cli` (`cryptificate-engine`), `search`, `native` (code generation and timing harness), `kernels` |
 | [`apps/server`](apps/server) | [HTTP API](docs/api.md), job queue, proof acceptance, bundles and the `cryptificate` CLI |

@@ -21,10 +21,17 @@ pub mod claim_ids {
     pub const FIELD_PRIME: &str = "field.prime";
     // Design chain, HADES (`sbox.bijective` is shared).
     pub const EXTERNAL_MDS: &str = "external.mds";
+    // HADES over a prime field, widths above 4: the external matrix is the
+    // Poseidon2 matrix circ(2 M4, M4, ..., M4) with M4 MDS, and it is
+    // invertible.
+    pub const EXTERNAL_M4_MDS: &str = "external.m4_mds";
+    pub const EXTERNAL_INVERTIBLE: &str = "external.invertible";
     pub const INTERNAL_INVERTIBLE: &str = "internal.invertible";
     pub const ACTIVITY_OUTER: &str = "activity.outer";
     pub const ACTIVITY_PARTIAL: &str = "activity.partial";
     pub const ACTIVITY_TOTAL: &str = "activity.total";
+    // Design chain, HADES: the round constants are the Grain constants.
+    pub const CONSTANTS_GRAIN: &str = "constants.grain";
     // Implementation chain.
     pub const CIRCUIT_EQUIVALENCE: &str = "circuit.equivalence";
     pub const NATIVE_CORRECTNESS: &str = "native.correctness";
@@ -44,6 +51,13 @@ pub mod labels {
     /// `"Generated Rust passed N correctness cases"`.
     pub fn native_correctness(cases: u64) -> String {
         format!("Generated Rust passed {cases} correctness cases")
+    }
+
+    /// `"Generated Rust failed F of N correctness cases"`, the label of a
+    /// refuted `native.correctness` claim. Reports recorded before 0.2.0
+    /// carry the passing count in [`native_correctness`] instead.
+    pub fn native_correctness_failed(failures: u64, cases: u64) -> String {
+        format!("Generated Rust failed {failures} of {cases} correctness cases")
     }
 }
 
@@ -184,6 +198,19 @@ pub enum Witness {
         linearity: u32,
         input_mask: String,
         output_mask: String,
+    },
+    /// A nonzero vector `x` with `M x = 0` for the matrix `M` of the claim,
+    /// so `M` is singular.
+    Kernel { vector: Vec<String> },
+    /// The first position at which submitted round constants differ from
+    /// the ones the Grain procedure generates: `index = round * width +
+    /// position` in the Poseidon2 layout, decimal values.
+    ConstantMismatch {
+        index: usize,
+        round: usize,
+        position: usize,
+        expected: String,
+        actual: String,
     },
     /// Two distinct field elements with the same power.
     PowerCollision {

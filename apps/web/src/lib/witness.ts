@@ -89,6 +89,17 @@ export function describeWitness(w: Witness, field: DisplayField): string {
         `is zero there for every j < ${w.partialRounds}, so no partial-round S-box is active.`
       );
     }
+    case 'kernel':
+      return (
+        `The matrix sends the nonzero vector [${w.vector.map((x) => signedDecimal(x, field)).join(', ')}] to zero, ` +
+        `so it is singular and not invertible: two states that differ by this vector have the same image.`
+      );
+    case 'constant-mismatch':
+      return (
+        `The round constant of round ${w.round} at position ${w.position} (index ${w.index} of the flat list) is ` +
+        `${abbreviateDecimal(w.actual)}, and the Grain procedure for this field, width and round numbers generates ` +
+        `${abbreviateDecimal(w.expected)} there (Poseidon2 layout).`
+      );
   }
 }
 
@@ -111,5 +122,9 @@ export function witnessHeading(w: Witness): string {
       return 'Largest difference-table entry';
     case 'sbox-linearity':
       return 'Largest Walsh coefficient';
+    case 'kernel':
+      return 'Kernel vector';
+    case 'constant-mismatch':
+      return 'Round-constant mismatch';
   }
 }

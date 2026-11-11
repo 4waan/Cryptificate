@@ -1,0 +1,23 @@
+{
+  "name": "hades_total_activity_prime2",
+  "kind": "claim",
+  "claim": "activity.total",
+  "status": "proved",
+  "theorem": "CryptificateJob.hades_total_activity",
+  "expectedType": "∀ (constants : ℕ → Fin 2 → ZMod CryptificateJob.candModulus) (x y : Fin 2 → ZMod CryptificateJob.candModulus), x ≠ y → (CryptificateJob.candFullRounds / 2 / 2 + CryptificateJob.candFullRounds / 2 / 2) * 3 + CryptificateJob.candFullRounds / 2 % 2 + CryptificateJob.candFullRounds / 2 % 2 + CryptificateJob.candPartialRounds / {{OBS_LENGTH}} ≤ { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.outerActivity CryptificateJob.candMask constants x y + { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.partialActivity CryptificateJob.candMask constants x y",
+  "placeholders": [
+    "OBS_LENGTH"
+  ],
+  "requires": [
+    "const_external_prime",
+    "const_internal_prime",
+    "const_exponent",
+    "const_rounds_hades",
+    "const_mask_prime",
+    "external_mds_prime2",
+    "internal_invertible_prime_packed",
+    "power_bijective_prime",
+    "partial_active_prime_packed"
+  ],
+  "field": "prime"
+}

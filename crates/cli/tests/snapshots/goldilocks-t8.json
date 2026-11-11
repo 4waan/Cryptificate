@@ -1,0 +1,478 @@
+{
+  "diagnostics": {
+    "activity": {
+      "applicable": false,
+      "bound": null,
+      "claim": "activity.outer",
+      "reason": "not established by this method for width 8: the full-round bound needs an MDS external matrix, the minors of a 8 x 8 matrix are not enumerated (and the Poseidon2 matrix circ(2 M4, M4, ..., M4) of width above 4 is not MDS), and no theorem here bounds the activity of full rounds whose external matrix is not MDS",
+      "rounds": 8
+    },
+    "claims": [
+      {
+        "claim": "field.prime",
+        "holds": true,
+        "note": "18446744069414584321 is prime: p - 1 = 2^32 * 3 * 5 * 17 * 257 * 65537, and 7 has order p - 1 modulo p (a Pratt certificate of 7 steps)",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "external.mds",
+        "holds": false,
+        "note": "the 8 x 8 external matrix is not MDS: its square submatrix on rows [0, 4] and columns [0, 1] is singular, so a nonzero input of weight 2 maps to an output of weight 6, 8 in total, below the 9 an MDS matrix guarantees (only submatrices of order at most 2 are searched at this width)",
+        "predicted": "refuted",
+        "witness": {
+          "bound": 9,
+          "input": [
+            "9223372034707292159",
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ],
+          "inputWeight": 2,
+          "kind": "branch",
+          "output": [
+            "0",
+            "1",
+            "18446744069414584320",
+            "18446744069414584314",
+            "0",
+            "9223372034707292161",
+            "9223372034707292160",
+            "9223372034707292157"
+          ],
+          "outputWeight": 6
+        }
+      },
+      {
+        "claim": "external.m4_mds",
+        "holds": true,
+        "note": "the external matrix is circ(2 M4, M4, ..., M4) for its 4 x 4 block M4; all 69 square minors of the block M4 are nonzero, so its branch number is 5",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "external.invertible",
+        "holds": true,
+        "note": "the external matrix has determinant 99225; an inverse matrix is the certificate",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "internal.invertible",
+        "holds": true,
+        "note": "the internal matrix has determinant 63",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "sbox.bijective",
+        "holds": true,
+        "note": "gcd(7, p-1) = 1, so x^7 is inverted by x^d with d = 10540996611094048183",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.outer",
+        "holds": null,
+        "note": "not established by this method for width 8: the full-round bound needs an MDS external matrix, the minors of a 8 x 8 matrix are not enumerated (and the Poseidon2 matrix circ(2 M4, M4, ..., M4) of width above 4 is not MDS), and no theorem here bounds the activity of full rounds whose external matrix is not MDS",
+        "predicted": "not_established",
+        "witness": null
+      },
+      {
+        "claim": "activity.partial",
+        "holds": true,
+        "note": "the rows e0 M^0, e0 M^1, e0 M^2, e0 M^3, e0 M^4, e0 M^5, e0 M^6, e0 M^7 of the powers of the internal matrix M at the masked positions have determinant 7493989778028744314, so no nonzero difference avoids the S-boxes of 8 consecutive partial rounds",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
+        "claim": "activity.total",
+        "holds": null,
+        "note": "not established by this method for width 8: the full-round bound needs an MDS external matrix, the minors of a 8 x 8 matrix are not enumerated (and the Poseidon2 matrix circ(2 M4, M4, ..., M4) of width above 4 is not MDS), and no theorem here bounds the activity of full rounds whose external matrix is not MDS",
+        "predicted": "not_established",
+        "witness": null
+      },
+      {
+        "claim": "constants.grain",
+        "holds": null,
+        "note": "not established: the design gives no round constants",
+        "predicted": "not_established",
+        "witness": null
+      }
+    ],
+    "constants": {
+      "fieldSize": 64,
+      "layout": "poseidon2",
+      "matches": null,
+      "mismatch": null,
+      "note": "not established: the design gives no round constants",
+      "source": "unspecified"
+    },
+    "external": {
+      "branchWitness": {
+        "bound": 9,
+        "input": [
+          "9223372034707292159",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "inputWeight": 2,
+        "output": [
+          "0",
+          "1",
+          "18446744069414584320",
+          "18446744069414584314",
+          "0",
+          "9223372034707292161",
+          "9223372034707292160",
+          "9223372034707292157"
+        ],
+        "outputWeight": 6,
+        "support": [
+          0,
+          1
+        ],
+        "zeroOutputs": [
+          0,
+          4
+        ]
+      },
+      "determinant": "99225",
+      "kernelVector": null,
+      "mds": false,
+      "minorCount": 0,
+      "zeroMinors": 0
+    },
+    "internal": {
+      "branchWitness": {
+        "bound": 9,
+        "input": [
+          "18446744069414584320",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "inputWeight": 2,
+        "output": [
+          "2",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "outputWeight": 2,
+        "support": [
+          0,
+          1
+        ],
+        "zeroOutputs": [
+          2,
+          3
+        ]
+      },
+      "determinant": "63",
+      "kernelVector": null,
+      "mds": false,
+      "minorCount": 0,
+      "zeroMinors": 0
+    },
+    "model": "hades/prime/v1",
+    "modulus": "18446744069414584321",
+    "packed": {
+      "externalInverse": true,
+      "internalInverse": true,
+      "m4": {
+        "branchWitness": null,
+        "determinant": "18446744069414584286",
+        "kernelVector": null,
+        "mds": true,
+        "minorCount": 69,
+        "zeroMinors": 0
+      },
+      "observabilityRows": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "packBits": 134
+    },
+    "partial": {
+      "bypass": null,
+      "determinant": "7493989778028744314",
+      "partialRounds": 22,
+      "positions": [
+        0
+      ],
+      "rows": [
+        {
+          "position": 0,
+          "power": 0,
+          "row": [
+            "1",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 1,
+          "row": [
+            "18446744069414584320",
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 2,
+          "row": [
+            "8",
+            "7",
+            "8",
+            "9223372034707292167",
+            "9",
+            "9223372034707292166",
+            "3",
+            "2"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 3,
+          "row": [
+            "33",
+            "56",
+            "65",
+            "13835058052060938293",
+            "76",
+            "13835058052060938287",
+            "40",
+            "41"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 4,
+          "row": [
+            "9223372034707292504",
+            "9223372034707292626",
+            "9223372034707292700",
+            "6917529026030469556",
+            "9223372034707292798",
+            "11529215043384115587",
+            "9223372034707292450",
+            "9223372034707292406"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 5,
+          "row": [
+            "2656",
+            "9223372034707295969",
+            "4422",
+            "3458764513015238121",
+            "9223372034707297416",
+            "3458764513015237710",
+            "9223372034707294635",
+            "2361"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 6,
+          "row": [
+            "16140901060737783657",
+            "6917529026030500617",
+            "16140901060737797813",
+            "8646911282538115869",
+            "6917529026030512575",
+            "14411518804230170114",
+            "6917529026030489385",
+            "16140901060737779525"
+          ]
+        },
+        {
+          "position": 0,
+          "power": 7,
+          "row": [
+            "4611686017353829278",
+            "6917529026030728567",
+            "13835058052061239255",
+            "13546827675976578045",
+            "2305843008677181354",
+            "11240984667299727214",
+            "16140901060737928437",
+            "9223372034707447134"
+          ]
+        }
+      ],
+      "window": 8
+    },
+    "power": {
+      "bijective": true,
+      "collision": null,
+      "exponent": 7,
+      "gcd": 1,
+      "inverseExponent": "10540996611094048183",
+      "k": 4
+    },
+    "prime": {
+      "factorization": [
+        [
+          "2",
+          32
+        ],
+        [
+          "3",
+          1
+        ],
+        [
+          "5",
+          1
+        ],
+        [
+          "17",
+          1
+        ],
+        [
+          "257",
+          1
+        ],
+        [
+          "65537",
+          1
+        ]
+      ],
+      "field": "goldilocks",
+      "modulus": "18446744069414584321",
+      "pratt": [
+        {
+          "a": 1,
+          "factors": [],
+          "n": "2"
+        },
+        {
+          "a": 2,
+          "factors": [
+            [
+              "2",
+              1
+            ]
+          ],
+          "n": "3"
+        },
+        {
+          "a": 2,
+          "factors": [
+            [
+              "2",
+              2
+            ]
+          ],
+          "n": "5"
+        },
+        {
+          "a": 3,
+          "factors": [
+            [
+              "2",
+              4
+            ]
+          ],
+          "n": "17"
+        },
+        {
+          "a": 3,
+          "factors": [
+            [
+              "2",
+              8
+            ]
+          ],
+          "n": "257"
+        },
+        {
+          "a": 3,
+          "factors": [
+            [
+              "2",
+              16
+            ]
+          ],
+          "n": "65537"
+        },
+        {
+          "a": 7,
+          "factors": [
+            [
+              "2",
+              32
+            ],
+            [
+              "3",
+              1
+            ],
+            [
+              "5",
+              1
+            ],
+            [
+              "17",
+              1
+            ],
+            [
+              "257",
+              1
+            ],
+            [
+              "65537",
+              1
+            ]
+          ],
+          "n": "18446744069414584321"
+        }
+      ]
+    },
+    "target": "external",
+    "total": {
+      "applicable": false,
+      "bound": null,
+      "claim": "activity.total",
+      "reason": "not established by this method for width 8: the full-round bound needs an MDS external matrix, the minors of a 8 x 8 matrix are not enumerated (and the Poseidon2 matrix circ(2 M4, M4, ..., M4) of width above 4 is not MDS), and no theorem here bounds the activity of full rounds whose external matrix is not MDS",
+      "rounds": 30
+    }
+  },
+  "inputDigest": "sha256:8bf959e942122c03f2e7b0bdc9ce9e97e557afb2325b350fee9dc5f153ba8209"
+}

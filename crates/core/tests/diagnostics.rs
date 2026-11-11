@@ -309,11 +309,12 @@ fn poseidon2_style_design() {
             claim_ids::ACTIVITY_OUTER,
             claim_ids::ACTIVITY_PARTIAL,
             claim_ids::ACTIVITY_TOTAL,
+            claim_ids::CONSTANTS_GRAIN,
             claim_ids::CIRCUIT_EQUIVALENCE,
         ]
     );
     let statuses: Vec<Status> = d.claims.iter().map(|c| c.predicted).collect();
-    assert_eq!(statuses, vec![Status::Proved; 7]);
+    assert_eq!(statuses, vec![Status::Proved; 8]);
     assert!(matches!(d.details, ModelDiagnostics::Hades(_)));
 }
 
@@ -814,6 +815,8 @@ fn prime_examples() {
                 (ACTIVITY_OUTER, Status::Proved),
                 (ACTIVITY_PARTIAL, Status::Proved),
                 (ACTIVITY_TOTAL, Status::Proved),
+                // The example gives no round constants.
+                (CONSTANTS_GRAIN, Status::NotEstablished),
             ],
             "{name}"
         );
@@ -840,6 +843,7 @@ fn prime_examples() {
             (ACTIVITY_OUTER, Status::NotEstablished),
             (ACTIVITY_PARTIAL, Status::Refuted),
             (ACTIVITY_TOTAL, Status::NotEstablished),
+            (CONSTANTS_GRAIN, Status::NotEstablished),
         ]
     );
     let ModelDiagnostics::HadesPrime(h) = &d.details else {
@@ -957,4 +961,331 @@ fn prime_width_four_bypasses() {
     // With four it is charged.
     let d = diagnose(&prime_request(design(good, 4)));
     assert_eq!(d.claim(ACTIVITY_PARTIAL).unwrap().predicted, Status::Proved);
+}
+
+// ---------------------------------------------------------------------------
+// HADES over a prime field, widths 2, 8, 12, 16 and 24
+// ---------------------------------------------------------------------------
+
+fn mat_mul<F: Field>(a: &Matrix<F>, b: &Matrix<F>) -> Matrix<F> {
+    a.iter()
+        .map(|row| {
+            (0..b[0].len())
+                .map(|j| {
+                    row.iter()
+                        .zip(b)
+                        .fold(F::zero(), |acc, (&x, r)| acc + x * r[j])
+                })
+                .collect()
+        })
+        .collect()
+}
+
+fn prime_details(
+    d: &cryptificate_core::diagnostics::Diagnostics,
+) -> &cryptificate_core::diagnostics::HadesPrimeDiagnostics {
+    match &d.details {
+        ModelDiagnostics::HadesPrime(h) => h,
+        _ => panic!("not a prime-field design"),
+    }
+}
+
+/// The Plonky3 Poseidon2 instances shipped as examples: every packed
+/// witness is what its certificate checks.
+#[test]
+fn prime_wide_poseidon2_examples() {
+    use claim_ids::*;
+    use cryptificate_core::linalg::identity;
+    use cryptificate_core::{with_modulus, Fp};
+    // name, modulus, width, partial rounds, window of activity.partial.
+    for (name, p, t, rp, window) in [
+        ("babybear-t16", 2013265921u64, 16usize, 13u32, None),
+        ("babybear-t24", 2013265921, 24, 21, None),
+        ("koalabear-t16", 2130706433, 16, 20, Some(16u32)),
+        ("koalabear-t24", 2130706433, 24, 23, None),
+        ("goldilocks-t8", 18446744069414584321, 8, 22, Some(8)),
+        ("goldilocks-t12", 18446744069414584321, 12, 22, Some(12)),
+        ("mersenne31-t16", 2147483647, 16, 14, None),
+        ("mersenne31-t24", 2147483647, 24, 22, None),
+    ] {
+        let d = diagnose(&prime_request(example(&format!("designs/{name}.json"))));
+        let partial = if window.is_some() {
+            Status::Proved
+        } else {
+            Status::Refuted
+        };
+        assert_eq!(
+            prime_claims(&d),
+            vec![
+                (FIELD_PRIME, Status::Proved),
+                (EXTERNAL_MDS, Status::Refuted),
+                (EXTERNAL_M4_MDS, Status::Proved),
+                (EXTERNAL_INVERTIBLE, Status::Proved),
+                (INTERNAL_INVERTIBLE, Status::Proved),
+                (SBOX_BIJECTIVE, Status::Proved),
+                (ACTIVITY_OUTER, Status::NotEstablished),
+                (ACTIVITY_PARTIAL, partial),
+                (ACTIVITY_TOTAL, Status::NotEstablished),
+                // The Plonky3 examples give no round constants.
+                (CONSTANTS_GRAIN, Status::NotEstablished),
+            ],
+            "{name}"
+        );
+        let h = prime_details(&d);
+        assert_eq!(h.hades.partial.window, window, "{name}");
+        assert_eq!(h.hades.activity.bound, None, "{name}");
+        let packed = h.packed.as_ref().expect("packed witnesses");
+        // S is the least bit count with t^2 p^2 <= 2^S.
+        let bound = BigUint::from(t * t) * BigUint::from(p) * BigUint::from(p);
+        let s = packed.pack_bits;
+        assert!(bound <= BigUint::from(1u32) << s, "{name}");
+        assert!(bound > BigUint::from(1u32) << (s - 1), "{name}");
+        let design = &req_design(&d);
+        with_modulus(p, || {
+            let one: Matrix<Fp> = identity(t);
+            let internal = packed.internal_inverse.as_ref().unwrap();
+            assert_eq!(mat_mul(&design.1, internal), one, "{name}");
+            let external = packed.external_inverse.as_ref().unwrap();
+            assert_eq!(mat_mul(&design.0, external), one, "{name}");
+            // The Poseidon2 4 x 4 matrix of Plonky3 (MDSMat4).
+            let m4 = &packed.m4.as_ref().unwrap().m4;
+            let expected: Matrix<Fp> = [[2, 3, 1, 1], [1, 2, 3, 1], [1, 1, 2, 3], [3, 1, 1, 2]]
+                .iter()
+                .map(|r| r.iter().map(|&x| Fp(x)).collect())
+                .collect();
+            assert_eq!(m4.matrix, expected, "{name}");
+            assert!(m4.mds && m4.minors_checked, "{name}");
+            // external.mds: a nonzero input of weight 2 whose image has at
+            // most t - 2 nonzero entries.
+            let w = h.hades.external.branch_witness.as_ref().unwrap();
+            assert_eq!(w.input_weight, 2, "{name}");
+            assert_eq!(mat_vec(&design.0, &w.input), w.output, "{name}");
+            assert!(weight(&w.input) + weight(&w.output) <= t, "{name}");
+            match window {
+                Some(l) => {
+                    // The kept rows e0 M^j, j < t, and their inverse.
+                    let obs = packed.observability.as_ref().unwrap();
+                    assert_eq!(obs.rows, (0..t).collect::<Vec<_>>(), "{name}");
+                    let rows: Matrix<Fp> =
+                        h.hades.partial.rows.iter().map(|r| r.row.clone()).collect();
+                    assert_eq!(mat_mul(&rows, &obs.inverse), one, "{name}");
+                    assert_eq!(l as usize, t);
+                }
+                None => {
+                    // A difference that stays at zero on coordinate 0 for
+                    // every partial round, but no invariant subspace.
+                    assert!(packed.observability.is_none());
+                    let b = h.hades.partial.bypass.as_ref().unwrap();
+                    assert!(!b.invariant(), "{name}");
+                    let mut v = b.difference.clone();
+                    assert!(v.iter().any(|x| !x.is_zero()));
+                    for _ in 0..rp {
+                        assert!(v[0].is_zero(), "{name}");
+                        v = mat_vec(&design.1, &v);
+                    }
+                }
+            }
+        });
+    }
+}
+
+/// The external and internal matrices of a prime-field design.
+fn req_design(
+    d: &cryptificate_core::diagnostics::Diagnostics,
+) -> (Matrix<cryptificate_core::Fp>, Matrix<cryptificate_core::Fp>) {
+    let h = prime_details(d);
+    (
+        h.hades.external.matrix.clone(),
+        h.hades.internal.matrix.clone(),
+    )
+}
+
+#[test]
+fn prime_wide_refutations() {
+    use claim_ids::*;
+    let d = diagnose(&prime_request(example("designs/babybear-t8-bad.json")));
+    assert_eq!(
+        prime_claims(&d),
+        vec![
+            (FIELD_PRIME, Status::Proved),
+            (EXTERNAL_MDS, Status::Refuted),
+            (EXTERNAL_M4_MDS, Status::Refuted),
+            (EXTERNAL_INVERTIBLE, Status::Refuted),
+            (INTERNAL_INVERTIBLE, Status::Refuted),
+            (SBOX_BIJECTIVE, Status::Proved),
+            (ACTIVITY_OUTER, Status::NotEstablished),
+            (ACTIVITY_PARTIAL, Status::Refuted),
+            (ACTIVITY_TOTAL, Status::NotEstablished),
+            (CONSTANTS_GRAIN, Status::NotEstablished),
+        ]
+    );
+    let h = prime_details(&d);
+    let packed = h.packed.as_ref().unwrap();
+    assert!(packed.internal_inverse.is_none());
+    assert!(packed.external_inverse.is_none());
+    assert!(h.hades.external.kernel_vector.is_some());
+    assert!(h.hades.internal.kernel_vector.is_some());
+    assert!(packed.m4.as_ref().unwrap().m4.branch_witness.is_some());
+    // Rows 1 and 2 of J + diag(3, 0, 0, 5, ...) agree: e1 - e2 spans an
+    // invariant line that is zero on coordinate 0.
+    let b = h.hades.partial.bypass.as_ref().unwrap();
+    assert!(b.invariant());
+    assert_eq!(b.invariant_basis.len(), 1);
+}
+
+/// A wide matrix that is not the Poseidon2 matrix: a Cauchy matrix, every
+/// minor of which is nonzero. No small singular submatrix refutes MDS, and
+/// external.m4_mds does not apply.
+#[test]
+fn prime_wide_without_poseidon2_structure() {
+    use claim_ids::*;
+    let p: u64 = 2147483647;
+    let inv = |a: u64| BigUint::from(a).modpow(&BigUint::from(p - 2), &BigUint::from(p));
+    let cauchy: Vec<Vec<String>> = (0..8u64)
+        .map(|i| (0..8u64).map(|j| inv(i + 8 + j + 1).to_string()).collect())
+        .collect();
+    let design = json!({
+        "model": "hades/prime/v1", "field": "mersenne31", "width": 8,
+        "external": cauchy, "internal": cauchy,
+        "fullRounds": 8, "partialRounds": 14,
+        "sbox": {"kind": "power", "exponent": 5}
+    });
+    let d = diagnose(&prime_request(design));
+    let status = |c: &str| d.claim(c).unwrap().predicted;
+    assert_eq!(status(EXTERNAL_MDS), Status::NotEstablished);
+    assert_eq!(status(EXTERNAL_M4_MDS), Status::NotEstablished);
+    assert_eq!(status(EXTERNAL_INVERTIBLE), Status::Proved);
+    assert_eq!(status(ACTIVITY_OUTER), Status::NotEstablished);
+    let h = prime_details(&d);
+    assert!(!h.hades.external.minors_checked);
+    assert!(h.hades.external.branch_witness.is_none());
+    assert!(h.packed.as_ref().unwrap().m4.is_none());
+}
+
+/// Width two: the minors are enumerated, the activity bounds apply, and the
+/// internal matrix and observability use inverse witnesses.
+#[test]
+fn prime_width_two() {
+    use claim_ids::*;
+    let d = diagnose(&prime_request(example("designs/mersenne31-t2.json")));
+    assert_eq!(
+        prime_claims(&d),
+        vec![
+            (FIELD_PRIME, Status::Proved),
+            (EXTERNAL_MDS, Status::Proved),
+            (INTERNAL_INVERTIBLE, Status::Proved),
+            (SBOX_BIJECTIVE, Status::Proved),
+            (ACTIVITY_OUTER, Status::Proved),
+            (ACTIVITY_PARTIAL, Status::Proved),
+            (ACTIVITY_TOTAL, Status::Proved),
+            (CONSTANTS_GRAIN, Status::NotEstablished),
+        ]
+    );
+    let h = prime_details(&d);
+    assert_eq!(h.hades.external.minor_count, 5);
+    // 4 + 4 full rounds of branch number 3, plus 14 / 2 partial windows.
+    assert_eq!(h.hades.activity.bound, Some(12));
+    assert_eq!(h.hades.total.bound, Some(19));
+    let packed = h.packed.as_ref().unwrap();
+    assert!(packed.internal_inverse.is_some());
+    assert!(packed.external_inverse.is_none() && packed.m4.is_none());
+    assert_eq!(packed.observability.as_ref().unwrap().rows, vec![0, 1]);
+}
+
+#[test]
+fn poseidon2_block_and_pack_bits() {
+    use cryptificate_core::diagnostics::{pack_bits, poseidon2_m4};
+    let m4 = [[2u64, 3, 1, 1], [1, 2, 3, 1], [1, 1, 2, 3], [3, 1, 1, 2]];
+    let ext = |t: usize, double: u64| -> Matrix<Bn254> {
+        (0..t)
+            .map(|i| {
+                (0..t)
+                    .map(|j| {
+                        let k = if i / 4 == j / 4 { double } else { 1 };
+                        Bn254::from_u64(k * m4[i % 4][j % 4])
+                    })
+                    .collect()
+            })
+            .collect()
+    };
+    for t in [8, 12, 16, 24] {
+        let found = poseidon2_m4(&ext(t, 2)).unwrap();
+        assert_eq!(found[0][0], Bn254::from_u64(2));
+        assert!(poseidon2_m4(&ext(t, 3)).is_none(), "{t}");
+    }
+    // Width four has no off-diagonal block to read M4 from.
+    assert!(poseidon2_m4(&ext(4, 2)).is_none());
+    // 24^2 (2^31 - 1)^2 < 2^72; 2^2 2^62 = 2^64 exactly.
+    assert_eq!(pack_bits(24, 2147483647), 72);
+    assert_eq!(pack_bits(2, 1 << 31), 64);
+    assert_eq!(pack_bits(16, 18446744069414584321), 136);
+}
+
+// ---------------------------------------------------------------------------
+// Round constants against the Grain procedure (claim constants.grain)
+// ---------------------------------------------------------------------------
+
+fn constants_claim(
+    d: &cryptificate_core::diagnostics::Diagnostics,
+) -> &cryptificate_core::diagnostics::ClaimPrediction {
+    d.claim(claim_ids::CONSTANTS_GRAIN).unwrap()
+}
+
+#[test]
+fn grain_constants_of_the_examples() {
+    // Explicit constants generated by the procedure, over KoalaBear and BN254.
+    for name in ["koalabear-t4-grain", "poseidon2-bn254-grain"] {
+        let (d, v) = diagnose_json(json!({ "design": example(&format!("designs/{name}.json")) }));
+        let c = constants_claim(&d);
+        assert_eq!(c.predicted, Status::Proved, "{name}");
+        assert!(c.witness.is_none());
+        assert_eq!(v["constants"]["source"], "explicit");
+        assert_eq!(v["constants"]["layout"], "poseidon2");
+        assert_eq!(v["constants"]["matches"], true);
+    }
+    // The profile's reference constants: proved once in the library.
+    let (d, v) = diagnose_json(json!({ "design": example("designs/poseidon2-bn254.json") }));
+    assert_eq!(constants_claim(&d).predicted, Status::Proved);
+    assert_eq!(v["constants"]["source"], "reference");
+    assert_eq!(v["constants"]["fieldSize"], 254);
+}
+
+#[test]
+fn grain_constants_refuted_at_the_first_difference() {
+    let (d, v) =
+        diagnose_json(json!({ "design": example("designs/koalabear-t4-grain-edited.json") }));
+    let c = constants_claim(&d);
+    assert_eq!(c.predicted, Status::Refuted);
+    // The first partial-round constant was changed from 245687908 to 245687909.
+    assert_eq!(
+        c.witness,
+        Some(Witness::ConstantMismatch {
+            index: 16,
+            round: 4,
+            position: 0,
+            expected: "245687908".into(),
+            actual: "245687909".into(),
+        })
+    );
+    assert_eq!(v["constants"]["fieldSize"], 31);
+    assert_eq!(v["constants"]["mismatch"]["index"], 16);
+    let w = serde_json::to_value(c.witness.as_ref().unwrap()).unwrap();
+    assert_eq!(w["kind"], "constant-mismatch");
+}
+
+#[test]
+fn grain_constants_not_established() {
+    // No constants given.
+    let (d, v) = diagnose_json(json!({ "design": example("designs/koalabear-t4.json") }));
+    assert_eq!(constants_claim(&d).predicted, Status::NotEstablished);
+    assert_eq!(v["constants"]["source"], "unspecified");
+    assert!(v["constants"]["matches"].is_null());
+    // The reference constants with other round numbers: they are the
+    // constants of R_F = 8, R_P = 56 only.
+    let mut design = example("designs/poseidon2-bn254.json");
+    design["partialRounds"] = json!(57);
+    let (d, _) = diagnose_json(json!({ "design": design }));
+    let c = constants_claim(&d);
+    assert_eq!(c.predicted, Status::NotEstablished);
+    assert!(c.note.contains("R_P = 57"), "{}", c.note);
 }

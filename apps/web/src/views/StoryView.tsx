@@ -4,7 +4,7 @@ import { CircuitEditor } from '../components/CircuitEditor';
 import { IconDownload, IconPlay, IconRefresh } from '../components/icons';
 import { MatrixView } from '../components/MatrixEditor';
 import { ClaimChains, ExecutionProblems, exportRequest } from '../components/ResultsPanel';
-import { RunProgress, isActive } from '../components/RunProgress';
+import { RunDetails, RunProgress, isActive } from '../components/RunProgress';
 import { WitnessView } from '../components/WitnessView';
 import { BN254_P, invMod } from '../lib/bn254';
 import { isStale } from '../lib/canonical';
@@ -82,16 +82,25 @@ function RunArea({
   runState,
   children,
   preview,
+  statusAbove = false,
 }: {
   runState: Run | undefined;
   children: (report: AnalysisReport | ExperimentReport) => React.ReactNode;
   preview?: React.ReactNode;
+  /** A compact RunProgress above shows the running run's status and Stop button; show only its steps here. */
+  statusAbove?: boolean;
 }) {
   if (!runState) return null;
   const report = runState.report as AnalysisReport | ExperimentReport | null;
+  // Not a live region: the run's RunProgress (here or above) is its one status line, and the step times
+  // in RunDetails tick every half second.
   return (
-    <div className="stack" aria-live="polite">
-      {isActive(runState) || runState.state !== 'completed' ? <RunProgress run={runState} /> : null}
+    <div className="stack">
+      {statusAbove && isActive(runState) ? (
+        <RunDetails run={runState} />
+      ) : isActive(runState) || runState.state !== 'completed' ? (
+        <RunProgress run={runState} />
+      ) : null}
       {runState.state === 'unavailable' ? (
         <div className="stack">
           <div className="banner banner-warn" role="status">
@@ -187,7 +196,7 @@ function Step1() {
         />
       </div>
       <StaleNote runState={r} />
-      <RunArea runState={r}>
+      <RunArea runState={r} statusAbove>
         {(report) =>
           report.kind === 'experiment' ? (
             <div className="stack-lg">

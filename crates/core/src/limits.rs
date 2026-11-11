@@ -12,8 +12,33 @@ pub const GF256_MIN_EXPERIMENTAL_WIDTH: usize = 2;
 pub const BN254_WIDTH: usize = 3;
 
 /// The supported widths of a HADES design over a 64-bit prime field
-/// (`hades/prime/v1`).
-pub const PRIME_WIDTHS: [usize; 2] = [3, 4];
+/// (`hades/prime/v1`): the Poseidon2 widths 2, 3, 4, 8, 12, 16 and 24.
+pub const PRIME_WIDTHS: [usize; 7] = [2, 3, 4, 8, 12, 16, 24];
+
+/// The largest width whose matrices are checked for MDS by enumerating
+/// their square minors. A wider external matrix is checked for the Poseidon2
+/// structure `circ(2 M4, M4, ..., M4)` and for invertibility instead.
+pub const MAX_MINOR_WIDTH: usize = 4;
+
+/// The largest order of the square submatrices searched for a singular one
+/// in a matrix wider than [`MAX_MINOR_WIDTH`]. A singular submatrix of order
+/// `s` gives a nonzero input of weight at most `s` whose image is zero on `s`
+/// coordinates, which refutes the MDS property; the Poseidon2 external
+/// matrix `circ(2 M4, M4, ..., M4)` of width 8 or more always has a singular
+/// `2 x 2` submatrix (rows 0 and 1, columns 0 and 4).
+pub const WIDE_WITNESS_ORDER: usize = 2;
+
+/// Whether a prime-field width is checked with inverse witnesses and packed
+/// arithmetic (every width but 3 and 4, whose certificates use explicit
+/// determinant formulas).
+pub fn prime_width_is_packed(width: usize) -> bool {
+    width != 3 && width != 4
+}
+
+/// Whether a prime-field width is above [`MAX_MINOR_WIDTH`].
+pub fn prime_width_is_wide(width: usize) -> bool {
+    width > MAX_MINOR_WIDTH
+}
 
 /// Inclusive bounds on the AES-like round count.
 pub const MIN_ROUNDS: u32 = 4;

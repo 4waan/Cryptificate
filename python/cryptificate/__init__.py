@@ -11,6 +11,7 @@ from .designs import (
     BN254_MODULUS,
     POSEIDON2_EXTERNAL_3,
     POSEIDON2_INTERNAL_3,
+    POSEIDON2_M4,
     PRIME_FIELDS,
     ProgramBuilder,
     aes_like_design,
@@ -20,6 +21,8 @@ from .designs import (
     gf,
     hades_design,
     identity_program,
+    one_plus_diagonal,
+    poseidon2_external,
     prime_design,
 )
 
@@ -30,6 +33,7 @@ __all__ = [
     "OPERATIONS",
     "POSEIDON2_EXTERNAL_3",
     "POSEIDON2_INTERNAL_3",
+    "POSEIDON2_M4",
     "PRIME_FIELDS",
     "TERMINAL_STATES",
     "Client",
@@ -42,7 +46,9 @@ __all__ = [
     "gf",
     "hades_design",
     "identity_program",
+    "one_plus_diagonal",
+    "poseidon2_external",
     "prime_design",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

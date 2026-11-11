@@ -1,0 +1,17 @@
+{
+  "name": "constants_grain_prime",
+  "kind": "claim",
+  "claim": "constants.grain",
+  "status": "proved",
+  "theorem": "CryptificateJob.constants_grain",
+  "expectedType": "Cryptificate.Grain.poseidon2Constants CryptificateJob.candModulus {{WIDTH}} CryptificateJob.candFullRounds CryptificateJob.candPartialRounds = some CryptificateJob.candConstants",
+  "placeholders": [
+    "WIDTH"
+  ],
+  "requires": [
+    "const_modulus_prime",
+    "const_rounds_hades",
+    "const_constants"
+  ],
+  "field": "prime"
+}

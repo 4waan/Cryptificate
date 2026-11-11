@@ -26,10 +26,22 @@ export function nativeCorrectnessLabel(cases: number): string {
   return `Generated Rust passed ${cases} correctness cases`;
 }
 
-/** Matches every evidence label, including the parametrised native one. */
+/**
+ * "Generated Rust failed F of N correctness cases", the label of a refuted
+ * native.correctness claim. Reports recorded before 0.2.0 carry the passing
+ * count in the label above instead.
+ */
+export function nativeCorrectnessFailedLabel(failures: number, cases: number): string {
+  return `Generated Rust failed ${failures} of ${cases} correctness cases`;
+}
+
+/** Matches every evidence label, including the parametrised native ones. */
 export function isEvidenceLabel(label: string): boolean {
   if ((Object.values(EVIDENCE_LABELS) as string[]).includes(label)) return true;
-  return /^Generated Rust passed \d+ correctness cases$/.test(label);
+  return (
+    /^Generated Rust passed \d+ correctness cases$/.test(label) ||
+    /^Generated Rust failed \d+ of \d+ correctness cases$/.test(label)
+  );
 }
 
 export const CLAIM_STATUSES: readonly ClaimStatus[] = [
@@ -100,8 +112,15 @@ export const PRIME_FIELD_PRESETS: readonly PrimeFieldPreset[] = [
   },
 ];
 
-/** Widths of the prime-field profile. */
-export const PRIME_WIDTHS: readonly number[] = [3, 4];
+/**
+ * Widths of the prime-field profile: the Poseidon2 widths. Above
+ * `PRIME_MINOR_WIDTH` the external matrix's minors are not enumerated, and
+ * the claims `external.m4_mds` and `external.invertible` apply.
+ */
+export const PRIME_WIDTHS: readonly number[] = [2, 3, 4, 8, 12, 16, 24];
+
+/** The widest prime-field design whose matrices are checked minor by minor. */
+export const PRIME_MINOR_WIDTH = 4;
 
 /** Custom moduli must be below 2^64 (and prime; the engine decides that). */
 export const PRIME_MODULUS_LIMIT = 18446744073709551616n;
@@ -140,12 +159,18 @@ export const AES_LIKE_DESIGN_CLAIMS: readonly ClaimInfo[] = [
 export const HADES_PRIME_DESIGN_CLAIMS: readonly ClaimInfo[] = [
   { id: 'field.prime', chain: 'design', title: 'Modulus is prime' },
   { id: 'external.mds', chain: 'design', title: 'External matrix is MDS (branch number width + 1)' },
+  { id: 'external.m4_mds', chain: 'design', title: 'External matrix is circ(2 M4, M4, …, M4) with M4 MDS' },
+  { id: 'external.invertible', chain: 'design', title: 'External matrix is invertible' },
   { id: 'internal.invertible', chain: 'design', title: 'Internal matrix is invertible' },
   { id: 'sbox.bijective', chain: 'design', title: 'Power S-box is a permutation' },
   { id: 'activity.outer', chain: 'design', title: 'Active S-box bound for the full rounds' },
   { id: 'activity.partial', chain: 'design', title: 'No difference passes the partial rounds without an active S-box' },
   { id: 'activity.total', chain: 'design', title: 'Active S-box bound over the whole permutation' },
+  { id: 'constants.grain', chain: 'design', title: 'Round constants are the Grain constants (Poseidon2 layout)' },
 ];
+
+/** Claims that only a prime-field design wider than `PRIME_MINOR_WIDTH` has. */
+export const WIDE_EXTERNAL_CLAIMS: readonly ClaimId[] = ['external.m4_mds', 'external.invertible'];
 
 export const HADES_DESIGN_CLAIMS: readonly ClaimInfo[] = [
   { id: 'external.mds', chain: 'design', title: 'External matrix is MDS (branch number 4)' },
@@ -154,6 +179,7 @@ export const HADES_DESIGN_CLAIMS: readonly ClaimInfo[] = [
   { id: 'activity.outer', chain: 'design', title: 'Active S-box bound for the full rounds' },
   { id: 'activity.partial', chain: 'design', title: 'No difference passes the partial rounds without an active S-box' },
   { id: 'activity.total', chain: 'design', title: 'Active S-box bound over the whole permutation' },
+  { id: 'constants.grain', chain: 'design', title: 'Round constants are the Grain constants (Poseidon2 layout)' },
 ];
 
 export const IMPLEMENTATION_CLAIMS: readonly ClaimInfo[] = [
@@ -163,9 +189,26 @@ export const IMPLEMENTATION_CLAIMS: readonly ClaimInfo[] = [
   { id: 'native.timing', chain: 'implementation', title: 'Native speed on this machine' },
 ];
 
-export function designClaimsFor(model: ModelId): readonly ClaimInfo[] {
-  if (model === 'hades/prime/v1') return HADES_PRIME_DESIGN_CLAIMS;
+/**
+ * The design claims of a model. For the prime-field profile they depend on
+ * the width: `external.m4_mds` and `external.invertible` only exist above
+ * `PRIME_MINOR_WIDTH` (a width that is not given counts as narrow).
+ */
+export function designClaimsFor(model: ModelId, width?: number): readonly ClaimInfo[] {
+  if (model === 'hades/prime/v1') {
+    const wide = width !== undefined && width > PRIME_MINOR_WIDTH;
+    return wide ? HADES_PRIME_DESIGN_CLAIMS : HADES_PRIME_DESIGN_CLAIMS.filter((c) => !WIDE_EXTERNAL_CLAIMS.includes(c.id));
+  }
   return model === 'hades/bn254/v1' ? HADES_DESIGN_CLAIMS : AES_LIKE_DESIGN_CLAIMS;
+}
+
+/**
+ * Every design claim a model has at some width, in catalogue order: the
+ * registries of claim ids (policy scopes, SARIF rules, the project-config
+ * enum) list the wide-width claims too.
+ */
+export function everyDesignClaimFor(model: ModelId): readonly ClaimInfo[] {
+  return designClaimsFor(model, Number.POSITIVE_INFINITY);
 }
 
 /** The title of `external.mds` for a HADES design of the given width. */

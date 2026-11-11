@@ -1,12 +1,15 @@
 import { ApiError, bundleUrl, createJob, getCapabilities, getJob, isTerminal, stopJob } from '../data/api';
 import { findRecording, recordedUrl } from '../data/replay';
-import { normalizeAnalysisRequest, normalizeExperimentRequest, type WorkspaceInputs } from '../lib/canonical';
+import { createAutoChecker, type AutoView } from '../lib/autocheck';
+import { inputsDigest, isStale, normalizeAnalysisRequest, normalizeExperimentRequest, type WorkspaceInputs } from '../lib/canonical';
 import { validateProgram } from '../lib/circuit';
 import { debounce } from '../lib/debounce';
 import { validateDesign } from '../lib/design';
 import { record, redo as redoHistory, undo as undoHistory } from '../lib/history';
 import type { Preset } from '../lib/library';
 import { readSavedWorkspace, writeSavedWorkspace, type SavedWorkspace } from '../lib/persist';
+import { readPrefs, writePrefs } from '../lib/prefs';
+import { BUSY_MAX_ATTEMPTS, BUSY_MAX_RETRIES, busyRetryDelayMs, queueRoom } from '../lib/retry';
 import { decodeShare, encodeShare, shareUrl, ShareError } from '../lib/share';
 import { sameSnapshot, type Snapshot } from '../lib/snapshot';
 import type { CandidateDesign, ExperimentProfile, JobKind, Program, ProgramTarget } from '../lib/types';
@@ -20,6 +23,8 @@ import {
   updateRun,
   workspaceInputs,
   type AppState,
+  type Overlay,
+  type Prefs,
   type Run,
   type View,
 } from './store';
@@ -256,12 +261,34 @@ export function inputProblems(inputs: WorkspaceInputs): string[] {
   return problems;
 }
 
+/* ---------------- runs ---------------- */
+
+const retryTimers = new Map<string, number>();
+
+export interface StartOptions {
+  /** Started by auto-check. */
+  auto?: boolean;
+}
+
+/** Whether a run has not reached an end state yet (including a pending resubmission). */
+export function runIsActive(run: Run | undefined): boolean {
+  return !!run && ['submitting', 'retrying', 'queued', 'running'].includes(run.state);
+}
+
+/** Sets a run's state, stamping the end time when it ends. */
+function settle(key: string, patch: Partial<Run>): void {
+  const prev = getState().runs[key];
+  if (!prev) return;
+  const ended = patch.state !== undefined && !runIsActive({ ...prev, ...patch }) && runIsActive(prev);
+  updateRun(key, ended ? { ...patch, finishedAt: Date.now(), retryAt: undefined } : patch);
+}
+
 /**
  * Starts an analysis or experiment on the current workspace inputs. Live
  * mode submits to the local service and polls; replay mode looks for a
  * recorded run with the same inputs. Returns the run key.
  */
-export function startRun(kind: JobKind, profile: ExperimentProfile = 'quick'): string | null {
+export function startRun(kind: JobKind, profile: ExperimentProfile = 'quick', options: StartOptions = {}): string | null {
   const s = getState();
   const inputs = workspaceInputs(s);
   if (inputProblems(inputs).length) return null;
@@ -276,14 +303,19 @@ export function startRun(kind: JobKind, profile: ExperimentProfile = 'quick'): s
     state: 'submitting',
     steps: [],
     report: null,
+    startedAt: Date.now(),
+    ...(options.auto ? { auto: true } : {}),
   };
   setState((st) => ({ runs: { ...st.runs, [key]: run }, current: { ...st.current, [kind]: key } }));
-  if (source === 'live') void runLive(run);
+  if (source === 'live') void submitLive(key);
   else void runReplay(run);
   return key;
 }
 
-async function runLive(run: Run): Promise<void> {
+async function submitLive(key: string): Promise<void> {
+  const run = getState().runs[key];
+  if (!run) return;
+  let job;
   try {
     const body =
       run.kind === 'analysis'
@@ -297,18 +329,60 @@ async function runLive(run: Run): Promise<void> {
             program: run.inputs.program ?? undefined,
             profile: run.profile ?? 'quick',
           });
-    const job = await createJob(run.kind, body);
-    updateRun(run.key, { jobId: job.id, state: job.state ?? 'queued', bundleUrl: bundleUrl(job.id) });
-    poll(run.key, job.id);
+    job = await createJob(run.kind, body);
   } catch (err) {
     const e = err instanceof ApiError ? err : null;
-    updateRun(run.key, {
-      state: 'failed',
+    const latest = getState().runs[key];
+    if (!latest || latest.state === 'cancelled') return;
+    if (e?.status === 429) {
+      // `attempts` counts the refusals so far; the next submission is number attempts + 1.
+      const attempt = (latest.attempts ?? 0) + 1;
+      if (attempt <= BUSY_MAX_RETRIES) {
+        const delay = busyRetryDelayMs(attempt, e.retryAfter);
+        updateRun(key, { state: 'retrying', attempts: attempt, retryAt: Date.now() + delay, error: undefined });
+        retryTimers.set(key, window.setTimeout(() => resubmit(key), delay));
+        return;
+      }
+      settle(key, {
+        state: 'failed',
+        attempts: attempt,
+        error: `The service stayed busy for all ${BUSY_MAX_ATTEMPTS} attempts, so nothing was checked. Try again when its current job finishes.`,
+      });
+      return;
+    }
+    settle(key, {
+      // The service validated the request and refused it: the inputs, not the service, are at fault.
+      state: e?.status === 400 && e.code === 'invalid-request' ? 'invalid' : 'failed',
       error: e ? e.message : 'The local service could not be reached.',
       errorPath: e?.path,
     });
     if (!e) void checkConnection();
+    return;
   }
+  const latest = getState().runs[key];
+  if (latest?.state === 'cancelled') {
+    // Stopped while the request was in flight: stop the job it created too.
+    void stopJob(job.id).catch(() => undefined);
+    updateRun(key, { jobId: job.id });
+    return;
+  }
+  updateRun(key, { jobId: job.id, state: job.state ?? 'queued', bundleUrl: bundleUrl(job.id), retryAt: undefined });
+  poll(key, job.id);
+}
+
+function resubmit(key: string): void {
+  retryTimers.delete(key);
+  const run = getState().runs[key];
+  if (!run || run.state !== 'retrying') return;
+  updateRun(key, { state: 'submitting', retryAt: undefined });
+  void submitLive(key);
+}
+
+/** Resubmits a run that is waiting out a busy service now, instead of at its retry time. */
+export function retryNow(key: string): void {
+  const t = retryTimers.get(key);
+  if (t !== undefined) window.clearTimeout(t);
+  resubmit(key);
 }
 
 function poll(key: string, jobId: string): void {
@@ -318,7 +392,10 @@ function poll(key: string, jobId: string): void {
     if (!current || isTerminal(current.state)) return;
     try {
       const job = await getJob(jobId);
-      updateRun(key, {
+      const now = Date.now();
+      const stepStarts = { ...(getState().runs[key]?.stepStarts ?? {}) };
+      for (const st of job.steps) if (st.state === 'running' && stepStarts[st.name] === undefined) stepStarts[st.name] = now;
+      settle(key, {
         state: job.state,
         steps: job.steps,
         report: job.report ?? current.report,
@@ -326,6 +403,7 @@ function poll(key: string, jobId: string): void {
         error: job.error?.message,
         errorPath: job.error?.path,
         bundleUrl: job.bundle ? bundleUrl(jobId) : current.bundleUrl,
+        stepStarts,
       });
       if (!isTerminal(job.state)) pollers.set(key, window.setTimeout(tick, POLL_MS));
     } catch {
@@ -338,12 +416,13 @@ function poll(key: string, jobId: string): void {
 
 async function runReplay(run: Run): Promise<void> {
   const match = await findRecording(run.kind, run.inputs);
+  if (getState().runs[run.key]?.state === 'cancelled') return;
   if (!match) {
-    updateRun(run.key, { state: 'unavailable' });
+    settle(run.key, { state: 'unavailable' });
     return;
   }
   const report = match.report;
-  updateRun(run.key, {
+  settle(run.key, {
     state:
       report.execution?.state === 'running' || report.execution?.state === 'queued'
         ? 'completed'
@@ -357,7 +436,17 @@ async function runReplay(run: Run): Promise<void> {
 
 export async function stopRun(key: string): Promise<void> {
   const run = getState().runs[key];
-  if (!run || isTerminal(run.state)) return;
+  if (!run) return;
+  if (run.state === 'retrying' || run.state === 'submitting') {
+    // Nothing is running on the service yet (or the job id is not known): stop locally;
+    // a job created by an in-flight request is stopped when its id arrives.
+    const t = retryTimers.get(key);
+    if (t !== undefined) window.clearTimeout(t);
+    retryTimers.delete(key);
+    settle(key, { state: 'cancelled' });
+    return;
+  }
+  if (isTerminal(run.state)) return;
   if (run.source === 'live' && run.jobId) {
     try {
       await stopJob(run.jobId);
@@ -365,32 +454,174 @@ export async function stopRun(key: string): Promise<void> {
       updateRun(key, { error: err instanceof Error ? err.message : 'Stop request failed.' });
     }
   } else {
-    updateRun(key, { state: 'cancelled' });
+    settle(key, { state: 'cancelled' });
   }
 }
 
+/**
+ * Checks the inputs in the editor (the Check button, Ctrl/Cmd+Enter). An
+ * unfinished check of an earlier version is stopped first; a check of
+ * these exact inputs already under way is left alone.
+ */
+export function checkNow(): string | null {
+  const s = getState();
+  const prev = s.current.analysis ? s.runs[s.current.analysis] : undefined;
+  if (prev && runIsActive(prev)) {
+    if (!isStale(workspaceInputs(s), prev.inputs)) return null;
+    void stopRun(prev.key);
+  }
+  return startRun('analysis');
+}
+
+/** Whether Check would start something now: valid inputs, not already being checked. */
+export function canCheck(s: AppState = getState()): boolean {
+  const inputs = workspaceInputs(s);
+  if (inputProblems(inputs).length) return false;
+  const prev = s.current.analysis ? s.runs[s.current.analysis] : undefined;
+  return !(prev && runIsActive(prev) && !isStale(inputs, prev.inputs));
+}
+
+/**
+ * The run Escape and the Stop command act on: the running job the current
+ * view shows first (the experiment on Experiments, the check in the
+ * workspace, the story's own runs in the story), else any other running job.
+ */
+export function activeRunKey(s: AppState = getState()): string | undefined {
+  const story = Object.values(s.story.runs);
+  const { analysis, experiment } = s.current;
+  const keys =
+    s.view === 'experiments'
+      ? [experiment, analysis, ...story]
+      : s.view === 'story'
+        ? [...story, analysis, experiment]
+        : [analysis, experiment, ...story];
+  return keys.find((k) => k !== undefined && runIsActive(s.runs[k]));
+}
+
+/** The running job Escape would stop, in words: "the check" or "the experiment". */
+export function runNoun(run: Pick<Run, 'kind'>): string {
+  return run.kind === 'analysis' ? 'the check' : 'the experiment';
+}
+
+/* ---------------- connection ---------------- */
+
 let connectionTimer: number | undefined;
+let failures = 0;
+
+/** Seconds between automatic connection attempts: quick at first, then every 15 s. */
+export function reconnectDelayMs(failuresSoFar: number): number {
+  return [3000, 5000, 10000][failuresSoFar - 1] ?? 15000;
+}
 
 /** Checks the local service; falls back to recorded runs when it does not answer. */
 export async function checkConnection(): Promise<void> {
   if (isReplayBuild()) return;
   window.clearTimeout(connectionTimer);
   if (getState().connection.status !== 'connected') {
-    setState((s) => ({ connection: { ...s.connection, status: 'checking' } }));
+    setState((s) => ({ connection: { ...s.connection, status: 'checking', nextAttemptAt: undefined } }));
   }
+  let delay = 15000;
   try {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 3000);
     const capabilities = await getCapabilities(controller.signal);
     window.clearTimeout(timeout);
+    failures = 0;
     setState({ connection: { status: 'connected', capabilities } });
   } catch {
+    failures++;
+    delay = reconnectDelayMs(failures);
     setState({
-      connection: { status: 'unreachable', message: 'The local service at 127.0.0.1:4173 did not answer.' },
+      connection: {
+        status: 'unreachable',
+        message: 'The local service at 127.0.0.1:4173 did not answer.',
+        nextAttemptAt: Date.now() + delay,
+      },
     });
   }
-  connectionTimer = window.setTimeout(() => void checkConnection(), 15000);
+  connectionTimer = window.setTimeout(() => void checkConnection(), delay);
 }
+
+/* ---------------- preferences ---------------- */
+
+export function restorePrefs(storage: Pick<Storage, 'getItem'> | null = browserStorage()): void {
+  setState({ prefs: readPrefs(storage) });
+}
+
+export function setPrefs(patch: Partial<Prefs>, storage: Pick<Storage, 'setItem'> | null = browserStorage()): void {
+  const prefs = { ...getState().prefs, ...patch };
+  setState({ prefs });
+  writePrefs(storage, prefs);
+}
+
+export function setOverlay(overlay: Overlay): void {
+  setState({ overlay });
+}
+
+/* ---------------- auto-check ---------------- */
+
+let digestMemo: { inputs: WorkspaceInputs | null; digest: string | null } = { inputs: null, digest: null };
+const runDigests = new WeakMap<WorkspaceInputs, string | null>();
+
+function currentDigest(s: AppState): string | null {
+  if (digestMemo.inputs && digestMemo.inputs.design === s.design && digestMemo.inputs.program === s.program && digestMemo.inputs.target === (s.program ? s.target : undefined)) {
+    return digestMemo.digest;
+  }
+  const inputs = workspaceInputs(s);
+  const digest = inputProblems(inputs).length ? null : inputsDigest(inputs);
+  digestMemo = { inputs, digest };
+  return digest;
+}
+
+function runDigest(run: Run): string | null {
+  if (!runDigests.has(run.inputs)) runDigests.set(run.inputs, inputsDigest(run.inputs));
+  return runDigests.get(run.inputs) ?? null;
+}
+
+/** The slice of state auto-check decides on. */
+export function autoView(s: AppState = getState()): AutoView {
+  const last = s.current.analysis ? s.runs[s.current.analysis] : undefined;
+  const live = Object.values(s.runs).filter((r) => r.source === 'live' && runIsActive(r)).length;
+  return {
+    enabled: s.prefs.autoCheck,
+    inWorkspace: s.view === 'workspace',
+    connecting: s.connection.status === 'checking' && !s.connection.capabilities,
+    digest: currentDigest(s),
+    last: last
+      ? {
+          key: last.key,
+          digest: runDigest(last),
+          active: runIsActive(last),
+          auto: last.auto === true,
+          // A recorded or cached report of a run that did not finish is not "Up to date" either.
+          failed:
+            ['failed', 'timeout', 'cancelled', 'invalid'].includes(last.state) ||
+            (last.state === 'completed' && !!last.report?.execution && last.report.execution.state !== 'completed'),
+          unavailable: last.state === 'unavailable',
+        }
+      : undefined,
+    experimentActive: Object.values(s.runs).some((r) => r.kind === 'experiment' && runIsActive(r)),
+    room: dataSource(s) === 'live' ? queueRoom(s.connection.capabilities?.limits?.maxQueued, live) : Infinity,
+  };
+}
+
+/** Runs auto-check against the store. Returns a stop function. */
+export function startAutoCheck(): () => void {
+  const driver = createAutoChecker({
+    read: () => autoView(getState()),
+    start: () => void startRun('analysis', 'quick', { auto: true }),
+    stop: (key) => stopRun(key),
+    report: (auto) => setState({ auto }),
+  });
+  const unsubscribe = subscribe(() => driver.update());
+  driver.update();
+  return () => {
+    unsubscribe();
+    driver.dispose();
+  };
+}
+
+/* ---------------- story ---------------- */
 
 export function setStoryStep(step: number): void {
   setState({ storyStep: step });

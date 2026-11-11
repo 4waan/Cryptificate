@@ -3,9 +3,9 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "Cryptificate local service",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "summary": "Submit designs and circuits for Lean-checked analysis, run experiments, poll jobs and download evidence bundles.",
-    "description": "HTTP API of `cryptificate serve`, the local Cryptificate service. The web workbench and the Python client (`python/cryptificate`) use it; the `cryptificate check` and `experiment` commands run the same pipelines in-process instead.\n\n**Scope.** This document describes every route the service answers. Request and report bodies are described by the JSON Schemas in `schemas/` (referenced here with `$ref`); the served copy at `GET /api/openapi.json` embeds them under `components/schemas`. Examples are responses recorded from a live service (version 0.1.0, release engine, Lean checker), except the 500 example, which shows the fixed body of that response. Field elements are strings: two hex digits for GF(2^8), canonical decimals below the modulus for BN254.\n\n**Security model.** The service is a single-user local tool and has no authentication. It binds to 127.0.0.1 by default; `--host` can bind elsewhere, and then anyone who can reach the address can run jobs. Every request must carry a `Host` header naming a loopback address (`127.0.0.1`, `localhost`, `::1`) or the bound host, which rejects DNS-rebinding pages. State-changing requests (every method other than GET, HEAD and OPTIONS) are accepted only same-origin: when an `Origin` header is present it must be `http://<allowed host>:<port>` of this service or one of the origins given with `--allow-origin` / `CRYPTIFICATE_ALLOWED_ORIGINS`; without `Origin`, a `Sec-Fetch-Site` header other than `same-origin` or `none` is rejected. Clients outside a browser (curl, Python) send neither header and are accepted. A rejected request gets 403 `forbidden`. There are no CORS headers: cross-origin browser reads are not supported. Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and `Cross-Origin-Resource-Policy: same-origin`.\n\n**Limits.** JSON bodies are at most 256 KiB (413 beyond, and the connection is closed). One job runs at a time and at most two wait behind it (`limits.maxQueued` in the capabilities); a further submission gets 429 with `Retry-After: 30`. There is no per-client rate limit beyond this queue. Each job runs under a time budget (`limits.analysisBudgetSeconds`, or the experiment profile's `budget.totalSeconds`), and each Lean run under `limits.leanTimeoutSeconds`.\n\n**Job lifecycle.** `POST /api/analyses` or `POST /api/experiments` answers 202 with a job summary and a `Location` header. The job moves `queued` -> `running` -> one of `completed`, `failed`, `timeout`, `cancelled` or `invalid` (terminal). Poll `GET /api/jobs/{id}`: while it runs, `steps` and a partial `report` are visible. When the state is terminal and `bundle` is true, `GET /api/jobs/{id}/bundle` returns the evidence bundle. Finished jobs survive a restart of the service (the 200 most recently updated are loaded at start). Jobs that were queued or running when the service stopped are not resumed: they read `cancelled`, or `failed` with error code `interrupted`. There is no endpoint that lists jobs; keep the ids you submit.\n\n**Errors.** Every error is JSON with a stable `error.code` (see `ErrorResponse`). A request under `/api/` that matches no operation described here (an unknown path, or a described path with a method it does not list) answers 404 `not-found` when its method is GET or POST, and 405 `method-not-allowed` for any other method, HEAD and OPTIONS included. No response sends an `Allow` header. An unexpected failure answers 500 `internal`.\n\n**Stability.** Paths, status codes, error codes and the members described in the schemas are the supported surface. New optional members may be added to responses; clients should ignore members they do not know. Requests are checked strictly: unknown members are rejected.",
+    "description": "HTTP API of `cryptificate serve`, the local Cryptificate service. The web workbench and the Python client (`python/cryptificate`) use it; the `cryptificate check` and `experiment` commands run the same pipelines in-process instead.\n\n**Scope.** This document describes every route the service answers. Request and report bodies are described by the JSON Schemas in `schemas/` (referenced here with `$ref`); the served copy at `GET /api/openapi.json` embeds them under `components/schemas`. Examples are responses recorded from a live service (release engine, Lean checker), except the 500 example, which shows the fixed body of that response. They were recorded on the release branch before its version was set to 0.2.0, so their version fields read 0.1.0. Field elements are strings: two hex digits for GF(2^8), canonical decimals below the modulus for BN254, and for hades/prime/v1 canonical decimals below the design's modulus.\n\n**Security model.** The service is a single-user local tool and has no authentication. It binds to 127.0.0.1 by default; `--host` can bind elsewhere, and then anyone who can reach the address can run jobs. Every request must carry a `Host` header naming a loopback address (`127.0.0.1`, `localhost`, `::1`) or the bound host, which rejects DNS-rebinding pages. State-changing requests (every method other than GET, HEAD and OPTIONS) are accepted only same-origin: when an `Origin` header is present it must be `http://<allowed host>:<port>` of this service or one of the origins given with `--allow-origin` / `CRYPTIFICATE_ALLOWED_ORIGINS`; without `Origin`, a `Sec-Fetch-Site` header other than `same-origin` or `none` is rejected. Clients outside a browser (curl, Python) send neither header and are accepted. A rejected request gets 403 `forbidden`. There are no CORS headers: cross-origin browser reads are not supported. Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and `Cross-Origin-Resource-Policy: same-origin`.\n\n**Limits.** JSON bodies are at most 256 KiB (413 beyond, and the connection is closed). One job runs at a time and at most two wait behind it (`limits.maxQueued` in the capabilities); a further submission gets 429 with `Retry-After: 30`. There is no per-client rate limit beyond this queue. Each job runs under a time budget (`limits.analysisBudgetSeconds`, or the experiment profile's `budget.totalSeconds`), and each Lean run under `limits.leanTimeoutSeconds`.\n\n**Job lifecycle.** `POST /api/analyses` or `POST /api/experiments` answers 202 with a job summary and a `Location` header. The job moves `queued` -> `running` -> one of `completed`, `failed`, `timeout`, `cancelled` or `invalid` (terminal). Poll `GET /api/jobs/{id}`: while it runs, `steps` and a partial `report` are visible. When the state is terminal and `bundle` is true, `GET /api/jobs/{id}/bundle` returns the evidence bundle. Finished jobs survive a restart of the service (the 200 most recently updated are loaded at start). Jobs that were queued or running when the service stopped are not resumed: they read `cancelled`, or `failed` with error code `interrupted`. There is no endpoint that lists jobs; keep the ids you submit.\n\n**Errors.** Every error is JSON with a stable `error.code` (see `ErrorResponse`). A request under `/api/` that matches no operation described here (an unknown path, or a described path with a method it does not list) answers 404 `not-found` when its method is GET or POST, and 405 `method-not-allowed` for any other method, HEAD and OPTIONS included. No response sends an `Allow` header. An unexpected failure answers 500 `internal`.\n\n**Stability.** Paths, status codes, error codes and the members described in the schemas are the supported surface. New optional members may be added to responses; clients should ignore members they do not know. Requests are checked strictly: unknown members are rejected.",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
@@ -72,7 +72,8 @@
                       "checker": "cryptificate 0.1.0 (c27d45c)",
                       "models": [
                         "aes-like/gf256/v1",
-                        "hades/bn254/v1"
+                        "hades/bn254/v1",
+                        "hades/prime/v1"
                       ],
                       "profiles": [
                         {
@@ -636,7 +637,7 @@
                           "name": "emit-lean",
                           "state": "completed",
                           "ms": 9,
-                          "detail": "5 theorem(s)"
+                          "detail": "7 theorem(s)"
                         },
                         {
                           "name": "lean",
@@ -855,12 +856,12 @@
                           "name": "emit-lean",
                           "state": "completed",
                           "ms": 9,
-                          "detail": "5 theorem(s)"
+                          "detail": "7 theorem(s)"
                         },
                         {
                           "name": "lean",
                           "state": "completed",
-                          "detail": "5/5 theorem(s) accepted",
+                          "detail": "7/7 theorem(s) accepted",
                           "ms": 5242
                         },
                         {
@@ -1108,6 +1109,54 @@
                             "note": "Lean checked CryptificateJob.activity_bound using only the standard axioms."
                           },
                           {
+                            "id": "sbox.differential",
+                            "chain": "design",
+                            "title": "Differential uniformity of the S-box table is 4",
+                            "status": "proved",
+                            "evidence": {
+                              "kind": "lean",
+                              "label": "Lean-checked proof",
+                              "theorem": "CryptificateJob.sbox_differential",
+                              "type": "Cryptificate.differentialUniformity CryptificateJob.candSboxTable = 4 ∧ Cryptificate.gf 1 ≠ 0 ∧ diffCount CryptificateJob.candSboxTable (Cryptificate.gf 1) (Cryptificate.gf 31) = 4",
+                              "axioms": [
+                                "propext",
+                                "Classical.choice",
+                                "Quot.sound"
+                              ]
+                            },
+                            "witness": {
+                              "kind": "sbox-differential",
+                              "uniformity": 4,
+                              "inputDifference": "01",
+                              "outputDifference": "1F"
+                            },
+                            "note": "Lean checked CryptificateJob.sbox_differential using only the standard axioms. For no nonzero input difference a and output difference b (b may be 00) do more than 4 of the 256 inputs x satisfy S(x ⊕ a) ⊕ S(x) = b; input difference 01 gives output difference 1F for exactly 4. This is a property of the table alone, not a bound on any trail or differential of the cipher."
+                          },
+                          {
+                            "id": "sbox.linearity",
+                            "chain": "design",
+                            "title": "Linearity of the S-box table is 32",
+                            "status": "proved",
+                            "evidence": {
+                              "kind": "lean",
+                              "label": "Lean-checked proof",
+                              "theorem": "CryptificateJob.sbox_linearity",
+                              "type": "Cryptificate.linearity CryptificateJob.candSboxTable = 32 ∧ Cryptificate.gf 72 ≠ 0 ∧ (Cryptificate.walsh CryptificateJob.candSboxTable (Cryptificate.gf 1) (Cryptificate.gf 72)).natAbs = 32",
+                              "axioms": [
+                                "propext",
+                                "Classical.choice",
+                                "Quot.sound"
+                              ]
+                            },
+                            "witness": {
+                              "kind": "sbox-linearity",
+                              "linearity": 32,
+                              "inputMask": "01",
+                              "outputMask": "48"
+                            },
+                            "note": "Lean checked CryptificateJob.sbox_linearity using only the standard axioms. No Walsh coefficient at a nonzero output mask exceeds 32 in absolute value (nonlinearity 112); the one at input mask 01 and output mask 48 reaches it. This is a property of the table alone, not a bound on any linear trail or hull of the cipher."
+                          },
+                          {
                             "id": "circuit.equivalence",
                             "chain": "implementation",
                             "title": "Circuit computes the design matrix",
@@ -1229,12 +1278,12 @@
                               "name": "emit-lean",
                               "state": "completed",
                               "ms": 9,
-                              "detail": "5 theorem(s)"
+                              "detail": "7 theorem(s)"
                             },
                             {
                               "name": "lean",
                               "state": "completed",
-                              "detail": "5/5 theorem(s) accepted",
+                              "detail": "7/7 theorem(s) accepted",
                               "ms": 5242
                             },
                             {

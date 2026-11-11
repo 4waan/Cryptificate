@@ -51,6 +51,13 @@
         "witness": null
       },
       {
+        "claim": "constants.grain",
+        "holds": true,
+        "note": "the reference constants are the Grain constants of the BN254 instance with t = 3, R_F = 8, R_P = 56 (Grain.bn254_reference)",
+        "predicted": "proved",
+        "witness": null
+      },
+      {
         "claim": "circuit.equivalence",
         "holds": true,
         "note": "the program's coefficient matrix equals the external matrix",
@@ -58,6 +65,14 @@
         "witness": null
       }
     ],
+    "constants": {
+      "fieldSize": 254,
+      "layout": "poseidon2",
+      "matches": true,
+      "mismatch": null,
+      "note": "the reference constants are the Grain constants of the BN254 instance with t = 3, R_F = 8, R_P = 56 (Grain.bn254_reference)",
+      "source": "reference"
+    },
     "external": {
       "branchWitness": null,
       "determinant": "4",
