@@ -4,12 +4,12 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AnalysisReport, AnalysisRequest, Claim } from '@cryptificate/schema';
 import { ANALYSIS_STEPS, runAnalysis } from '../src/analysis.js';
-import { buildBundle } from '../src/bundle.js';
+import { buildBundle, bundleEntries } from '../src/bundle.js';
 import { JobContext } from '../src/context.js';
 import type { PipelineEnv } from '../src/context.js';
-import { readTarGz } from '../src/tar.js';
+import { createTarGz, readTarGz } from '../src/tar.js';
 import { verifyBundle } from '../src/verify.js';
-import { AES_DESIGN, IDENTITY_DESIGN, IDENTITY_PROGRAM, makeFixture } from './helpers.js';
+import { AES_DESIGN, AES_DIFF_WITNESS, IDENTITY_DESIGN, IDENTITY_PROGRAM, makeFixture } from './helpers.js';
 
 /** A killed process may linger as a zombie when nothing reaps orphans (containers). */
 function alive(pid: number): boolean {
@@ -195,6 +195,102 @@ test('verify re-derives the claims of a bundle and detects tampering', async () 
   }
 });
 
+test('verify compares the values of the S-box quality claims and flags stripped ones', async () => {
+  const { root, env } = makeFixture();
+  try {
+    const { report } = await analyze(env, { design: AES_DESIGN });
+    assert.deepEqual(claim(report, 'sbox.differential').witness, AES_DIFF_WITNESS);
+    const tc = await env.toolchain();
+    const dir = join(env.paths.jobsDir, report.id);
+    const bundleOf = async (name: string, edit: (r: AnalysisReport) => void) => {
+      const r: AnalysisReport = JSON.parse(JSON.stringify(report));
+      edit(r);
+      const path = join(root, `${name}.tar.gz`);
+      writeFileSync(path, buildBundle({ jobDir: dir, report: r, toolchain: tc, paths: env.paths }));
+      return verifyBundle(env, path);
+    };
+    const ok = await bundleOf('ok', () => {});
+    assert.equal(ok.ok, true, JSON.stringify(ok.rows));
+    assert.deepEqual(
+      ok.rows.filter((r) => r.claim.startsWith('sbox.') && r.claim !== 'sbox.bijective').map((r) => [r.claim, r.recorded, r.result]),
+      [
+        ['sbox.differential', 'proved (uniformity 4 at 01/1F)', 'match'],
+        ['sbox.linearity', 'proved (linearity 32 at 01/48)', 'match'],
+      ],
+    );
+
+    // a recorded value that differs from the recomputed one does not verify
+    const forged = await bundleOf('forged', (r) => {
+      const d = r.claims.find((c) => c.id === 'sbox.differential')!;
+      d.title = 'Differential uniformity of the S-box table is 2';
+      d.witness = { ...AES_DIFF_WITNESS, uniformity: 2 };
+    });
+    assert.equal(forged.ok, false);
+    const row = forged.rows.find((r) => r.claim === 'sbox.differential')!;
+    assert.deepEqual([row.recorded, row.recomputed, row.result], ['proved (uniformity 2 at 01/1F)', 'proved (uniformity 4 at 01/1F)', 'mismatch']);
+
+    // the claims removed from a bundle whose certificate is the current one
+    const strip = (r: AnalysisReport) => {
+      r.claims = r.claims.filter((c) => c.id !== 'sbox.differential' && c.id !== 'sbox.linearity');
+    };
+    const stripped = await bundleOf('stripped', strip);
+    assert.equal(stripped.ok, false);
+    assert.deepEqual(
+      stripped.rows.filter((r) => r.recorded === 'missing').map((r) => [r.claim, r.result]),
+      [
+        ['sbox.differential', 'mismatch'],
+        ['sbox.linearity', 'mismatch'],
+      ],
+    );
+
+    // a bundle whose certificate differs, as for one recorded before the claims existed
+    const older = await bundleOf('older', (r) => {
+      strip(r);
+      r.provenance.leanSourceSha256 = '0'.repeat(64);
+    });
+    assert.equal(older.ok, true, JSON.stringify(older.rows));
+    assert.deepEqual(
+      older.rows.filter((r) => r.recorded === 'missing').map((r) => [r.claim, r.result]),
+      [
+        ['sbox.differential', 'not recorded'],
+        ['sbox.linearity', 'not recorded'],
+      ],
+    );
+    assert.ok(older.notes.some((n) => n.includes('does not record sbox.differential, sbox.linearity') && n.includes('cannot rule out')));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('verify passes on bundles with report.html and never reads it', async () => {
+  const { root, env } = makeFixture();
+  try {
+    const { report } = await analyze(env, { design: IDENTITY_DESIGN, program: IDENTITY_PROGRAM });
+    const tc = await env.toolchain();
+    const dir = join(env.paths.jobsDir, report.id);
+    const entries = bundleEntries({ jobDir: dir, report, toolchain: tc, paths: env.paths });
+    assert.ok(entries.some((e) => e.path === 'report.html'));
+    const bundlePath = join(root, 'bundle.tar.gz');
+    writeFileSync(bundlePath, createTarGz(entries));
+    const ok = await verifyBundle(env, bundlePath);
+    assert.equal(ok.ok, true, JSON.stringify(ok.rows));
+
+    // a report.html that claims everything was proved changes nothing: verify reads report.json
+    const doctored = entries.map((e) => (e.path === 'report.html' ? { path: e.path, data: '<p>matrix.mds proved</p>' } : e));
+    const doctoredPath = join(root, 'doctored.tar.gz');
+    writeFileSync(doctoredPath, createTarGz(doctored));
+    const again = await verifyBundle(env, doctoredPath);
+    assert.deepEqual(again.rows, ok.rows);
+    assert.equal(again.ok, true);
+    // and a bundle without report.html (recorded before it existed) verifies the same
+    const olderPath = join(root, 'older.tar.gz');
+    writeFileSync(olderPath, createTarGz(entries.filter((e) => e.path !== 'report.html')));
+    assert.deepEqual((await verifyBundle(env, olderPath)).rows, ok.rows);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('refinement is reported only when checked for the current kernel source', async () => {
   const { mkdirSync } = await import('node:fs');
   const { createHash } = await import('node:crypto');
@@ -202,6 +298,7 @@ test('refinement is reported only when checked for the current kernel source', a
   const { root, env } = makeFixture();
   try {
     assert.equal(refinementStatus(env.paths, 'bn254').status, 'unsupported');
+    assert.match(refinementStatus(env.paths, 'bn254').note, /arkworks' Fr, which no refinement proof covers/);
     assert.equal(refinementStatus(env.paths, 'gf256').status, 'unsupported');
     mkdirSync(join(root, 'crates', 'kernels', 'src'), { recursive: true });
     mkdirSync(join(root, 'refinement'), { recursive: true });
@@ -209,13 +306,35 @@ test('refinement is reported only when checked for the current kernel source', a
     writeFileSync(join(root, 'crates', 'kernels', 'src', 'gf256.rs'), kernel);
     const digest = createHash('sha256').update(kernel).digest('hex');
     writeFileSync(join(root, 'refinement', 'extract.sha256'), `${digest}  crates/kernels/src/gf256.rs\n`);
-    assert.equal(refinementStatus(env.paths, 'gf256').status, 'not_established');
+    assert.equal(refinementStatus(env.paths, 'gf256', {}).status, 'not_established');
+    assert.match(refinementStatus(env.paths, 'gf256', {}).note, /not been checked on this machine/);
+    // the container image says why it never records the check
+    const inImage = refinementStatus(env.paths, 'gf256', { CRYPTIFICATE_CONTAINER: '1' });
+    assert.equal(inImage.status, 'not_established');
+    assert.match(inImage.note, /container image does not check the refinement proofs/);
     mkdirSync(env.paths.home, { recursive: true });
     writeFileSync(join(env.paths.home, 'refinement.json'), JSON.stringify({ checked: true, kernelsSha256: digest }));
     assert.equal(refinementStatus(env.paths, 'gf256').status, 'proved');
+    // the image never reports a check it could not have made, even when its
+    // state directory holds a refinement.json written elsewhere
+    const recordedElsewhere = refinementStatus(env.paths, 'gf256', { CRYPTIFICATE_CONTAINER: '1' });
+    assert.equal(recordedElsewhere.status, 'not_established');
+    assert.match(recordedElsewhere.note, /container image does not check the refinement proofs/);
     const { report } = await analyze(env, { design: IDENTITY_DESIGN, program: IDENTITY_PROGRAM });
     assert.equal(claim(report, 'rust.refinement').status, 'proved');
     assert.equal(claim(report, 'rust.refinement').evidence.label, 'Rust-source refinement (Aeneas)');
+    // a proof-cache hit recomputes the refinement claim instead of copying it
+    rmSync(join(env.paths.home, 'refinement.json'));
+    const { report: cached } = await analyze(env, { design: IDENTITY_DESIGN, program: IDENTITY_PROGRAM });
+    assert.equal(cached.provenance.origin, 'cached');
+    assert.equal(cached.provenance.cachedFrom, report.id);
+    assert.equal(claim(cached, 'rust.refinement').status, 'not_established');
+    assert.match(claim(cached, 'rust.refinement').note, /not been checked on this machine/);
+    assert.deepEqual(
+      cached.claims.filter((c) => c.id !== 'rust.refinement').map((c) => [c.id, c.status, c.note]),
+      report.claims.filter((c) => c.id !== 'rust.refinement').map((c) => [c.id, c.status, c.note]),
+    );
+    assert.deepEqual(cached.claims.map((c) => c.id), report.claims.map((c) => c.id));
     // a changed kernel no longer counts
     writeFileSync(join(root, 'crates', 'kernels', 'src', 'gf256.rs'), `${kernel}// edited\n`);
     assert.equal(refinementStatus(env.paths, 'gf256').status, 'not_established');

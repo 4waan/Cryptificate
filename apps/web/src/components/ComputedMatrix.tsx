@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { matrixDiff, naiveCircuit, type MatrixCellDiff } from '../lib/circuit';
 import { targetMatrix } from '../lib/design';
-import { displayElement, fieldOps } from '../lib/field';
+import { displayElement, displayFieldOf, fieldOps, type DisplayField } from '../lib/field';
 import type { CandidateDesign, Program, ProgramTarget } from '../lib/types';
 import { announce, setProgram } from '../state/actions';
 import { getState } from '../state/store';
@@ -16,6 +16,8 @@ export function targetName(design: CandidateDesign, target: ProgramTarget): stri
 
 /** A circuit computing the target matrix term by term, or null while the matrix has invalid cells. */
 export function circuitFromDesign(design: CandidateDesign, target: ProgramTarget): Program | null {
+  // Circuits are offered over GF(2^8) and BN254 only.
+  if (design.model === 'hades/prime/v1') return null;
   const m = targetMatrix(design, target);
   const f = fieldOps(design.field);
   if (m.length !== design.width || m.some((row) => row.length !== design.width || row.some((x) => !f.isValid(x)))) {
@@ -38,7 +40,7 @@ export function generateCircuit(design: CandidateDesign, target: ProgramTarget):
 }
 
 /** The first differing coefficients in words, with long BN254 values shortened. */
-export function describeCells(cells: MatrixCellDiff[], field: CandidateDesign['field']): string {
+export function describeCells(cells: MatrixCellDiff[], field: DisplayField): string {
   const show = (v: string) => displayElement(field, v).text;
   const shown = cells.slice(0, 4).map((c) => `(${c.row + 1}, ${c.col + 1}) needs ${show(c.want)}, gets ${show(c.got)}`);
   return shown.join('; ') + (cells.length > 4 ? `; and ${cells.length - 4} more` : '');
@@ -88,8 +90,8 @@ export function ComputedMatrix({
         {diff ? (
           <>
             <div className="row computed-pair" style={{ alignItems: 'flex-start', gap: 24 }}>
-              <MatrixView values={want} label={`Target: ${name}`} field={design.field} emphasis={emphasis} emphasisLabel="the circuit differs here" />
-              <MatrixView values={diff.got} label="The circuit computes" field={design.field} emphasis={emphasis} />
+              <MatrixView values={want} label={`Target: ${name}`} field={displayFieldOf(design)} emphasis={emphasis} emphasisLabel="the circuit differs here" />
+              <MatrixView values={diff.got} label="The circuit computes" field={displayFieldOf(design)} emphasis={emphasis} />
             </div>
             <p className={diff.cells.length ? 'diff-summary diff-summary-bad' : 'diff-summary'} role="status">
               {diff.cells.length === 0 ? (
@@ -99,7 +101,7 @@ export function ComputedMatrix({
                   <strong>
                     {diff.cells.length} of {total} coefficients differ
                   </strong>{' '}
-                  (marked ◆): {describeCells(diff.cells, design.field)}.
+                  (marked ◆): {describeCells(diff.cells, displayFieldOf(design))}.
                 </>
               )}
             </p>

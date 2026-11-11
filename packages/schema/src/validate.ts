@@ -3,13 +3,14 @@
  * the engine, which performs the deep validation (matrix properties, circuit
  * semantics). They reject anything that is not exactly the documented shape.
  */
-import { BN254_MODULUS, LIMITS, PROFILES } from './constants.js';
+import { BN254_MODULUS, LIMITS, PRIME_FIELD_PRESETS, PRIME_MODULUS_LIMIT, PRIME_WIDTHS, PROFILES } from './constants.js';
 import type {
   AesLikeDesign,
   AnalysisRequest,
   CandidateDesign,
   ExperimentRequest,
   FieldName,
+  HadesPrimeDesign,
   Program,
   ProgramTarget,
 } from './types.js';
@@ -27,6 +28,7 @@ export type ValidationResult<T> =
 
 const GF_HEX = /^[0-9A-Fa-f]{2}$/;
 const BN_DECIMAL = /^(0|[1-9][0-9]{0,76})$/;
+const PRIME_DECIMAL = /^(0|[1-9][0-9]{0,19})$/;
 const SEED_HEX = /^[0-9A-Fa-f]+$/;
 // Printable text without control characters.
 const PROGRAM_NAME = /^[^\u0000-\u001f\u007f]*$/;
@@ -120,6 +122,17 @@ class Checker {
     return true;
   }
 
+  /** A canonical decimal residue modulo `modulus`. */
+  residue(modulus: bigint, value: unknown, path: string): boolean {
+    if (typeof value !== 'string') {
+      return this.fail(path, 'type', 'field elements are strings, not numbers');
+    }
+    if (!PRIME_DECIMAL.test(value) || BigInt(value) >= modulus) {
+      return this.fail(path, 'prime', `expected a canonical decimal string in [0, ${modulus}) without sign, spaces or leading zeros`);
+    }
+    return true;
+  }
+
   matrix(field: FieldName, value: unknown, path: string, n: number): boolean {
     if (!this.array(value, path, n)) return false;
     let ok = true;
@@ -203,70 +216,128 @@ function checkDesign(c: Checker, value: unknown, path: string): value is Candida
     ]);
     ok = c.literal(value['field'], `${path}/field`, ['bn254']) && ok;
     ok = c.literal(value['width'], `${path}/width`, [3]) && ok;
-    if ('external' in value) ok = c.matrix('bn254', value['external'], `${path}/external`, 3) && ok;
-    if ('internal' in value) ok = c.matrix('bn254', value['internal'], `${path}/internal`, 3) && ok;
-    const full = value['fullRounds'];
-    const partial = value['partialRounds'];
-    let roundsOk = true;
-    if ('fullRounds' in value) {
-      if (c.integer(full, `${path}/fullRounds`, 0, LIMITS.maxHadesRounds)) {
-        if (full % 2 !== 0) roundsOk = c.fail(`${path}/fullRounds`, 'even', 'fullRounds must be even');
-      } else roundsOk = false;
-    }
-    if ('partialRounds' in value) {
-      roundsOk = c.integer(partial, `${path}/partialRounds`, 0, LIMITS.maxHadesRounds) && roundsOk;
-    }
-    if (roundsOk && typeof full === 'number' && typeof partial === 'number') {
-      if (full + partial > LIMITS.maxHadesRounds) {
-        roundsOk = c.fail(`${path}/partialRounds`, 'range', `fullRounds + partialRounds must be at most ${LIMITS.maxHadesRounds}`);
-      } else if (full + partial < 1) {
-        roundsOk = c.fail(`${path}/fullRounds`, 'range', 'at least one round is required');
-      }
-    }
-    ok = roundsOk && ok;
-    if ('sbox' in value) {
-      const sbox = value['sbox'];
-      const sp = `${path}/sbox`;
-      if (c.object(sbox, sp)) {
-        if (sbox['kind'] === 'power') {
-          ok = c.keys(sbox, sp, ['kind', 'exponent']) && ok;
-          ok = c.integer(sbox['exponent'], `${sp}/exponent`, 1, LIMITS.maxExponent) && ok;
-        } else ok = c.fail(`${sp}/kind`, 'enum', 'expected "power" for a HADES design');
-      } else ok = false;
-    }
-    if ('partialMask' in value) {
-      const mask = value['partialMask'];
-      if (c.array(mask, `${path}/partialMask`, 3)) {
-        mask.forEach((m, i) => {
-          if (typeof m !== 'boolean') ok = c.fail(`${path}/partialMask/${i}`, 'type', 'expected a boolean');
-        });
-      } else ok = false;
-    }
-    if ('constants' in value) {
-      const constants = value['constants'];
-      const cp = `${path}/constants`;
-      if (c.object(constants, cp)) {
-        if (constants['kind'] === 'reference') {
-          ok = c.keys(constants, cp, ['kind']) && ok;
-        } else if (constants['kind'] === 'explicit') {
-          ok = c.keys(constants, cp, ['kind', 'values']) && ok;
-          const values = constants['values'];
-          const expected = roundsOk && typeof full === 'number' && typeof partial === 'number' ? full + partial : undefined;
-          if (c.array(values, `${cp}/values`, expected, LIMITS.maxHadesRounds)) {
-            values.forEach((row, i) => {
-              if (c.array(row, `${cp}/values/${i}`, 3)) {
-                row.forEach((e, j) => {
-                  if (!c.element('bn254', e, `${cp}/values/${i}/${j}`)) ok = false;
-                });
-              } else ok = false;
-            });
-          } else ok = false;
-        } else ok = c.fail(`${cp}/kind`, 'enum', 'expected "reference" or "explicit"');
-      } else ok = false;
-    }
-    return ok;
+    const element = (e: unknown, p: string): boolean => c.element('bn254', e, p);
+    return checkHadesBody(c, value, path, 3, element, ['reference', 'explicit']) && ok;
   }
-  return c.fail(`${path}/model`, 'enum', 'expected "aes-like/gf256/v1" or "hades/bn254/v1"');
+  if (model === 'hades/prime/v1') {
+    let ok = c.keys(
+      value,
+      path,
+      ['model', 'field', 'width', 'external', 'internal', 'fullRounds', 'partialRounds', 'sbox'],
+      ['modulus', 'partialMask', 'constants'],
+    );
+    const field = value['field'];
+    const preset = PRIME_FIELD_PRESETS.find((f) => f.id === field);
+    let modulus: bigint | null = null;
+    if (c.literal(field, `${path}/field`, [...PRIME_FIELD_PRESETS.map((f) => f.id), 'prime'])) {
+      const given = value['modulus'];
+      if (given === undefined) {
+        if (preset) modulus = BigInt(preset.modulus);
+        else ok = c.fail(`${path}/modulus`, 'required', 'field "prime" needs a "modulus": a prime below 2^64 as a decimal string');
+      } else if (typeof given !== 'string' || !PRIME_DECIMAL.test(given) || BigInt(given) >= PRIME_MODULUS_LIMIT || BigInt(given) < 2n) {
+        ok = c.fail(`${path}/modulus`, 'modulus', 'expected a prime below 2^64 as a canonical decimal string');
+      } else if (preset && given !== preset.modulus) {
+        ok = c.fail(`${path}/modulus`, 'modulus', `field "${preset.id}" has modulus ${preset.modulus}`);
+      } else modulus = BigInt(given);
+    } else ok = false;
+    ok = c.literal(value['width'], `${path}/width`, PRIME_WIDTHS) && ok;
+    const n = value['width'] === 3 || value['width'] === 4 ? value['width'] : 4;
+    const element = (e: unknown, p: string): boolean => (modulus === null ? true : c.residue(modulus, e, p));
+    return checkHadesBody(c, value, path, n, element, ['unspecified', 'explicit']) && ok;
+  }
+  return c.fail(`${path}/model`, 'enum', 'expected "aes-like/gf256/v1", "hades/bn254/v1" or "hades/prime/v1"');
+}
+
+/**
+ * The members shared by the two HADES models: matrices of width `n`, round
+ * counts, the power S-box, the partial-round mask and the constants.
+ */
+function checkHadesBody(
+  c: Checker,
+  value: Record<string, unknown>,
+  path: string,
+  n: number,
+  element: (e: unknown, path: string) => boolean,
+  constantKinds: readonly string[],
+): boolean {
+  let ok = true;
+  const matrix = (m: unknown, p: string): boolean => {
+    if (!c.array(m, p, n)) return false;
+    let good = true;
+    m.forEach((row, i) => {
+      if (!c.array(row, `${p}/${i}`, n)) {
+        good = false;
+        return;
+      }
+      row.forEach((e, j) => {
+        if (!element(e, `${p}/${i}/${j}`)) good = false;
+      });
+    });
+    return good;
+  };
+  if ('external' in value) ok = matrix(value['external'], `${path}/external`) && ok;
+  if ('internal' in value) ok = matrix(value['internal'], `${path}/internal`) && ok;
+  const full = value['fullRounds'];
+  const partial = value['partialRounds'];
+  let roundsOk = true;
+  if ('fullRounds' in value) {
+    if (c.integer(full, `${path}/fullRounds`, 0, LIMITS.maxHadesRounds)) {
+      if (full % 2 !== 0) roundsOk = c.fail(`${path}/fullRounds`, 'even', 'fullRounds must be even');
+    } else roundsOk = false;
+  }
+  if ('partialRounds' in value) {
+    roundsOk = c.integer(partial, `${path}/partialRounds`, 0, LIMITS.maxHadesRounds) && roundsOk;
+  }
+  if (roundsOk && typeof full === 'number' && typeof partial === 'number') {
+    if (full + partial > LIMITS.maxHadesRounds) {
+      roundsOk = c.fail(`${path}/partialRounds`, 'range', `fullRounds + partialRounds must be at most ${LIMITS.maxHadesRounds}`);
+    } else if (full + partial < 1) {
+      roundsOk = c.fail(`${path}/fullRounds`, 'range', 'at least one round is required');
+    }
+  }
+  ok = roundsOk && ok;
+  if ('sbox' in value) {
+    const sbox = value['sbox'];
+    const sp = `${path}/sbox`;
+    if (c.object(sbox, sp)) {
+      if (sbox['kind'] === 'power') {
+        ok = c.keys(sbox, sp, ['kind', 'exponent']) && ok;
+        ok = c.integer(sbox['exponent'], `${sp}/exponent`, 1, LIMITS.maxExponent) && ok;
+      } else ok = c.fail(`${sp}/kind`, 'enum', 'expected "power" for a HADES design');
+    } else ok = false;
+  }
+  if ('partialMask' in value) {
+    const mask = value['partialMask'];
+    if (c.array(mask, `${path}/partialMask`, n)) {
+      mask.forEach((m, i) => {
+        if (typeof m !== 'boolean') ok = c.fail(`${path}/partialMask/${i}`, 'type', 'expected a boolean');
+      });
+    } else ok = false;
+  }
+  if ('constants' in value) {
+    const constants = value['constants'];
+    const cp = `${path}/constants`;
+    if (c.object(constants, cp)) {
+      const kind = constants['kind'];
+      if ((kind === 'reference' || kind === 'unspecified') && constantKinds.includes(kind)) {
+        ok = c.keys(constants, cp, ['kind']) && ok;
+      } else if (kind === 'explicit') {
+        ok = c.keys(constants, cp, ['kind', 'values']) && ok;
+        const values = constants['values'];
+        const expected = roundsOk && typeof full === 'number' && typeof partial === 'number' ? full + partial : undefined;
+        if (c.array(values, `${cp}/values`, expected, LIMITS.maxHadesRounds)) {
+          values.forEach((row, i) => {
+            if (c.array(row, `${cp}/values/${i}`, n)) {
+              row.forEach((e, j) => {
+                if (!element(e, `${cp}/values/${i}/${j}`)) ok = false;
+              });
+            } else ok = false;
+          });
+        } else ok = false;
+      } else ok = c.fail(`${cp}/kind`, 'enum', `expected ${constantKinds.map((k) => `"${k}"`).join(' or ')}`);
+    } else ok = false;
+  }
+  return ok;
 }
 
 function checkProgram(c: Checker, value: unknown, path: string, field?: FieldName, width?: number): value is Program {
@@ -338,12 +409,21 @@ function designField(design: unknown): { field?: FieldName; width?: number; mode
     return { field: 'gf256', width: w, model: d['model'] };
   }
   if (d['model'] === 'hades/bn254/v1') return { field: 'bn254', width: 3, model: d['model'] };
+  if (d['model'] === 'hades/prime/v1') return { model: d['model'] };
   return {};
 }
 
+/** Circuits, the search and native measurement cover gf256 and bn254 only. */
+const PRIME_PROGRAM_TEXT =
+  'circuits over the prime-field profile are not supported: circuit equivalence, the search and native measurement cover gf256 and bn254 designs only';
+
 function checkTarget(c: Checker, value: unknown, model: string | undefined): value is ProgramTarget {
   const allowed: readonly string[] =
-    model === 'aes-like/gf256/v1' ? ['matrix'] : model === 'hades/bn254/v1' ? ['external', 'internal'] : ['matrix', 'external', 'internal'];
+    model === 'aes-like/gf256/v1'
+      ? ['matrix']
+      : model === 'hades/bn254/v1' || model === 'hades/prime/v1'
+        ? ['external', 'internal']
+        : ['matrix', 'external', 'internal'];
   return c.literal(value, '/target', allowed);
 }
 
@@ -365,7 +445,10 @@ export function validateAnalysisRequest(value: unknown): ValidationResult<Analys
   c.keys(value, '', ['design'], ['program', 'target']);
   if ('design' in value) checkDesign(c, value['design'], '/design');
   const { field, width, model } = designField(value['design']);
-  if ('program' in value) checkProgram(c, value['program'], '/program', field, width);
+  if ('program' in value) {
+    if (model === 'hades/prime/v1') c.fail('/program', 'unsupported', PRIME_PROGRAM_TEXT);
+    else checkProgram(c, value['program'], '/program', field, width);
+  }
   if ('target' in value) checkTarget(c, value['target'], model);
   return c.errors.length === 0 ? { ok: true, value: value as unknown as AnalysisRequest } : { ok: false, errors: c.errors };
 }
@@ -375,8 +458,11 @@ export function validateExperimentRequest(value: unknown): ValidationResult<Expe
   if (!c.object(value, '')) return { ok: false, errors: c.errors };
   c.keys(value, '', ['design', 'profile'], ['program', 'seed']);
   if ('design' in value) checkDesign(c, value['design'], '/design');
-  const { field, width } = designField(value['design']);
-  if ('program' in value) checkProgram(c, value['program'], '/program', field, width);
+  const { field, width, model } = designField(value['design']);
+  if (model === 'hades/prime/v1') {
+    c.fail('/design/model', 'unsupported', 'experiments (the search and native measurement) cover gf256 and bn254 designs only');
+  }
+  if ('program' in value && model !== 'hades/prime/v1') checkProgram(c, value['program'], '/program', field, width);
   if ('profile' in value) c.literal(value['profile'], '/profile', PROFILES);
   if ('seed' in value) {
     const seed = value['seed'];
@@ -389,7 +475,7 @@ export function validateExperimentRequest(value: unknown): ValidationResult<Expe
 
 /** Default program target for a design model. */
 export function defaultTarget(design: CandidateDesign): ProgramTarget {
-  return design.model === 'hades/bn254/v1' ? 'external' : 'matrix';
+  return design.model === 'aes-like/gf256/v1' ? 'matrix' : 'external';
 }
 
 /**
@@ -421,6 +507,25 @@ export function normalizeDesign(d: CandidateDesign): CandidateDesign {
       sbox: d.sbox.kind === 'aes' ? { kind: 'aes' } : { kind: 'table', table: d.sbox.table.map((e) => e.toUpperCase()) },
     };
     if (d.experimental) out.experimental = true;
+    return out;
+  }
+  if (d.model === 'hades/prime/v1') {
+    const preset = PRIME_FIELD_PRESETS.find((f) => f.id === d.field);
+    const modulus = d.modulus ?? preset?.modulus;
+    const out: HadesPrimeDesign = {
+      model: d.model,
+      field: d.field,
+      ...(modulus !== undefined ? { modulus } : {}),
+      width: d.width,
+      external: d.external.map((row) => [...row]),
+      internal: d.internal.map((row) => [...row]),
+      fullRounds: d.fullRounds,
+      partialRounds: d.partialRounds,
+      sbox: { kind: 'power', exponent: d.sbox.exponent },
+      partialMask: d.partialMask ? [...d.partialMask] : Array.from({ length: d.width }, (_, i) => i === 0),
+      constants:
+        d.constants?.kind === 'explicit' ? { kind: 'explicit', values: d.constants.values.map((r) => [...r]) } : { kind: 'unspecified' },
+    };
     return out;
   }
   return {

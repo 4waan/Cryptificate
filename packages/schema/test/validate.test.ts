@@ -4,6 +4,8 @@ import {
   aesLikeActivityBound,
   canonicalJson,
   hadesOuterActivityBound,
+  hadesOuterActivityBoundWidth,
+  hadesTotalActivityBoundWidth,
   isBnDecimal,
   isEvidenceLabel,
   nativeCorrectnessLabel,
@@ -167,4 +169,79 @@ test('accepts experimental widths only when marked', () => {
   assert.equal(validateAnalysisRequest({ design: { ...small, experimental: true } }).ok, true);
   const prog = { field: 'gf256', width: 2, instructions: [{ op: 'add', a: 0, b: 1 }], outputs: [2, 1] };
   assert.equal(validateAnalysisRequest({ design: { ...small, experimental: true }, program: prog }).ok, true);
+});
+
+const KOALA = {
+  model: 'hades/prime/v1',
+  field: 'koalabear',
+  width: 4,
+  external: [
+    ['5', '7', '1', '3'],
+    ['4', '6', '1', '1'],
+    ['1', '3', '5', '7'],
+    ['1', '1', '4', '6'],
+  ],
+  internal: [
+    ['2', '1', '1', '1'],
+    ['1', '3', '1', '1'],
+    ['1', '1', '5', '1'],
+    ['1', '1', '1', '9'],
+  ],
+  fullRounds: 8,
+  partialRounds: 20,
+  sbox: { kind: 'power', exponent: 3 },
+};
+
+function designErrors(design: unknown): string[] {
+  const r = validateAnalysisRequest({ design });
+  return r.ok ? [] : r.errors.map((e) => `${e.path} ${e.code}`);
+}
+
+test('accepts prime-field designs and checks residues against the modulus', () => {
+  assert.deepEqual(designErrors(KOALA), []);
+  assert.deepEqual(designErrors({ ...KOALA, modulus: '2130706433' }), []);
+  assert.deepEqual(designErrors({ ...KOALA, field: 'goldilocks', width: 4 }), []);
+  // p - 1 is a residue, p is not.
+  const big = structuredClone(KOALA) as typeof KOALA;
+  big.external[0]![0] = '2130706432';
+  assert.deepEqual(designErrors(big), []);
+  big.external[0]![0] = '2130706433';
+  assert.deepEqual(designErrors(big), ['/design/external/0/0 prime']);
+  // A custom prime needs its modulus; a named field's modulus must match.
+  assert.deepEqual(designErrors({ ...KOALA, field: 'prime' }), ['/design/modulus required']);
+  assert.deepEqual(designErrors({ ...KOALA, field: 'prime', modulus: '18446744073709551557' }), []);
+  assert.deepEqual(designErrors({ ...KOALA, field: 'prime', modulus: '18446744073709551616' }), ['/design/modulus modulus']);
+  assert.deepEqual(designErrors({ ...KOALA, modulus: '2013265921' }), ['/design/modulus modulus']);
+  assert.deepEqual(designErrors({ ...KOALA, field: 'bn254' }), ['/design/field enum']);
+  assert.deepEqual(designErrors({ ...KOALA, width: 5 }), ['/design/width enum']);
+  assert.deepEqual(designErrors({ ...KOALA, constants: { kind: 'reference' } }), ['/design/constants/kind enum']);
+  assert.deepEqual(designErrors({ ...HADES, constants: { kind: 'unspecified' } }), ['/design/constants/kind enum']);
+});
+
+test('prime-field designs take no circuits and no experiments', () => {
+  const r = validateAnalysisRequest({ design: KOALA, program: { ...SHARED_SUM_BN, width: 4 } });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.ok ? [] : r.errors.map((e) => e.path), ['/program']);
+  const t = validateAnalysisRequest({ design: KOALA, target: 'internal' });
+  assert.equal(t.ok, true);
+  const x = validateExperimentRequest({ design: KOALA, profile: 'quick' });
+  assert.deepEqual(x.ok ? [] : x.errors.map((e) => `${e.path} ${e.code}`), ['/design/model unsupported']);
+});
+
+test('normalizes prime-field designs as the engine does', () => {
+  const n = normalizeAnalysisRequest({ design: KOALA } as unknown as AnalysisRequest);
+  assert.equal(
+    canonicalJson(n),
+    canonicalJson({
+      design: {
+        ...KOALA,
+        modulus: '2130706433',
+        partialMask: [true, false, false, false],
+        constants: { kind: 'unspecified' },
+      },
+    }),
+  );
+  assert.equal(hadesOuterActivityBoundWidth(8, 4), 20);
+  assert.equal(hadesOuterActivityBoundWidth(8, 3), hadesOuterActivityBound(8));
+  assert.equal(hadesTotalActivityBoundWidth(8, 20, 4, 4), 25);
 });

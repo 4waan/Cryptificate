@@ -37,6 +37,30 @@
         "witness": null
       },
       {
+        "claim": "sbox.differential",
+        "holds": true,
+        "note": "the largest entry of the difference table outside row 0 is 4, first at input difference 01 and output difference 1F",
+        "predicted": "proved",
+        "witness": {
+          "inputDifference": "01",
+          "kind": "sbox-differential",
+          "outputDifference": "1F",
+          "uniformity": 4
+        }
+      },
+      {
+        "claim": "sbox.linearity",
+        "holds": true,
+        "note": "the largest absolute Walsh coefficient at a nonzero output mask is 32 (nonlinearity 112), first at input mask 01 and output mask 48",
+        "predicted": "proved",
+        "witness": {
+          "inputMask": "01",
+          "kind": "sbox-linearity",
+          "linearity": 32,
+          "outputMask": "48"
+        }
+      },
+      {
         "claim": "circuit.equivalence",
         "holds": true,
         "note": "the program's coefficient matrix equals the design matrix",

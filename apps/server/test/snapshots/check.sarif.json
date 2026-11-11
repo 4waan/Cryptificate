@@ -1,0 +1,1210 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Cryptificate",
+          "informationUri": "https://github.com/4waan/Cryptificate",
+          "rules": [
+            {
+              "id": "matrix.mds",
+              "name": "MatrixMds",
+              "shortDescription": {
+                "text": "Matrix is MDS (branch number 5)"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "design"
+                ]
+              }
+            },
+            {
+              "id": "offsets.dispersion",
+              "name": "OffsetsDispersion",
+              "shortDescription": {
+                "text": "Row offsets are pairwise distinct"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "design"
+                ]
+              }
+            },
+            {
+              "id": "sbox.bijective",
+              "name": "SboxBijective",
+              "shortDescription": {
+                "text": "S-box is a permutation"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "design"
+                ]
+              }
+            },
+            {
+              "id": "activity.bound",
+              "name": "ActivityBound",
+              "shortDescription": {
+                "text": "Active S-box lower bound"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "design"
+                ]
+              }
+            },
+            {
+              "id": "circuit.equivalence",
+              "name": "CircuitEquivalence",
+              "shortDescription": {
+                "text": "Circuit computes the design matrix"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "implementation"
+                ]
+              }
+            },
+            {
+              "id": "native.correctness",
+              "name": "NativeCorrectness",
+              "shortDescription": {
+                "text": "Generated Rust matches the reference"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "implementation"
+                ]
+              }
+            },
+            {
+              "id": "rust.refinement",
+              "name": "RustRefinement",
+              "shortDescription": {
+                "text": "Rust kernel refines the Lean model"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "implementation"
+                ]
+              }
+            },
+            {
+              "id": "native.timing",
+              "name": "NativeTiming",
+              "shortDescription": {
+                "text": "Native speed on this machine"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "implementation"
+                ]
+              }
+            },
+            {
+              "id": "external.mds",
+              "name": "ExternalMds",
+              "shortDescription": {
+                "text": "External matrix is MDS (branch number 4)"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "design"
+                ]
+              }
+            },
+            {
+              "id": "internal.invertible",
+              "name": "InternalInvertible",
+              "shortDescription": {
+                "text": "Internal matrix is invertible"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "design"
+                ]
+              }
+            },
+            {
+              "id": "activity.outer",
+              "name": "ActivityOuter",
+              "shortDescription": {
+                "text": "Active S-box bound for the full rounds"
+              },
+              "helpUri": "https://github.com/4waan/Cryptificate/blob/main/docs/evidence-model.md",
+              "properties": {
+                "tags": [
+                  "cryptificate",
+                  "design"
+                ]
+              }
+            }
+          ],
+          "version": "0.1.0"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": false,
+          "exitCode": 2,
+          "toolExecutionNotifications": [
+            {
+              "level": "error",
+              "message": {
+                "text": "examples/designs/missing.json: cannot read examples/designs/missing.json: ENOENT"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "examples/designs/missing.json"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "matrix.mds",
+          "ruleIndex": 0,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "Matrix is MDS (branch number 5): proved (Lean-checked proof). Lean checked CryptificateJob.matrix_mds using only the standard axioms."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/aes-wrong-wire/report.json"
+                },
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "f311d9ce2d47c646a86a1fd2939cdf8e"
+          },
+          "properties": {
+            "claimId": "matrix.mds",
+            "chain": "design",
+            "status": "proved",
+            "evidenceLabel": "Lean-checked proof",
+            "evidenceKind": "lean",
+            "policyViolation": false,
+            "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
+            "reportId": "e6e133abbac74ceb24a3f12851c7ab33",
+            "jsonPointer": "/inputs/design/matrix",
+            "theorem": "CryptificateJob.matrix_mds",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ]
+          }
+        },
+        {
+          "ruleId": "offsets.dispersion",
+          "ruleIndex": 1,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "Row offsets are pairwise distinct: proved (Lean-checked proof). Lean checked CryptificateJob.offsets_optimal using only the standard axioms."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/aes-wrong-wire/report.json"
+                },
+                "region": {
+                  "startLine": 35,
+                  "startColumn": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "6df192dd07a0076859693d8ba5d44343"
+          },
+          "properties": {
+            "claimId": "offsets.dispersion",
+            "chain": "design",
+            "status": "proved",
+            "evidenceLabel": "Lean-checked proof",
+            "evidenceKind": "lean",
+            "policyViolation": false,
+            "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
+            "reportId": "e6e133abbac74ceb24a3f12851c7ab33",
+            "jsonPointer": "/inputs/design/offsets",
+            "theorem": "CryptificateJob.offsets_optimal",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ]
+          }
+        },
+        {
+          "ruleId": "sbox.bijective",
+          "ruleIndex": 2,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "S-box is a permutation: proved (Lean-checked proof). Lean checked CryptificateJob.sbox_bijective using only the standard axioms."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/aes-wrong-wire/report.json"
+                },
+                "region": {
+                  "startLine": 42,
+                  "startColumn": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "fa1521af20c1a0632236b9b1b8cc2373"
+          },
+          "properties": {
+            "claimId": "sbox.bijective",
+            "chain": "design",
+            "status": "proved",
+            "evidenceLabel": "Lean-checked proof",
+            "evidenceKind": "lean",
+            "policyViolation": false,
+            "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
+            "reportId": "e6e133abbac74ceb24a3f12851c7ab33",
+            "jsonPointer": "/inputs/design/sbox",
+            "theorem": "CryptificateJob.sbox_bijective",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ]
+          }
+        },
+        {
+          "ruleId": "activity.bound",
+          "ruleIndex": 3,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "At least 25 active S-boxes over 4 rounds: proved (Lean-checked proof). Lean checked CryptificateJob.activity_bound using only the standard axioms."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/aes-wrong-wire/report.json"
+                },
+                "region": {
+                  "startLine": 41,
+                  "startColumn": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "b7fad5b1a872770dc2015571c92f69d8"
+          },
+          "properties": {
+            "claimId": "activity.bound",
+            "chain": "design",
+            "status": "proved",
+            "evidenceLabel": "Lean-checked proof",
+            "evidenceKind": "lean",
+            "policyViolation": false,
+            "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
+            "reportId": "e6e133abbac74ceb24a3f12851c7ab33",
+            "jsonPointer": "/inputs/design/rounds",
+            "theorem": "CryptificateJob.activity_bound",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ]
+          }
+        },
+        {
+          "ruleId": "circuit.equivalence",
+          "ruleIndex": 4,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "Circuit computes the design matrix: refuted (Lean-checked counterexample). Counterexample: input [00,01,00,00]: expected [03,02,01,01], got [01,02,01,01]. Lean checked a counterexample (CryptificateJob.circuit_mismatch)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/aes-wrong-wire/report.json"
+                },
+                "region": {
+                  "startLine": 148,
+                  "startColumn": 9
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "f150c3030b4d40e1cbc3c2c59041a4e6"
+          },
+          "properties": {
+            "claimId": "circuit.equivalence",
+            "chain": "implementation",
+            "status": "refuted",
+            "evidenceLabel": "Lean-checked counterexample",
+            "evidenceKind": "lean",
+            "policyViolation": true,
+            "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
+            "reportId": "e6e133abbac74ceb24a3f12851c7ab33",
+            "jsonPointer": "/inputs/program/outputs/0",
+            "theorem": "CryptificateJob.circuit_mismatch",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ],
+            "counterexample": {
+              "actual": [
+                "01",
+                "02",
+                "01",
+                "01"
+              ],
+              "differing": [
+                0
+              ],
+              "expected": [
+                "03",
+                "02",
+                "01",
+                "01"
+              ],
+              "input": [
+                "00",
+                "01",
+                "00",
+                "00"
+              ],
+              "kind": "distinguishing-input"
+            }
+          }
+        },
+        {
+          "ruleId": "native.correctness",
+          "ruleIndex": 5,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "Generated Rust matches the reference: refuted (Generated Rust passed 549 correctness cases). Counterexample: input [00,01,00,00]: expected [03,02,01,01], got [01,02,01,01]. 8666 of 9215 cases gave a wrong output."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/aes-wrong-wire/report.json"
+                },
+                "region": {
+                  "startLine": 47,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "4d71a80aa75927c03447a5421a3b883a"
+          },
+          "properties": {
+            "claimId": "native.correctness",
+            "chain": "implementation",
+            "status": "refuted",
+            "evidenceLabel": "Generated Rust passed 549 correctness cases",
+            "evidenceKind": "native",
+            "policyViolation": true,
+            "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
+            "reportId": "e6e133abbac74ceb24a3f12851c7ab33",
+            "jsonPointer": "/inputs/program",
+            "counterexample": {
+              "actual": [
+                "01",
+                "02",
+                "01",
+                "01"
+              ],
+              "differing": [
+                0
+              ],
+              "expected": [
+                "03",
+                "02",
+                "01",
+                "01"
+              ],
+              "input": [
+                "00",
+                "01",
+                "00",
+                "00"
+              ],
+              "kind": "distinguishing-input"
+            }
+          }
+        },
+        {
+          "ruleId": "rust.refinement",
+          "ruleIndex": 6,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "Rust kernel refines the Lean model: proved (Rust-source refinement (Aeneas)). The GF(2^8) primitives add, xtime and mul of crates/kernels, extracted with Charon and Aeneas, refine the Lean field operations; Lean checked these proofs on this machine. They cover the arithmetic primitives the generated code calls, not the generated circuit code itself, which native correctness tests."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/aes-wrong-wire/report.json"
+                },
+                "region": {
+                  "startLine": 47,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "cbc3ab2fdc7406f05b59342ac3f55f86"
+          },
+          "properties": {
+            "claimId": "rust.refinement",
+            "chain": "implementation",
+            "status": "proved",
+            "evidenceLabel": "Rust-source refinement (Aeneas)",
+            "evidenceKind": "refinement",
+            "policyViolation": false,
+            "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
+            "reportId": "e6e133abbac74ceb24a3f12851c7ab33",
+            "jsonPointer": "/inputs/program",
+            "theorem": "Cryptificate.Refinement.gf256_mul_refines"
+          }
+        },
+        {
+          "ruleId": "native.timing",
+          "ruleIndex": 7,
+          "kind": "notApplicable",
+          "level": "none",
+          "message": {
+            "text": "Native speed on this machine: not established (Unchecked diagnostic). Timing is measured by experiments, not by an analysis."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/aes-wrong-wire/report.json"
+                },
+                "region": {
+                  "startLine": 47,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "9536987d6161b6ae5c4abfbc378d6e26"
+          },
+          "properties": {
+            "claimId": "native.timing",
+            "chain": "implementation",
+            "status": "not_established",
+            "evidenceLabel": "Unchecked diagnostic",
+            "evidenceKind": "diagnostic",
+            "policyViolation": false,
+            "inputDigest": "sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698",
+            "reportId": "e6e133abbac74ceb24a3f12851c7ab33",
+            "jsonPointer": "/inputs/program",
+            "reason": "not-run"
+          }
+        },
+        {
+          "ruleId": "matrix.mds",
+          "ruleIndex": 0,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "Matrix is MDS (branch number 5): proved (Lean-checked proof). Lean checked CryptificateJob.matrix_mds using only the standard axioms."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/repeated-offsets/report.json"
+                },
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "8c541e25b461a3466509b37c6ce33760"
+          },
+          "properties": {
+            "claimId": "matrix.mds",
+            "chain": "design",
+            "status": "proved",
+            "evidenceLabel": "Lean-checked proof",
+            "evidenceKind": "lean",
+            "policyViolation": false,
+            "inputDigest": "sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f",
+            "reportId": "fe06f930a3fbde8c1ef468ec8ce10bef",
+            "jsonPointer": "/inputs/design/matrix",
+            "theorem": "CryptificateJob.matrix_mds",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ]
+          }
+        },
+        {
+          "ruleId": "offsets.dispersion",
+          "ruleIndex": 1,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "Row offsets are pairwise distinct: refuted (Lean-checked counterexample). Counterexample: rows 1,2 share offset 1. Lean checked a counterexample (CryptificateJob.offsets_not_optimal)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/repeated-offsets/report.json"
+                },
+                "region": {
+                  "startLine": 38,
+                  "startColumn": 9
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "e8b0146080b75a8d131a846638d70922"
+          },
+          "properties": {
+            "claimId": "offsets.dispersion",
+            "chain": "design",
+            "status": "refuted",
+            "evidenceLabel": "Lean-checked counterexample",
+            "evidenceKind": "lean",
+            "policyViolation": true,
+            "inputDigest": "sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f",
+            "reportId": "fe06f930a3fbde8c1ef468ec8ce10bef",
+            "jsonPointer": "/inputs/design/offsets/2",
+            "theorem": "CryptificateJob.offsets_not_optimal",
+            "axioms": [
+              "propext",
+              "Quot.sound"
+            ],
+            "counterexample": {
+              "kind": "offset-collision",
+              "offset": 1,
+              "rows": [
+                1,
+                2
+              ]
+            }
+          }
+        },
+        {
+          "ruleId": "sbox.bijective",
+          "ruleIndex": 2,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "S-box is a permutation: proved (Lean-checked proof). Lean checked CryptificateJob.sbox_bijective using only the standard axioms."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/repeated-offsets/report.json"
+                },
+                "region": {
+                  "startLine": 42,
+                  "startColumn": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "01572d1af03c12ae565fb77f334922ed"
+          },
+          "properties": {
+            "claimId": "sbox.bijective",
+            "chain": "design",
+            "status": "proved",
+            "evidenceLabel": "Lean-checked proof",
+            "evidenceKind": "lean",
+            "policyViolation": false,
+            "inputDigest": "sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f",
+            "reportId": "fe06f930a3fbde8c1ef468ec8ce10bef",
+            "jsonPointer": "/inputs/design/sbox",
+            "theorem": "CryptificateJob.sbox_bijective",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ]
+          }
+        },
+        {
+          "ruleId": "activity.bound",
+          "ruleIndex": 3,
+          "kind": "open",
+          "level": "none",
+          "message": {
+            "text": "At least 25 active S-boxes over 4 rounds: not established (Unchecked diagnostic). Not established by this method: the bound needs distinct row offsets to be proved first. This is not a refutation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/repeated-offsets/report.json"
+                },
+                "region": {
+                  "startLine": 41,
+                  "startColumn": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "e0f3703688ccb879d2fc6dc3918f644b"
+          },
+          "properties": {
+            "claimId": "activity.bound",
+            "chain": "design",
+            "status": "not_established",
+            "evidenceLabel": "Unchecked diagnostic",
+            "evidenceKind": "diagnostic",
+            "policyViolation": false,
+            "inputDigest": "sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f",
+            "reportId": "fe06f930a3fbde8c1ef468ec8ce10bef",
+            "jsonPointer": "/inputs/design/rounds",
+            "reason": "precondition-failed"
+          }
+        },
+        {
+          "ruleId": "circuit.equivalence",
+          "ruleIndex": 4,
+          "kind": "notApplicable",
+          "level": "none",
+          "message": {
+            "text": "Circuit computes the design matrix: not established (Unchecked diagnostic). No circuit was submitted."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/repeated-offsets/report.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "19ef6d5c7ff69cc3131228c0d8c0cf0c"
+          },
+          "properties": {
+            "claimId": "circuit.equivalence",
+            "chain": "implementation",
+            "status": "not_established",
+            "evidenceLabel": "Unchecked diagnostic",
+            "evidenceKind": "diagnostic",
+            "policyViolation": false,
+            "inputDigest": "sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f",
+            "reportId": "fe06f930a3fbde8c1ef468ec8ce10bef",
+            "jsonPointer": "",
+            "reason": "not-run"
+          }
+        },
+        {
+          "ruleId": "native.correctness",
+          "ruleIndex": 5,
+          "kind": "notApplicable",
+          "level": "none",
+          "message": {
+            "text": "Generated Rust matches the reference: not established (Unchecked diagnostic). No circuit was submitted."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/repeated-offsets/report.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "c44bfaf1d314f5f21afa5dcba15c3f21"
+          },
+          "properties": {
+            "claimId": "native.correctness",
+            "chain": "implementation",
+            "status": "not_established",
+            "evidenceLabel": "Unchecked diagnostic",
+            "evidenceKind": "diagnostic",
+            "policyViolation": false,
+            "inputDigest": "sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f",
+            "reportId": "fe06f930a3fbde8c1ef468ec8ce10bef",
+            "jsonPointer": "",
+            "reason": "not-run"
+          }
+        },
+        {
+          "ruleId": "rust.refinement",
+          "ruleIndex": 6,
+          "kind": "notApplicable",
+          "level": "none",
+          "message": {
+            "text": "Rust kernel refines the Lean model: not established (Unchecked diagnostic). No circuit was submitted."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/repeated-offsets/report.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "8d01a20b3cb11eff7515cf9853a1d38e"
+          },
+          "properties": {
+            "claimId": "rust.refinement",
+            "chain": "implementation",
+            "status": "not_established",
+            "evidenceLabel": "Unchecked diagnostic",
+            "evidenceKind": "diagnostic",
+            "policyViolation": false,
+            "inputDigest": "sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f",
+            "reportId": "fe06f930a3fbde8c1ef468ec8ce10bef",
+            "jsonPointer": "",
+            "reason": "not-run"
+          }
+        },
+        {
+          "ruleId": "native.timing",
+          "ruleIndex": 7,
+          "kind": "notApplicable",
+          "level": "none",
+          "message": {
+            "text": "Native speed on this machine: not established (Unchecked diagnostic). Timing is measured by experiments, not by an analysis."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/repeated-offsets/report.json"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "21f4e46d0bd9ab49a4d4b8b9d7992ae6"
+          },
+          "properties": {
+            "claimId": "native.timing",
+            "chain": "implementation",
+            "status": "not_established",
+            "evidenceLabel": "Unchecked diagnostic",
+            "evidenceKind": "diagnostic",
+            "policyViolation": false,
+            "inputDigest": "sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f",
+            "reportId": "fe06f930a3fbde8c1ef468ec8ce10bef",
+            "jsonPointer": "",
+            "reason": "not-run"
+          }
+        },
+        {
+          "ruleId": "external.mds",
+          "ruleIndex": 8,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "External matrix is MDS (branch number 4): proved (Lean-checked proof). Lean checked CryptificateJob.external_mds using only the standard axioms."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/poseidon2-exponent3/report.json"
+                },
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "5b5c34f376a21b10ba3c851209069955"
+          },
+          "properties": {
+            "claimId": "external.mds",
+            "chain": "design",
+            "status": "proved",
+            "evidenceLabel": "Lean-checked proof",
+            "evidenceKind": "lean",
+            "policyViolation": false,
+            "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4",
+            "reportId": "46ed3f101b10988d83bd4d768729da48",
+            "jsonPointer": "/inputs/design/external",
+            "theorem": "CryptificateJob.external_mds",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ]
+          }
+        },
+        {
+          "ruleId": "internal.invertible",
+          "ruleIndex": 9,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "Internal matrix is invertible: proved (Lean-checked proof). Lean checked CryptificateJob.internal_invertible using only the standard axioms."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/poseidon2-exponent3/report.json"
+                },
+                "region": {
+                  "startLine": 29,
+                  "startColumn": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "c8c0f3fda6d441467533c11c5c916567"
+          },
+          "properties": {
+            "claimId": "internal.invertible",
+            "chain": "design",
+            "status": "proved",
+            "evidenceLabel": "Lean-checked proof",
+            "evidenceKind": "lean",
+            "policyViolation": false,
+            "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4",
+            "reportId": "46ed3f101b10988d83bd4d768729da48",
+            "jsonPointer": "/inputs/design/internal",
+            "theorem": "CryptificateJob.internal_invertible",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ]
+          }
+        },
+        {
+          "ruleId": "sbox.bijective",
+          "ruleIndex": 2,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "Power S-box is a permutation: refuted (Lean-checked counterexample). Counterexample: 1^3 = 4407920970296243842393367215006156084916469457145843978461^3 (omega^3 = 1 = 1^3, where omega = 3^((p-1)/3) is not 1). Lean checked a counterexample (CryptificateJob.power_not_injective)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/poseidon2-exponent3/report.json"
+                },
+                "region": {
+                  "startLine": 54,
+                  "startColumn": 9
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "69d5b96f3dd71f79ced84d3ad2904d61"
+          },
+          "properties": {
+            "claimId": "sbox.bijective",
+            "chain": "design",
+            "status": "refuted",
+            "evidenceLabel": "Lean-checked counterexample",
+            "evidenceKind": "lean",
+            "policyViolation": true,
+            "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4",
+            "reportId": "46ed3f101b10988d83bd4d768729da48",
+            "jsonPointer": "/inputs/design/sbox/exponent",
+            "theorem": "CryptificateJob.power_not_injective",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ],
+            "counterexample": {
+              "exponent": 3,
+              "kind": "power-collision",
+              "note": "omega^3 = 1 = 1^3, where omega = 3^((p-1)/3) is not 1",
+              "x1": "1",
+              "x2": "4407920970296243842393367215006156084916469457145843978461"
+            }
+          }
+        },
+        {
+          "ruleId": "activity.outer",
+          "ruleIndex": 10,
+          "kind": "open",
+          "level": "none",
+          "message": {
+            "text": "Active S-box bound for the full rounds: not established (Unchecked diagnostic). Not established by this method: the bound needs a bijective S-box to be proved first. This is not a refutation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/poseidon2-exponent3/report.json"
+                },
+                "region": {
+                  "startLine": 28,
+                  "startColumn": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "222caa3e4bdd3fb093656b029f8725db"
+          },
+          "properties": {
+            "claimId": "activity.outer",
+            "chain": "design",
+            "status": "not_established",
+            "evidenceLabel": "Unchecked diagnostic",
+            "evidenceKind": "diagnostic",
+            "policyViolation": false,
+            "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4",
+            "reportId": "46ed3f101b10988d83bd4d768729da48",
+            "jsonPointer": "/inputs/design/fullRounds",
+            "reason": "precondition-failed"
+          }
+        },
+        {
+          "ruleId": "circuit.equivalence",
+          "ruleIndex": 4,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "Circuit computes the design matrix: proved (Lean-checked circuit equivalence). Lean checked CryptificateJob.circuit_equivalence using only the standard axioms."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/poseidon2-exponent3/report.json"
+                },
+                "region": {
+                  "startLine": 59,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "d42ad9f322baea7c7ca65a4d3530d6e8"
+          },
+          "properties": {
+            "claimId": "circuit.equivalence",
+            "chain": "implementation",
+            "status": "proved",
+            "evidenceLabel": "Lean-checked circuit equivalence",
+            "evidenceKind": "lean",
+            "policyViolation": false,
+            "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4",
+            "reportId": "46ed3f101b10988d83bd4d768729da48",
+            "jsonPointer": "/inputs/program",
+            "theorem": "CryptificateJob.circuit_equivalence",
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ]
+          }
+        },
+        {
+          "ruleId": "native.correctness",
+          "ruleIndex": 5,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "Generated Rust matches the reference: proved (Generated Rust passed 8278 correctness cases). Generated Rust matched the independently computed matrix product on all 8278 test vectors. This is testing, not a proof."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/poseidon2-exponent3/report.json"
+                },
+                "region": {
+                  "startLine": 59,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "d216ec7bdd78bd7da485f8c2500bee59"
+          },
+          "properties": {
+            "claimId": "native.correctness",
+            "chain": "implementation",
+            "status": "proved",
+            "evidenceLabel": "Generated Rust passed 8278 correctness cases",
+            "evidenceKind": "native",
+            "policyViolation": false,
+            "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4",
+            "reportId": "46ed3f101b10988d83bd4d768729da48",
+            "jsonPointer": "/inputs/program"
+          }
+        },
+        {
+          "ruleId": "rust.refinement",
+          "ruleIndex": 6,
+          "kind": "open",
+          "level": "none",
+          "message": {
+            "text": "Rust kernel refines the Lean model: unsupported (Unchecked diagnostic). Refinement proofs exist for the GF(2^8) kernels only; BN254 arithmetic is not covered."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/poseidon2-exponent3/report.json"
+                },
+                "region": {
+                  "startLine": 59,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "23591bc1c4a137747c822b960eb1972c"
+          },
+          "properties": {
+            "claimId": "rust.refinement",
+            "chain": "implementation",
+            "status": "unsupported",
+            "evidenceLabel": "Unchecked diagnostic",
+            "evidenceKind": "diagnostic",
+            "policyViolation": false,
+            "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4",
+            "reportId": "46ed3f101b10988d83bd4d768729da48",
+            "jsonPointer": "/inputs/program",
+            "reason": "out-of-scope"
+          }
+        },
+        {
+          "ruleId": "native.timing",
+          "ruleIndex": 7,
+          "kind": "notApplicable",
+          "level": "none",
+          "message": {
+            "text": "Native speed on this machine: not established (Unchecked diagnostic). Timing is measured by experiments, not by an analysis."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bundles/poseidon2-exponent3/report.json"
+                },
+                "region": {
+                  "startLine": 59,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cryptificateClaim/v1": "9146919ef2623931c1d61f0f2f5283dd"
+          },
+          "properties": {
+            "claimId": "native.timing",
+            "chain": "implementation",
+            "status": "not_established",
+            "evidenceLabel": "Unchecked diagnostic",
+            "evidenceKind": "diagnostic",
+            "policyViolation": false,
+            "inputDigest": "sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4",
+            "reportId": "46ed3f101b10988d83bd4d768729da48",
+            "jsonPointer": "/inputs/program",
+            "reason": "not-run"
+          }
+        }
+      ],
+      "properties": {
+        "command": "check",
+        "failOn": "refuted",
+        "claims": null,
+        "outcome": "error"
+      }
+    }
+  ]
+}

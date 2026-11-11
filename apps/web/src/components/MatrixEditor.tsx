@@ -1,14 +1,13 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { copyText } from '../lib/clipboard';
-import { displayElement, fieldOps } from '../lib/field';
+import { displayElement, fieldOps, type DisplayField } from '../lib/field';
 import { MATRIX_FORMATS, formatMatrix, normalizeCell, parseMatrixText, type MatrixFormat, type Radix } from '../lib/notation';
-import type { FieldName } from '../lib/types';
 import { IconCopy, IconPaste, IconWarning } from './icons';
 
 interface Props {
   id: string;
   label: string;
-  field: FieldName;
+  field: DisplayField;
   values: string[][];
   /** `cell` ("row,col") is set for typing in one cell; it is absent for pastes and imports. */
   onChange: (next: string[][], cell?: string) => void;
@@ -21,7 +20,7 @@ interface Props {
 }
 
 /** Splits pasted text into cell values when every token is an element; otherwise null. */
-export function pastedCells(text: string, field: FieldName): string[] | null {
+export function pastedCells(text: string, field: DisplayField): string[] | null {
   const tokens = text.split(/[\s,;[\]{}()]+/).filter(Boolean);
   const cells = tokens.map((t) => normalizeCell(t.replace(/^["']|["']$/g, ''), field));
   return cells.length && cells.every((c): c is string => c !== null) ? cells : null;
@@ -138,7 +137,7 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
           {label}
         </div>
         <div
-          className={`matrix${field === 'bn254' ? ' decimal' : ''}`}
+          className={`matrix${field !== 'gf256' ? ' decimal' : ''}`}
           style={{ gridTemplateColumns: `repeat(${n}, auto)` }}
         >
           {values.map((row, r) =>
@@ -158,7 +157,7 @@ export function MatrixEditor({ id, label, field, values, onChange, emphasis = []
                   aria-label={`${label}, row ${r + 1}, column ${c + 1}`}
                   aria-invalid={invalid}
                   aria-describedby={invalid ? `${id}-errors` : undefined}
-                  title={field === 'bn254' ? v : undefined}
+                  title={field !== 'gf256' ? v : undefined}
                   data-emphasis={emphasis.includes(`${r},${c}`) ? 'true' : undefined}
                   onChange={(e) => setCell(r, c, e.target.value)}
                   onBlur={() => canonicalize(r, c)}
@@ -243,7 +242,7 @@ function MatrixImport({
   onClose,
 }: {
   id: string;
-  field: FieldName;
+  field: DisplayField;
   n: number;
   onApply: (m: string[][], note: string) => void;
   onClose: () => void;
@@ -325,7 +324,7 @@ function MatrixImport({
 }
 
 /** "Copy as" menu: JSON, C array, Rust array, Sage matrix, plain grid. */
-function CopyMenu({ values, field, name, label }: { values: string[][]; field: FieldName; name: string; label: string }) {
+function CopyMenu({ values, field, name, label }: { values: string[][]; field: DisplayField; name: string; label: string }) {
   const id = useId();
   const f = fieldOps(field);
   const [open, setOpen] = useState(false);
@@ -436,7 +435,7 @@ export function MatrixView({
 }: {
   values: string[][];
   label: string;
-  field: FieldName;
+  field: DisplayField;
   emphasis?: string[];
   emphasisLabel?: string;
 }) {
@@ -454,7 +453,7 @@ export function MatrixView({
                   key={c}
                   role="cell"
                   className={hl ? 'cell-diff' : undefined}
-                  title={field === 'bn254' ? d.full : undefined}
+                  title={field !== 'gf256' ? d.full : undefined}
                 >
                   {d.short ? (
                     <>

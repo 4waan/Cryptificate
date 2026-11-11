@@ -1,0 +1,96 @@
+== examples/bundles/aes-wrong-wire/report.json
+Cryptificate analysis e6e133abbac74ceb24a3f12851c7ab33
+inputs   sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698
+origin   live
+checker  cryptificate 0.1.0 (58e2000); Lean v4.33.1; WideTrail 162c0f8a9e59
+run      completed
+
+chain           claim                status           evidence
+--------------  -------------------  ---------------  -------------------------------------------
+design          matrix.mds           proved           Lean-checked proof
+design          offsets.dispersion   proved           Lean-checked proof
+design          sbox.bijective       proved           Lean-checked proof
+design          activity.bound       proved           Lean-checked proof
+implementation  circuit.equivalence  refuted          Lean-checked counterexample
+implementation  native.correctness   refuted          Generated Rust passed 549 correctness cases
+implementation  rust.refinement      proved           Rust-source refinement (Aeneas)
+implementation  native.timing        not_established  Unchecked diagnostic
+
+Notes
+  matrix.mds: Lean checked CryptificateJob.matrix_mds using only the standard axioms.
+  offsets.dispersion: Lean checked CryptificateJob.offsets_optimal using only the standard axioms.
+  sbox.bijective: Lean checked CryptificateJob.sbox_bijective using only the standard axioms.
+  activity.bound: Lean checked CryptificateJob.activity_bound using only the standard axioms.
+  circuit.equivalence: Lean checked a counterexample (CryptificateJob.circuit_mismatch).
+    witness: input [00,01,00,00]: expected [03,02,01,01], got [01,02,01,01]
+  native.correctness: 8666 of 9215 cases gave a wrong output.
+    witness: input [00,01,00,00]: expected [03,02,01,01], got [01,02,01,01]
+  rust.refinement: The GF(2^8) primitives add, xtime and mul of crates/kernels, extracted with Charon and Aeneas, refine the Lean field operations; Lean checked these proofs on this machine. They cover the arithmetic primitives the generated code calls, not the generated circuit code itself, which native correctness tests.
+  native.timing: Timing is measured by experiments, not by an analysis.
+
+== examples/bundles/repeated-offsets/report.json
+Cryptificate analysis fe06f930a3fbde8c1ef468ec8ce10bef
+inputs   sha256:bebdfa5462bb404ea88ecaba48d6b5d1dfc10bdc052f259a6055f49db9b9668f
+origin   live
+checker  cryptificate 0.1.0 (e74b8e6); Lean v4.33.1; WideTrail 162c0f8a9e59
+run      completed
+
+chain           claim                status           evidence
+--------------  -------------------  ---------------  ---------------------------
+design          matrix.mds           proved           Lean-checked proof
+design          offsets.dispersion   refuted          Lean-checked counterexample
+design          sbox.bijective       proved           Lean-checked proof
+design          activity.bound       not_established  Unchecked diagnostic
+implementation  circuit.equivalence  not_established  Unchecked diagnostic
+implementation  native.correctness   not_established  Unchecked diagnostic
+implementation  rust.refinement      not_established  Unchecked diagnostic
+implementation  native.timing        not_established  Unchecked diagnostic
+
+Notes
+  matrix.mds: Lean checked CryptificateJob.matrix_mds using only the standard axioms.
+  offsets.dispersion: Lean checked a counterexample (CryptificateJob.offsets_not_optimal).
+    witness: rows 1,2 share offset 1
+  sbox.bijective: Lean checked CryptificateJob.sbox_bijective using only the standard axioms.
+  activity.bound: Not established by this method: the bound needs distinct row offsets to be proved first. This is not a refutation.
+  circuit.equivalence: No circuit was submitted.
+  native.correctness: No circuit was submitted.
+  rust.refinement: No circuit was submitted.
+  native.timing: Timing is measured by experiments, not by an analysis.
+
+== examples/bundles/poseidon2-exponent3/report.json
+Cryptificate analysis 46ed3f101b10988d83bd4d768729da48
+inputs   sha256:2d4b9dbd85162913aa429ae62cf899ec6e718064afd6af79e07db40af81aa7f4
+origin   live
+checker  cryptificate 0.1.0 (e74b8e6); Lean v4.33.1; WideTrail 162c0f8a9e59
+run      completed
+
+chain           claim                status           evidence
+--------------  -------------------  ---------------  --------------------------------------------
+design          external.mds         proved           Lean-checked proof
+design          internal.invertible  proved           Lean-checked proof
+design          sbox.bijective       refuted          Lean-checked counterexample
+design          activity.outer       not_established  Unchecked diagnostic
+implementation  circuit.equivalence  proved           Lean-checked circuit equivalence
+implementation  native.correctness   proved           Generated Rust passed 8278 correctness cases
+implementation  rust.refinement      unsupported      Unchecked diagnostic
+implementation  native.timing        not_established  Unchecked diagnostic
+
+Notes
+  external.mds: Lean checked CryptificateJob.external_mds using only the standard axioms.
+  internal.invertible: Lean checked CryptificateJob.internal_invertible using only the standard axioms.
+  sbox.bijective: Lean checked a counterexample (CryptificateJob.power_not_injective).
+    witness: 1^3 = 4407920970296243842393367215006156084916469457145843978461^3 (omega^3 = 1 = 1^3, where omega = 3^((p-1)/3) is not 1)
+  activity.outer: Not established by this method: the bound needs a bijective S-box to be proved first. This is not a refutation.
+  circuit.equivalence: Lean checked CryptificateJob.circuit_equivalence using only the standard axioms.
+  native.correctness: Generated Rust matched the independently computed matrix product on all 8278 test vectors. This is testing, not a proof.
+  rust.refinement: Refinement proofs exist for the GF(2^8) kernels only; BN254 arithmetic is not covered.
+  native.timing: Timing is measured by experiments, not by an analysis.
+
+== examples/designs/missing.json
+examples/designs/missing.json: error: cannot read examples/designs/missing.json: ENOENT
+
+Policy --fail-on refuted: error (exit 2)
+  examples/bundles/aes-wrong-wire/report.json: circuit.equivalence refuted, native.correctness refuted
+  examples/bundles/repeated-offsets/report.json: offsets.dispersion refuted
+  examples/bundles/poseidon2-exponent3/report.json: sbox.bijective refuted
+  examples/designs/missing.json: error: cannot read examples/designs/missing.json: ENOENT

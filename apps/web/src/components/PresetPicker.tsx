@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { FIELD_LABELS, KIND_LABELS, factLabels, searchPresets, type Preset, type PresetKind } from '../lib/library';
-import type { FieldName } from '../lib/types';
+import type { CandidateDesign } from '../lib/types';
 import { applyPreset } from '../state/actions';
 import { IconPreview, IconSearch } from './icons';
 
@@ -12,7 +12,7 @@ const SLOT_TEXT = { matrix: '', external: 'external matrix', internal: 'internal
  * Presets matching the query, grouped by kind. Groups follow their best
  * match; without a query, presets of the current field come first.
  */
-export function groupedPresets(query: string, field: FieldName): { kind: PresetKind; items: Preset[] }[] {
+export function groupedPresets(query: string, field: CandidateDesign['field']): { kind: PresetKind; items: Preset[] }[] {
   const found = searchPresets(query);
   const rank = new Map(found.map((p, i) => [p, i]));
   const byField = (a: Preset, b: Preset) =>
@@ -30,7 +30,7 @@ export function groupedPresets(query: string, field: FieldName): { kind: PresetK
  * keys move, Enter loads, Escape closes. Loading replaces the workspace
  * inputs as one undo step.
  */
-export function PresetPicker({ field }: { field: FieldName }) {
+export function PresetPicker({ field }: { field: CandidateDesign['field'] }) {
   const id = useId();
   const listId = `${id}-list`;
   const [query, setQuery] = useState('');

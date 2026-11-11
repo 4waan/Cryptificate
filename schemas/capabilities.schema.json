@@ -9,7 +9,7 @@
     "name": { "const": "cryptificate" },
     "version": { "type": "string" },
     "checker": { "type": "string" },
-    "models": { "type": "array", "items": { "enum": ["aes-like/gf256/v1", "hades/bn254/v1"] } },
+    "models": { "type": "array", "items": { "enum": ["aes-like/gf256/v1", "hades/bn254/v1", "hades/prime/v1"] } },
     "profiles": {
       "type": "array",
       "items": {

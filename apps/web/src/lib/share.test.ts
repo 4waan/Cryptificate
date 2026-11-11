@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { inputsDigest } from './canonical';
 import { nonInjectiveSbox } from './library';
-import { aesDesign, aesSharedSum, hadesDesign, hadesSharedSum } from './presets';
+import { aesDesign, aesSharedSum, hadesDesign, hadesSharedSum, primeDesign } from './presets';
 import { MAX_DECODED_BYTES, MAX_TOKEN_LENGTH, decodeShare, encodeShare, shareUrl } from './share';
 import type { Snapshot } from './snapshot';
 
@@ -102,5 +102,17 @@ describe('share links', () => {
 
   it('builds a workspace URL', () => {
     expect(shareUrl('https://example.org/app/', 'jABC')).toBe('https://example.org/app/#/workspace?d=jABC');
+  });
+});
+
+describe('share links for the prime-field profile', () => {
+  it('round-trips a custom-prime design without a circuit', async () => {
+    const s: Snapshot = { design: primeDesign('prime', '18446744073709551557'), program: null, target: 'external' };
+    for (const compress of [true, false]) {
+      const back = await decodeShare(await encodeShare(s, compress));
+      // The link carries the normalized request: unstated round constants read as unspecified.
+      expect(back.design).toEqual({ constants: { kind: 'unspecified' }, ...s.design });
+      expect(back.program).toBeNull();
+    }
   });
 });

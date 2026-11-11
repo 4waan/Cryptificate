@@ -244,7 +244,7 @@ export const PRESETS: Preset[] = [
     family: 'Poseidon2',
     summary: 'External circ(2,1,1), internal [[2,1,1],[1,2,1],[1,1,3]], x⁵, 8 + 56 rounds.',
     scope:
-      'The width-3 Poseidon2 matrices over the BN254 scalar field with reference round constants. The checks cover external MDS, internal invertibility, the power map and an active S-box bound for the full rounds; partial-round behaviour is not certified.',
+      'The width-3 Poseidon2 matrices over the BN254 scalar field with reference round constants. The checks cover external MDS, internal invertibility, the power map, an active S-box bound for the full rounds, the partial rounds (every 3 consecutive partial rounds activate an S-box) and the bound of 34 active S-boxes over the whole permutation.',
     tags: ['hades', 'zk', 'snark', 'prime field', 'external', 'internal'],
     facts: { mds: true, invertible: true, permutation: true, equivalent: true },
     apply: () => ({ design: hadesDesign(5), program: hadesSharedSum(), target: 'external' }),
@@ -255,9 +255,9 @@ export const PRESETS: Preset[] = [
     field: 'bn254',
     label: 'Poseidon2 t = 3 with the external matrix as internal',
     family: 'Poseidon2',
-    summary: 'Internal [[2,1,1],[1,2,1],[1,1,2]]: passes every check here, weak on purpose.',
+    summary: 'Internal [[2,1,1],[1,2,1],[1,1,2]]: invertible, and refuted by the partial-round check.',
     scope:
-      'Deliberately weak. With M = [[2,1,1],[1,2,1],[1,1,2]] as the internal matrix, v = (0, 1, −1) has Mv = v and v₀ = 0, so with the single partial-round S-box on x0 this difference never reaches an active S-box. The matrix is invertible (and MDS), so the internal-matrix claim holds: this weakness is outside what Cryptificate checks today (docs/research-directions.md, section 2).',
+      'Deliberately weak. With M = [[2,1,1],[1,2,1],[1,1,2]] as the internal matrix, v = (0, 1, −1) has Mv = v and v₀ = 0, so with the single partial-round S-box on x0 this difference never reaches an active S-box. The matrix is invertible (and MDS), so the internal-matrix claim holds; the partial-round claim (activity.partial) catches the weakness and is refuted with the difference (0, 1, −1) as witness (docs/research-directions.md, section 2).',
     weak: true,
     tags: ['hades', 'subspace', 'invariant', 'negative', 'internal'],
     facts: { mds: true, invertible: true, permutation: true, equivalent: true },
@@ -391,7 +391,7 @@ export const PRESETS: Preset[] = [
     family: 'Poseidon2',
     summary: 'Invertible, yet a difference can skip the partial-round S-box forever.',
     scope:
-      'Deliberately weak as an internal matrix: v = (0, 1, −1) is fixed by M and never touches x0. Invertibility, the only internal-matrix claim checked here, does not detect it.',
+      'Deliberately weak as an internal matrix: v = (0, 1, −1) is fixed by M and never touches x0. Invertibility does not detect it; the partial-round claim (activity.partial) is refuted with v as witness.',
     slot: 'internal',
     weak: true,
     tags: ['hades', 'internal', 'subspace', 'invariant', 'negative'],

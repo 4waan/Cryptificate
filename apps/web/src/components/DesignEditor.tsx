@@ -1,8 +1,10 @@
 import { useId, useState } from 'react';
 import { activityBound, activityFormula, EXPONENT_MAX, ROUNDS_MAX, ROUNDS_MIN, validateDesign } from '../lib/design';
 import { aesSbox, formatGfHex, isGfHex } from '../lib/gf256';
-import { aesDesign, aesSharedSum, hadesDesign, hadesSharedSum } from '../lib/presets';
-import type { AesLikeDesign, CandidateDesign, HadesDesign, ProgramTarget } from '../lib/types';
+import { aesDesign, aesSharedSum, hadesDesign, hadesSharedSum, primeDesign, primeDesign3 } from '../lib/presets';
+import { displayFieldOf } from '../lib/field';
+import { modulusOf, PRIME_FIELD_PRESETS, primeFieldLabel } from '../lib/primefield';
+import type { AesLikeDesign, CandidateDesign, HadesDesign, HadesPrimeDesign, PrimeFieldName, ProgramTarget } from '../lib/types';
 import { loadInputs, setDesign, setTarget } from '../state/actions';
 import { MatrixEditor } from './MatrixEditor';
 import { IconWarning } from './icons';
@@ -20,10 +22,12 @@ export function parseSboxTable(text: string): { table: string[] | null; error: s
 }
 
 function ProfileSwitch({ design }: { design: CandidateDesign }) {
-  const switchTo = (field: 'gf256' | 'bn254') => {
-    if (field === design.field) return;
-    if (field === 'gf256') loadInputs({ design: aesDesign(), program: aesSharedSum(), target: 'matrix' });
-    else loadInputs({ design: hadesDesign(), program: hadesSharedSum(), target: 'external' });
+  const switchTo = (model: CandidateDesign['model']) => {
+    if (model === design.model) return;
+    if (model === 'aes-like/gf256/v1') loadInputs({ design: aesDesign(), program: aesSharedSum(), target: 'matrix' });
+    else if (model === 'hades/bn254/v1') loadInputs({ design: hadesDesign(), program: hadesSharedSum(), target: 'external' });
+    // Circuits, the search and native timing cover GF(2^8) and BN254 only.
+    else loadInputs({ design: primeDesign('koalabear'), program: null, target: 'external' });
   };
   return (
     <div className="field">
@@ -31,12 +35,125 @@ function ProfileSwitch({ design }: { design: CandidateDesign }) {
         Profile
       </span>
       <div className="segmented" role="radiogroup" aria-labelledby="profile-label">
-        <button type="button" role="radio" aria-checked={design.field === 'gf256'} onClick={() => switchTo('gf256')}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={design.model === 'aes-like/gf256/v1'}
+          onClick={() => switchTo('aes-like/gf256/v1')}
+        >
           AES-like, GF(2⁸)
         </button>
-        <button type="button" role="radio" aria-checked={design.field === 'bn254'} onClick={() => switchTo('bn254')}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={design.model === 'hades/bn254/v1'}
+          onClick={() => switchTo('hades/bn254/v1')}
+        >
           HADES, BN254
         </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={design.model === 'hades/prime/v1'}
+          onClick={() => switchTo('hades/prime/v1')}
+        >
+          HADES, 64-bit prime
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The field and width of a prime-field design: a named field or a custom
+ * prime below 2^64, and width 3 or 4. Changing the field keeps the matrices
+ * (entries must stay below the new modulus); changing the width loads the
+ * matrices of that width.
+ */
+function PrimeFieldPicker({ design }: { design: HadesPrimeDesign }) {
+  const id = useId();
+  const issues = validateDesign(design);
+  const modulusIssue = issues.find((i) => i.path === '/modulus')?.message;
+  const p = modulusOf(design);
+  const preset = PRIME_FIELD_PRESETS.find((f) => f.id === design.field);
+  const pick = (field: PrimeFieldName) => {
+    if (field === design.field) return;
+    const { modulus: _old, ...rest } = design;
+    void _old;
+    setDesign(field === 'prime' ? { ...rest, field, modulus: design.modulus ?? p?.toString() ?? '' } : { ...rest, field });
+  };
+  return (
+    <div className="stack">
+      <div className="field">
+        <span className="field-label" id={`${id}-field`}>
+          Prime field
+        </span>
+        <div className="segmented" role="radiogroup" aria-labelledby={`${id}-field`}>
+          {PRIME_FIELD_PRESETS.map((f) => (
+            <button key={f.id} type="button" role="radio" aria-checked={design.field === f.id} onClick={() => pick(f.id)}>
+              {f.label}
+            </button>
+          ))}
+          <button type="button" role="radio" aria-checked={design.field === 'prime'} onClick={() => pick('prime')}>
+            Custom prime
+          </button>
+        </div>
+        {preset ? (
+          <span className="field-hint">
+            <span className="mono">p = {preset.modulus}</span> = {preset.form}; p − 1 = {preset.pMinusOne}. x ↦ xᵉ
+            is a permutation exactly when e shares no factor with p − 1.
+          </span>
+        ) : null}
+      </div>
+      {design.field === 'prime' ? (
+        <div className="field">
+          <label className="field-label" htmlFor={`${id}-modulus`}>
+            Modulus p (a prime below 2⁶⁴)
+          </label>
+          <input
+            id={`${id}-modulus`}
+            className="input mono"
+            inputMode="numeric"
+            spellCheck={false}
+            autoComplete="off"
+            maxLength={20}
+            style={{ width: 260 }}
+            value={design.modulus ?? ''}
+            aria-invalid={Boolean(modulusIssue)}
+            aria-describedby={`${id}-modulus-hint`}
+            onChange={(e) => setDesign({ ...design, modulus: e.target.value.trim() })}
+          />
+          <span id={`${id}-modulus-hint`} className={modulusIssue ? 'error-text' : 'field-hint'}>
+            {modulusIssue ??
+              'Prime by the Miller-Rabin test the engine also uses. Every report proves it prime in Lean from a Pratt certificate (claim field.prime).'}
+          </span>
+        </div>
+      ) : null}
+      <div className="field">
+        <span className="field-label" id={`${id}-width`}>
+          Width
+        </span>
+        <div className="segmented" role="radiogroup" aria-labelledby={`${id}-width`}>
+          {([3, 4] as const).map((w) => (
+            <button
+              key={w}
+              type="button"
+              role="radio"
+              aria-checked={design.width === w}
+              onClick={() => {
+                if (w === design.width) return;
+                const base = w === 3 ? primeDesign3(design.field, design.modulus) : primeDesign(design.field, design.modulus);
+                setDesign({ ...base, sbox: design.sbox, fullRounds: design.fullRounds, partialRounds: design.partialRounds });
+              }}
+            >
+              t = {w}
+            </button>
+          ))}
+        </div>
+        <span className="field-hint">
+          Circuits, the circuit search and native timing are not offered for {primeFieldLabel(design.field)}: only the
+          design claims are checked.
+        </span>
       </div>
     </div>
   );
@@ -200,18 +317,22 @@ function AesFields({ design }: { design: AesLikeDesign }) {
   );
 }
 
-function HadesFields({ design, target }: { design: HadesDesign; target: ProgramTarget }) {
+function HadesFields({ design, target }: { design: HadesDesign | HadesPrimeDesign; target: ProgramTarget }) {
   const id = useId();
-  const update = (patch: Partial<HadesDesign>, group: string | null = `design:${Object.keys(patch).join(',')}`) =>
-    setDesign({ ...design, ...patch }, { group });
+  const update = (patch: Partial<HadesDesign> & Partial<HadesPrimeDesign>, group: string | null = `design:${Object.keys(patch).join(',')}`) =>
+    setDesign({ ...design, ...patch } as CandidateDesign, { group });
   const issues = validateDesign(design);
   const has = (p: string) => issues.find((i) => i.path === p)?.message;
+  const field = displayFieldOf(design);
+  const mask = design.partialMask ?? Array.from({ length: design.width }, (_, i) => i === 0);
+  const constants = design.constants ?? { kind: 'unspecified' as const };
   return (
     <div className="stack-lg">
+      {design.model === 'hades/prime/v1' ? <PrimeFieldPicker design={design} /> : null}
       <MatrixEditor
         id={`${id}-ext`}
         label="External matrix (full rounds)"
-        field="bn254"
+        field={field}
         values={design.external}
         exportName="M_E"
         onChange={(external, cell) => update({ external }, cell ? `design:external:${cell}` : null)}
@@ -219,23 +340,25 @@ function HadesFields({ design, target }: { design: HadesDesign; target: ProgramT
       <MatrixEditor
         id={`${id}-int`}
         label="Internal matrix (partial rounds)"
-        field="bn254"
+        field={field}
         values={design.internal}
         exportName="M_I"
         onChange={(internal, cell) => update({ internal }, cell ? `design:internal:${cell}` : null)}
       />
-      <div className="field">
-        <span className="field-label" id={`${id}-target`}>
-          The circuit implements
-        </span>
-        <div className="segmented" role="radiogroup" aria-labelledby={`${id}-target`}>
-          {(['external', 'internal'] as const).map((t) => (
-            <button key={t} type="button" role="radio" aria-checked={target === t} onClick={() => setTarget(t)}>
-              {t === 'external' ? 'External matrix' : 'Internal matrix'}
-            </button>
-          ))}
+      {design.model === 'hades/bn254/v1' ? (
+        <div className="field">
+          <span className="field-label" id={`${id}-target`}>
+            The circuit implements
+          </span>
+          <div className="segmented" role="radiogroup" aria-labelledby={`${id}-target`}>
+            {(['external', 'internal'] as const).map((t) => (
+              <button key={t} type="button" role="radio" aria-checked={target === t} onClick={() => setTarget(t)}>
+                {t === 'external' ? 'External matrix' : 'Internal matrix'}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
       <div className="row" style={{ alignItems: 'flex-start', gap: 24 }}>
         <div className="field">
           <label className="field-label" htmlFor={`${id}-exp`}>
@@ -306,14 +429,12 @@ function HadesFields({ design, target }: { design: HadesDesign; target: ProgramT
       <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
         <legend className="field-label">S-boxes in partial rounds</legend>
         <div className="row">
-          {design.partialMask.map((on, i) => (
+          {mask.map((on, i) => (
             <label key={i} className="row small" style={{ gap: 6 }}>
               <input
                 type="checkbox"
                 checked={on}
-                onChange={(e) =>
-                  update({ partialMask: design.partialMask.map((x, j) => (j === i ? e.target.checked : x)) })
-                }
+                onChange={(e) => update({ partialMask: mask.map((x, j) => (j === i ? e.target.checked : x)) })}
               />
               x{i}
             </label>
@@ -321,9 +442,11 @@ function HadesFields({ design, target }: { design: HadesDesign; target: ProgramT
         </div>
         <span className="field-hint">
           Round constants:{' '}
-          {design.constants.kind === 'reference'
+          {constants.kind === 'reference'
             ? 'reference constants'
-            : `${design.constants.values.length} explicit rows`}{' '}
+            : constants.kind === 'unspecified'
+              ? 'unspecified (every claim holds for all round constants)'
+              : `${constants.values.length} explicit rows`}{' '}
           (import JSON to change).
         </span>
       </fieldset>

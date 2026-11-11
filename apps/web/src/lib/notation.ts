@@ -1,5 +1,5 @@
 import { BN254_P } from './bn254';
-import type { FieldName } from './types';
+import { primeModulusOf, type DisplayField } from './field';
 
 /**
  * Matrix text in the notations designers copy from papers, reference code
@@ -14,8 +14,8 @@ import type { FieldName } from './types';
  * - single-argument wrappers around entries such as F(2), e(0x02),
  *   F.fetch_int(2) or F.from_integer(2), and quoted entries ("02").
  *
- * GF(2^8) cells come out as two uppercase hex digits and BN254 cells as
- * canonical decimals below p.
+ * GF(2^8) cells come out as two uppercase hex digits, and BN254 and other
+ * prime-field cells as canonical decimals below p.
  */
 
 /** How to read numbers without a 0x prefix in GF(2^8). */
@@ -205,7 +205,13 @@ function readGf(token: string, radix: 'hex' | 'dec'): CellRead {
   return { value: n.toString(16).toUpperCase().padStart(2, '0') };
 }
 
-function readBn(token: string): CellRead {
+/** The modulus of a prime display field and how errors name it. */
+function primeOf(field: DisplayField): { p: bigint; name: string } {
+  if (field === 'bn254') return { p: BN254_P, name: 'the BN254 modulus p' };
+  return { p: primeModulusOf(field) ?? 0n, name: 'the field modulus p' };
+}
+
+function readBn(token: string, { p, name }: { p: bigint; name: string } = primeOf('bn254')): CellRead {
   const t = cleanToken(token);
   let n: bigint;
   try {
@@ -218,20 +224,20 @@ function readBn(token: string): CellRead {
   } catch {
     return { error: `“${token}” is not an integer` };
   }
-  if (n >= BN254_P) return { error: `“${token}” is not below the BN254 modulus p` };
+  if (n >= p) return { error: `“${token}” is not below ${name}` };
   if (n < 0n) {
-    if (-n >= BN254_P) return { error: `“${token}” is not above −p` };
-    n += BN254_P;
+    if (-n >= p) return { error: `“${token}” is not above −p` };
+    n += p;
   }
   return { value: n.toString(10) };
 }
 
 /**
  * Normalizes one typed cell: "1" → "01", "a" → "0A", "0x1b" → "1B" in
- * GF(2^8); "0x10" → "16", "-1" → p − 1, "007" → "7" in BN254. Returns null
- * when the text is not an element.
+ * GF(2^8); "0x10" → "16", "-1" → p − 1, "007" → "7" in BN254 and the other
+ * prime fields. Returns null when the text is not an element.
  */
-export function normalizeCell(text: string, field: FieldName): string | null {
+export function normalizeCell(text: string, field: DisplayField): string | null {
   const t = text.trim();
   if (!t) return null;
   if (field === 'gf256') {
@@ -239,7 +245,7 @@ export function normalizeCell(text: string, field: FieldName): string | null {
     const r = readGf(t, 'hex');
     return 'value' in r ? r.value : null;
   }
-  const r = readBn(t);
+  const r = readBn(t, primeOf(field));
   return 'value' in r ? r.value : null;
 }
 
@@ -309,7 +315,7 @@ function extract(text: string, size: number | undefined): Extracted | MatrixErro
 }
 
 /** Parses matrix text in any supported notation; see the module comment. */
-export function parseMatrixText(text: string, field: FieldName, options: ParseOptions = {}): MatrixParse {
+export function parseMatrixText(text: string, field: DisplayField, options: ParseOptions = {}): MatrixParse {
   if (!text.trim()) return { ok: false, error: 'Nothing to read.' };
   if (text.length > 200_000) return { ok: false, error: 'The text is too long for a matrix.' };
   const got = extract(text, options.size);
@@ -360,13 +366,13 @@ export function parseMatrixText(text: string, field: FieldName, options: ParseOp
   for (let r = 0; r < n; r++) {
     const row: string[] = [];
     for (let c = 0; c < n; c++) {
-      const read = field === 'gf256' ? readGf(rows[r]![c]!, radix) : readBn(rows[r]![c]!);
+      const read = field === 'gf256' ? readGf(rows[r]![c]!, radix) : readBn(rows[r]![c]!, primeOf(field));
       if ('error' in read) return { ok: false, error: `Row ${r + 1}, column ${c + 1}: ${read.error}.`, at: { row: r, col: c } };
       row.push(read.value);
     }
     matrix.push(row);
   }
-  if (field === 'bn254' && rows.flat().some((t) => cleanToken(t).startsWith('-'))) {
+  if (field !== 'gf256' && rows.flat().some((t) => cleanToken(t).startsWith('-'))) {
     notes.push('Negative entries were reduced modulo p.');
   }
   return { ok: true, matrix, radix, ambiguous, notes };
@@ -391,10 +397,12 @@ const AES_MODULUS_SAGE = 'x^8 + x^4 + x^3 + x + 1';
  * Formats a matrix for pasting into other tools. GF(2^8) entries become
  * 0x-prefixed bytes in C and Rust and field elements of
  * GF(2)[x]/(x^8 + x^4 + x^3 + x + 1) in Sage; BN254 entries stay decimal
- * (strings in C and Rust, which have no native 254-bit integer).
+ * (strings in C and Rust, which have no native 254-bit integer); entries of
+ * the 64-bit prime fields are u64 literals in C and Rust, and GF(p) in Sage.
  */
-export function formatMatrix(m: string[][], field: FieldName, format: MatrixFormat, name = 'M'): string {
+export function formatMatrix(m: string[][], field: DisplayField, format: MatrixFormat, name = 'M'): string {
   const n = m.length;
+  const p64 = field === 'gf256' || field === 'bn254' ? null : primeModulusOf(field);
   const hex = (v: string) => `0x${v.toUpperCase()}`;
   switch (format) {
     case 'json':
@@ -402,10 +410,12 @@ export function formatMatrix(m: string[][], field: FieldName, format: MatrixForm
     case 'grid':
       return m.map((row) => row.join(' ')).join('\n');
     case 'c':
+      if (p64 !== null) return `/* elements modulo p = ${p64.toString()} */\nstatic const uint64_t ${name}[${n}][${n}] = {\n${m.map((row) => `    {${row.map((v) => `${v}ULL`).join(', ')}}`).join(',\n')}\n};`;
       return field === 'gf256'
         ? `static const uint8_t ${name}[${n}][${n}] = {\n${m.map((row) => `    {${row.map(hex).join(', ')}}`).join(',\n')}\n};`
         : `/* BN254 scalar field elements, decimal */\nstatic const char *${name}[${n}][${n}] = {\n${m.map((row) => `    {${row.map((v) => `"${v}"`).join(', ')}}`).join(',\n')}\n};`;
     case 'rust':
+      if (p64 !== null) return `// elements modulo p = ${p64.toString()}\nconst ${name}: [[u64; ${n}]; ${n}] = [\n${m.map((row) => `    [${row.join(', ')}],`).join('\n')}\n];`;
       return field === 'gf256'
         ? `const ${name}: [[u8; ${n}]; ${n}] = [\n${m.map((row) => `    [${row.map(hex).join(', ')}],`).join('\n')}\n];`
         : `// BN254 scalar field elements, decimal\nconst ${name}: [[&str; ${n}]; ${n}] = [\n${m.map((row) => `    [${row.map((v) => `"${v}"`).join(', ')}],`).join('\n')}\n];`;
@@ -419,7 +429,7 @@ export function formatMatrix(m: string[][], field: FieldName, format: MatrixForm
             `${name} = matrix(F, [\n${m.map((row) => `    [${row.map((v) => `e(${hex(v)})`).join(', ')}]`).join(',\n')}\n])`,
           ].join('\n')
         : [
-            `p = ${BN254_P.toString()}`,
+            `p = ${(p64 ?? BN254_P).toString()}`,
             'F = GF(p)',
             `${name} = matrix(F, [\n${m.map((row) => `    [${row.join(', ')}]`).join(',\n')}\n])`,
           ].join('\n');

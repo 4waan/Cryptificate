@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WORKSPACE_KEY, parseSavedWorkspace, readSavedWorkspace, serializeWorkspace, writeSavedWorkspace } from './persist';
-import { aesDesign, aesSharedSum, hadesDesign, hadesSharedSum } from './presets';
+import { aesDesign, aesSharedSum, hadesDesign, hadesSharedSum, primeDesign } from './presets';
 
 function memoryStorage() {
   const map = new Map<string, string>();
@@ -67,5 +67,13 @@ describe('workspace persistence', () => {
     expect(readSavedWorkspace(throwing)).toBeNull();
     expect(writeSavedWorkspace(throwing, { inputs: { design: aesDesign(), program: null, target: 'matrix' }, dirty: false })).toBe(false);
     expect(writeSavedWorkspace(null, { inputs: { design: aesDesign(), program: null, target: 'matrix' }, dirty: false })).toBe(false);
+  });
+});
+
+describe('saved prime-field workspaces', () => {
+  it('restores a KoalaBear design', () => {
+    const w = { inputs: { design: primeDesign('koalabear'), program: null, target: 'external' as const }, dirty: true };
+    // Restoring normalizes the design: unstated round constants read as unspecified.
+    expect(parseSavedWorkspace(serializeWorkspace(w))?.inputs.design).toEqual({ constants: { kind: 'unspecified' }, ...w.inputs.design });
   });
 });

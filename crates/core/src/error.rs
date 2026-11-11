@@ -61,6 +61,8 @@ pub enum ErrorCode {
     BadSeed,
     /// The program name is too long or contains control characters.
     BadName,
+    /// A prime-field modulus is not prime, or differs from the named field's.
+    BadModulus,
 }
 
 impl ErrorCode {
@@ -93,6 +95,7 @@ impl ErrorCode {
             BadProfile => "bad_profile",
             BadSeed => "bad_seed",
             BadName => "bad_name",
+            BadModulus => "bad_modulus",
         }
     }
 }

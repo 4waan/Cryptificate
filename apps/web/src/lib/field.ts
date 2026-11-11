@@ -1,10 +1,17 @@
-import { BN254_P, bnAdd, bnInv, bnMul, compactBn, formatBn, isBnDecimal, parseBn } from './bn254';
+import { BN254_P, bnAdd, bnInv, bnMul, compactBn, formatBn, invMod, isBnDecimal, mod, parseBn } from './bn254';
 import { formatGfHex, gfInv, gfMul, isGfHex, parseGfHex } from './gf256';
-import type { FieldName } from './types';
+import { PRIME_FIELD_PRESETS } from './types';
+import type { CandidateDesign, FieldName } from './types';
+
+/**
+ * The field a value is displayed and computed in: `gf256`, `bn254`, or
+ * `prime:<p>` for the prime-field profile (`hades/prime/v1`) with modulus p.
+ */
+export type DisplayField = FieldName | `prime:${string}`;
 
 /** Field operations on the JSON string encoding of elements. */
 export interface FieldOps {
-  name: FieldName;
+  name: DisplayField;
   zero: string;
   one: string;
   isValid(text: string): boolean;
@@ -50,22 +57,80 @@ export const BN254: FieldOps = {
   syntax: `a decimal number from 0 to p - 1 (p = ${BN254_P.toString().slice(0, 6)}…), no sign or leading zeros`,
 };
 
-export function fieldOps(name: FieldName): FieldOps {
-  return name === 'gf256' ? GF256 : BN254;
+const DEC_RE = /^(0|[1-9][0-9]*)$/;
+const primeCache = new Map<string, FieldOps>();
+
+/** Arithmetic modulo a prime `p` below 2^64 on canonical decimal strings. */
+export function primeFieldOps(p: bigint): FieldOps {
+  const key = p.toString();
+  const cached = primeCache.get(key);
+  if (cached) return cached;
+  const valid = (t: string): boolean => DEC_RE.test(t) && t.length <= 20 && BigInt(t) < p;
+  const parse = (t: string): bigint => {
+    if (!valid(t)) throw new Error(`not a canonical element modulo ${key}: ${JSON.stringify(t)}`);
+    return BigInt(t);
+  };
+  const fmt = (x: bigint): string => mod(x, p).toString(10);
+  const ops: FieldOps = {
+    name: `prime:${key}`,
+    zero: '0',
+    one: '1',
+    isValid: valid,
+    canonical: (t) => fmt(parse(t)),
+    add: (a, b) => fmt(parse(a) + parse(b)),
+    mul: (a, b) => fmt(parse(a) * parse(b)),
+    neg: (a) => fmt(-parse(a)),
+    inv: (a) => {
+      const r = invMod(parse(a), p);
+      return r === null ? null : fmt(r);
+    },
+    isZero: (a) => parse(a) === 0n,
+    syntax: `a decimal number from 0 to ${(p - 1n).toString()}, no sign or leading zeros`,
+  };
+  primeCache.set(key, ops);
+  return ops;
+}
+
+/** The modulus named by a `prime:<p>` display field, if it is one. */
+export function primeModulusOf(field: DisplayField): bigint | null {
+  if (!field.startsWith('prime:')) return null;
+  const text = field.slice('prime:'.length);
+  return DEC_RE.test(text) && text.length <= 20 ? BigInt(text) : null;
+}
+
+export function fieldOps(name: DisplayField): FieldOps {
+  if (name === 'gf256') return GF256;
+  if (name === 'bn254') return BN254;
+  const p = primeModulusOf(name);
+  // An unusable modulus validates nothing.
+  return p !== null && p >= 2n ? primeFieldOps(p) : primeFieldOps(1n);
+}
+
+/**
+ * The display field of a design: `prime:<p>` for the prime-field profile
+ * (with an empty modulus while a custom one is being typed).
+ */
+export function displayFieldOf(design: CandidateDesign): DisplayField {
+  if (design.model === 'hades/prime/v1') {
+    const preset = PRIME_FIELD_PRESETS.find((f) => f.id === design.field);
+    return `prime:${design.modulus ?? preset?.modulus ?? ''}`;
+  }
+  return design.field;
 }
 
 /** Formats a vector of elements for display: uppercase hex bytes, or decimals. */
-export function formatVector(field: FieldName, values: readonly string[]): string {
+export function formatVector(field: DisplayField, values: readonly string[]): string {
   const ops = fieldOps(field);
   return `[${values.map((v) => (ops.isValid(v) ? ops.canonical(v) : v)).join(', ')}]`;
 }
 
 /**
  * Short display text for one element (matrix cells, diff summaries): the
- * canonical form, with long BN254 values shortened. `full` is the whole
+ * canonical form, with long BN254 values shortened (elements of the 64-bit
+ * prime fields are short enough to show whole). `full` is the whole
  * value for a tooltip; `spoken` is what a screen reader should read.
  */
-export function displayElement(field: FieldName, value: string): { text: string; full: string; spoken: string; short: boolean } {
+export function displayElement(field: DisplayField, value: string): { text: string; full: string; spoken: string; short: boolean } {
   const ops = fieldOps(field);
   const full = ops.isValid(value) ? ops.canonical(value) : value;
   if (field !== 'bn254') return { text: full, full, spoken: full, short: false };

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { copyText } from '../lib/clipboard';
 import { isMacPlatform } from '../lib/shortcuts';
-import type { FieldName } from '../lib/types';
+import type { CandidateDesign } from '../lib/types';
 import { makeShareLink, redo, undo } from '../state/actions';
 import { useAppState } from '../state/store';
 import { IconLink, IconRedo, IconUndo } from './icons';
@@ -68,7 +68,7 @@ function ShareLinkButton({ disabled, reason }: { disabled: boolean; reason?: str
 }
 
 /** Presets, undo/redo, share link and the save status, above the workspace editors. */
-export function WorkspaceToolbar({ field, problems }: { field: FieldName; problems: number }) {
+export function WorkspaceToolbar({ field, problems }: { field: CandidateDesign['field']; problems: number }) {
   const canUndo = useAppState((s) => s.history.past.length > 0);
   const canRedo = useAppState((s) => s.history.future.length > 0);
   const storage = useAppState((s) => s.storage);

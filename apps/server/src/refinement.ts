@@ -3,11 +3,13 @@
  *
  * The proofs are checked once by `scripts/setup.sh --with-refinement`, which
  * records <state>/refinement.json. They are reported as proved only while
- * the kernel source still has the digest the extraction was made from.
+ * the kernel source still has the digest the extraction was made from, and
+ * never inside the container image (CRYPTIFICATE_CONTAINER=1), which does
+ * not check them.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { FieldName } from '@cryptificate/schema';
+import type { FieldName, PrimeFieldName } from '@cryptificate/schema';
 import type { Paths } from './paths.js';
 import { sha256Hex } from './toolchain.js';
 
@@ -39,9 +41,19 @@ function readRecord(p: string): CheckRecord | null {
   }
 }
 
-export function refinementStatus(paths: Paths, field: FieldName): RefinementStatus {
+export function refinementStatus(
+  paths: Paths,
+  field: FieldName | PrimeFieldName,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): RefinementStatus {
+  if (field === 'bn254') {
+    return {
+      status: 'unsupported',
+      note: "The native BN254 variants compute with arkworks' Fr, which no refinement proof covers. The proved BN254 Montgomery kernel (crates/kernels/src/bn254_mont.rs) is not the code these variants call.",
+    };
+  }
   if (field !== 'gf256') {
-    return { status: 'unsupported', note: 'Refinement proofs exist for the GF(2^8) kernels only; BN254 arithmetic is not covered.' };
+    return { status: 'unsupported', note: 'No refinement proof covers arithmetic over this prime field; the refinement proofs cover the GF(2^8) kernels and the BN254 Montgomery kernel only.' };
   }
   const recorded = readText(join(paths.root, 'refinement', 'extract.sha256'));
   const kernel = readText(join(paths.root, KERNEL));
@@ -55,6 +67,15 @@ export function refinementStatus(paths: Paths, field: FieldName): RefinementStat
   const current = sha256Hex(kernel);
   if (extractedFrom !== current) {
     return { status: 'not_established', note: `${KERNEL} changed since the refinement was extracted; the proofs do not cover the current kernels.` };
+  }
+  // The image cannot check these proofs, so a refinement.json in its state
+  // directory (a mounted host directory or a reused volume) records a check
+  // made elsewhere, not on this machine; it is not read here.
+  if (env['CRYPTIFICATE_CONTAINER'] === '1') {
+    return {
+      status: 'not_established',
+      note: 'The container image does not check the refinement proofs: they need a second Lean toolchain and Mathlib build. Check them from a source checkout (scripts/setup.sh --with-refinement).',
+    };
   }
   const checked = readRecord(join(paths.home, 'refinement.json'));
   if (!checked || checked.checked !== true || checked.kernelsSha256 !== current) {

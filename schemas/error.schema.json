@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/4waan/Cryptificate/schemas/error.schema.json",
+  "title": "ErrorResponse",
+  "description": "Body of every 4xx and 5xx JSON response of the HTTP API. error.code is a stable machine-readable string (forbidden, bad-json, invalid-request, unsupported-media-type, body-too-large, not-found, method-not-allowed, queue-full, not-ready, internal); error.message is for people and may change. A 400 invalid-request response also lists every shape problem found in errors.",
+  "type": "object",
+  "required": ["error"],
+  "properties": {
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "path": { "type": "string" }
+      }
+    },
+    "errors": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/issue" } }
+  },
+  "$defs": {
+    "issue": {
+      "type": "object",
+      "required": ["path", "code", "message"],
+      "properties": {
+        "path": { "description": "JSON Pointer into the request, e.g. /design/matrix/0/1.", "type": "string" },
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

@@ -13,6 +13,11 @@
       "type": "string",
       "pattern": "^(0|[1-9][0-9]{0,76})$"
     },
+    "prime": {
+      "description": "Element of a prime field below 2^64 (model hades/prime/v1) as a canonical decimal string in [0, p); no sign, whitespace or leading zeros. The range check against p is done by the validators.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
     "any": {
       "anyOf": [{ "$ref": "#/$defs/gf256" }, { "$ref": "#/$defs/bn254" }]
     },
@@ -27,6 +32,13 @@
       "minItems": 3,
       "maxItems": 3,
       "items": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "$ref": "#/$defs/bn254" } }
+    },
+    "primeMatrix": {
+      "description": "A square matrix of width 3 or 4 over a prime field below 2^64; every row has the design's width.",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 4,
+      "items": { "type": "array", "minItems": 3, "maxItems": 4, "items": { "$ref": "#/$defs/prime" } }
     }
   }
 }

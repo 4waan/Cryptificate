@@ -6,17 +6,36 @@ keeps jobs on disk and packs evidence bundles.
 
 ```sh
 npm run build -w apps/server
+npx cryptificate doctor                      # what is missing, and how to fix it
+npx cryptificate init ../my-repo             # cryptificate.json, a starting design, a GitHub workflow
 npx cryptificate serve                       # http://127.0.0.1:4173/
 npx cryptificate check examples/designs/aes.json --program examples/programs/aes-known-shared-sum.json
 npx cryptificate experiment examples/designs/aes.json --profile quick
 npx cryptificate verify bundle.tar.gz
+npx cryptificate check 'designs/*.json' --fail-on refuted --format sarif --output cryptificate.sarif
+npx cryptificate report result.json --format junit
+npx cryptificate report bundle.tar.gz --format html --output report.html
 npm test -w apps/server
 ```
 
+## CI gate
+
+`check`, `verify` and `report` accept several files or patterns and share `--format
+text|json|sarif|junit|markdown|html`, `--output FILE`, `--fail-on none|refuted|not-established|any`,
+`--claims ID,...`, `--uri-base DIR` (SARIF locations relative to DIR) and `--no-step-summary`; with
+`GITHUB_STEP_SUMMARY` set they append a Markdown report to it. Exit status: 0 passed, 1 the policy failed (or `verify` found a difference), 2 usage
+error, unusable input, a run that did not complete, or, under a policy, an in-scope claim left
+unchecked because a tool was missing. The renderings are in `src/report-formats.ts`, the policy in
+`src/policy.ts`; [docs/ci.md](../../docs/ci.md) describes them and the GitHub Action. Without
+input arguments `check` reads the nearest `cryptificate.json` (`src/project.ts`, schema
+`schemas/project-config.schema.json`), which `init` (`src/init.ts`, `src/presets.ts`) writes;
+`doctor` (`src/doctor.ts`) checks the toolchains, builds, state directory and service.
+
 ## HTTP API
 
-The service binds `127.0.0.1` unless `--host` says otherwise (it then warns: there is no
-authentication). Every request must carry a loopback `Host` header; `POST` requests with an
+The service binds `127.0.0.1` unless `--host` or `CRYPTIFICATE_HOST` names another address (it
+then warns: there is no authentication). The container image keeps this default; see
+[docs/docker.md](../../docs/docker.md). Every request must carry a loopback `Host` header; `POST` requests with an
 `Origin` header must come from the service's own origin (or one given with `--allow-origin` /
 `CRYPTIFICATE_ALLOWED_ORIGINS`), and `Sec-Fetch-Site: cross-site` is refused. JSON bodies must be
 `application/json` and at most 256 KiB; they are shape-checked against the public schema before the
@@ -30,6 +49,7 @@ engine sees them.
 | `GET /api/jobs/:id` | `Job`: state, progress steps, partial or final report, `bundle` flag |
 | `POST /api/jobs/:id/stop` | stops the job's whole process group; completed checkpoints are kept |
 | `GET /api/jobs/:id/bundle` | deterministic `.tar.gz` evidence bundle (`409` while the job runs) |
+| `GET /api/jobs/:id/report.html` | the bundle's `report.html` as a download, with a `Content-Security-Policy` header (`409` while the job runs) |
 
 Errors are `{"error": {code, message, path?}}`; validation errors add `errors: [{path, code, message}]`.
 Status codes: `400` invalid JSON or shape, `403` Host/Origin policy, `404`, `405`, `409`, `413` body
@@ -53,7 +73,9 @@ axioms are within `propext`, `Classical.choice`, `Quot.sound`, and every `CRYPTI
 equals the value derived from the normalized request. Activity bounds are only proved together
 with MDS and distinct offsets. Completed, clean results are cached under a key of the input digest,
 toolchain pins, checker version and the digests of the templates, the Lean library and the generated
-source; a hit is reported with origin `cached` and the id of the run it came from.
+source; a hit is reported with origin `cached` and the id of the run it came from. The
+`rust.refinement` claim of a hit is not copied: it is recomputed from the current refinement
+status, which belongs to this machine rather than to the cached certificate.
 
 ## Experiment
 
@@ -67,13 +89,24 @@ confirmation sessions, for a candidate whose equivalence Lean proved.
 ## Bundles and `verify`
 
 A bundle holds `inputs.json`, `report.json`, `lean/`, `toolchain.json`, `native/`, `search/`,
-`engine/diagnose.json` and `VERIFY.md`, with sorted entries, zero mtimes and no timestamps. `native/` keeps the
+`engine/diagnose.json`, `VERIFY.md` and `report.html` (a rendering of `report.json`), with sorted entries, zero mtimes and no timestamps. `native/` keeps the
 generated variant crates, the kernels they link against (checked against the digest of the copy embedded in the
 engine), the harness source and the raw correctness and timing records, described in `native/SOURCES.md`.
 `cryptificate verify` extracts it to a fresh temporary directory, reads only `inputs.json` and
 `report.json`, regenerates and checks the certificate with the installed engine and Lean, and prints
-a per-claim table (`match`, `mismatch`, `not re-checked`, `historical`). It never runs Lean, Rust or
-shell files from the bundle. Exit status 0 means every re-checked claim matched.
+a per-claim table (`match`, `mismatch`, `not re-checked`, `historical`, `not recorded`). Two groups
+of claims were added after the first bundles were recorded (`ADDED_LATER` in `src/verify.ts`), and
+a bundle that records no claim of a group and is shown to predate it has no status to compare for
+them; they are derived, shown as `not recorded` and not counted as a mismatch. For
+`activity.partial` and `activity.total` the evidence is the checker revision
+(`report.provenance.checker`): a commit of the local checkout whose claim list does not yet name
+them. For `sbox.differential` and `sbox.linearity` it is the recorded Lean certificate digest
+differing from the regenerated one. Any other bundle that lacks a claim of these groups (a newer,
+dirty or unknown revision, no git history to look it up in, the current certificate, or only one
+claim of the group) counts the omission as a mismatch, as for every other re-checked claim. The
+S-box quality claims match only when their value and pair of bytes match too. It never runs
+Lean, Rust or shell files from the bundle. Exit status 0 means every re-checked claim matched (and,
+with `--fail-on`, that no re-checked claim has a status the policy rejects).
 
 ## Environment
 
@@ -83,4 +116,9 @@ shell files from the bundle. Exit status 0 means every re-checked claim matched.
 | `CRYPTIFICATE_ENGINE` | engine binary (default `target/release/cryptificate-engine`, then `debug`, then `PATH`) |
 | `CRYPTIFICATE_LAKE` | `lake` launcher (default `PATH`, then `~/.elan/bin/lake`) |
 | `CRYPTIFICATE_ALLOWED_ORIGINS` | extra comma-separated origins allowed to `POST` |
+| `CRYPTIFICATE_HOST` | `serve` bind address when `--host` is not given (default `127.0.0.1`) |
+| `PORT` | `serve` port when `--port` is not given (default `4173`); in the container image, also the port its health check polls |
+| `CRYPTIFICATE_ROOT` | the checkout whose `lean/`, templates and web UI are used (default: found from the service's own location) |
+| `CRYPTIFICATE_CONTAINER` | set to `1` by the container image: `serve` explains how to publish the port, and `rust.refinement` is never `proved`: it says the image does not check the refinement proofs, and `<state>/refinement.json` is not read |
 | `NO_COLOR` | plain terminal output (also automatic when stdout is not a TTY) |
+| `GITHUB_STEP_SUMMARY` | file the Markdown report of `check`, `verify` and `report` is appended to |

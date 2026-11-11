@@ -10,7 +10,7 @@ import {
   IconWarning,
   StatusPill,
 } from '../components/icons';
-import { ExecutionProblems, UnverifiedPreview } from '../components/ResultsPanel';
+import { ExecutionProblems, ExportReportButton, UnverifiedPreview } from '../components/ResultsPanel';
 import { RunProgress, isActive } from '../components/RunProgress';
 import { isStale } from '../lib/canonical';
 import { circuitStats } from '../lib/circuit';
@@ -314,6 +314,7 @@ function ExperimentBody({ run, report }: { run: Run; report: ExperimentReport })
               </>
             ) : null}
           </span>
+          <ExportReportButton report={report} run={run} />
         </div>
         <SavingsCallout report={report} active={isActive(run)} />
       </section>

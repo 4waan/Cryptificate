@@ -1,14 +1,17 @@
 //! Finite fields used by candidate designs and linear programs.
 //!
-//! Two fields are supported:
+//! Three element types are supported:
 //!
 //! * [`Gf256`]: GF(2)\[x\]/(x^8 + x^4 + x^3 + x + 1). The byte `02` is the
 //!   element x. Canonical text form: two uppercase hex digits (`"1B"`);
 //!   lowercase digits are accepted on input.
 //! * [`Bn254`]: the BN254 scalar field Fr. Canonical text form: the decimal
 //!   representative in `[0, p)` with no sign, whitespace or leading zeros.
+//! * [`crate::prime::Fp`]: `Z/pZ` for a prime `p < 2^64` chosen per request
+//!   (the named fields BabyBear, KoalaBear, Mersenne31 and Goldilocks, or a
+//!   custom prime), with the same decimal text form.
 //!
-//! Both implement [`Field`], and both serialize with serde as their canonical
+//! All implement [`Field`], and all serialize with serde as their canonical
 //! string.
 
 use std::fmt;
@@ -31,6 +34,21 @@ pub enum FieldKind {
     /// The BN254 scalar field.
     #[serde(rename = "bn254")]
     Bn254,
+    /// BabyBear, `p = 15 * 2^27 + 1 = 2013265921`.
+    #[serde(rename = "babybear")]
+    BabyBear,
+    /// KoalaBear, `p = 127 * 2^24 + 1 = 2130706433`.
+    #[serde(rename = "koalabear")]
+    KoalaBear,
+    /// Mersenne31, `p = 2^31 - 1 = 2147483647`.
+    #[serde(rename = "mersenne31")]
+    Mersenne31,
+    /// Goldilocks, `p = 2^64 - 2^32 + 1 = 18446744069414584321`.
+    #[serde(rename = "goldilocks")]
+    Goldilocks,
+    /// A custom prime `p < 2^64`, given by the design's `modulus` member.
+    #[serde(rename = "prime")]
+    Prime,
 }
 
 impl FieldKind {
@@ -39,6 +57,11 @@ impl FieldKind {
         match self {
             FieldKind::Gf256 => "gf256",
             FieldKind::Bn254 => "bn254",
+            FieldKind::BabyBear => "babybear",
+            FieldKind::KoalaBear => "koalabear",
+            FieldKind::Mersenne31 => "mersenne31",
+            FieldKind::Goldilocks => "goldilocks",
+            FieldKind::Prime => "prime",
         }
     }
 
@@ -47,6 +70,46 @@ impl FieldKind {
         match s {
             "gf256" => Some(FieldKind::Gf256),
             "bn254" => Some(FieldKind::Bn254),
+            "babybear" => Some(FieldKind::BabyBear),
+            "koalabear" => Some(FieldKind::KoalaBear),
+            "mersenne31" => Some(FieldKind::Mersenne31),
+            "goldilocks" => Some(FieldKind::Goldilocks),
+            "prime" => Some(FieldKind::Prime),
+            _ => None,
+        }
+    }
+
+    /// Every field of the prime-field profile (`hades/prime/v1`): the named
+    /// 64-bit primes and the custom prime.
+    pub const PRIME_FIELDS: [FieldKind; 5] = [
+        FieldKind::BabyBear,
+        FieldKind::KoalaBear,
+        FieldKind::Mersenne31,
+        FieldKind::Goldilocks,
+        FieldKind::Prime,
+    ];
+
+    /// Whether this is a field of the prime-field profile, whose elements are
+    /// [`crate::prime::Fp`] values under a modulus below `2^64`.
+    pub const fn is_prime64(self) -> bool {
+        matches!(
+            self,
+            FieldKind::BabyBear
+                | FieldKind::KoalaBear
+                | FieldKind::Mersenne31
+                | FieldKind::Goldilocks
+                | FieldKind::Prime
+        )
+    }
+
+    /// The modulus of a named prime field (`None` for the custom prime and
+    /// for the fields with their own element types).
+    pub const fn preset_modulus(self) -> Option<u64> {
+        match self {
+            FieldKind::BabyBear => Some(2013265921),
+            FieldKind::KoalaBear => Some(2130706433),
+            FieldKind::Mersenne31 => Some(2147483647),
+            FieldKind::Goldilocks => Some(18446744069414584321),
             _ => None,
         }
     }
@@ -67,7 +130,7 @@ pub struct DecodeError {
 }
 
 impl DecodeError {
-    fn new(reason: impl Into<String>) -> Self {
+    pub(crate) fn new(reason: impl Into<String>) -> Self {
         DecodeError {
             reason: reason.into(),
         }

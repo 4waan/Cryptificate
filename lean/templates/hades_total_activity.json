@@ -1,0 +1,23 @@
+{
+  "name": "hades_total_activity",
+  "kind": "claim",
+  "claim": "activity.total",
+  "status": "proved",
+  "theorem": "CryptificateJob.hades_total_activity",
+  "expectedType": "∀ (constants : ℕ → Fin 3 → Poseidon2.BN254.F) (x y : Fin 3 → Poseidon2.BN254.F), x ≠ y → (CryptificateJob.candFullRounds / 2 / 2 + CryptificateJob.candFullRounds / 2 / 2) * 4 + CryptificateJob.candFullRounds / 2 % 2 + CryptificateJob.candFullRounds / 2 % 2 + CryptificateJob.candPartialRounds / {{OBS_LENGTH}} ≤ { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.outerActivity CryptificateJob.candMask constants x y + { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.partialActivity CryptificateJob.candMask constants x y",
+  "placeholders": [
+    "OBS_LENGTH"
+  ],
+  "requires": [
+    "const_external_bn254",
+    "const_internal_bn254",
+    "const_exponent",
+    "const_rounds_hades",
+    "const_mask_hades",
+    "external_mds",
+    "internal_invertible",
+    "power_bijective",
+    "partial_active"
+  ],
+  "field": "bn254"
+}

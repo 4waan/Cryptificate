@@ -166,3 +166,36 @@ describe('formatMatrix', () => {
     ]);
   });
 });
+
+describe('the 64-bit prime fields', () => {
+  const KB = 'prime:2130706433' as const; // KoalaBear, 2^31 - 2^24 + 1
+  it('reads decimals below p and reduces negative entries modulo p', () => {
+    const r = parseMatrixText('[[2, 1, 1], [1, 2, 1], [1, 1, -1]]', KB, { size: 3 });
+    expect(r.ok && r.matrix).toEqual([
+      ['2', '1', '1'],
+      ['1', '2', '1'],
+      ['1', '1', '2130706432'],
+    ]);
+    expect(r.ok && r.notes).toContain('Negative entries were reduced modulo p.');
+    const big = parseMatrixText('2130706433 0\n0 1', KB, { size: 2 });
+    expect(big.ok ? null : big.error).toBe('Row 1, column 1: “2130706433” is not below the field modulus p.');
+  });
+  it('normalizes cells modulo p', () => {
+    expect(normalizeCell('-1', KB)).toBe('2130706432');
+    expect(normalizeCell('0x10', KB)).toBe('16');
+    expect(normalizeCell('2130706433', KB)).toBeNull();
+  });
+  it('writes u64 literals for C and Rust, GF(p) for Sage, and reads every format back', () => {
+    const m = [
+      ['5', '7'],
+      ['2130706432', '1'],
+    ];
+    expect(formatMatrix(m, KB, 'c', 'M')).toContain('static const uint64_t M[2][2] = {\n    {5ULL, 7ULL},');
+    expect(formatMatrix(m, KB, 'rust', 'M')).toContain('const M: [[u64; 2]; 2] = [\n    [5, 7],');
+    expect(formatMatrix(m, KB, 'sage', 'M')).toContain('p = 2130706433\nF = GF(p)');
+    for (const f of MATRIX_FORMATS) {
+      const back = parseMatrixText(formatMatrix(m, KB, f.id, 'M'), KB, { size: 2 });
+      expect(back.ok && back.matrix, f.id).toEqual(m);
+    }
+  });
+});

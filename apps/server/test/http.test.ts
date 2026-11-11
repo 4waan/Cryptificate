@@ -7,7 +7,7 @@ import type { Server } from 'node:http';
 import type { AnalysisReport, Job } from '@cryptificate/schema';
 import type { JobContext, PipelineEnv, PipelineResult } from '../src/context.js';
 import { JobManager } from '../src/jobs.js';
-import { checkRequestOrigin, createApp, makeOriginPolicy } from '../src/server.js';
+import { bindNotes, checkRequestOrigin, createApp, makeOriginPolicy, serveHost } from '../src/server.js';
 import { readTarGz } from '../src/tar.js';
 import { AES_DESIGN, makeFixture } from './helpers.js';
 
@@ -111,6 +111,58 @@ test('origin policy: loopback Host required, cross-origin writes rejected', () =
   assert.equal(checkRequestOrigin({ method: 'POST', headers: { host: '127.0.0.1:4173', origin: 'http://localhost:5173' } }, dev), null);
 });
 
+test('serve binds loopback unless --host or CRYPTIFICATE_HOST names another address', () => {
+  assert.equal(serveHost(undefined, {}), '127.0.0.1');
+  assert.equal(serveHost(undefined, { CRYPTIFICATE_HOST: '' }), '127.0.0.1');
+  assert.equal(serveHost(undefined, { CRYPTIFICATE_HOST: '  ' }), '127.0.0.1');
+  // The container marker alone never widens the bind address.
+  assert.equal(serveHost(undefined, { CRYPTIFICATE_CONTAINER: '1' }), '127.0.0.1');
+  assert.equal(serveHost(undefined, { CRYPTIFICATE_HOST: '0.0.0.0' }), '0.0.0.0');
+  assert.equal(serveHost('::1', { CRYPTIFICATE_HOST: '0.0.0.0' }), '::1');
+  assert.equal(serveHost('0.0.0.0', {}), '0.0.0.0');
+
+  assert.deepEqual(bindNotes('127.0.0.1', 4173, {}), []);
+  assert.deepEqual(bindNotes('localhost', 4173, {}), []);
+  const wide = bindNotes('0.0.0.0', 4173, {});
+  assert.equal(wide.length, 1);
+  assert.match(wide[0] ?? '', /^warning: binding to 0\.0\.0\.0\. The service has no authentication/);
+  const inside = bindNotes('127.0.0.1', 4173, { CRYPTIFICATE_CONTAINER: '1' });
+  assert.equal(inside.length, 1);
+  assert.match(inside[0] ?? '', /does not reach/);
+  assert.match(inside[0] ?? '', /--host 0\.0\.0\.0/);
+  assert.match(inside[0] ?? '', /-p 127\.0\.0\.1:4173:4173/);
+  const wideInside = bindNotes('0.0.0.0', 8080, { CRYPTIFICATE_CONTAINER: '1', PORT: '8080' });
+  assert.equal(wideInside.length, 2);
+  assert.match(wideInside[0] ?? '', /^warning: binding to 0\.0\.0\.0/);
+  assert.match(wideInside[1] ?? '', /-p 127\.0\.0\.1:8080:8080/);
+  // --port 8080 with the image's PORT=4173: its health check would poll 4173
+  const portFlag = bindNotes('0.0.0.0', 8080, { CRYPTIFICATE_CONTAINER: '1', PORT: '4173' });
+  assert.equal(portFlag.length, 3);
+  assert.match(portFlag[2] ?? '', /health check polls port 4173 \(the PORT variable\), not 8080/);
+  assert.match(portFlag[2] ?? '', /-e PORT=8080 instead of --port/);
+  const portFlagLoopback = bindNotes('127.0.0.1', 8080, { CRYPTIFICATE_CONTAINER: '1', PORT: '4173' });
+  assert.equal(portFlagLoopback.length, 2);
+  assert.match(portFlagLoopback[1] ?? '', /health check polls port 4173/);
+  // -e PORT=8080: the health check follows the service
+  assert.equal(bindNotes('0.0.0.0', 8080, { CRYPTIFICATE_CONTAINER: '1', PORT: '8080' }).length, 2);
+  assert.equal(bindNotes('0.0.0.0', 4173, { CRYPTIFICATE_CONTAINER: '1', PORT: '4173' }).length, 2);
+  // outside the image there is no such health check
+  assert.deepEqual(bindNotes('127.0.0.1', 8080, { PORT: '4173' }), []);
+});
+
+test('origin policy when bound to all interfaces: Host must still be loopback', () => {
+  // What the container image does with --host 0.0.0.0: the bind address adds no
+  // allowed Host name, so DNS-rebinding and LAN Host headers stay rejected.
+  const policy = makeOriginPolicy('0.0.0.0', 4173);
+  const ok = (method: string, headers: Record<string, string>) => checkRequestOrigin({ method, headers }, policy);
+  assert.equal(ok('GET', { host: '127.0.0.1:4173' }), null);
+  assert.equal(ok('POST', { host: '127.0.0.1:4173', origin: 'http://127.0.0.1:4173' }), null);
+  assert.notEqual(ok('GET', { host: '0.0.0.0:4173' }), null);
+  assert.notEqual(ok('GET', { host: '192.168.1.20:4173' }), null);
+  // A different published host port is a different origin.
+  assert.notEqual(ok('POST', { host: '127.0.0.1:8080', origin: 'http://127.0.0.1:8080' }), null);
+});
+
 test('HTTP: validation, content type, body limit and same-origin', async () => {
   const s = await start(blockingPipeline(new Promise(() => {})));
   try {
@@ -175,6 +227,7 @@ test('HTTP: one worker, two queued, 429 beyond; stop keeps checkpoints; bundles'
     assert.ok(running.steps.some((st) => st.name === 'validate' && st.state === 'completed'));
     assert.equal(running.bundle, false);
     assert.equal((await call(s.port, 'GET', `/api/jobs/${ids[0]}/bundle`)).status, 409);
+    assert.equal((await call(s.port, 'GET', `/api/jobs/${ids[0]}/report.html`)).status, 409);
     const queued = (await call(s.port, 'GET', `/api/jobs/${ids[2]}`)).json<Job>();
     assert.equal(queued.state, 'queued');
     assert.equal(queued.queuePosition, 2);
@@ -204,7 +257,14 @@ test('HTTP: one worker, two queued, 429 beyond; stop keeps checkpoints; bundles'
     const b2 = await call(s.port, 'GET', `/api/jobs/${ids[1]}/bundle`);
     assert.ok(b1.body.equals(b2.body), 'bundle bytes are stable');
     const files = readTarGz(b1.body);
-    assert.ok(files.has('inputs.json') && files.has('report.json') && files.has('VERIFY.md'));
+    assert.ok(files.has('inputs.json') && files.has('report.json') && files.has('VERIFY.md') && files.has('report.html'));
+    // the HTML report on its own: the bundle's report.html, as a download that runs nothing
+    const page = await call(s.port, 'GET', `/api/jobs/${ids[1]}/report.html`);
+    assert.equal(page.status, 200);
+    assert.equal(page.headers['content-type'], 'text/html; charset=utf-8');
+    assert.equal(page.headers['content-disposition'], `attachment; filename="cryptificate-${ids[1]}.html"`);
+    assert.match(String(page.headers['content-security-policy']), /default-src 'none'/);
+    assert.ok(page.body.equals(files.get('report.html')!));
     // the cancelled job still has a bundle with its completed checkpoints
     assert.equal((await call(s.port, 'GET', `/api/jobs/${ids[0]}/bundle`)).status, 200);
   } finally {

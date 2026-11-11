@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { BN254_P } from '../lib/bn254';
-import { describeCells } from './ComputedMatrix';
+import { aesDesign, primeDesign } from '../lib/presets';
+import { circuitFromDesign, describeCells } from './ComputedMatrix';
 import { MatrixView, pastedCells, planCellPaste } from './MatrixEditor';
 
 const P_MINUS = (k: bigint) => (BN254_P - k).toString();
@@ -70,5 +71,15 @@ describe('BN254 values in read-only matrices', () => {
 
   it('leaves GF(2^8) cells unchanged', () => {
     expect(describeCells([{ row: 0, col: 1, want: '03', got: '01' }], 'gf256')).toBe('(1, 2) needs 03, gets 01');
+  });
+});
+
+describe('circuit from matrix', () => {
+  it('generates a circuit over GF(2^8) and offers none over the 64-bit prime fields', () => {
+    expect(circuitFromDesign(aesDesign(), 'matrix')?.field).toBe('gf256');
+    expect(circuitFromDesign(primeDesign('koalabear'), 'external')).toBeNull();
+  });
+  it('shows prime-field values whole', () => {
+    expect(describeCells([{ row: 0, col: 0, want: '2130706432', got: '1' }], 'prime:2130706433')).toBe('(1, 1) needs 2130706432, gets 1');
   });
 });
