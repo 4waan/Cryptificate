@@ -1,4 +1,5 @@
-//! Candidate designs: the AES-like GF(2^8) profile and the HADES BN254 profile.
+//! Candidate designs: the AES-like GF(2^8) profile, the HADES BN254 profile
+//! and the HADES profile over a 64-bit prime field.
 //!
 //! These are the normalized, typed forms. Untrusted JSON goes through
 //! [`crate::validate`], which produces these values or a
@@ -10,11 +11,14 @@ use crate::error::{pointer_push as at, ErrorCode, ValidationError};
 use crate::field::{Bn254, Field, FieldKind, Gf256};
 use crate::limits::{self, WidthStatus};
 use crate::linalg::{aes_mixcolumns, Matrix};
+use crate::prime::{is_prime_u64, Fp, Modulus};
 
 /// JSON `model` value of the AES-like profile.
 pub const MODEL_AES_LIKE: &str = "aes-like/gf256/v1";
-/// JSON `model` value of the HADES profile.
+/// JSON `model` value of the HADES profile over the BN254 scalar field.
 pub const MODEL_HADES: &str = "hades/bn254/v1";
+/// JSON `model` value of the HADES profile over a prime field below `2^64`.
+pub const MODEL_HADES_PRIME: &str = "hades/prime/v1";
 
 /// A candidate design, tagged by `model`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,6 +28,11 @@ pub enum CandidateDesign {
     AesLike(AesLikeDesign),
     #[serde(rename = "hades/bn254/v1")]
     Hades(HadesDesign),
+    /// The elements are residues modulo `modulus`: deserializing one needs
+    /// that modulus in scope ([`crate::prime::with_modulus`]); validation
+    /// ([`crate::validate`]) reads the modulus first.
+    #[serde(rename = "hades/prime/v1")]
+    HadesPrime(HadesDesign<Fp>),
 }
 
 impl CandidateDesign {
@@ -32,6 +41,7 @@ impl CandidateDesign {
         match self {
             CandidateDesign::AesLike(_) => MODEL_AES_LIKE,
             CandidateDesign::Hades(_) => MODEL_HADES,
+            CandidateDesign::HadesPrime(_) => MODEL_HADES_PRIME,
         }
     }
 
@@ -40,6 +50,15 @@ impl CandidateDesign {
         match self {
             CandidateDesign::AesLike(_) => FieldKind::Gf256,
             CandidateDesign::Hades(_) => FieldKind::Bn254,
+            CandidateDesign::HadesPrime(d) => d.field,
+        }
+    }
+
+    /// The modulus of a prime-field design (`None` for the other models).
+    pub fn modulus(&self) -> Option<u64> {
+        match self {
+            CandidateDesign::HadesPrime(d) => d.modulus.map(|m| m.0),
+            _ => None,
         }
     }
 
@@ -48,13 +67,16 @@ impl CandidateDesign {
         match self {
             CandidateDesign::AesLike(d) => d.width,
             CandidateDesign::Hades(d) => d.width,
+            CandidateDesign::HadesPrime(d) => d.width,
         }
     }
 
     /// Sets derived members (the `experimental` flag).
     pub fn normalize(&mut self) {
-        if let CandidateDesign::AesLike(d) = self {
-            d.normalize();
+        match self {
+            CandidateDesign::AesLike(d) => d.normalize(),
+            CandidateDesign::HadesPrime(d) => d.normalize(),
+            CandidateDesign::Hades(_) => {}
         }
     }
 
@@ -63,6 +85,7 @@ impl CandidateDesign {
         match self {
             CandidateDesign::AesLike(d) => d.check_at(base),
             CandidateDesign::Hades(d) => d.check_at(base),
+            CandidateDesign::HadesPrime(d) => d.check_at(base),
         }
     }
 
@@ -70,7 +93,7 @@ impl CandidateDesign {
     pub fn default_target(&self) -> Target {
         match self {
             CandidateDesign::AesLike(_) => Target::Matrix,
-            CandidateDesign::Hades(_) => Target::External,
+            CandidateDesign::Hades(_) | CandidateDesign::HadesPrime(_) => Target::External,
         }
     }
 
@@ -85,6 +108,12 @@ impl CandidateDesign {
             }
             (CandidateDesign::Hades(d), Target::Internal) => {
                 Some(AnyMatrix::Bn254(d.internal.clone()))
+            }
+            (CandidateDesign::HadesPrime(d), Target::External) => {
+                Some(AnyMatrix::Prime(d.modulus?.0, d.external.clone()))
+            }
+            (CandidateDesign::HadesPrime(d), Target::Internal) => {
+                Some(AnyMatrix::Prime(d.modulus?.0, d.internal.clone()))
             }
             _ => None,
         }
@@ -113,11 +142,13 @@ impl Target {
     }
 }
 
-/// A matrix over either field.
+/// A matrix over any supported field.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AnyMatrix {
     Gf256(Matrix<Gf256>),
     Bn254(Matrix<Bn254>),
+    /// Residues modulo the given prime.
+    Prime(u64, Matrix<Fp>),
 }
 
 /// The AES-like GF(2^8) profile: MixColumns-style matrix, ShiftRows-style
@@ -258,23 +289,39 @@ impl AesLikeDesign {
     }
 }
 
-/// The HADES BN254 profile (Poseidon2-style permutation).
+/// The HADES profile (Poseidon2-style permutation), over the BN254 scalar
+/// field (`F = Bn254`, model `hades/bn254/v1`) or over a prime field below
+/// `2^64` (`F = Fp`, model `hades/prime/v1`).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct HadesDesign {
+#[serde(
+    rename_all = "camelCase",
+    deny_unknown_fields,
+    bound(serialize = "F: Serialize", deserialize = "F: Deserialize<'de>")
+)]
+pub struct HadesDesign<F = Bn254> {
     pub field: FieldKind,
+    /// The prime modulus, for `hades/prime/v1` only. Normalization fills it in
+    /// for a named field, so the normalized design always states it; it is
+    /// absent (and not serialized) for `hades/bn254/v1`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub modulus: Option<Modulus>,
     pub width: usize,
     /// Linear layer of the full rounds.
-    pub external: Matrix<Bn254>,
+    pub external: Matrix<F>,
     /// Linear layer of the partial rounds.
-    pub internal: Matrix<Bn254>,
+    pub internal: Matrix<F>,
     /// Full rounds, split evenly before and after the partial rounds.
     pub full_rounds: u32,
     pub partial_rounds: u32,
     pub sbox: SboxSpec,
     /// Which state positions pass through the S-box in a partial round.
     pub partial_mask: Vec<bool>,
-    pub constants: ConstantsSpec,
+    pub constants: ConstantsSpec<F>,
+}
+
+/// The default partial-round mask: S-box on coordinate 0 only.
+pub fn default_partial_mask(width: usize) -> Vec<bool> {
+    (0..width).map(|i| i == 0).collect()
 }
 
 impl HadesDesign {
@@ -289,6 +336,7 @@ impl HadesDesign {
         };
         HadesDesign {
             field: FieldKind::Bn254,
+            modulus: None,
             width: 3,
             external: m([[2, 1, 1], [1, 2, 1], [1, 1, 2]]),
             internal: m([[2, 1, 1], [1, 2, 1], [1, 1, 3]]),
@@ -302,9 +350,133 @@ impl HadesDesign {
 
     /// The default partial-round mask: S-box on coordinate 0 only.
     pub fn default_partial_mask(width: usize) -> Vec<bool> {
-        (0..width).map(|i| i == 0).collect()
+        default_partial_mask(width)
     }
 
+    /// Checks every semantic rule; `base` is the JSON pointer of the design.
+    pub fn check_at(&self, base: &str) -> Result<(), ValidationError> {
+        if self.field != FieldKind::Bn254 {
+            return Err(ValidationError::new(
+                ErrorCode::FieldMismatch,
+                at(base, "field"),
+                format!("model {MODEL_HADES} requires field \"bn254\""),
+            ));
+        }
+        if self.modulus.is_some() {
+            return Err(ValidationError::new(
+                ErrorCode::UnknownField,
+                at(base, "modulus"),
+                format!("model {MODEL_HADES} has a fixed modulus; \"modulus\" is not a member"),
+            ));
+        }
+        let w = self.width;
+        if limits::width_status(FieldKind::Bn254, w).is_none() {
+            return Err(ValidationError::new(
+                ErrorCode::UnsupportedWidth,
+                at(base, "width"),
+                format!("width {w} is not supported (use {})", limits::BN254_WIDTH),
+            ));
+        }
+        if matches!(self.constants, ConstantsSpec::Unspecified) {
+            return Err(ValidationError::new(
+                ErrorCode::BadConstantsKind,
+                at(&at(base, "constants"), "kind"),
+                format!(
+                    "model {MODEL_HADES} accepts constants kinds \"reference\" and \"explicit\""
+                ),
+            ));
+        }
+        self.check_rounds_and_layers(base, MODEL_HADES)
+    }
+}
+
+impl HadesDesign<Fp> {
+    /// The modulus as a number (present in every validated design).
+    pub fn modulus_value(&self) -> u64 {
+        self.modulus
+            .expect("a validated prime-field design states its modulus")
+            .0
+    }
+
+    /// Fills in the modulus of a named field when it was not given.
+    pub fn normalize(&mut self) {
+        if self.modulus.is_none() {
+            self.modulus = self.field.preset_modulus().map(Modulus);
+        }
+    }
+
+    /// Checks every semantic rule; `base` is the JSON pointer of the design.
+    /// The elements must already be residues of the stated modulus, which
+    /// validation ensures by decoding them under it.
+    pub fn check_at(&self, base: &str) -> Result<(), ValidationError> {
+        if !self.field.is_prime64() {
+            return Err(ValidationError::new(
+                ErrorCode::FieldMismatch,
+                at(base, "field"),
+                format!(
+                    "model {MODEL_HADES_PRIME} requires field \"babybear\", \"koalabear\", \
+                     \"mersenne31\", \"goldilocks\" or \"prime\" (BN254 designs use model \
+                     {MODEL_HADES})"
+                ),
+            ));
+        }
+        let modulus_path = at(base, "modulus");
+        let Some(Modulus(p)) = self.modulus else {
+            return Err(ValidationError::new(
+                ErrorCode::MissingField,
+                modulus_path,
+                "field \"prime\" needs a \"modulus\": a prime below 2^64 as a decimal string",
+            ));
+        };
+        if let Some(preset) = self.field.preset_modulus() {
+            if p != preset {
+                return Err(ValidationError::new(
+                    ErrorCode::BadModulus,
+                    modulus_path,
+                    format!(
+                        "field \"{}\" has modulus {preset}, got {p}",
+                        self.field.as_str()
+                    ),
+                ));
+            }
+        } else if !is_prime_u64(p) {
+            return Err(ValidationError::new(
+                ErrorCode::BadModulus,
+                modulus_path,
+                format!("{p} is not prime"),
+            ));
+        }
+        let w = self.width;
+        if limits::width_status(self.field, w).is_none() {
+            return Err(ValidationError::new(
+                ErrorCode::UnsupportedWidth,
+                at(base, "width"),
+                format!(
+                    "width {w} is not supported over a prime field (use {})",
+                    limits::PRIME_WIDTHS
+                        .iter()
+                        .map(usize::to_string)
+                        .collect::<Vec<_>>()
+                        .join(" or ")
+                ),
+            ));
+        }
+        if matches!(self.constants, ConstantsSpec::Reference) {
+            return Err(ValidationError::new(
+                ErrorCode::BadConstantsKind,
+                at(&at(base, "constants"), "kind"),
+                format!(
+                    "model {MODEL_HADES_PRIME} has no reference round constants; give \
+                     {{\"kind\": \"explicit\", \"values\": [...]}} or leave \"constants\" out \
+                     for unspecified constants (every claim holds for all round constants)"
+                ),
+            ));
+        }
+        self.check_rounds_and_layers(base, MODEL_HADES_PRIME)
+    }
+}
+
+impl<F: Field> HadesDesign<F> {
     /// Total number of rounds.
     pub fn total_rounds(&self) -> u32 {
         self.full_rounds.saturating_add(self.partial_rounds)
@@ -318,23 +490,10 @@ impl HadesDesign {
         }
     }
 
-    /// Checks every semantic rule; `base` is the JSON pointer of the design.
-    pub fn check_at(&self, base: &str) -> Result<(), ValidationError> {
-        if self.field != FieldKind::Bn254 {
-            return Err(ValidationError::new(
-                ErrorCode::FieldMismatch,
-                at(base, "field"),
-                format!("model {MODEL_HADES} requires field \"bn254\""),
-            ));
-        }
+    /// The rules shared by both HADES models: matrix shapes, round counts,
+    /// the power S-box, the partial-round mask and explicit constants.
+    fn check_rounds_and_layers(&self, base: &str, model: &str) -> Result<(), ValidationError> {
         let w = self.width;
-        if limits::width_status(FieldKind::Bn254, w).is_none() {
-            return Err(ValidationError::new(
-                ErrorCode::UnsupportedWidth,
-                at(base, "width"),
-                format!("width {w} is not supported (use {})", limits::BN254_WIDTH),
-            ));
-        }
         check_square(&self.external, w, &at(base, "external"))?;
         check_square(&self.internal, w, &at(base, "internal"))?;
         if !self.full_rounds.is_multiple_of(2) {
@@ -389,7 +548,7 @@ impl HadesDesign {
                 return Err(ValidationError::new(
                     ErrorCode::BadSboxKind,
                     at(&sbox_path, "kind"),
-                    "model hades/bn254/v1 accepts S-box kind \"power\" only",
+                    format!("model {model} accepts S-box kind \"power\" only"),
                 ))
             }
         }
@@ -468,13 +627,24 @@ pub enum SboxSpec {
 }
 
 /// HADES round constants, tagged by `kind`.
+///
+/// The claims hold for every choice of round constants, so constants are
+/// part of the request (and of its digest) but not of any certificate.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
-pub enum ConstantsSpec {
-    /// The reference constants of the profile.
+#[serde(
+    tag = "kind",
+    rename_all = "lowercase",
+    deny_unknown_fields,
+    bound(serialize = "F: Serialize", deserialize = "F: Deserialize<'de>")
+)]
+pub enum ConstantsSpec<F = Bn254> {
+    /// The reference constants of the profile (`hades/bn254/v1` only).
     Reference,
+    /// Constants not given (`hades/prime/v1` only): the request says nothing
+    /// about them, and the claims hold for all of them.
+    Unspecified,
     /// One `width`-vector per round, `fullRounds + partialRounds` in total.
-    Explicit { values: Vec<Vec<Bn254>> },
+    Explicit { values: Vec<Vec<F>> },
 }
 
 /// The AES S-box, computed from its definition (inverse in GF(2^8) followed
@@ -521,5 +691,15 @@ mod tests {
         CandidateDesign::Hades(HadesDesign::poseidon2_reference())
             .check_at("")
             .unwrap();
+    }
+
+    #[test]
+    fn hades_bn254_rejects_unspecified_constants() {
+        let mut d = HadesDesign::poseidon2_reference();
+        d.constants = ConstantsSpec::Unspecified;
+        assert_eq!(
+            d.check_at("").unwrap_err().code,
+            ErrorCode::BadConstantsKind
+        );
     }
 }

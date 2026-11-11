@@ -15,6 +15,7 @@ final = client.wait(job["id"])
 for claim in final["report"]["claims"]:
     print(claim["id"], claim["status"], claim["evidence"]["label"])
 client.bundle(job["id"], "evidence.tar.gz")
+client.report_html(job["id"], "report.html")  # the bundle's printable HTML evidence report
 ```
 
 ## Methods
@@ -32,6 +33,7 @@ Every method returns the decoded JSON body.
 | `job(job_id)` | `GET /api/jobs/{id}` | state, steps, queue position, error and the (partial) report |
 | `stop(job_id)` | `POST /api/jobs/{id}/stop` | the job summary at the time of the call |
 | `bundle(job_id, path)` | `GET /api/jobs/{id}/bundle` | the path the `.tar.gz` bundle was written to |
+| `report_html(job_id, path)` | `GET /api/jobs/{id}/report.html` | the path the HTML evidence report was written to |
 | `wait(job_id, poll=1.0, timeout=None, on_progress=None)` | polls `GET /api/jobs/{id}` | the job once its state is terminal |
 
 `cryptificate.OPERATIONS` maps each `operationId` of the description to its method.
@@ -75,6 +77,20 @@ final job and its bundle). `--url` (or `CRYPTIFICATE_URL`) selects another servi
 Helpers build requests in the wire format, where field elements are strings: `gf(0x1b) == "1B"`,
 `bn(-1)` is the canonical decimal of `p - 1`. `ProgramBuilder` assembles linear programs
 register by register (`add`, `mul`, `xtime`, `sum`).
+
+`prime_design(field, external, internal, full_rounds, partial_rounds, exponent)` builds a HADES
+design over BabyBear, KoalaBear, Mersenne31 or Goldilocks (`PRIME_FIELDS`), or over a custom prime
+below `2^64` with `field="prime", modulus=p`, at width 3 or 4. Every report on such a design proves
+the modulus prime in Lean (claim `field.prime`) before the other claims; circuits, experiments and
+native timing are not offered over these fields.
+
+```python
+from cryptificate import prime_design
+
+m4 = [[5, 7, 1, 3], [4, 6, 1, 1], [1, 3, 5, 7], [1, 1, 4, 6]]
+internal = [[2, 1, 1, 1], [1, 3, 1, 1], [1, 1, 5, 1], [1, 1, 1, 9]]
+job = client.analyze(prime_design("koalabear", m4, internal, 8, 20, 3))
+```
 
 Tests: `python -m unittest discover -s tests` from this directory. `tests/test_openapi.py`
 checks that every operation in `schemas/openapi.json` has a method and runs the client against

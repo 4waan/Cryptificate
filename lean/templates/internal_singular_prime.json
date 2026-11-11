@@ -1,0 +1,15 @@
+{
+  "name": "internal_singular_prime",
+  "kind": "claim",
+  "claim": "internal.invertible",
+  "status": "refuted",
+  "theorem": "CryptificateJob.internal_singular",
+  "expectedType": "CryptificateJob.candInternal.det = 0",
+  "placeholders": [],
+  "requires": [
+    "const_internal_prime",
+    "const_witness_internal_prime",
+    "field_prime"
+  ],
+  "field": "prime"
+}

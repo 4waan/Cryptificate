@@ -1,0 +1,21 @@
+{
+  "name": "partial_active",
+  "kind": "claim",
+  "claim": "activity.partial",
+  "status": "proved",
+  "theorem": "CryptificateJob.partial_active",
+  "expectedType": "{{OBS_LENGTH}} ≤ CryptificateJob.candPartialRounds ∧ { external := CryptificateJob.candExternal, internal := CryptificateJob.candInternal, exponent := CryptificateJob.candExponent, fullRounds := CryptificateJob.candFullRounds, partialRounds := CryptificateJob.candPartialRounds }.WindowActive CryptificateJob.candMask {{OBS_LENGTH}}",
+  "placeholders": [
+    "OBS_LENGTH",
+    "OBS_POWERS",
+    "OBS_COORDS"
+  ],
+  "requires": [
+    "const_external_bn254",
+    "const_internal_bn254",
+    "const_exponent",
+    "const_rounds_hades",
+    "const_mask_hades"
+  ],
+  "field": "bn254"
+}

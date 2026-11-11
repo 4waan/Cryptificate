@@ -1,0 +1,13 @@
+{
+  "name": "sbox_linearity_aes",
+  "kind": "claim",
+  "claim": "sbox.linearity",
+  "status": "proved",
+  "theorem": "CryptificateJob.sbox_linearity",
+  "expectedType": "Cryptificate.linearity CryptificateJob.candSboxTable = 32 ∧ Cryptificate.gf 72 ≠ 0 ∧ (Cryptificate.walsh CryptificateJob.candSboxTable (Cryptificate.gf 1) (Cryptificate.gf 72)).natAbs = 32",
+  "placeholders": [],
+  "requires": [
+    "const_sbox_aes"
+  ],
+  "field": "gf256"
+}

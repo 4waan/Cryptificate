@@ -16,6 +16,11 @@ canonical decimal strings below the modulus. The validators reject numbers in th
 unknown members, out-of-range offsets, rounds and exponents, forward register references and
 programs longer than 256 instructions. Semantic checks (MDS, equivalence) belong to the engine.
 
+`renderReportHtml(report)` renders an analysis or experiment report as the self-contained HTML
+evidence report shared by the command line (`--format html`), evidence bundles (`report.html`) and
+the web workbench (Export report). All markup goes through an escaping element builder, and the page
+declares a Content Security Policy that forbids scripts and external loads.
+
 `SchemaRegistry` validates any document against the JSON Schemas in `schemas/` without a
 third-party dependency. It implements the draft 2020-12 keywords those schemas and
 `schemas/openapi.json` use (`$ref` across files, `type`, `enum`, `const`, object, array, number
@@ -33,4 +38,4 @@ for (const file of files) reg.add(base + file, JSON.parse(read(file)));
 reg.validate(base + 'job.schema.json', job); // [] when valid, else [{ path, schemaPath, message }]
 ```
 
-`npm run build` compiles to `dist/`; `npm test` runs the validator and schema tests.
+`npm run build` compiles to `dist/`; `npm test` runs the validator, schema, JSON Schema validator and HTML report tests.

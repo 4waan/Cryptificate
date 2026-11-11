@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="cryptificate verify" tests="6" failures="2" errors="1" skipped="2">
+  <testsuite name="examples/bundles/identity/identity.tar.gz" tests="5" failures="2" errors="0" skipped="2">
+    <properties>
+      <property name="failOn" value="refuted"/>
+      <property name="reportId" value="9421acab267bd47776b29d832356e9f9"/>
+      <property name="inputDigest" value="sha256:e55f3e07cf131691b0cd8aca16972ba3ea957bb50d043f3bd76de552b5171616"/>
+    </properties>
+    <testcase classname="cryptificate.verify.design" name="matrix.mds" file="examples/bundles/identity/identity.tar.gz">
+      <failure type="refuted" message="recorded refuted, recomputed refuted">recorded refuted, recomputed refuted</failure>
+    </testcase>
+    <testcase classname="cryptificate.verify.design" name="offsets.dispersion" file="examples/bundles/identity/identity.tar.gz"/>
+    <testcase classname="cryptificate.verify.design" name="activity.bound" file="examples/bundles/identity/identity.tar.gz">
+      <failure type="mismatch" message="recorded proved, recomputed not_established">recorded proved, recomputed not_established</failure>
+    </testcase>
+    <testcase classname="cryptificate.verify.implementation" name="native.correctness" file="examples/bundles/identity/identity.tar.gz">
+      <skipped message="not re-checked: recorded proved, recomputed -"/>
+    </testcase>
+    <testcase classname="cryptificate.verify.implementation" name="native.timing" file="examples/bundles/identity/identity.tar.gz">
+      <skipped message="historical: recorded not_established, recomputed -"/>
+    </testcase>
+  </testsuite>
+  <testsuite name="missing.tar.gz" tests="1" failures="0" errors="1" skipped="0">
+    <properties>
+      <property name="failOn" value="refuted"/>
+    </properties>
+    <testcase classname="cryptificate.bundle" name="bundle" file="missing.tar.gz">
+      <error type="input-error" message="cannot verify missing.tar.gz: ENOENT">cannot verify missing.tar.gz: ENOENT</error>
+    </testcase>
+  </testsuite>
+</testsuites>

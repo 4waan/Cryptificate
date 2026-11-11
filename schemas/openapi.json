@@ -39,7 +39,7 @@
     },
     {
       "name": "bundles",
-      "description": "Evidence bundles of finished jobs."
+      "description": "Evidence bundles and HTML evidence reports of finished jobs."
     },
     {
       "name": "web",
@@ -1412,6 +1412,86 @@
           },
           "409": {
             "description": "There is no bundle: the job is still queued or running, ended before producing a report, or its request was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "error.schema.json"
+                },
+                "examples": {
+                  "running": {
+                    "summary": "The job is still running",
+                    "value": {
+                      "error": {
+                        "code": "not-ready",
+                        "message": "the job has not finished"
+                      }
+                    }
+                  },
+                  "no-report": {
+                    "summary": "The job was stopped before it produced a report",
+                    "value": {
+                      "error": {
+                        "code": "not-ready",
+                        "message": "the job ended before it produced a report"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Internal"
+          }
+        }
+      }
+    },
+    "/api/jobs/{id}/report.html": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/JobId"
+        }
+      ],
+      "get": {
+        "operationId": "getJobReportHtml",
+        "tags": [
+          "bundles"
+        ],
+        "summary": "Download the HTML evidence report",
+        "description": "The self-contained HTML evidence report of the job: byte for byte the `report.html` of its evidence bundle, rendered from the bundled (path-scrubbed) report and toolchain pins. Inline CSS, no scripts and no external requests; the response carries the same Content Security Policy the page declares. Available under the same conditions as the bundle. The page is a rendering of `report.json`, not evidence: `cryptificate verify` re-checks the bundle and never reads `report.html`.",
+        "responses": {
+          "200": {
+            "description": "The HTML evidence report.",
+            "headers": {
+              "Content-Disposition": {
+                "description": "attachment; filename=\"cryptificate-<id>.html\"",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Security-Policy": {
+                "description": "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NoSuchJob"
+          },
+          "409": {
+            "description": "There is no report to render: the job is still queued or running, ended before producing a report, or its request was invalid.",
             "content": {
               "application/json": {
                 "schema": {

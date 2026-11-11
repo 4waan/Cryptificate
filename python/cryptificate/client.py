@@ -25,6 +25,7 @@ OPERATIONS = {
     "getJob": "job",
     "stopJob": "stop",
     "getJobBundle": "bundle",
+    "getJobReportHtml": "report_html",
 }
 
 
@@ -157,6 +158,17 @@ class Client:
         queued or running, or when it ended without a report or was invalid."""
         target = Path(path)
         with self._request("GET", f"/api/jobs/{job_id}/bundle") as res:
+            data = res.read()
+        target.write_bytes(data)
+        return target
+
+    def report_html(self, job_id: str, path: Union[str, Path]) -> Path:
+        """Download the self-contained HTML evidence report of a finished job to `path`.
+
+        The file is the bundle's report.html byte for byte. Raises CryptificateError with
+        status 409 (code "not-ready") under the same conditions as `bundle`."""
+        target = Path(path)
+        with self._request("GET", f"/api/jobs/{job_id}/report.html") as res:
             data = res.read()
         target.write_bytes(data)
         return target

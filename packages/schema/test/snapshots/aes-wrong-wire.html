@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; img-src data:; base-uri &#39;none&#39;; form-action &#39;none&#39;"><meta name="referrer" content="no-referrer"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark"><title>Cryptificate evidence report: analysis e6e133abbac74ceb24a3f12851c7ab33</title><style>
+:root{--fg:#1b1f24;--muted:#57606a;--bg:#fff;--panel:#f6f8fa;--line:#d0d7de;--code:#0b3b6f;
+--ok:#116329;--ok-bg:#dafbe1;--bad:#a40e26;--bad-bg:#ffebe9;--warn:#7d4e00;--warn-bg:#fff8c5;--other-bg:#eaeef2;
+font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.5;color:var(--fg);background:var(--bg)}
+@media screen and (prefers-color-scheme:dark){:root{--fg:#e6edf3;--muted:#9da7b3;--bg:#0d1117;--panel:#161b22;--line:#30363d;--code:#a5d6ff;
+--ok:#7ee787;--ok-bg:#12261e;--bad:#ffa198;--bad-bg:#2d1214;--warn:#e3b341;--warn-bg:#2b2111;--other-bg:#21262d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg)}
+main{max-width:60rem;margin:0 auto;padding:2rem 1.25rem 3rem}
+h1{font-size:1.6rem;margin:.2rem 0 1rem;line-height:1.25}
+h2{font-size:1.25rem;margin:2.2rem 0 .8rem;padding-bottom:.3rem;border-bottom:1px solid var(--line)}
+h3{font-size:1.05rem;margin:1.4rem 0 .5rem}
+h4{font-size:.95rem;margin:1rem 0 .4rem}
+p{margin:.4rem 0 .8rem}
+a{color:var(--code)}
+code,pre{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;font-size:.88em}
+code{color:var(--code);overflow-wrap:break-word}
+code.digest{overflow-wrap:anywhere}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.6rem .8rem;white-space:pre-wrap;overflow-wrap:anywhere;margin:.4rem 0 .8rem}
+pre.statement{margin:0;background:transparent;border:0;padding:0;color:var(--code)}
+pre.json{font-size:.78em}
+pre.program{column-width:13rem;column-gap:2rem;column-rule:1px solid var(--line)}
+.eyebrow{text-transform:uppercase;letter-spacing:.06em;font-size:.75rem;color:var(--muted);margin:0}
+.id{font-size:.8em}
+.digest{font-size:.82em}
+.muted{color:var(--muted)}
+.warn{color:var(--warn);font-weight:600}
+dl.kv{display:grid;grid-template-columns:minmax(9rem,max-content) 1fr;gap:.25rem 1rem;margin:.4rem 0 .8rem}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0;min-width:0}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .9rem;font-size:.9em}
+caption{text-align:left;color:var(--muted);padding-bottom:.3rem}
+th,td{border:1px solid var(--line);padding:.3rem .5rem;text-align:left;vertical-align:top;overflow-wrap:break-word}
+thead th{background:var(--panel)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.matrix{width:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.82em}
+table.matrix th{color:var(--muted);font-weight:normal;background:var(--panel)}
+table.matrix td{text-align:right;max-width:22rem}
+table.sbox td{padding:.1rem .3rem}
+table.vector{width:auto}
+.badge{display:inline-block;padding:.05rem .5rem;border-radius:999px;font-size:.8rem;font-weight:600;white-space:nowrap;border:1px solid transparent}
+.badge-proved{color:var(--ok);background:var(--ok-bg);border-color:var(--ok)}
+.badge-refuted{color:var(--bad);background:var(--bad-bg);border-color:var(--bad)}
+.badge-not-established{color:var(--warn);background:var(--warn-bg);border-color:var(--warn)}
+.badge-unsupported,.badge-other{color:var(--fg);background:var(--other-bg);border-color:var(--line)}
+.legend{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.6rem 1rem;margin:1rem 0;font-size:.9em}
+.legend h3{margin:.2rem 0 .4rem;font-size:.95rem}
+.legend ul{margin:0 0 .4rem;padding-left:1rem}
+.legend li{margin:.2rem 0}
+.claim{border:1px solid var(--line);border-left-width:4px;border-radius:6px;padding:.6rem .9rem;margin:.8rem 0}
+.claim-proved{border-left-color:var(--ok)}
+.claim-refuted{border-left-color:var(--bad)}
+.claim-not-established{border-left-color:var(--warn)}
+.claim>header{display:flex;justify-content:space-between;align-items:baseline;gap:1rem}
+.claim>header h3{margin:0 0 .4rem;font-size:1rem}
+.witness{background:var(--bad-bg);border-radius:6px;padding:.4rem .8rem;margin-top:.4rem}
+.claim-proved .witness,.claim-not-established .witness{background:var(--panel)}
+.witness h4{margin:.2rem 0 .3rem}
+.candidate{margin:1.4rem 0}
+.report-head{margin-bottom:1rem}
+footer{margin-top:2.5rem;padding-top:.6rem;border-top:1px solid var(--line);color:var(--muted);font-size:.85em}
+.report+.report{margin-top:3rem;border-top:3px double var(--line);padding-top:1rem}
+.gate+.report{margin-top:2.5rem}
+@media screen and (max-width:640px){dl.kv{grid-template-columns:1fr}dl.kv dt{margin-top:.3rem}main{padding:1rem}
+table{display:block;max-width:100%;overflow-x:auto}td.num,th.num{white-space:normal}.claim>header{flex-wrap:wrap}}
+@page{margin:16mm 14mm}
+@media print{
+:root{--fg:#000;--muted:#444;--bg:#fff;--panel:#f3f4f6;--line:#b8bfc7;--code:#0b3b6f;font-size:10pt}
+main{max-width:none;padding:0}
+a{color:inherit;text-decoration:none}
+h2{break-after:avoid;page-break-after:avoid}
+h2+p,h3+p{break-after:avoid;page-break-after:avoid}
+h3,h4{break-after:avoid;page-break-after:avoid}
+.claim,.legend,.witness,table.matrix,dl.kv,tr{break-inside:avoid;page-break-inside:avoid}
+pre{break-inside:auto}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.report+.report{break-before:page;page-break-before:always;border-top:0}
+}
+</style></head><body><main><article class="report"><header class="report-head"><p class="eyebrow">Cryptificate evidence report</p><h1>Analysis <code class="id">e6e133abbac74ceb24a3f12851c7ab33</code></h1><dl class="kv"><dt>Inputs</dt><dd><code class="digest">sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698</code></dd><dt>Run</dt><dd><span class="badge badge-proved">completed</span> live</dd><dt>Checker</dt><dd><code>cryptificate 0.1.0 (58e2000)</code></dd><dt>Design guarantees</dt><dd>4 proved</dd><dt>Implementation correspondence</dt><dd>2 refuted, 1 proved, 1 not established</dd></dl></header><aside class="legend" aria-label="How to read this report"><h3>How to read this report</h3><ul><li><span class="badge badge-proved">proved</span> The evidence named in the claim establishes the property. For a Lean certificate (evidence kind <code>lean</code>) that is a Lean-checked theorem about the exact submitted values. For native correctness it is agreement on every recorded test case (testing, not a proof). For <code>rust.refinement</code> it is an Aeneas refinement proof, checked by Lean, that the shared kernel primitives refine the Lean field operations: it does not depend on the submitted values and it trusts the Charon/Aeneas translation (see <code>refinement/claims.json</code>).</li><li><span class="badge badge-refuted">refuted</span> A concrete counterexample for the exact submitted values: checked by Lean, or, for native correctness, a test case on which the generated code gave a wrong output.</li><li><span class="badge badge-not-established">not established</span> This method did not establish the property. It is not a counterexample; a timeout or a missing tool lands here.</li><li><span class="badge badge-unsupported">unsupported</span> The input is outside the supported model.</li></ul><p>Design guarantees and implementation correspondence are separate chains: a circuit can compute its matrix exactly while the matrix diffuses poorly, and an MDS matrix can have a miswired circuit. A Lean certificate (evidence kind <code>lean</code>) is accepted only when its printed statement equals the expected statement about the exact inputs and its axioms are within <code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code>. The refinement proofs are checked once, by <code>scripts/setup.sh --with-refinement</code>, and reported as proved only while the kernel source keeps the digest they were extracted from; they go through neither of these two checks, and their axioms are pinned in <code>refinement/claims.json</code>.</p></aside><section id="summary" aria-labelledby="summary-h"><h2 id="summary-h">Claims</h2><table class="summary"><thead><tr><th scope="col">Chain</th><th scope="col">Claim</th><th scope="col">Status</th><th scope="col">Evidence</th></tr></thead><tbody><tr><td>design</td><td><code>matrix.mds</code> Matrix is MDS (branch number 5)</td><td><span class="badge badge-proved">proved</span></td><td>Lean-checked proof</td></tr><tr><td>design</td><td><code>offsets.dispersion</code> Row offsets are pairwise distinct</td><td><span class="badge badge-proved">proved</span></td><td>Lean-checked proof</td></tr><tr><td>design</td><td><code>sbox.bijective</code> S-box is a permutation</td><td><span class="badge badge-proved">proved</span></td><td>Lean-checked proof</td></tr><tr><td>design</td><td><code>activity.bound</code> At least 25 active S-boxes over 4 rounds</td><td><span class="badge badge-proved">proved</span></td><td>Lean-checked proof</td></tr><tr><td>implementation</td><td><code>circuit.equivalence</code> Circuit computes the design matrix</td><td><span class="badge badge-refuted">refuted</span></td><td>Lean-checked counterexample</td></tr><tr><td>implementation</td><td><code>native.correctness</code> Generated Rust matches the reference</td><td><span class="badge badge-refuted">refuted</span></td><td>Generated Rust passed 549 correctness cases</td></tr><tr><td>implementation</td><td><code>rust.refinement</code> Rust kernel refines the Lean model</td><td><span class="badge badge-proved">proved</span></td><td>Rust-source refinement (Aeneas)</td></tr><tr><td>implementation</td><td><code>native.timing</code> Native speed on this machine</td><td><span class="badge badge-not-established">not established</span></td><td>Unchecked diagnostic</td></tr></tbody></table></section><section id="inputs" aria-labelledby="inputs-h"><h2 id="inputs-h">Inputs</h2><p>Input digest <code class="digest">sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698</code>: SHA-256 of the canonical JSON of the normalized inputs below. Every claim in this report is about exactly these values.</p><h3>Design</h3><dl class="kv"><dt>Model</dt><dd><code>aes-like/gf256/v1</code></dd><dt>Field</dt><dd><code>gf256</code></dd><dt>Width</dt><dd>4</dd><dt>Rounds</dt><dd>4</dd><dt>Row offsets</dt><dd><code>0, 1, 2, 3</code></dd></dl><h4>Matrix</h4><table class="matrix" aria-label="Matrix"><thead><tr><th></th><th scope="col">c0</th><th scope="col">c1</th><th scope="col">c2</th><th scope="col">c3</th></tr></thead><tbody><tr><th scope="row">r0</th><td>02</td><td>03</td><td>01</td><td>01</td></tr><tr><th scope="row">r1</th><td>01</td><td>02</td><td>03</td><td>01</td></tr><tr><th scope="row">r2</th><td>01</td><td>01</td><td>02</td><td>03</td></tr><tr><th scope="row">r3</th><td>03</td><td>01</td><td>01</td><td>02</td></tr></tbody></table><h4>S-box</h4><p>The AES S-box (<code>kind: aes</code>).</p><h3>Circuit</h3><dl class="kv"><dt>Name</dt><dd><code>aes-shared-sum-wrong-wire</code></dd><dt>Field</dt><dd><code>gf256</code></dd><dt>Width</dt><dd>4</dd><dt>Implements</dt><dd>the <code>matrix</code> matrix</dd><dt>Size</dt><dd>19 instructions: 15 additions, 4 multiplications by a constant</dd></dl><pre class="listing program" aria-label="Circuit">inputs r0..r3
+r4 = r0 + r1
+r5 = r4 + r2
+r6 = r5 + r3
+r7 = r0 + r2
+r8 = 02 · r7
+r9 = r0 + r8
+r10 = r9 + r6
+r11 = r1 + r2
+r12 = 02 · r11
+r13 = r1 + r12
+r14 = r13 + r6
+r15 = r2 + r3
+r16 = 02 · r15
+r17 = r2 + r16
+r18 = r17 + r6
+r19 = r3 + r0
+r20 = 02 · r19
+r21 = r3 + r20
+r22 = r21 + r6
+y0 = r10
+y1 = r14
+y2 = r18
+y3 = r22</pre></section><section id="design" aria-labelledby="design-h"><h2 id="design-h">Design guarantees</h2><p class="muted">What the specification promises, for the exact design above.</p><article class="claim claim-proved" id="claim-matrix.mds"><header><h3><code>matrix.mds</code> Matrix is MDS (branch number 5)</h3><span class="badge badge-proved">proved</span></header><dl class="kv"><dt>Evidence</dt><dd>Lean-checked proof</dd><dt>Kind</dt><dd>lean</dd><dt>Theorem</dt><dd><code>CryptificateJob.matrix_mds</code></dd><dt>Lean statement</dt><dd><pre class="statement">IsMDS CryptificateJob.candMatrix</pre></dd><dt>Axioms</dt><dd><code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code><span class="muted"> (within the accepted set)</span></dd><dt>Note</dt><dd>Lean checked CryptificateJob.matrix_mds using only the standard axioms.</dd></dl></article><article class="claim claim-proved" id="claim-offsets.dispersion"><header><h3><code>offsets.dispersion</code> Row offsets are pairwise distinct</h3><span class="badge badge-proved">proved</span></header><dl class="kv"><dt>Evidence</dt><dd>Lean-checked proof</dd><dt>Kind</dt><dd>lean</dd><dt>Theorem</dt><dd><code>CryptificateJob.offsets_optimal</code></dd><dt>Lean statement</dt><dd><pre class="statement">DiffusionOptimal (gridCol 4 4) (shiftRowsPerm 4 4 CryptificateJob.candOffsets)</pre></dd><dt>Axioms</dt><dd><code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code><span class="muted"> (within the accepted set)</span></dd><dt>Note</dt><dd>Lean checked CryptificateJob.offsets_optimal using only the standard axioms.</dd></dl></article><article class="claim claim-proved" id="claim-sbox.bijective"><header><h3><code>sbox.bijective</code> S-box is a permutation</h3><span class="badge badge-proved">proved</span></header><dl class="kv"><dt>Evidence</dt><dd>Lean-checked proof</dd><dt>Kind</dt><dd>lean</dd><dt>Theorem</dt><dd><code>CryptificateJob.sbox_bijective</code></dd><dt>Lean statement</dt><dd><pre class="statement">Function.Bijective CryptificateJob.candSboxTable</pre></dd><dt>Axioms</dt><dd><code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code><span class="muted"> (within the accepted set)</span></dd><dt>Note</dt><dd>Lean checked CryptificateJob.sbox_bijective using only the standard axioms.</dd></dl></article><article class="claim claim-proved" id="claim-activity.bound"><header><h3><code>activity.bound</code> At least 25 active S-boxes over 4 rounds</h3><span class="badge badge-proved">proved</span></header><dl class="kv"><dt>Evidence</dt><dd>Lean-checked proof</dd><dt>Kind</dt><dd>lean</dd><dt>Theorem</dt><dd><code>CryptificateJob.activity_bound</code></dd><dt>Lean statement</dt><dd><pre class="statement">∀ (sbox : GF256 → GF256), Function.Injective sbox → ∀ (keys : ℕ → Fin 16 → GF256) (x y : Fin 16 → GF256), x ≠ y → (CryptificateJob.candRounds / 4 * 25 + if 2 ≤ CryptificateJob.candRounds % 4 then 5 else 0) ≤ Cryptificate.activeSboxes CryptificateJob.candMatrix CryptificateJob.candOffsets sbox keys x y CryptificateJob.candRounds</pre></dd><dt>Axioms</dt><dd><code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code><span class="muted"> (within the accepted set)</span></dd><dt>Note</dt><dd>Lean checked CryptificateJob.activity_bound using only the standard axioms.</dd></dl></article></section><section id="implementation" aria-labelledby="implementation-h"><h2 id="implementation-h">Implementation correspondence</h2><p class="muted">Whether the code computes the specification.</p><article class="claim claim-refuted" id="claim-circuit.equivalence"><header><h3><code>circuit.equivalence</code> Circuit computes the design matrix</h3><span class="badge badge-refuted">refuted</span></header><dl class="kv"><dt>Evidence</dt><dd>Lean-checked counterexample</dd><dt>Kind</dt><dd>lean</dd><dt>Theorem</dt><dd><code>CryptificateJob.circuit_mismatch</code></dd><dt>Lean statement</dt><dd><pre class="statement">CryptificateJob.candProgram.WellFormed ∧ CryptificateJob.candMatrix.mulVec CryptificateJob.witnessInput = CryptificateJob.witnessExpected ∧ CryptificateJob.candProgram.eval CryptificateJob.witnessInput = CryptificateJob.witnessActual ∧ ¬∀ (x : Fin 4 → GF256), CryptificateJob.candProgram.eval x = CryptificateJob.candMatrix.mulVec x</pre></dd><dt>Axioms</dt><dd><code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code><span class="muted"> (within the accepted set)</span></dd><dt>Note</dt><dd>Lean checked a counterexample (CryptificateJob.circuit_mismatch).</dd></dl><div class="witness"><h4>Counterexample</h4><p>Input <code>[00, 01, 00, 00]</code>.</p><table class="vector"><thead><tr><th scope="col">Output</th><th scope="col">Matrix (expected)</th><th scope="col">Circuit (actual)</th><th scope="col"></th></tr></thead><tbody><tr><td>y0</td><td><code>03</code></td><td><code>01</code></td><td><strong>differs</strong></td></tr><tr><td>y1</td><td><code>02</code></td><td><code>02</code></td><td></td></tr><tr><td>y2</td><td><code>01</code></td><td><code>01</code></td><td></td></tr><tr><td>y3</td><td><code>01</code></td><td><code>01</code></td><td></td></tr></tbody></table></div></article><article class="claim claim-refuted" id="claim-native.correctness"><header><h3><code>native.correctness</code> Generated Rust matches the reference</h3><span class="badge badge-refuted">refuted</span></header><dl class="kv"><dt>Evidence</dt><dd>Generated Rust passed 549 correctness cases</dd><dt>Kind</dt><dd>native</dd><dt>Cases</dt><dd>9215</dd><dt>Note</dt><dd>8666 of 9215 cases gave a wrong output.</dd></dl><div class="witness"><h4>Counterexample</h4><p>Input <code>[00, 01, 00, 00]</code>.</p><table class="vector"><thead><tr><th scope="col">Output</th><th scope="col">Matrix (expected)</th><th scope="col">Circuit (actual)</th><th scope="col"></th></tr></thead><tbody><tr><td>y0</td><td><code>03</code></td><td><code>01</code></td><td><strong>differs</strong></td></tr><tr><td>y1</td><td><code>02</code></td><td><code>02</code></td><td></td></tr><tr><td>y2</td><td><code>01</code></td><td><code>01</code></td><td></td></tr><tr><td>y3</td><td><code>01</code></td><td><code>01</code></td><td></td></tr></tbody></table></div></article><article class="claim claim-proved" id="claim-rust.refinement"><header><h3><code>rust.refinement</code> Rust kernel refines the Lean model</h3><span class="badge badge-proved">proved</span></header><dl class="kv"><dt>Evidence</dt><dd>Rust-source refinement (Aeneas)</dd><dt>Kind</dt><dd>refinement</dd><dt>Theorem</dt><dd><code>Cryptificate.Refinement.gf256_mul_refines</code></dd><dt>Note</dt><dd>The GF(2^8) primitives add, xtime and mul of crates/kernels, extracted with Charon and Aeneas, refine the Lean field operations; Lean checked these proofs on this machine. They cover the arithmetic primitives the generated code calls, not the generated circuit code itself, which native correctness tests.</dd></dl></article><article class="claim claim-not-established" id="claim-native.timing"><header><h3><code>native.timing</code> Native speed on this machine</h3><span class="badge badge-not-established">not established</span></header><dl class="kv"><dt>Evidence</dt><dd>Unchecked diagnostic</dd><dt>Kind</dt><dd>diagnostic</dd><dt>Reason</dt><dd><code>not-run</code></dd><dt>Note</dt><dd>Timing is measured by experiments, not by an analysis.</dd></dl></article></section><section id="native" aria-labelledby="native-h"><h2 id="native-h">Native correctness and timing</h2><table><thead><tr><th scope="col">Claim</th><th scope="col">Status</th><th scope="col" class="num">Cases</th><th scope="col">Evidence</th><th scope="col">Note</th></tr></thead><tbody><tr><td><code>native.correctness</code></td><td><span class="badge badge-refuted">refuted</span></td><td class="num">9215</td><td>Generated Rust passed 549 correctness cases</td><td>8666 of 9215 cases gave a wrong output.</td></tr><tr><td><code>native.timing</code></td><td><span class="badge badge-not-established">not established</span></td><td class="num">-</td><td>Unchecked diagnostic</td><td>Timing is measured by experiments, not by an analysis.</td></tr></tbody></table><p class="muted">An analysis does not take timings; native speed is measured by experiments, under the protocol in docs/batch-interface.md, on the machine that runs them.</p></section><section id="provenance" aria-labelledby="provenance-h"><h2 id="provenance-h">Provenance</h2><dl class="kv"><dt>Report id</dt><dd><code>e6e133abbac74ceb24a3f12851c7ab33</code></dd><dt>Origin</dt><dd>live</dd><dt>Checker (engine version)</dt><dd><code>cryptificate 0.1.0 (58e2000)</code></dd><dt>Lean</dt><dd><code>v4.33.1</code></dd><dt>Mathlib</dt><dd><code>v4.33.1</code></dd><dt>WideTrail revision</dt><dd><code>162c0f8a9e59841032ec5d66874fee31cf3b6298</code></dd><dt>rustc</dt><dd><code>rustc 1.97.0 (2d8144b78)</code></dd><dt>Lean source SHA-256</dt><dd><code class="digest">cd40d3bf3407a7c13554c6be4d9b1a17f8d03e69aa4f5dca6bee8fb5ffb9fa86</code></dd><dt>Proof cache key</dt><dd><code class="digest">85f38a61ce2042db58c8656e4f6566f17d215f4db3bab0e1b9d09d978ef98e3f</code></dd></dl><h3>Machine</h3><p class="muted">This report records no machine description: only experiments take timings, and only they record the machine.</p><h3>Execution</h3><table><thead><tr><th scope="col">Step</th><th scope="col">State</th><th scope="col" class="num">Duration</th><th scope="col">Detail</th></tr></thead><tbody><tr><td><code>validate</code></td><td>completed</td><td class="num">0.0 s</td><td></td></tr><tr><td><code>diagnose</code></td><td>completed</td><td class="num">0.0 s</td><td></td></tr><tr><td><code>emit-lean</code></td><td>completed</td><td class="num">0.0 s</td><td>5 theorem(s)</td></tr><tr><td><code>lean</code></td><td>completed</td><td class="num">4.1 s</td><td>5/5 theorem(s) accepted</td></tr><tr><td><code>native</code></td><td>completed</td><td class="num">0.3 s</td><td></td></tr><tr><td><code>report</code></td><td>completed</td><td class="num">0.0 s</td><td></td></tr></tbody></table><p class="muted">Durations are wall-clock times on the machine that produced the report. A timeout or a missing tool is an execution outcome, never a refutation.</p></section><section id="verify" aria-labelledby="verify-h"><h2 id="verify-h">How to verify</h2><p>From a Cryptificate checkout prepared with <code>scripts/setup.sh</code>:</p><pre class="listing">npx cryptificate verify aes-wrong-wire.tar.gz</pre><p><code>verify</code> reads only <code>inputs.json</code> and <code>report.json</code> from the bundle. It regenerates the Lean certificate with the installed engine and templates, runs the installed Lean checker, recomputes each claim and compares it with the status recorded here. It never runs Lean, Rust or shell code from the bundle, and it ignores this page (<code>report.html</code>), which is a rendering of <code>report.json</code>, not evidence.</p><p>For an analysis it re-checks the design claims and <code>circuit.equivalence</code>, and <code>native.correctness</code> with <code>--native</code> (from regenerated Rust, never the bundled Rust). It does not re-check <code>rust.refinement</code> or timings; they are shown with their recorded status.</p><p>To render this page again from a bundle or a report.json without running anything:</p><pre class="listing">npx cryptificate report aes-wrong-wire.tar.gz --format html --output report.html</pre></section><section id="appendix" aria-labelledby="appendix-h"><h2 id="appendix-h">Appendix: inputs as recorded</h2><p>The normalized inputs exactly as <code>report.json</code> records them:</p><pre class="json">{
+  &quot;design&quot;: {
+    &quot;field&quot;: &quot;gf256&quot;,
+    &quot;matrix&quot;: [
+      [&quot;02&quot;, &quot;03&quot;, &quot;01&quot;, &quot;01&quot;],
+      [&quot;01&quot;, &quot;02&quot;, &quot;03&quot;, &quot;01&quot;],
+      [&quot;01&quot;, &quot;01&quot;, &quot;02&quot;, &quot;03&quot;],
+      [&quot;03&quot;, &quot;01&quot;, &quot;01&quot;, &quot;02&quot;]
+    ],
+    &quot;model&quot;: &quot;aes-like/gf256/v1&quot;,
+    &quot;offsets&quot;: [0, 1, 2, 3],
+    &quot;rounds&quot;: 4,
+    &quot;sbox&quot;: {&quot;kind&quot;: &quot;aes&quot;},
+    &quot;width&quot;: 4
+  },
+  &quot;program&quot;: {
+    &quot;field&quot;: &quot;gf256&quot;,
+    &quot;instructions&quot;: [
+      {&quot;a&quot;: 0, &quot;b&quot;: 1, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 4, &quot;b&quot;: 2, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 5, &quot;b&quot;: 3, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 0, &quot;b&quot;: 2, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 7, &quot;k&quot;: &quot;02&quot;, &quot;op&quot;: &quot;mul&quot;},
+      {&quot;a&quot;: 0, &quot;b&quot;: 8, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 9, &quot;b&quot;: 6, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 1, &quot;b&quot;: 2, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 11, &quot;k&quot;: &quot;02&quot;, &quot;op&quot;: &quot;mul&quot;},
+      {&quot;a&quot;: 1, &quot;b&quot;: 12, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 13, &quot;b&quot;: 6, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 2, &quot;b&quot;: 3, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 15, &quot;k&quot;: &quot;02&quot;, &quot;op&quot;: &quot;mul&quot;},
+      {&quot;a&quot;: 2, &quot;b&quot;: 16, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 17, &quot;b&quot;: 6, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 3, &quot;b&quot;: 0, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 19, &quot;k&quot;: &quot;02&quot;, &quot;op&quot;: &quot;mul&quot;},
+      {&quot;a&quot;: 3, &quot;b&quot;: 20, &quot;op&quot;: &quot;add&quot;},
+      {&quot;a&quot;: 21, &quot;b&quot;: 6, &quot;op&quot;: &quot;add&quot;}
+    ],
+    &quot;name&quot;: &quot;aes-shared-sum-wrong-wire&quot;,
+    &quot;outputs&quot;: [10, 14, 18, 22],
+    &quot;width&quot;: 4
+  },
+  &quot;target&quot;: &quot;matrix&quot;
+}</pre></section><footer><p>Rendered from the report of run <code>e6e133abbac74ceb24a3f12851c7ab33</code> (inputs <code class="digest">sha256:fb9a76f86cec3c4047858db76c1f6e3b2ea8ce785ddefc6480b1858609b0b698</code>). This page shows what the report records and adds no claim of its own.</p></footer></article></main></body></html>

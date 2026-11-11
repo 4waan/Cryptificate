@@ -8,6 +8,9 @@
     },
     {
       "$ref": "#/$defs/hades"
+    },
+    {
+      "$ref": "#/$defs/hadesPrime"
     }
   ],
   "$defs": {
@@ -242,6 +245,136 @@
                     "maxItems": 3,
                     "items": {
                       "$ref": "field-element.schema.json#/$defs/bn254"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "hadesPrime": {
+      "title": "HADES design over a prime field below 2^64",
+      "description": "Model hades/prime/v1. The field is one of four named primes or \"prime\" with an explicit modulus. Elements are canonical decimal strings in [0, p); the range check against p, primality of a custom modulus and the agreement of a given modulus with a named field are done by the validators. Normalization always states the modulus.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "field",
+        "width",
+        "external",
+        "internal",
+        "fullRounds",
+        "partialRounds",
+        "sbox"
+      ],
+      "properties": {
+        "model": {
+          "const": "hades/prime/v1"
+        },
+        "field": {
+          "enum": [
+            "babybear",
+            "koalabear",
+            "mersenne31",
+            "goldilocks",
+            "prime"
+          ],
+          "description": "babybear 2013265921, koalabear 2130706433, mersenne31 2147483647, goldilocks 18446744069414584321, or prime (custom, needs modulus)."
+        },
+        "modulus": {
+          "description": "Decimal string of a prime below 2^64. Required for field \"prime\"; for a named field it must equal that field's modulus.",
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,19}$"
+        },
+        "width": {
+          "enum": [
+            3,
+            4
+          ]
+        },
+        "external": {
+          "$ref": "field-element.schema.json#/$defs/primeMatrix"
+        },
+        "internal": {
+          "$ref": "field-element.schema.json#/$defs/primeMatrix"
+        },
+        "fullRounds": {
+          "description": "Even; half before and half after the partial rounds. fullRounds + partialRounds <= 160.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 160,
+          "multipleOf": 2
+        },
+        "partialRounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 160
+        },
+        "sbox": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "exponent"
+          ],
+          "properties": {
+            "kind": {
+              "const": "power"
+            },
+            "exponent": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "partialMask": {
+          "description": "S-box positions active in partial rounds, one per state position; defaults to position 0 only.",
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 4,
+          "items": {
+            "type": "boolean"
+          }
+        },
+        "constants": {
+          "description": "Defaults to unspecified: every claim holds for all round constants.",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "unspecified"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "values"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "explicit"
+                },
+                "values": {
+                  "description": "One row per round; length must equal fullRounds + partialRounds.",
+                  "type": "array",
+                  "maxItems": 160,
+                  "items": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 4,
+                    "items": {
+                      "$ref": "field-element.schema.json#/$defs/prime"
                     }
                   }
                 }

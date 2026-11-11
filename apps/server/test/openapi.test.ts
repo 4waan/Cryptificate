@@ -328,12 +328,17 @@ test('openapi: live responses of the service conform to the description', async 
     const bundle = await call(port, 'GET', `/api/jobs/${id}/bundle`);
     conform('getJobBundle', bundle);
     assert.match(String(bundle.headers['content-disposition']), new RegExp(`cryptificate-${id}\\.tar\\.gz`));
+    const html = await call(port, 'GET', `/api/jobs/${id}/report.html`);
+    conform('getJobReportHtml', html);
+    assert.match(String(html.headers['content-disposition']), new RegExp(`cryptificate-${id}\\.html`));
+    assert.ok(String(html.headers['content-security-policy']).includes("default-src 'none'"));
     conform('stopJob', await call(port, 'POST', `/api/jobs/${id}/stop`));
 
     const missing = 'f'.repeat(32);
     conform('getJob', await call(port, 'GET', `/api/jobs/${missing}`));
     conform('stopJob', await call(port, 'POST', `/api/jobs/${missing}/stop`));
     conform('getJobBundle', await call(port, 'GET', `/api/jobs/${missing}/bundle`));
+    conform('getJobReportHtml', await call(port, 'GET', `/api/jobs/${missing}/report.html`));
 
     // methods the description does not list are not served on described paths:
     // GET and POST answer 404 (as for an unknown path), every other method 405,
@@ -367,6 +372,8 @@ test('openapi: live responses of the service conform to the description', async 
       'getJob 404',
       'getJobBundle 200',
       'getJobBundle 404',
+      'getJobReportHtml 200',
+      'getJobReportHtml 404',
       'stopJob 200',
       'stopJob 404',
     ]);
@@ -435,6 +442,10 @@ test('openapi: queued, running and cancelled jobs answer as described', async ()
       assert.equal(notYet.status, 409);
       conform('getJobBundle', notYet);
       assert.deepEqual(error(notYet), { code: 'not-ready', message: 'the job has not finished' });
+      const htmlNotYet = await call(port, 'GET', `/api/jobs/${id}/report.html`);
+      assert.equal(htmlNotYet.status, 409);
+      conform('getJobReportHtml', htmlNotYet);
+      assert.deepEqual(error(htmlNotYet), { code: 'not-ready', message: 'the job has not finished' });
     }
 
     // one job runs and two wait: a further submission is refused
@@ -455,6 +466,9 @@ test('openapi: queued, running and cancelled jobs answer as described', async ()
     assert.equal(none.status, 409);
     conform('getJobBundle', none);
     assert.deepEqual(error(none), { code: 'not-ready', message: 'the job ended before it produced a report' });
+    const noHtml = await call(port, 'GET', `/api/jobs/${second}/report.html`);
+    conform('getJobReportHtml', noHtml);
+    assert.deepEqual(error(noHtml), { code: 'not-ready', message: 'the job ended before it produced a report' });
 
     // a running job that is stopped keeps its partial report, which has a bundle
     conform('stopJob', await call(port, 'POST', `/api/jobs/${first}/stop`));
@@ -466,7 +480,7 @@ test('openapi: queued, running and cancelled jobs answer as described', async ()
     const after = conform('getJob', await call(port, 'GET', `/api/jobs/${third}`)) as { state: string };
     assert.equal(after.state, 'completed');
 
-    assertExercised(seen, ['submitAnalysis 202', 'submitExperiment 202', 'submitAnalysis 429', 'submitExperiment 429', 'getJob 200', 'getJobBundle 409', 'getJobBundle 200', 'stopJob 200']);
+    assertExercised(seen, ['submitAnalysis 202', 'submitExperiment 202', 'submitAnalysis 429', 'submitExperiment 429', 'getJob 200', 'getJobBundle 409', 'getJobBundle 200', 'getJobReportHtml 409', 'stopJob 200']);
   } finally {
     release();
     jobs.stopAll();

@@ -28,6 +28,7 @@ responses of an in-process service validate against the description.
 | `GET /api/jobs/{id}` | poll a job: state, steps, partial or final report | 200 |
 | `POST /api/jobs/{id}/stop` | stop a queued or running job | 200 |
 | `GET /api/jobs/{id}/bundle` | download the evidence bundle of a finished job | 200 |
+| `GET /api/jobs/{id}/report.html` | download the HTML evidence report of a finished job (the bundle's `report.html`) | 200 |
 | `GET /` and other non-API paths | the built web workbench (static files) | 200 |
 
 There is no endpoint that lists jobs and no streaming endpoint: keep the ids you submit and poll.
@@ -218,6 +219,16 @@ the answer is 409 `not-ready`:
 {"error":{"code":"not-ready","message":"the job has not finished"}}
 ```
 
+`GET /api/jobs/{id}/report.html` returns the bundle's `report.html` byte for byte: the
+self-contained, printable HTML evidence report, with no scripts and no external requests, served
+as an attachment with the same `Content-Security-Policy` header the page declares. It answers
+409 `not-ready` under the same conditions as the bundle. The page renders `report.json` and is
+not evidence; verify the bundle.
+
+```sh
+curl -fsS -OJ "$B/api/jobs/$ID/report.html"   # saves cryptificate-<id>.html
+```
+
 ## Errors
 
 Every error is JSON, `{"error": {"code", "message"}}`, plus `errors` for 400
@@ -230,7 +241,7 @@ Every error is JSON, `{"error": {"code", "message"}}`, plus `errors` for 400
 | 403 | `forbidden` | the request failed the Host or Origin check |
 | 404 | `not-found` | no such job; a GET or POST under `/api/` that matches no route, including a documented path with the other method (`GET /api/analyses`, `POST /api/capabilities`); or no `schemas/openapi.json` in this installation |
 | 405 | `method-not-allowed` | any method other than GET and POST under `/api/` (PUT, DELETE, PATCH, OPTIONS, and HEAD even on a GET endpoint), or a method other than GET and HEAD outside `/api/`; no `Allow` header is sent |
-| 409 | `not-ready` | bundle requested before the job finished, or for a job without a report or with an invalid request |
+| 409 | `not-ready` | bundle or HTML report requested before the job finished, or for a job without a report or with an invalid request |
 | 413 | `body-too-large` | the body exceeds 256 KiB (a client still uploading may see the connection reset instead) |
 | 415 | `unsupported-media-type` | the body is not `Content-Type: application/json` |
 | 429 | `queue-full` | one job runs and two are queued |

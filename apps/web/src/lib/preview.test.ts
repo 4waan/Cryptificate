@@ -33,7 +33,11 @@ describe('activity bound', () => {
 
 describe('browser previews', () => {
   it('AES passes every design check', () => {
-    expect(previewDesign(aesDesign()).map((p) => p.outcome)).toEqual(['holds', 'holds', 'holds', 'holds']);
+    expect(previewDesign(aesDesign()).map((p) => p.outcome)).toEqual(['holds', 'holds', 'holds', 'holds', 'holds', 'holds']);
+    expect(previewDesign(aesDesign()).slice(4).map((p) => p.title)).toEqual([
+      'Differential uniformity of the S-box table is 4',
+      'Linearity of the S-box table is 32',
+    ]);
     expect(previewDesign(rowScaledAesDesign())[0]!.outcome).toBe('holds');
   });
 
