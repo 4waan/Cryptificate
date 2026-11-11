@@ -106,6 +106,17 @@ KERNELS = {
         'proof': 'refinement/Refinement/Gf256Crate.lean',
         'spec': 'WideTrail GF256.rawMul on BitVec 8',
     },
+    'bn254-mont': {
+        'title': ('BN254 scalar-field Montgomery arithmetic of crates/kernels (add, sub, CIOS mul, '
+                  'to_mont, from_mont on four 64-bit limbs)'),
+        'appliesTo': {'field': 'bn254', 'implementation': 'crates/kernels bn254_mont'},
+        'rust': ['crates/kernels/src/bn254_mont.rs', 'refinement/rust/kernels.rs'],
+        'extracted': 'refinement/Extracted/CryptificateKernels.lean',
+        'proof': 'refinement/Refinement/BN254Mont.lean',
+        'spec': ('arithmetic modulo Poseidon2.BN254.modulus and, through the Montgomery decoding '
+                 'toField x = val4 x * (2^256)^-1, the field operations of WideTrail '
+                 'Poseidon2.BN254.F = ZMod modulus'),
+    },
 }
 
 ENOUGH_KEYS = ('at least `rounds` round keys (rounds <= round_keys.len()); with fewer, the Rust '
@@ -131,6 +142,10 @@ ENOUGH_KEYS_FINAL = ('at least rounds + 1 round keys (rounds < round_keys.len())
                      'Rust code indexes past the slice (for rounds = 0 the code reads no key, but '
                      'the theorem still asks for one) and the theorem says nothing')
 LAST_ROUND = 'the last of the r rounds is the final round: no column mixing, then the last key'
+
+FIRST_BELOW_P = ('the first operand is canonical (its limbs hold a value below p); the second '
+                 'may be any 256-bit value')
+BOTH_BELOW_P = 'both operands are canonical (their limbs hold values below p)'
 
 # theorem -> (kernel, hypotheses and preconditions in words; the statement has them formally)
 THEOREMS = [
@@ -182,18 +197,34 @@ THEOREMS = [
      ['SizeOfU8 (as above)']),
     ('Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels', 'gf256-crate',
      ['SizeOfU8 (as above)']),
+    ('Cryptificate.Refinement.BN254Mont.bn254_mont_mul_refines', 'bn254-mont', [FIRST_BELOW_P]),
+    ('Cryptificate.Refinement.BN254Mont.bn254_mont_add_refines', 'bn254-mont', [BOTH_BELOW_P]),
+    ('Cryptificate.Refinement.BN254Mont.bn254_mont_sub_refines', 'bn254-mont', [BOTH_BELOW_P]),
+    ('Cryptificate.Refinement.BN254Mont.bn254_mont_to_mont_refines', 'bn254-mont', []),
+    ('Cryptificate.Refinement.BN254Mont.bn254_mont_from_mont_refines', 'bn254-mont', []),
+    ('Cryptificate.Refinement.BN254Mont.bn254_mont_mul_eq', 'bn254-mont', [FIRST_BELOW_P]),
+    ('Cryptificate.Refinement.BN254Mont.bn254_mont_add_eq', 'bn254-mont', [BOTH_BELOW_P]),
+    ('Cryptificate.Refinement.BN254Mont.bn254_mont_sub_eq', 'bn254-mont', [BOTH_BELOW_P]),
 ]
 
 NOT_ESTABLISHED = [
     {
-        'id': 'bn254',
-        'title': 'BN254 scalar-field arithmetic (arkworks ark-bn254 / ark-ff 0.6 Fr) and HADES rounds over it',
+        'id': 'bn254-arkworks',
+        'title': 'BN254 scalar-field arithmetic of arkworks (ark-bn254 / ark-ff 0.6 Fr)',
+        'status': 'not_established',
+        'appliesTo': {'field': 'bn254', 'implementation': 'arkworks ark-ff 0.6 Fr'},
+        'reason': ('Aeneas cannot translate the arkworks field traits at the pinned version '
+                   '(refinement/bn254-probe), so no theorem covers arkworks Fr. The '
+                   'crates/kernels bn254_mont kernel is proved instead (kernel bn254-mont); see '
+                   'refinement/STATUS.md.'),
+    },
+    {
+        'id': 'bn254-hades',
+        'title': 'HADES / Poseidon2 rounds over BN254 in Rust',
         'status': 'not_established',
         'appliesTo': {'field': 'bn254'},
-        'reason': ('No refinement theorem covers arkworks Fr arithmetic. Proving it requires a '
-                   'machine-checked proof of the arkworks Montgomery multiplication and modular '
-                   'reduction for the BN254 modulus, which has not been done; see '
-                   'refinement/STATUS.md.'),
+        'reason': ('No Rust round function over BN254 is extracted or proved; the theorems of '
+                   'kernel bn254-mont cover the field operations only.'),
     },
 ]
 
@@ -290,7 +321,7 @@ def build():
             'correctness of the compiled machine code',
             ('the generated circuit code of the native variants, beyond its calls to the kernel '
              'functions (checked by tests, not refined)'),
-            'BN254 arithmetic (see notEstablished)',
+            'BN254 arithmetic of arkworks Fr, and HADES rounds over BN254 (see notEstablished)',
         ],
         'kernels': kernels,
         'claims': claims,

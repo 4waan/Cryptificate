@@ -22,7 +22,7 @@
     "absence of side channels",
     "correctness of the compiled machine code",
     "the generated circuit code of the native variants, beyond its calls to the kernel functions (checked by tests, not refined)",
-    "BN254 arithmetic (see notEstablished)"
+    "BN254 arithmetic of arkworks Fr, and HADES rounds over BN254 (see notEstablished)"
   ],
   "kernels": [
     {
@@ -40,12 +40,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "theorems": [
         "Cryptificate.Refinement.gf256_xtime_refines",
@@ -84,12 +84,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "theorems": [
         "Cryptificate.Refinement.aes_like_round_refines",
@@ -148,12 +148,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "theorems": [
         "Cryptificate.Refinement.sboxOf_injective_iff",
@@ -207,12 +207,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "theorems": [
         "Cryptificate.Refinement.matrixOf_aesMatrixBytes",
@@ -250,6 +250,40 @@
         "Cryptificate.Refinement.Gf256Crate.gf256crate_mul_field",
         "Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels"
       ]
+    },
+    {
+      "id": "bn254-mont",
+      "title": "BN254 scalar-field Montgomery arithmetic of crates/kernels (add, sub, CIOS mul, to_mont, from_mont on four 64-bit limbs)",
+      "appliesTo": {
+        "field": "bn254",
+        "implementation": "crates/kernels bn254_mont"
+      },
+      "specification": "arithmetic modulo Poseidon2.BN254.modulus and, through the Montgomery decoding toField x = val4 x * (2^256)^-1, the field operations of WideTrail Poseidon2.BN254.F = ZMod modulus",
+      "specificationSources": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/bn254_mont.rs",
+          "sha256": "a668cc6bc9916ff88c29b33031b61b13c92222c0757f3c07954d9e3d87f130dc"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "theorems": [
+        "Cryptificate.Refinement.BN254Mont.bn254_mont_mul_refines",
+        "Cryptificate.Refinement.BN254Mont.bn254_mont_add_refines",
+        "Cryptificate.Refinement.BN254Mont.bn254_mont_sub_refines",
+        "Cryptificate.Refinement.BN254Mont.bn254_mont_to_mont_refines",
+        "Cryptificate.Refinement.BN254Mont.bn254_mont_from_mont_refines",
+        "Cryptificate.Refinement.BN254Mont.bn254_mont_mul_eq",
+        "Cryptificate.Refinement.BN254Mont.bn254_mont_add_eq",
+        "Cryptificate.Refinement.BN254Mont.bn254_mont_sub_eq"
+      ]
     }
   ],
   "claims": [
@@ -272,12 +306,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -308,12 +342,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -345,12 +379,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -382,12 +416,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -418,12 +452,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -455,12 +489,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [],
       "proofFile": "refinement/Refinement/GF256.lean",
@@ -496,12 +530,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -546,12 +580,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -598,12 +632,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -650,12 +684,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -703,12 +737,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -753,12 +787,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -803,12 +837,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -855,12 +889,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -907,12 +941,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -961,12 +995,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1011,12 +1045,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1077,12 +1111,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1146,12 +1180,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1216,12 +1250,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1282,12 +1316,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1348,12 +1382,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1414,12 +1448,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1483,12 +1517,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1552,12 +1586,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1621,12 +1655,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1690,12 +1724,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1759,12 +1793,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1828,12 +1862,12 @@
         },
         {
           "path": "refinement/rust/kernels.rs",
-          "sha256": "87405a8f94a43044c0ad23c4e6ebf63a8ea815bd4a78a28003257b869a7f5397"
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
         }
       ],
       "extractedLean": {
         "path": "refinement/Extracted/CryptificateKernels.lean",
-        "sha256": "d1efc222499418679b267519cf72868a6ec9ec862a8edcffc33d19069b1ae5ec"
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
       },
       "specificationSources": [
         {
@@ -1984,17 +2018,335 @@
         "rustForCharon": "nightly-2026-09-17",
         "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
       }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.BN254Mont.bn254_mont_mul_refines",
+      "status": "proved",
+      "kernel": "bn254-mont",
+      "statement": "∀ (a b : Aeneas.Std.Array Aeneas.Std.U64 4#usize), Cryptificate.Refinement.BN254Mont.val4 a < Poseidon2.BN254.modulus → Aeneas.Std.WP.spec (cryptificate_kernels.bn254_mont.mul a b) fun r => Cryptificate.Refinement.BN254Mont.val4 r < Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.val4 r = Cryptificate.Refinement.BN254Mont.val4 a * Cryptificate.Refinement.BN254Mont.val4 b * Cryptificate.Refinement.BN254Mont.Rinv % Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.toField r = Cryptificate.Refinement.BN254Mont.toField a * Cryptificate.Refinement.BN254Mont.toField b",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "the first operand is canonical (its limbs hold a value below p); the second may be any 256-bit value"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/bn254_mont.rs",
+          "sha256": "a668cc6bc9916ff88c29b33031b61b13c92222c0757f3c07954d9e3d87f130dc"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [],
+      "proofFile": "refinement/Refinement/BN254Mont.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.BN254Mont.bn254_mont_add_refines",
+      "status": "proved",
+      "kernel": "bn254-mont",
+      "statement": "∀ (a b : Aeneas.Std.Array Aeneas.Std.U64 4#usize), Cryptificate.Refinement.BN254Mont.val4 a < Poseidon2.BN254.modulus → Cryptificate.Refinement.BN254Mont.val4 b < Poseidon2.BN254.modulus → Aeneas.Std.WP.spec (cryptificate_kernels.bn254_mont.add a b) fun r => Cryptificate.Refinement.BN254Mont.val4 r < Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.val4 r = (Cryptificate.Refinement.BN254Mont.val4 a + Cryptificate.Refinement.BN254Mont.val4 b) % Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.toField r = Cryptificate.Refinement.BN254Mont.toField a + Cryptificate.Refinement.BN254Mont.toField b",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "both operands are canonical (their limbs hold values below p)"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/bn254_mont.rs",
+          "sha256": "a668cc6bc9916ff88c29b33031b61b13c92222c0757f3c07954d9e3d87f130dc"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [],
+      "proofFile": "refinement/Refinement/BN254Mont.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.BN254Mont.bn254_mont_sub_refines",
+      "status": "proved",
+      "kernel": "bn254-mont",
+      "statement": "∀ (a b : Aeneas.Std.Array Aeneas.Std.U64 4#usize), Cryptificate.Refinement.BN254Mont.val4 a < Poseidon2.BN254.modulus → Cryptificate.Refinement.BN254Mont.val4 b < Poseidon2.BN254.modulus → Aeneas.Std.WP.spec (cryptificate_kernels.bn254_mont.sub a b) fun r => Cryptificate.Refinement.BN254Mont.val4 r < Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.val4 r = (Cryptificate.Refinement.BN254Mont.val4 a + Poseidon2.BN254.modulus - Cryptificate.Refinement.BN254Mont.val4 b) % Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.toField r = Cryptificate.Refinement.BN254Mont.toField a - Cryptificate.Refinement.BN254Mont.toField b",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "both operands are canonical (their limbs hold values below p)"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/bn254_mont.rs",
+          "sha256": "a668cc6bc9916ff88c29b33031b61b13c92222c0757f3c07954d9e3d87f130dc"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [],
+      "proofFile": "refinement/Refinement/BN254Mont.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.BN254Mont.bn254_mont_to_mont_refines",
+      "status": "proved",
+      "kernel": "bn254-mont",
+      "statement": "∀ (x : Aeneas.Std.Array Aeneas.Std.U64 4#usize), Aeneas.Std.WP.spec (cryptificate_kernels.bn254_mont.to_mont x) fun r => Cryptificate.Refinement.BN254Mont.val4 r < Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.val4 r = Cryptificate.Refinement.BN254Mont.val4 x * 2 ^ 256 % Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.toField r = ↑(Cryptificate.Refinement.BN254Mont.val4 x)",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/bn254_mont.rs",
+          "sha256": "a668cc6bc9916ff88c29b33031b61b13c92222c0757f3c07954d9e3d87f130dc"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [],
+      "proofFile": "refinement/Refinement/BN254Mont.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.BN254Mont.bn254_mont_from_mont_refines",
+      "status": "proved",
+      "kernel": "bn254-mont",
+      "statement": "∀ (x : Aeneas.Std.Array Aeneas.Std.U64 4#usize), Aeneas.Std.WP.spec (cryptificate_kernels.bn254_mont.from_mont x) fun r => Cryptificate.Refinement.BN254Mont.val4 r < Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.val4 r = Cryptificate.Refinement.BN254Mont.val4 x * Cryptificate.Refinement.BN254Mont.Rinv % Poseidon2.BN254.modulus ∧ ↑(Cryptificate.Refinement.BN254Mont.val4 r) = Cryptificate.Refinement.BN254Mont.toField x",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/bn254_mont.rs",
+          "sha256": "a668cc6bc9916ff88c29b33031b61b13c92222c0757f3c07954d9e3d87f130dc"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [],
+      "proofFile": "refinement/Refinement/BN254Mont.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.BN254Mont.bn254_mont_mul_eq",
+      "status": "proved",
+      "kernel": "bn254-mont",
+      "statement": "∀ (a b : Aeneas.Std.Array Aeneas.Std.U64 4#usize), Cryptificate.Refinement.BN254Mont.val4 a < Poseidon2.BN254.modulus → ∃ r, cryptificate_kernels.bn254_mont.mul a b = Aeneas.Std.Result.ok r ∧ Cryptificate.Refinement.BN254Mont.val4 r < Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.val4 r = Cryptificate.Refinement.BN254Mont.val4 a * Cryptificate.Refinement.BN254Mont.val4 b * Cryptificate.Refinement.BN254Mont.Rinv % Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.toField r = Cryptificate.Refinement.BN254Mont.toField a * Cryptificate.Refinement.BN254Mont.toField b",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "the first operand is canonical (its limbs hold a value below p); the second may be any 256-bit value"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/bn254_mont.rs",
+          "sha256": "a668cc6bc9916ff88c29b33031b61b13c92222c0757f3c07954d9e3d87f130dc"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [],
+      "proofFile": "refinement/Refinement/BN254Mont.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.BN254Mont.bn254_mont_add_eq",
+      "status": "proved",
+      "kernel": "bn254-mont",
+      "statement": "∀ (a b : Aeneas.Std.Array Aeneas.Std.U64 4#usize), Cryptificate.Refinement.BN254Mont.val4 a < Poseidon2.BN254.modulus → Cryptificate.Refinement.BN254Mont.val4 b < Poseidon2.BN254.modulus → ∃ r, cryptificate_kernels.bn254_mont.add a b = Aeneas.Std.Result.ok r ∧ Cryptificate.Refinement.BN254Mont.val4 r < Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.val4 r = (Cryptificate.Refinement.BN254Mont.val4 a + Cryptificate.Refinement.BN254Mont.val4 b) % Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.toField r = Cryptificate.Refinement.BN254Mont.toField a + Cryptificate.Refinement.BN254Mont.toField b",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "both operands are canonical (their limbs hold values below p)"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/bn254_mont.rs",
+          "sha256": "a668cc6bc9916ff88c29b33031b61b13c92222c0757f3c07954d9e3d87f130dc"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [],
+      "proofFile": "refinement/Refinement/BN254Mont.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
+    },
+    {
+      "theorem": "Cryptificate.Refinement.BN254Mont.bn254_mont_sub_eq",
+      "status": "proved",
+      "kernel": "bn254-mont",
+      "statement": "∀ (a b : Aeneas.Std.Array Aeneas.Std.U64 4#usize), Cryptificate.Refinement.BN254Mont.val4 a < Poseidon2.BN254.modulus → Cryptificate.Refinement.BN254Mont.val4 b < Poseidon2.BN254.modulus → ∃ r, cryptificate_kernels.bn254_mont.sub a b = Aeneas.Std.Result.ok r ∧ Cryptificate.Refinement.BN254Mont.val4 r < Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.val4 r = (Cryptificate.Refinement.BN254Mont.val4 a + Poseidon2.BN254.modulus - Cryptificate.Refinement.BN254Mont.val4 b) % Poseidon2.BN254.modulus ∧ Cryptificate.Refinement.BN254Mont.toField r = Cryptificate.Refinement.BN254Mont.toField a - Cryptificate.Refinement.BN254Mont.toField b",
+      "axioms": [
+        "propext",
+        "Classical.choice",
+        "Quot.sound"
+      ],
+      "extraAxioms": [],
+      "hypotheses": [
+        "both operands are canonical (their limbs hold values below p)"
+      ],
+      "rustSources": [
+        {
+          "path": "crates/kernels/src/bn254_mont.rs",
+          "sha256": "a668cc6bc9916ff88c29b33031b61b13c92222c0757f3c07954d9e3d87f130dc"
+        },
+        {
+          "path": "refinement/rust/kernels.rs",
+          "sha256": "94260a81f07d1355b7e2850cd6e18577afa25453059bb46885de64d8a3bae4a3"
+        }
+      ],
+      "extractedLean": {
+        "path": "refinement/Extracted/CryptificateKernels.lean",
+        "sha256": "df2a12affd4940c1f07ee8f0880459dae4ecb42261701abcc542816fba488995"
+      },
+      "specificationSources": [],
+      "proofFile": "refinement/Refinement/BN254Mont.lean",
+      "toolchain": {
+        "lean": "v4.35.0",
+        "mathlib": "v4.35.0 (56a005855ea17e0b0958f73ec801ae140b0a1679)",
+        "aeneas": "74aabd52f77001cf9eaad51b4f4b867a7dc6b111",
+        "charon": "0.1.294 (260ba2c82588291b1f9efaf4f42d7100adc9c6c2)",
+        "rustForCharon": "nightly-2026-09-17",
+        "widetrail": "162c0f8a9e59841032ec5d66874fee31cf3b6298"
+      }
     }
   ],
   "notEstablished": [
     {
-      "id": "bn254",
-      "title": "BN254 scalar-field arithmetic (arkworks ark-bn254 / ark-ff 0.6 Fr) and HADES rounds over it",
+      "id": "bn254-arkworks",
+      "title": "BN254 scalar-field arithmetic of arkworks (ark-bn254 / ark-ff 0.6 Fr)",
+      "status": "not_established",
+      "appliesTo": {
+        "field": "bn254",
+        "implementation": "arkworks ark-ff 0.6 Fr"
+      },
+      "reason": "Aeneas cannot translate the arkworks field traits at the pinned version (refinement/bn254-probe), so no theorem covers arkworks Fr. The crates/kernels bn254_mont kernel is proved instead (kernel bn254-mont); see refinement/STATUS.md."
+    },
+    {
+      "id": "bn254-hades",
+      "title": "HADES / Poseidon2 rounds over BN254 in Rust",
       "status": "not_established",
       "appliesTo": {
         "field": "bn254"
       },
-      "reason": "No refinement theorem covers arkworks Fr arithmetic. Proving it requires a machine-checked proof of the arkworks Montgomery multiplication and modular reduction for the BN254 modulus, which has not been done; see refinement/STATUS.md."
+      "reason": "No Rust round function over BN254 is extracted or proved; the theorems of kernel bn254-mont cover the field operations only."
     }
   ]
 }

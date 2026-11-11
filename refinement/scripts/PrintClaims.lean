@@ -45,7 +45,15 @@ private def claimTheorems : List Name := [
   `Cryptificate.Refinement.aes_rust_cipher_activity_bound_10,
   `Cryptificate.Refinement.Gf256Crate.gf256crate_mul_refines,
   `Cryptificate.Refinement.Gf256Crate.gf256crate_mul_field,
-  `Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels
+  `Cryptificate.Refinement.Gf256Crate.gf256crate_mul_eq_kernels,
+  `Cryptificate.Refinement.BN254Mont.bn254_mont_mul_refines,
+  `Cryptificate.Refinement.BN254Mont.bn254_mont_add_refines,
+  `Cryptificate.Refinement.BN254Mont.bn254_mont_sub_refines,
+  `Cryptificate.Refinement.BN254Mont.bn254_mont_to_mont_refines,
+  `Cryptificate.Refinement.BN254Mont.bn254_mont_from_mont_refines,
+  `Cryptificate.Refinement.BN254Mont.bn254_mont_mul_eq,
+  `Cryptificate.Refinement.BN254Mont.bn254_mont_add_eq,
+  `Cryptificate.Refinement.BN254Mont.bn254_mont_sub_eq
 ]
 
 #eval show CommandElabM Unit from do

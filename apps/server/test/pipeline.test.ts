@@ -202,6 +202,7 @@ test('refinement is reported only when checked for the current kernel source', a
   const { root, env } = makeFixture();
   try {
     assert.equal(refinementStatus(env.paths, 'bn254').status, 'unsupported');
+    assert.match(refinementStatus(env.paths, 'bn254').note, /arkworks' Fr, which no refinement proof covers/);
     assert.equal(refinementStatus(env.paths, 'gf256').status, 'unsupported');
     mkdirSync(join(root, 'crates', 'kernels', 'src'), { recursive: true });
     mkdirSync(join(root, 'refinement'), { recursive: true });
